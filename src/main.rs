@@ -351,7 +351,7 @@ fn new_pile(
     let mut transform = Transform::from_xyz(2048.0, 0.0, z);
     transform.rotate_y(-PI / 2.0);
     commands
-        .spawn((Pile(pile), transform))
+        .spawn((Pile(pile), transform, Visibility::default()))
         .with_children(|parent| {
             parent.spawn((
                 Mesh3d(card_stock.clone_weak()),
