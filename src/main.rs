@@ -57,6 +57,9 @@ fn cam_translation(
     if input.pressed(KeyCode::KeyS) {
         cam.translation += cam.back().as_vec3() * 32.0;
     }
+    if input.pressed(KeyCode::Space) {
+        *cam = Transform::from_xyz(0.0, 2048.0, -2048.0).looking_at(Vec3::ZERO, Vec3::Z);
+    }
 }
 fn cam_rotation(
     mouse_button: Res<ButtonInput<MouseButton>>,
@@ -110,7 +113,7 @@ fn setup(
     commands.insert_resource(CardStock(card_stock));
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(-1.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(0.0, 2048.0, -2048.0).looking_at(Vec3::ZERO, Vec3::Z),
     ));
     let client = client.0.clone();
     let asset_server = asset_server.clone();
@@ -339,7 +342,7 @@ fn new_pile(
     materials: &mut ResMut<Assets<StandardMaterial>>,
     commands: &mut Commands,
     card_back: Handle<StandardMaterial>,
-    z: f32,
+    x: f32,
 ) {
     let top = pile[0].image.clone_weak();
     let material_handle = materials.add(StandardMaterial {
@@ -348,15 +351,15 @@ fn new_pile(
         unlit: true,
         ..default()
     });
-    let mut transform = Transform::from_xyz(2048.0, 0.0, z);
-    transform.rotate_y(-PI / 2.0);
+    let mut transform = Transform::from_xyz(x, 0.0, 0.0);
+    transform.rotate_x(-PI / 2.0);
+    transform.rotate_y(PI);
     commands
         .spawn((Pile(pile), transform, Visibility::default()))
         .with_children(|parent| {
             parent.spawn((
                 Mesh3d(card_stock.clone_weak()),
                 MeshMaterial3d(material_handle),
-                Transform::default(),
             ));
             parent.spawn((
                 Mesh3d(card_stock),
