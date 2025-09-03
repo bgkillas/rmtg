@@ -5,6 +5,7 @@ use futures::StreamExt;
 use futures::stream::FuturesUnordered;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
+use std::f32::consts::PI;
 use std::io::Cursor;
 use std::sync::LazyLock;
 use tokio::task::JoinHandle;
@@ -33,10 +34,15 @@ fn setup(
     client: Res<Client>,
     asset_server: Res<AssetServer>,
     runtime: Res<Runtime>,
+    mut meshes: ResMut<Assets<Mesh>>,
 ) {
+    let height = 680.0;
+    let width = 480.0;
+    let quad_handle = meshes.add(Rectangle::new(width, height));
+    commands.insert_resource(CardStock(quad_handle));
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(3.0, 5.0, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(-1.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
     let client = client.0.clone();
     let asset_server = asset_server.clone();
@@ -212,8 +218,8 @@ fn register_deck(
     mut commands: Commands,
     mut query: Query<(Entity, &mut GetDeck)>,
     runtime: Res<Runtime>,
-    mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    card_stock: Res<CardStock>,
 ) {
     for (entity, mut deck) in query.iter_mut() {
         if deck.0.is_finished() {
@@ -222,38 +228,52 @@ fn register_deck(
             if let Some(result) = runtime.0.block_on(handle).ok().flatten() {
                 commands.spawn(new_pile(
                     result.commanders,
-                    &mut meshes,
+                    card_stock.0.clone_weak(),
                     &mut materials,
-                    -2.0,
+                    -1000.0,
                 ));
-                commands.spawn(new_pile(result.main, &mut meshes, &mut materials, -1.0));
-                commands.spawn(new_pile(result.side, &mut meshes, &mut materials, 1.0));
-                commands.spawn(new_pile(result.tokens, &mut meshes, &mut materials, 2.0));
+                commands.spawn(new_pile(
+                    result.main,
+                    card_stock.0.clone_weak(),
+                    &mut materials,
+                    -500.0,
+                ));
+                commands.spawn(new_pile(
+                    result.side,
+                    card_stock.0.clone_weak(),
+                    &mut materials,
+                    500.0,
+                ));
+                commands.spawn(new_pile(
+                    result.tokens,
+                    card_stock.0.clone_weak(),
+                    &mut materials,
+                    1000.0,
+                ));
             }
         }
     }
 }
 fn new_pile(
     pile: Vec<Card>,
-    meshes: &mut ResMut<Assets<Mesh>>,
+    card_stock: Handle<Mesh>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
-    x: f32,
+    z: f32,
 ) -> (Pile, Mesh3d, MeshMaterial3d<StandardMaterial>, Transform) {
     let top = pile[0].image.clone_weak();
-    let aspect = 85.0 / 61.0;
-    let quad_width = 8.0;
-    let quad_handle = meshes.add(Rectangle::new(quad_width, quad_width * aspect));
     let material_handle = materials.add(StandardMaterial {
-        base_color_texture: Some(top.clone()),
+        base_color_texture: Some(top),
         alpha_mode: AlphaMode::Opaque,
         unlit: true,
         ..default()
     });
+    let mut transform = Transform::from_xyz(2048.0, 0.0, z);
+    transform.rotate_y(-PI / 2.0);
     (
         Pile(pile),
-        Mesh3d(quad_handle),
+        Mesh3d(card_stock),
         MeshMaterial3d(material_handle),
-        Transform::from_xyz(x, 0.0, -6.0),
+        transform,
     )
 }
 #[derive(Component)]
@@ -278,3 +298,5 @@ struct Client(reqwest::Client);
 impl Resource for Client {}
 struct Runtime(tokio::runtime::Runtime);
 impl Resource for Runtime {}
+struct CardStock(Handle<Mesh>);
+impl Resource for CardStock {}
