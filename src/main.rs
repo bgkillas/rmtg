@@ -1,4 +1,5 @@
 use bevy::asset::RenderAssetUsages;
+use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use futures::StreamExt;
@@ -6,6 +7,7 @@ use futures::stream::FuturesUnordered;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
 use std::f32::consts::PI;
+use std::fs;
 use std::io::Cursor;
 use std::sync::LazyLock;
 use tokio::task::JoinHandle;
@@ -26,8 +28,51 @@ fn main() {
         .insert_resource(runtime)
         .insert_resource(client)
         .add_systems(Startup, setup)
-        .add_systems(Update, (listen_for_deck, register_deck))
+        .add_systems(
+            Update,
+            (
+                listen_for_deck,
+                register_deck,
+                cam_translation,
+                cam_rotation,
+            ),
+        )
         .run();
+}
+fn cam_translation(
+    input: Res<ButtonInput<KeyCode>>,
+    mut query: Query<(&mut Transform, &Camera3d)>,
+) {
+    let (cam, _) = query.iter_mut().next().unwrap();
+    let cam = cam.into_inner();
+    if input.pressed(KeyCode::KeyW) {
+        cam.translation += cam.forward().as_vec3() * 32.0;
+    }
+    if input.pressed(KeyCode::KeyA) {
+        cam.translation += cam.left().as_vec3() * 32.0;
+    }
+    if input.pressed(KeyCode::KeyD) {
+        cam.translation += cam.right().as_vec3() * 32.0;
+    }
+    if input.pressed(KeyCode::KeyS) {
+        cam.translation += cam.back().as_vec3() * 32.0;
+    }
+}
+fn cam_rotation(
+    mouse_button: Res<ButtonInput<MouseButton>>,
+    mouse_motion: Res<AccumulatedMouseMotion>,
+    mut query: Query<(&mut Transform, &Camera3d)>,
+) {
+    let (cam, _) = query.iter_mut().next().unwrap();
+    let cam = cam.into_inner();
+    if mouse_button.pressed(MouseButton::Left) && mouse_motion.delta != Vec2::ZERO {
+        let delta_yaw = -mouse_motion.delta.x * 0.001;
+        let delta_pitch = -mouse_motion.delta.y * 0.001;
+        let (yaw, pitch, roll) = cam.rotation.to_euler(EulerRot::YXZ);
+        let yaw = yaw + delta_yaw;
+        let pitch = pitch + delta_pitch;
+        cam.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, roll);
+    }
 }
 fn setup(
     mut commands: Commands,
@@ -35,11 +80,34 @@ fn setup(
     asset_server: Res<AssetServer>,
     runtime: Res<Runtime>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    let width = 488.0;
     let height = 680.0;
-    let width = 480.0;
-    let quad_handle = meshes.add(Rectangle::new(width, height));
-    commands.insert_resource(CardStock(quad_handle));
+    let card_stock = meshes.add(Rectangle::new(width, height));
+    let card_back = asset_server.load("back2.png");
+    let material_handle = materials.add(StandardMaterial {
+        base_color_texture: Some(card_back),
+        alpha_mode: AlphaMode::Opaque,
+        unlit: true,
+        ..default()
+    });
+    new_pile(
+        vec![
+            get_from_img(
+                Cursor::new(&fs::read("/home/.r/rmtg/assets/png.png").unwrap()),
+                asset_server.clone(),
+            )
+            .unwrap(),
+        ],
+        card_stock.clone_weak(),
+        &mut materials,
+        &mut commands,
+        material_handle.clone_weak(),
+        0.0,
+    );
+    commands.insert_resource(CardBack(material_handle));
+    commands.insert_resource(CardStock(card_stock));
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(-1.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -77,16 +145,8 @@ fn listen_for_deck(
         commands.spawn(GetDeck(task));
     }
 }
-async fn parse(
-    value: &JsonValue,
-    client: reqwest::Client,
-    asset_server: AssetServer,
-) -> Option<Card> {
-    let id = &value["id"];
-    let url = format!("https://assets.moxfield.net/cards/card-{id}-normal.webp");
-    let res = client.get(url).send().await.ok()?;
-    let bytes = res.bytes().await.ok()?;
-    let image = ImageReader::new(Cursor::new(bytes))
+fn get_from_img(bytes: Cursor<&[u8]>, asset_server: AssetServer) -> Option<Card> {
+    let image = ImageReader::new(bytes)
         .with_guessed_format()
         .ok()?
         .decode()
@@ -104,9 +164,19 @@ async fn parse(
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::RENDER_WORLD,
     );
-    Some(Card {
-        image: asset_server.add(image),
-    })
+    let image = asset_server.add(image);
+    Some(Card { image })
+}
+async fn parse(
+    value: &JsonValue,
+    client: reqwest::Client,
+    asset_server: AssetServer,
+) -> Option<Card> {
+    let id = &value["id"];
+    let url = format!("https://assets.moxfield.net/cards/card-{id}-normal.webp");
+    let res = client.get(url).send().await.ok()?;
+    let bytes = res.bytes().await.ok()?;
+    get_from_img(Cursor::new(bytes.as_ref()), asset_server)
 }
 #[test]
 fn test_parse() {
@@ -219,6 +289,7 @@ fn register_deck(
     mut query: Query<(Entity, &mut GetDeck)>,
     runtime: Res<Runtime>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    card_back: Res<CardBack>,
     card_stock: Res<CardStock>,
 ) {
     for (entity, mut deck) in query.iter_mut() {
@@ -226,30 +297,38 @@ fn register_deck(
             let handle = std::mem::replace(&mut deck.0, runtime.0.spawn(async { None }));
             commands.entity(entity).despawn();
             if let Some(result) = runtime.0.block_on(handle).ok().flatten() {
-                commands.spawn(new_pile(
+                new_pile(
                     result.commanders,
                     card_stock.0.clone_weak(),
                     &mut materials,
+                    &mut commands,
+                    card_back.0.clone_weak(),
                     -1000.0,
-                ));
-                commands.spawn(new_pile(
+                );
+                new_pile(
                     result.main,
                     card_stock.0.clone_weak(),
                     &mut materials,
+                    &mut commands,
+                    card_back.0.clone_weak(),
                     -500.0,
-                ));
-                commands.spawn(new_pile(
+                );
+                new_pile(
                     result.side,
                     card_stock.0.clone_weak(),
                     &mut materials,
+                    &mut commands,
+                    card_back.0.clone_weak(),
                     500.0,
-                ));
-                commands.spawn(new_pile(
+                );
+                new_pile(
                     result.tokens,
                     card_stock.0.clone_weak(),
                     &mut materials,
+                    &mut commands,
+                    card_back.0.clone_weak(),
                     1000.0,
-                ));
+                );
             }
         }
     }
@@ -258,8 +337,10 @@ fn new_pile(
     pile: Vec<Card>,
     card_stock: Handle<Mesh>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
+    commands: &mut Commands,
+    card_back: Handle<StandardMaterial>,
     z: f32,
-) -> (Pile, Mesh3d, MeshMaterial3d<StandardMaterial>, Transform) {
+) {
     let top = pile[0].image.clone_weak();
     let material_handle = materials.add(StandardMaterial {
         base_color_texture: Some(top),
@@ -269,12 +350,20 @@ fn new_pile(
     });
     let mut transform = Transform::from_xyz(2048.0, 0.0, z);
     transform.rotate_y(-PI / 2.0);
-    (
-        Pile(pile),
-        Mesh3d(card_stock),
-        MeshMaterial3d(material_handle),
-        transform,
-    )
+    commands
+        .spawn((Pile(pile), transform))
+        .with_children(|parent| {
+            parent.spawn((
+                Mesh3d(card_stock.clone_weak()),
+                MeshMaterial3d(material_handle),
+                Transform::default(),
+            ));
+            parent.spawn((
+                Mesh3d(card_stock),
+                MeshMaterial3d(card_back),
+                Transform::from_rotation(Quat::from_rotation_y(PI)),
+            ));
+        });
 }
 #[derive(Component)]
 struct Pile(Vec<Card>);
@@ -300,3 +389,5 @@ struct Runtime(tokio::runtime::Runtime);
 impl Resource for Runtime {}
 struct CardStock(Handle<Mesh>);
 impl Resource for CardStock {}
+struct CardBack(Handle<StandardMaterial>);
+impl Resource for CardBack {}
