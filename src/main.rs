@@ -10,9 +10,9 @@ use futures::stream::FuturesUnordered;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
 use std::f32::consts::PI;
-use std::fs;
 use std::io::Cursor;
 use std::sync::LazyLock;
+use std::{fs, mem};
 use tokio::task::JoinHandle;
 static USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 static CARD_WIDTH: f32 = 488.0;
@@ -51,18 +51,23 @@ fn main() {
                 register_deck,
                 cam_translation,
                 cam_rotation,
-                listen_for_mouse,
+                (listen_for_mouse, follow_mouse).chain(),
             ),
         )
         .run();
+}
+fn follow_mouse(
+    camera: Single<(&Camera, &GlobalTransform)>,
+    window: Single<&Window, With<PrimaryWindow>>,
+    card: Single<&mut Transform, With<FollowMouse>>,
+) {
 }
 fn listen_for_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
     camera: Single<(&Camera, &GlobalTransform)>,
     window: Single<&Window, With<PrimaryWindow>>,
     rapier_context: ReadRapierContext,
-    mut cards: Query<(&mut Pile, &Transform, &Children)>,
-    mut card_mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
+    mut cards: Query<(&mut Pile, &mut Transform)>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -84,25 +89,29 @@ fn listen_for_mouse(
     context.with_query_pipeline(QueryFilter::only_dynamic(), |query_pipeline| {
         let hit = query_pipeline.cast_ray(ray.origin, ray.direction.into(), f32::MAX, true);
         if let Some((entity, _toi)) = hit
-            && let Ok((pile, transform, children)) = cards.get_mut(entity)
+            && let Ok((pile, transform)) = cards.get_mut(entity)
         {
             if mouse_input.just_pressed(MouseButton::Left) {
                 let pile = pile.into_inner();
                 let new = pile.0.pop().unwrap();
-                if pile.0.is_empty() {
-                    commands.entity(entity).despawn()
-                } else {
-                    let top = pile.0.last().unwrap();
-                    let mat = make_material(&mut materials, top.image.clone_weak());
-                    for child in children {
-                        let mut old_mat = card_mats.get_mut(*child).unwrap();
-                        if old_mat.0.id() != card_back.0.id() {
-                            old_mat.0 = mat;
-                            break;
-                        }
-                    }
+                if !pile.0.is_empty() {
+                    let pile = mem::take(&mut pile.0);
+                    new_pile_at(
+                        pile,
+                        card_stock.0.clone_weak(),
+                        &mut materials,
+                        &mut commands,
+                        &mut meshes,
+                        card_back.0.clone_weak(),
+                        card_side.0.clone_weak(),
+                        *transform,
+                        false,
+                    )
                 }
-                new_pile(
+                commands.entity(entity).despawn();
+                let transform = transform.into_inner();
+                transform.translation.y += 4.0;
+                new_pile_at(
                     vec![new],
                     card_stock.0.clone_weak(),
                     &mut materials,
@@ -110,11 +119,13 @@ fn listen_for_mouse(
                     &mut meshes,
                     card_back.0.clone_weak(),
                     card_side.0.clone_weak(),
-                    transform.translation.x,
-                    transform.translation.z - CARD_HEIGHT,
+                    *transform,
+                    true,
                 );
             } else if input.just_pressed(KeyCode::KeyE) {
+                transform.into_inner().rotate_y(-PI / 2.0);
             } else if input.just_pressed(KeyCode::KeyQ) {
+                transform.into_inner().rotate_y(PI / 2.0);
             }
         }
     });
@@ -173,6 +184,8 @@ fn setup(
     let card = get_from_img(
         Cursor::new(&fs::read("/home/.r/rmtg/assets/png.png").unwrap()),
         asset_server.clone(),
+        String::new(),
+        String::new(),
     )
     .unwrap();
     let card_side = materials.add(StandardMaterial {
@@ -183,6 +196,23 @@ fn setup(
     new_pile(
         vec![
             Card {
+                id: "".to_string(),
+                name: "".to_string(),
+                image: card.image.clone_weak(),
+            },
+            Card {
+                id: "".to_string(),
+                name: "".to_string(),
+                image: card.image.clone_weak(),
+            },
+            Card {
+                id: "".to_string(),
+                name: "".to_string(),
+                image: card.image.clone_weak(),
+            },
+            Card {
+                id: "".to_string(),
+                name: "".to_string(),
                 image: card.image.clone_weak(),
             },
             card,
@@ -240,7 +270,12 @@ fn listen_for_deck(
         commands.spawn(GetDeck(task));
     }
 }
-fn get_from_img(bytes: Cursor<&[u8]>, asset_server: AssetServer) -> Option<Card> {
+fn get_from_img(
+    bytes: Cursor<&[u8]>,
+    asset_server: AssetServer,
+    id: String,
+    name: String,
+) -> Option<Card> {
     let image = ImageReader::new(bytes)
         .with_guessed_format()
         .ok()?
@@ -260,7 +295,7 @@ fn get_from_img(bytes: Cursor<&[u8]>, asset_server: AssetServer) -> Option<Card>
         RenderAssetUsages::RENDER_WORLD,
     );
     let image = asset_server.add(image);
-    Some(Card { image })
+    Some(Card { id, name, image })
 }
 async fn parse(
     value: &JsonValue,
@@ -271,7 +306,12 @@ async fn parse(
     let url = format!("https://assets.moxfield.net/cards/card-{id}-normal.webp");
     let res = client.get(url).send().await.ok()?;
     let bytes = res.bytes().await.ok()?;
-    get_from_img(Cursor::new(bytes.as_ref()), asset_server)
+    get_from_img(
+        Cursor::new(bytes.as_ref()),
+        asset_server,
+        id.to_string(),
+        value["name"].to_string(),
+    )
 }
 #[test]
 fn test_parse() {
@@ -462,17 +502,43 @@ fn new_pile(
     x: f32,
     z: f32,
 ) {
+    let size = pile.len() as f32;
+    let mut transform = Transform::from_xyz(x, size, z);
+    transform.rotate_x(-PI / 2.0);
+    transform.rotate_y(PI);
+    new_pile_at(
+        pile, card_stock, materials, commands, meshes, card_back, card_side, transform, false,
+    )
+}
+fn new_pile_at(
+    pile: Vec<Card>,
+    card_stock: Handle<Mesh>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    card_back: Handle<StandardMaterial>,
+    card_side: Handle<StandardMaterial>,
+    transform: Transform,
+    follow_mouse: bool,
+) {
     if pile.is_empty() {
         return;
     }
     let top = pile.last().unwrap().image.clone_weak();
     let material_handle = make_material(materials, top);
     let size = pile.len() as f32;
-    let mut transform = Transform::from_xyz(x, size, z);
-    transform.rotate_x(-PI / 2.0);
-    transform.rotate_y(PI);
-    commands
-        .spawn((
+    if follow_mouse {
+        commands.spawn((
+            Pile(pile),
+            transform,
+            Visibility::default(),
+            RigidBody::Dynamic,
+            Collider::cuboid(CARD_WIDTH / 2.0, CARD_HEIGHT / 2.0, size),
+            GravityScale(0.0),
+            FollowMouse,
+        ))
+    } else {
+        commands.spawn((
             Pile(pile),
             transform,
             Visibility::default(),
@@ -480,46 +546,47 @@ fn new_pile(
             Collider::cuboid(CARD_WIDTH / 2.0, CARD_HEIGHT / 2.0, size),
             GravityScale(16.0),
         ))
-        .with_children(|parent| {
-            parent.spawn((
-                Mesh3d(card_stock.clone_weak()),
-                MeshMaterial3d(material_handle),
-                Transform::from_xyz(0.0, 0.0, size),
-            ));
-            let mut transform = Transform::from_rotation(Quat::from_rotation_y(PI));
-            transform.translation.z = -size;
-            parent.spawn((Mesh3d(card_stock), MeshMaterial3d(card_back), transform));
+    }
+    .with_children(|parent| {
+        parent.spawn((
+            Mesh3d(card_stock.clone_weak()),
+            MeshMaterial3d(material_handle),
+            Transform::from_xyz(0.0, 0.0, size),
+        ));
+        let mut transform = Transform::from_rotation(Quat::from_rotation_y(PI));
+        transform.translation.z = -size;
+        parent.spawn((Mesh3d(card_stock), MeshMaterial3d(card_back), transform));
 
-            let mesh = meshes.add(Rectangle::new(2.0 * size, CARD_HEIGHT));
-            let mut transform = Transform::from_rotation(Quat::from_rotation_y(PI / 2.0));
-            transform.translation.x = CARD_WIDTH / 2.0;
-            parent.spawn((
-                Mesh3d(mesh.clone_weak()),
-                MeshMaterial3d(card_side.clone_weak()),
-                transform,
-            ));
+        let mesh = meshes.add(Rectangle::new(2.0 * size, CARD_HEIGHT));
+        let mut transform = Transform::from_rotation(Quat::from_rotation_y(PI / 2.0));
+        transform.translation.x = CARD_WIDTH / 2.0;
+        parent.spawn((
+            Mesh3d(mesh.clone_weak()),
+            MeshMaterial3d(card_side.clone_weak()),
+            transform,
+        ));
 
-            let mut transform = Transform::from_rotation(Quat::from_rotation_y(-PI / 2.0));
-            transform.translation.x = -CARD_WIDTH / 2.0;
-            parent.spawn((
-                Mesh3d(mesh),
-                MeshMaterial3d(card_side.clone_weak()),
-                transform,
-            ));
+        let mut transform = Transform::from_rotation(Quat::from_rotation_y(-PI / 2.0));
+        transform.translation.x = -CARD_WIDTH / 2.0;
+        parent.spawn((
+            Mesh3d(mesh),
+            MeshMaterial3d(card_side.clone_weak()),
+            transform,
+        ));
 
-            let mesh = meshes.add(Rectangle::new(CARD_WIDTH, 2.0 * size));
-            let mut transform = Transform::from_rotation(Quat::from_rotation_x(PI / 2.0));
-            transform.translation.y = -CARD_HEIGHT / 2.0;
-            parent.spawn((
-                Mesh3d(mesh.clone_weak()),
-                MeshMaterial3d(card_side.clone_weak()),
-                transform,
-            ));
+        let mesh = meshes.add(Rectangle::new(CARD_WIDTH, 2.0 * size));
+        let mut transform = Transform::from_rotation(Quat::from_rotation_x(PI / 2.0));
+        transform.translation.y = -CARD_HEIGHT / 2.0;
+        parent.spawn((
+            Mesh3d(mesh.clone_weak()),
+            MeshMaterial3d(card_side.clone_weak()),
+            transform,
+        ));
 
-            let mut transform = Transform::from_rotation(Quat::from_rotation_x(-PI / 2.0));
-            transform.translation.y = CARD_HEIGHT / 2.0;
-            parent.spawn((Mesh3d(mesh), MeshMaterial3d(card_side), transform));
-        });
+        let mut transform = Transform::from_rotation(Quat::from_rotation_x(-PI / 2.0));
+        transform.translation.y = CARD_HEIGHT / 2.0;
+        parent.spawn((Mesh3d(mesh), MeshMaterial3d(card_side), transform));
+    });
 }
 #[derive(Component)]
 struct Pile(Vec<Card>);
@@ -534,9 +601,12 @@ struct Deck {
 }
 #[derive(Debug)]
 struct Card {
-    // name: String,
+    id: String,
+    name: String,
     image: Handle<Image>,
 }
+#[derive(Component)]
+struct FollowMouse;
 struct Clipboard(LazyLock<arboard::Clipboard>);
 impl Resource for Clipboard {}
 struct Client(reqwest::Client);
