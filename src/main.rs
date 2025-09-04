@@ -67,9 +67,20 @@ fn follow_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
     camera: Single<(&Camera, &GlobalTransform)>,
     window: Single<&Window, With<PrimaryWindow>>,
-    mut card: Single<(Entity, &mut Transform, &mut GravityScale, &mut Velocity), With<FollowMouse>>,
+    mut card: Single<
+        (
+            Entity,
+            &mut Transform,
+            &mut GravityScale,
+            &mut Velocity,
+            &Collider,
+        ),
+        With<FollowMouse>,
+    >,
+    cards: Query<(&Pile, &Transform), Without<FollowMouse>>,
     mut commands: Commands,
     time_since: Res<Time>,
+    rapier_context: ReadRapierContext,
 ) {
     let Some(cursor_position) = window.cursor_position() else {
         return;
@@ -78,12 +89,34 @@ fn follow_mouse(
     let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
         return;
     };
-    if mouse_input.pressed(MouseButton::Left)
-        && let Some(time) =
+    if mouse_input.pressed(MouseButton::Left) {
+        let Ok(context) = rapier_context.single() else {
+            return;
+        };
+        if let Some(max) =
+            context.with_query_pipeline(QueryFilter::only_dynamic(), |query_pipeline| {
+                query_pipeline
+                    .intersect_shape(card.1.translation, card.1.rotation, card.4.raw.0.as_ref())
+                    .filter_map(|a| {
+                        if a != card.0
+                            && let Ok((pile, transform)) = cards.get(a)
+                        {
+                            Some(transform.translation.y + pile.0.len() as f32)
+                        } else {
+                            None
+                        }
+                    })
+                    .reduce(f32::max)
+            })
+        {
+            card.1.translation.y = max + 4.0;
+        }
+        if let Some(time) =
             ray.intersect_plane(card.1.translation, InfinitePlane3d { normal: Dir3::Y })
-    {
-        let point = ray.get_point(time);
-        card.1.translation = point;
+        {
+            let point = ray.get_point(time);
+            card.1.translation = point;
+        }
     } else {
         if let Some(time) =
             ray.intersect_plane(card.1.translation, InfinitePlane3d { normal: Dir3::Y })
@@ -121,93 +154,97 @@ fn listen_for_mouse(
     let Ok(context) = rapier_context.single() else {
         return;
     };
-    context.with_query_pipeline(QueryFilter::only_dynamic(), |query_pipeline| {
-        let hit = query_pipeline.cast_ray(ray.origin, ray.direction.into(), f32::MAX, true);
-        if let Some((entity, _toi)) = hit
-            && let Ok((mut pile, mut transform)) = cards.get_mut(entity)
-        {
-            if input.just_pressed(KeyCode::KeyF) {
-                let is_reversed;
-                if reversed.contains(entity) {
-                    is_reversed = false;
-                    commands.entity(entity).remove::<Reversed>();
-                } else {
-                    is_reversed = true;
-                    commands.entity(entity).insert(Reversed);
-                }
-                pile.0.reverse();
-                transform.rotate_z(PI);
-                let pile = mem::take(&mut pile.0);
-                new_pile_at(
-                    pile,
-                    card_stock.0.clone_weak(),
-                    &mut materials,
-                    &mut commands,
-                    &mut meshes,
-                    card_back.0.clone_weak(),
-                    card_side.0.clone_weak(),
-                    *transform,
-                    false,
-                    is_reversed,
-                );
-                commands.entity(entity).despawn();
-            } else if input.just_pressed(KeyCode::KeyR) {
-                pile.0.shuffle(&mut rand);
-                let pile = mem::take(&mut pile.0);
-                let reversed = reversed.contains(entity);
-                new_pile_at(
-                    pile,
-                    card_stock.0.clone_weak(),
-                    &mut materials,
-                    &mut commands,
-                    &mut meshes,
-                    card_back.0.clone_weak(),
-                    card_side.0.clone_weak(),
-                    *transform,
-                    false,
-                    reversed,
-                );
-                commands.entity(entity).despawn();
-            } else if mouse_input.just_pressed(MouseButton::Left) {
-                let reversed = reversed.contains(entity);
-                let len = pile.0.len() as f32;
-                let new = pile.0.pop().unwrap();
-                if !pile.0.is_empty() {
-                    let pile = mem::take(&mut pile.0);
-                    new_pile_at(
-                        pile,
-                        card_stock.0.clone_weak(),
-                        &mut materials,
-                        &mut commands,
-                        &mut meshes,
-                        card_back.0.clone_weak(),
-                        card_side.0.clone_weak(),
-                        *transform,
-                        false,
-                        reversed,
-                    );
-                }
-                commands.entity(entity).despawn();
-                transform.translation.y += len + 4.0;
-                new_pile_at(
-                    vec![new],
-                    card_stock.0.clone_weak(),
-                    &mut materials,
-                    &mut commands,
-                    &mut meshes,
-                    card_back.0.clone_weak(),
-                    card_side.0.clone_weak(),
-                    *transform,
-                    true,
-                    reversed,
-                );
-            } else if input.just_pressed(KeyCode::KeyE) {
-                transform.rotate_y(-PI / 2.0);
-            } else if input.just_pressed(KeyCode::KeyQ) {
-                transform.rotate_y(PI / 2.0);
+    let hit = context.cast_ray(
+        ray.origin,
+        ray.direction.into(),
+        f32::MAX,
+        true,
+        QueryFilter::only_dynamic(),
+    );
+    if let Some((entity, _toi)) = hit
+        && let Ok((mut pile, mut transform)) = cards.get_mut(entity)
+    {
+        if input.just_pressed(KeyCode::KeyF) {
+            let is_reversed;
+            if reversed.contains(entity) {
+                is_reversed = false;
+                commands.entity(entity).remove::<Reversed>();
+            } else {
+                is_reversed = true;
+                commands.entity(entity).insert(Reversed);
             }
-         }
-    });
+            pile.0.reverse();
+            transform.rotate_z(PI);
+            let pile = mem::take(&mut pile.0);
+            new_pile_at(
+                pile,
+                card_stock.0.clone_weak(),
+                &mut materials,
+                &mut commands,
+                &mut meshes,
+                card_back.0.clone_weak(),
+                card_side.0.clone_weak(),
+                *transform,
+                false,
+                is_reversed,
+            );
+            commands.entity(entity).despawn();
+        } else if input.just_pressed(KeyCode::KeyR) {
+            pile.0.shuffle(&mut rand);
+            let pile = mem::take(&mut pile.0);
+            let reversed = reversed.contains(entity);
+            new_pile_at(
+                pile,
+                card_stock.0.clone_weak(),
+                &mut materials,
+                &mut commands,
+                &mut meshes,
+                card_back.0.clone_weak(),
+                card_side.0.clone_weak(),
+                *transform,
+                false,
+                reversed,
+            );
+            commands.entity(entity).despawn();
+        } else if mouse_input.just_pressed(MouseButton::Left) {
+            let reversed = reversed.contains(entity);
+            let len = pile.0.len() as f32;
+            let new = pile.0.pop().unwrap();
+            if !pile.0.is_empty() {
+                let pile = mem::take(&mut pile.0);
+                new_pile_at(
+                    pile,
+                    card_stock.0.clone_weak(),
+                    &mut materials,
+                    &mut commands,
+                    &mut meshes,
+                    card_back.0.clone_weak(),
+                    card_side.0.clone_weak(),
+                    *transform,
+                    false,
+                    reversed,
+                );
+            }
+            commands.entity(entity).despawn();
+            transform.translation.y += len + 4.0;
+            new_pile_at(
+                vec![new],
+                card_stock.0.clone_weak(),
+                &mut materials,
+                &mut commands,
+                &mut meshes,
+                card_back.0.clone_weak(),
+                card_side.0.clone_weak(),
+                *transform,
+                true,
+                reversed,
+            );
+        } else if input.just_pressed(KeyCode::KeyE) {
+            transform.rotate_y(-PI / 2.0);
+        } else if input.just_pressed(KeyCode::KeyQ) {
+            transform.rotate_y(PI / 2.0);
+        }
+    }
 }
 fn cam_translation(
     input: Res<ButtonInput<KeyCode>>,
