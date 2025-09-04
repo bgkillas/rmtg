@@ -4,11 +4,15 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::window::PrimaryWindow;
 use bevy_framepace::{FramepacePlugin, FramepaceSettings, Limiter};
+use bevy_prng::WyRand;
+use bevy_rand::global::GlobalEntropy;
+use bevy_rand::prelude::EntropyPlugin;
 use bevy_rapier3d::prelude::*;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
+use rand::seq::SliceRandom;
 use std::f32::consts::PI;
 use std::io::Cursor;
 use std::sync::LazyLock;
@@ -41,6 +45,7 @@ fn main() {
             RapierPhysicsPlugin::<NoUserData>::default(),
             RapierDebugRenderPlugin::default(),
             FramepacePlugin,
+            EntropyPlugin::<WyRand>::default(),
         ))
         .insert_resource(clipboard)
         .insert_resource(runtime)
@@ -96,6 +101,7 @@ fn listen_for_mouse(
     window: Single<&Window, With<PrimaryWindow>>,
     rapier_context: ReadRapierContext,
     mut cards: Query<(&mut Pile, &mut Transform)>,
+    reversed: Query<&Reversed>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -103,6 +109,7 @@ fn listen_for_mouse(
     card_side: Res<CardSide>,
     card_stock: Res<CardStock>,
     input: Res<ButtonInput<KeyCode>>,
+    mut rand: GlobalEntropy<WyRand>,
 ) {
     let Some(cursor_position) = window.cursor_position() else {
         return;
@@ -119,7 +126,50 @@ fn listen_for_mouse(
         if let Some((entity, _toi)) = hit
             && let Ok((mut pile, mut transform)) = cards.get_mut(entity)
         {
-            if mouse_input.just_pressed(MouseButton::Left) {
+            if input.just_pressed(KeyCode::KeyF) {
+                let is_reversed;
+                if reversed.contains(entity) {
+                    is_reversed = false;
+                    commands.entity(entity).remove::<Reversed>();
+                } else {
+                    is_reversed = true;
+                    commands.entity(entity).insert(Reversed);
+                }
+                pile.0.reverse();
+                transform.rotate_z(PI);
+                let pile = mem::take(&mut pile.0);
+                new_pile_at(
+                    pile,
+                    card_stock.0.clone_weak(),
+                    &mut materials,
+                    &mut commands,
+                    &mut meshes,
+                    card_back.0.clone_weak(),
+                    card_side.0.clone_weak(),
+                    *transform,
+                    false,
+                    is_reversed,
+                );
+                commands.entity(entity).despawn();
+            } else if input.just_pressed(KeyCode::KeyR) {
+                pile.0.shuffle(&mut rand);
+                let pile = mem::take(&mut pile.0);
+                let reversed = reversed.contains(entity);
+                new_pile_at(
+                    pile,
+                    card_stock.0.clone_weak(),
+                    &mut materials,
+                    &mut commands,
+                    &mut meshes,
+                    card_back.0.clone_weak(),
+                    card_side.0.clone_weak(),
+                    *transform,
+                    false,
+                    reversed,
+                );
+                commands.entity(entity).despawn();
+            } else if mouse_input.just_pressed(MouseButton::Left) {
+                let reversed = reversed.contains(entity);
                 let len = pile.0.len() as f32;
                 let new = pile.0.pop().unwrap();
                 if !pile.0.is_empty() {
@@ -134,7 +184,8 @@ fn listen_for_mouse(
                         card_side.0.clone_weak(),
                         *transform,
                         false,
-                    )
+                        reversed,
+                    );
                 }
                 commands.entity(entity).despawn();
                 transform.translation.y += len + 4.0;
@@ -148,35 +199,39 @@ fn listen_for_mouse(
                     card_side.0.clone_weak(),
                     *transform,
                     true,
+                    reversed,
                 );
-            }
-            if input.just_pressed(KeyCode::KeyE) {
+            } else if input.just_pressed(KeyCode::KeyE) {
                 transform.rotate_y(-PI / 2.0);
-            }
-            if input.just_pressed(KeyCode::KeyQ) {
+            } else if input.just_pressed(KeyCode::KeyQ) {
                 transform.rotate_y(PI / 2.0);
             }
-        }
+         }
     });
 }
 fn cam_translation(
     input: Res<ButtonInput<KeyCode>>,
     mut cam: Single<&mut Transform, With<Camera3d>>,
 ) {
+    let scale = if input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
+        128.0
+    } else {
+        32.0
+    };
     if input.pressed(KeyCode::KeyW) {
-        let translate = cam.forward().as_vec3() * 32.0;
+        let translate = cam.forward().as_vec3() * scale;
         cam.translation += translate;
     }
     if input.pressed(KeyCode::KeyA) {
-        let translate = cam.left().as_vec3() * 32.0;
+        let translate = cam.left().as_vec3() * scale;
         cam.translation += translate;
     }
     if input.pressed(KeyCode::KeyD) {
-        let translate = cam.right().as_vec3() * 32.0;
+        let translate = cam.right().as_vec3() * scale;
         cam.translation += translate;
     }
     if input.pressed(KeyCode::KeyS) {
-        let translate = cam.back().as_vec3() * 32.0;
+        let translate = cam.back().as_vec3() * scale;
         cam.translation += translate;
     }
     if input.pressed(KeyCode::Space) {
@@ -264,9 +319,24 @@ fn setup(
     commands.insert_resource(CardSide(card_side));
     commands.insert_resource(CardBack(material_handle));
     commands.insert_resource(CardStock(card_stock));
+    const T: f32 = 256.0;
+    const W: f32 = 16384.0;
+    commands.spawn((Transform::from_xyz(0.0, -T, 0.0), Collider::cuboid(W, T, W)));
     commands.spawn((
-        Transform::from_xyz(0.0, -32.0, 0.0),
-        Collider::cuboid(4096.0, 32.0, 4096.0),
+        Transform::from_xyz(W + T / 2.0, T / 2.0, 0.0),
+        Collider::cuboid(T, T, W),
+    ));
+    commands.spawn((
+        Transform::from_xyz(-(W + T / 2.0), T / 2.0, 0.0),
+        Collider::cuboid(T, T, W),
+    ));
+    commands.spawn((
+        Transform::from_xyz(0.0, T / 2.0, W + T / 2.0),
+        Collider::cuboid(W, T, T),
+    ));
+    commands.spawn((
+        Transform::from_xyz(0.0, T / 2.0, -(W + T / 2.0)),
+        Collider::cuboid(W, T, T),
     ));
     commands.spawn((
         Camera3d::default(),
@@ -543,7 +613,8 @@ fn new_pile(
     transform.rotate_y(PI);
     new_pile_at(
         pile, card_stock, materials, commands, meshes, card_back, card_side, transform, false,
-    )
+        false,
+    );
 }
 fn new_pile_at(
     pile: Vec<Card>,
@@ -555,6 +626,7 @@ fn new_pile_at(
     card_side: Handle<StandardMaterial>,
     transform: Transform,
     follow_mouse: bool,
+    reverse: bool,
 ) {
     if pile.is_empty() {
         return;
@@ -562,39 +634,23 @@ fn new_pile_at(
     let top = pile.last().unwrap().image.clone_weak();
     let material_handle = make_material(materials, top);
     let size = pile.len() as f32;
-    if follow_mouse {
-        commands.spawn((
-            Pile(pile),
-            transform,
-            Visibility::default(),
-            RigidBody::Dynamic,
-            Collider::cuboid(CARD_WIDTH / 2.0, CARD_HEIGHT / 2.0, size),
-            GravityScale(0.0),
-            FollowMouse,
-            Ccd::enabled(),
-            Velocity::zero(),
-            Damping {
-                linear_damping: DAMPING,
-                angular_damping: DAMPING,
-            },
-        ))
-    } else {
-        commands.spawn((
-            Pile(pile),
-            transform,
-            Visibility::default(),
-            RigidBody::Dynamic,
-            Collider::cuboid(CARD_WIDTH / 2.0, CARD_HEIGHT / 2.0, size),
-            GravityScale(GRAVITY),
-            Ccd::enabled(),
-            Velocity::zero(),
-            Damping {
-                linear_damping: DAMPING,
-                angular_damping: DAMPING,
-            },
-        ))
-    }
-    .with_children(|parent| {
+    let mut ent = commands.spawn((
+        Pile(pile),
+        transform,
+        Visibility::default(),
+        RigidBody::Dynamic,
+        Collider::cuboid(CARD_WIDTH / 2.0, CARD_HEIGHT / 2.0, size),
+        GravityScale(if follow_mouse { 0.0 } else { GRAVITY }),
+        Ccd::enabled(),
+        Velocity::zero(),
+        Damping {
+            linear_damping: DAMPING,
+            angular_damping: DAMPING,
+        },
+        AdditionalMassProperties::Mass(size),
+        Sleeping::disabled(),
+    ));
+    ent.with_children(|parent| {
         parent.spawn((
             Mesh3d(card_stock.clone_weak()),
             MeshMaterial3d(material_handle),
@@ -634,6 +690,12 @@ fn new_pile_at(
         transform.translation.y = CARD_HEIGHT / 2.0;
         parent.spawn((Mesh3d(mesh), MeshMaterial3d(card_side), transform));
     });
+    if follow_mouse {
+        ent.insert(FollowMouse);
+    }
+    if reverse {
+        ent.insert(Reversed);
+    }
 }
 #[derive(Component)]
 struct Pile(Vec<Card>);
@@ -654,6 +716,8 @@ struct Card {
 }
 #[derive(Component)]
 struct FollowMouse;
+#[derive(Component)]
+struct Reversed;
 struct Clipboard(LazyLock<arboard::Clipboard>);
 impl Resource for Clipboard {}
 struct Client(reqwest::Client);
