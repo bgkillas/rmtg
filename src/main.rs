@@ -56,35 +56,37 @@ fn main() {
         )
         .run();
 }
-#[allow(clippy::too_many_arguments)]
 fn listen_for_mouse(
-    input: Res<ButtonInput<MouseButton>>,
+    mouse_input: Res<ButtonInput<MouseButton>>,
     camera: Single<(&Camera, &GlobalTransform)>,
     window: Single<&Window, With<PrimaryWindow>>,
     rapier_context: ReadRapierContext,
     mut cards: Query<(&mut Pile, &Transform, &Children)>,
     mut card_mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     card_back: Res<CardBack>,
+    card_side: Res<CardSide>,
     card_stock: Res<CardStock>,
+    input: Res<ButtonInput<KeyCode>>,
 ) {
-    if input.just_pressed(MouseButton::Right) {
-        let Some(cursor_position) = window.cursor_position() else {
-            return;
-        };
-        let (camera, camera_transform) = camera.into_inner();
-        let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
-            return;
-        };
-        let Ok(context) = rapier_context.single() else {
-            return;
-        };
-        context.with_query_pipeline(QueryFilter::only_dynamic(), |query_pipeline| {
-            let hit = query_pipeline.cast_ray(ray.origin, ray.direction.into(), f32::MAX, true);
-            if let Some((entity, _toi)) = hit
-                && let Ok((pile, transform, children)) = cards.get_mut(entity)
-            {
+    let Some(cursor_position) = window.cursor_position() else {
+        return;
+    };
+    let (camera, camera_transform) = camera.into_inner();
+    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        return;
+    };
+    let Ok(context) = rapier_context.single() else {
+        return;
+    };
+    context.with_query_pipeline(QueryFilter::only_dynamic(), |query_pipeline| {
+        let hit = query_pipeline.cast_ray(ray.origin, ray.direction.into(), f32::MAX, true);
+        if let Some((entity, _toi)) = hit
+            && let Ok((pile, transform, children)) = cards.get_mut(entity)
+        {
+            if mouse_input.just_pressed(MouseButton::Left) {
                 let pile = pile.into_inner();
                 let new = pile.0.pop().unwrap();
                 if pile.0.is_empty() {
@@ -105,13 +107,17 @@ fn listen_for_mouse(
                     card_stock.0.clone_weak(),
                     &mut materials,
                     &mut commands,
+                    &mut meshes,
                     card_back.0.clone_weak(),
+                    card_side.0.clone_weak(),
                     transform.translation.x,
                     transform.translation.z - CARD_HEIGHT,
                 );
+            } else if input.just_pressed(KeyCode::KeyE) {
+            } else if input.just_pressed(KeyCode::KeyQ) {
             }
-        });
-    }
+        }
+    });
 }
 fn cam_translation(input: Res<ButtonInput<KeyCode>>, cam: Single<(&mut Transform, &Camera3d)>) {
     let cam = cam.into_inner().0.into_inner();
@@ -137,7 +143,7 @@ fn cam_rotation(
     cam: Single<(&mut Transform, &Camera3d)>,
 ) {
     let cam = cam.into_inner().0.into_inner();
-    if mouse_button.pressed(MouseButton::Left) && mouse_motion.delta != Vec2::ZERO {
+    if mouse_button.pressed(MouseButton::Right) && mouse_motion.delta != Vec2::ZERO {
         let delta_yaw = -mouse_motion.delta.x * 0.001;
         let delta_pitch = -mouse_motion.delta.y * 0.001;
         let (yaw, pitch, roll) = cam.rotation.to_euler(EulerRot::YXZ);
@@ -169,6 +175,11 @@ fn setup(
         asset_server.clone(),
     )
     .unwrap();
+    let card_side = materials.add(StandardMaterial {
+        base_color: Color::srgb_u8(0x11, 0x0F, 0x02),
+        unlit: true,
+        ..Default::default()
+    });
     new_pile(
         vec![
             Card {
@@ -179,10 +190,13 @@ fn setup(
         card_stock.clone_weak(),
         &mut materials,
         &mut commands,
+        &mut meshes,
         material_handle.clone_weak(),
+        card_side.clone_weak(),
         0.0,
         0.0,
     );
+    commands.insert_resource(CardSide(card_side));
     commands.insert_resource(CardBack(material_handle));
     commands.insert_resource(CardStock(card_stock));
     commands.spawn((
@@ -371,7 +385,9 @@ fn register_deck(
     runtime: Res<Runtime>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     card_back: Res<CardBack>,
+    card_side: Res<CardSide>,
     card_stock: Res<CardStock>,
+    mut meshes: ResMut<Assets<Mesh>>,
 ) {
     let (entity, mut deck) = query.into_inner();
     if deck.0.is_finished() {
@@ -383,7 +399,9 @@ fn register_deck(
                 card_stock.0.clone_weak(),
                 &mut materials,
                 &mut commands,
+                &mut meshes,
                 card_back.0.clone_weak(),
+                card_side.0.clone_weak(),
                 -1000.0,
                 0.0,
             );
@@ -392,7 +410,9 @@ fn register_deck(
                 card_stock.0.clone_weak(),
                 &mut materials,
                 &mut commands,
+                &mut meshes,
                 card_back.0.clone_weak(),
+                card_side.0.clone_weak(),
                 -500.0,
                 0.0,
             );
@@ -401,7 +421,9 @@ fn register_deck(
                 card_stock.0.clone_weak(),
                 &mut materials,
                 &mut commands,
+                &mut meshes,
                 card_back.0.clone_weak(),
+                card_side.0.clone_weak(),
                 500.0,
                 0.0,
             );
@@ -410,7 +432,9 @@ fn register_deck(
                 card_stock.0.clone_weak(),
                 &mut materials,
                 &mut commands,
+                &mut meshes,
                 card_back.0.clone_weak(),
+                card_side.0.clone_weak(),
                 1000.0,
                 0.0,
             );
@@ -423,7 +447,6 @@ fn make_material(
 ) -> Handle<StandardMaterial> {
     materials.add(StandardMaterial {
         base_color_texture: Some(top),
-        alpha_mode: AlphaMode::Opaque,
         unlit: true,
         ..default()
     })
@@ -433,7 +456,9 @@ fn new_pile(
     card_stock: Handle<Mesh>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
     commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
     card_back: Handle<StandardMaterial>,
+    card_side: Handle<StandardMaterial>,
     x: f32,
     z: f32,
 ) {
@@ -442,7 +467,8 @@ fn new_pile(
     }
     let top = pile.last().unwrap().image.clone_weak();
     let material_handle = make_material(materials, top);
-    let mut transform = Transform::from_xyz(x, 1.0, z);
+    let size = pile.len() as f32;
+    let mut transform = Transform::from_xyz(x, size, z);
     transform.rotate_x(-PI / 2.0);
     transform.rotate_y(PI);
     commands
@@ -451,18 +477,48 @@ fn new_pile(
             transform,
             Visibility::default(),
             RigidBody::Dynamic,
-            Collider::cuboid(CARD_WIDTH / 2.0, CARD_HEIGHT / 2.0, 1.0),
+            Collider::cuboid(CARD_WIDTH / 2.0, CARD_HEIGHT / 2.0, size),
+            GravityScale(16.0),
         ))
         .with_children(|parent| {
             parent.spawn((
                 Mesh3d(card_stock.clone_weak()),
                 MeshMaterial3d(material_handle),
+                Transform::from_xyz(0.0, 0.0, size),
             ));
+            let mut transform = Transform::from_rotation(Quat::from_rotation_y(PI));
+            transform.translation.z = -size;
+            parent.spawn((Mesh3d(card_stock), MeshMaterial3d(card_back), transform));
+
+            let mesh = meshes.add(Rectangle::new(2.0 * size, CARD_HEIGHT));
+            let mut transform = Transform::from_rotation(Quat::from_rotation_y(PI / 2.0));
+            transform.translation.x = CARD_WIDTH / 2.0;
             parent.spawn((
-                Mesh3d(card_stock),
-                MeshMaterial3d(card_back),
-                Transform::from_rotation(Quat::from_rotation_y(PI)),
+                Mesh3d(mesh.clone_weak()),
+                MeshMaterial3d(card_side.clone_weak()),
+                transform,
             ));
+
+            let mut transform = Transform::from_rotation(Quat::from_rotation_y(-PI / 2.0));
+            transform.translation.x = -CARD_WIDTH / 2.0;
+            parent.spawn((
+                Mesh3d(mesh),
+                MeshMaterial3d(card_side.clone_weak()),
+                transform,
+            ));
+
+            let mesh = meshes.add(Rectangle::new(CARD_WIDTH, 2.0 * size));
+            let mut transform = Transform::from_rotation(Quat::from_rotation_x(PI / 2.0));
+            transform.translation.y = -CARD_HEIGHT / 2.0;
+            parent.spawn((
+                Mesh3d(mesh.clone_weak()),
+                MeshMaterial3d(card_side.clone_weak()),
+                transform,
+            ));
+
+            let mut transform = Transform::from_rotation(Quat::from_rotation_x(-PI / 2.0));
+            transform.translation.y = CARD_HEIGHT / 2.0;
+            parent.spawn((Mesh3d(mesh), MeshMaterial3d(card_side), transform));
         });
 }
 #[derive(Component)]
@@ -491,3 +547,5 @@ struct CardStock(Handle<Mesh>);
 impl Resource for CardStock {}
 struct CardBack(Handle<StandardMaterial>);
 impl Resource for CardBack {}
+struct CardSide(Handle<StandardMaterial>);
+impl Resource for CardSide {}
