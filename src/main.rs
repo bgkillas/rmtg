@@ -17,6 +17,8 @@ use tokio::task::JoinHandle;
 static USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 static CARD_WIDTH: f32 = 488.0;
 static CARD_HEIGHT: f32 = 680.0;
+static GRAVITY: f32 = 128.0;
+static DAMPING: f32 = 4.0;
 fn main() {
     let runtime = Runtime(tokio::runtime::Runtime::new().unwrap());
     let client = Client(
@@ -57,10 +59,36 @@ fn main() {
         .run();
 }
 fn follow_mouse(
+    mouse_input: Res<ButtonInput<MouseButton>>,
     camera: Single<(&Camera, &GlobalTransform)>,
     window: Single<&Window, With<PrimaryWindow>>,
-    card: Single<&mut Transform, With<FollowMouse>>,
+    mut card: Single<(Entity, &mut Transform, &mut GravityScale, &mut Velocity), With<FollowMouse>>,
+    mut commands: Commands,
+    time_since: Res<Time>,
 ) {
+    let Some(cursor_position) = window.cursor_position() else {
+        return;
+    };
+    let (camera, camera_transform) = camera.into_inner();
+    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        return;
+    };
+    if mouse_input.pressed(MouseButton::Left)
+        && let Some(time) =
+            ray.intersect_plane(card.1.translation, InfinitePlane3d { normal: Dir3::Y })
+    {
+        let point = ray.get_point(time);
+        card.1.translation = point;
+    } else {
+        if let Some(time) =
+            ray.intersect_plane(card.1.translation, InfinitePlane3d { normal: Dir3::Y })
+        {
+            let point = ray.get_point(time);
+            card.3.linvel = (point - card.1.translation) / time_since.delta_secs()
+        }
+        commands.entity(card.0).remove::<FollowMouse>();
+        card.2.0 = GRAVITY
+    }
 }
 fn listen_for_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
@@ -89,10 +117,10 @@ fn listen_for_mouse(
     context.with_query_pipeline(QueryFilter::only_dynamic(), |query_pipeline| {
         let hit = query_pipeline.cast_ray(ray.origin, ray.direction.into(), f32::MAX, true);
         if let Some((entity, _toi)) = hit
-            && let Ok((pile, transform)) = cards.get_mut(entity)
+            && let Ok((mut pile, mut transform)) = cards.get_mut(entity)
         {
             if mouse_input.just_pressed(MouseButton::Left) {
-                let pile = pile.into_inner();
+                let len = pile.0.len() as f32;
                 let new = pile.0.pop().unwrap();
                 if !pile.0.is_empty() {
                     let pile = mem::take(&mut pile.0);
@@ -109,8 +137,7 @@ fn listen_for_mouse(
                     )
                 }
                 commands.entity(entity).despawn();
-                let transform = transform.into_inner();
-                transform.translation.y += 4.0;
+                transform.translation.y += len + 4.0;
                 new_pile_at(
                     vec![new],
                     card_stock.0.clone_weak(),
@@ -122,38 +149,46 @@ fn listen_for_mouse(
                     *transform,
                     true,
                 );
-            } else if input.just_pressed(KeyCode::KeyE) {
-                transform.into_inner().rotate_y(-PI / 2.0);
-            } else if input.just_pressed(KeyCode::KeyQ) {
-                transform.into_inner().rotate_y(PI / 2.0);
+            }
+            if input.just_pressed(KeyCode::KeyE) {
+                transform.rotate_y(-PI / 2.0);
+            }
+            if input.just_pressed(KeyCode::KeyQ) {
+                transform.rotate_y(PI / 2.0);
             }
         }
     });
 }
-fn cam_translation(input: Res<ButtonInput<KeyCode>>, cam: Single<(&mut Transform, &Camera3d)>) {
-    let cam = cam.into_inner().0.into_inner();
+fn cam_translation(
+    input: Res<ButtonInput<KeyCode>>,
+    mut cam: Single<&mut Transform, With<Camera3d>>,
+) {
     if input.pressed(KeyCode::KeyW) {
-        cam.translation += cam.forward().as_vec3() * 32.0;
+        let translate = cam.forward().as_vec3() * 32.0;
+        cam.translation += translate;
     }
     if input.pressed(KeyCode::KeyA) {
-        cam.translation += cam.left().as_vec3() * 32.0;
+        let translate = cam.left().as_vec3() * 32.0;
+        cam.translation += translate;
     }
     if input.pressed(KeyCode::KeyD) {
-        cam.translation += cam.right().as_vec3() * 32.0;
+        let translate = cam.right().as_vec3() * 32.0;
+        cam.translation += translate;
     }
     if input.pressed(KeyCode::KeyS) {
-        cam.translation += cam.back().as_vec3() * 32.0;
+        let translate = cam.back().as_vec3() * 32.0;
+        cam.translation += translate;
     }
     if input.pressed(KeyCode::Space) {
-        *cam = Transform::from_xyz(0.0, 2048.0, -2048.0).looking_at(Vec3::ZERO, Vec3::Y);
+        *cam.into_inner() =
+            Transform::from_xyz(0.0, 2048.0, -2048.0).looking_at(Vec3::ZERO, Vec3::Y);
     }
 }
 fn cam_rotation(
     mouse_button: Res<ButtonInput<MouseButton>>,
     mouse_motion: Res<AccumulatedMouseMotion>,
-    cam: Single<(&mut Transform, &Camera3d)>,
+    mut cam: Single<&mut Transform, With<Camera3d>>,
 ) {
-    let cam = cam.into_inner().0.into_inner();
     if mouse_button.pressed(MouseButton::Right) && mouse_motion.delta != Vec2::ZERO {
         let delta_yaw = -mouse_motion.delta.x * 0.001;
         let delta_pitch = -mouse_motion.delta.y * 0.001;
@@ -230,8 +265,8 @@ fn setup(
     commands.insert_resource(CardBack(material_handle));
     commands.insert_resource(CardStock(card_stock));
     commands.spawn((
-        Transform::from_xyz(0.0, -1.0, 0.0),
-        Collider::cuboid(4096.0, 1.0, 4096.0),
+        Transform::from_xyz(0.0, -32.0, 0.0),
+        Collider::cuboid(4096.0, 32.0, 4096.0),
     ));
     commands.spawn((
         Camera3d::default(),
@@ -431,7 +466,7 @@ fn register_deck(
 ) {
     let (entity, mut deck) = query.into_inner();
     if deck.0.is_finished() {
-        let handle = std::mem::replace(&mut deck.0, runtime.0.spawn(async { None }));
+        let handle = mem::replace(&mut deck.0, runtime.0.spawn(async { None }));
         commands.entity(entity).despawn();
         if let Some(result) = runtime.0.block_on(handle).ok().flatten() {
             new_pile(
@@ -536,6 +571,12 @@ fn new_pile_at(
             Collider::cuboid(CARD_WIDTH / 2.0, CARD_HEIGHT / 2.0, size),
             GravityScale(0.0),
             FollowMouse,
+            Ccd::enabled(),
+            Velocity::zero(),
+            Damping {
+                linear_damping: DAMPING,
+                angular_damping: DAMPING,
+            },
         ))
     } else {
         commands.spawn((
@@ -544,7 +585,13 @@ fn new_pile_at(
             Visibility::default(),
             RigidBody::Dynamic,
             Collider::cuboid(CARD_WIDTH / 2.0, CARD_HEIGHT / 2.0, size),
-            GravityScale(16.0),
+            GravityScale(GRAVITY),
+            Ccd::enabled(),
+            Velocity::zero(),
+            Damping {
+                linear_damping: DAMPING,
+                angular_damping: DAMPING,
+            },
         ))
     }
     .with_children(|parent| {

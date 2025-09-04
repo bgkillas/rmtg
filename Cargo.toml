@@ -3,6 +3,18 @@ name = "rmtg"
 version = "0.1.0"
 edition = "2024"
 
+[profile.release]
+lto = true
+strip = true
+panic = "abort"
+split-debuginfo = "packed"
+incremental=true
+codegen-units=1
+opt-level = 3
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
 [dependencies]
 bevy={version="0.16.1", features = ["bevy_dev_tools", "wayland"]}
 arboard="3.6.1"
