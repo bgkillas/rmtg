@@ -139,7 +139,7 @@ fn listen_for_mouse(
     rapier_context: ReadRapierContext,
     mut cards: Query<(&mut Pile, &mut Transform, &Children)>,
     reversed: Query<&Reversed>,
-    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
+    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -148,7 +148,7 @@ fn listen_for_mouse(
     card_stock: Res<CardStock>,
     input: Res<ButtonInput<KeyCode>>,
     mut rand: GlobalEntropy<WyRand>,
-    zoom: Option<Single<(Entity, &ZoomHold)>>,
+    zoom: Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
 ) {
     let Some(cursor_position) = window.cursor_position() else {
         return;
@@ -253,10 +253,10 @@ fn listen_for_mouse(
             let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
             let n = (2.0 * rot / PI).round() as isize;
             transform.rotation = Quat::from_rotation_z(match n {
-                0 | -2 => -PI / 2.0,
+                0 => -PI / 2.0,
                 1 => 0.0,
-                2 => PI / 2.0,
-                -1 => PI - 0.001,
+                2 | -2 => PI / 2.0,
+                -1 => PI,
                 _ => unreachable!(),
             });
             transform.rotate_x(-PI / 2.0);
@@ -264,39 +264,59 @@ fn listen_for_mouse(
             let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
             let n = (2.0 * rot / PI).round() as isize;
             transform.rotation = Quat::from_rotation_z(match n {
-                0 | -2 => PI / 2.0,
-                1 => PI - 0.001,
-                2 => -PI / 2.0,
+                0 => PI / 2.0,
+                1 => PI,
+                2 | -2 => -PI / 2.0,
                 -1 => 0.0,
                 _ => unreachable!(),
             });
             transform.rotate_x(-PI / 2.0);
-        } else if input.just_pressed(KeyCode::KeyO) {
-            if let Some(single) = &zoom {
-                commands.entity(single.0).despawn();
-            }
+        } else if input.just_pressed(KeyCode::KeyO)
+            && !reversed.contains(entity)
+            && zoom
+                .as_ref()
+                .map(|single| single.1.0.0 != entity.to_bits())
+                .unwrap_or(true)
+        {
             let mut card = pile.0.pop().unwrap();
-            if let (Some(image), Some(name)) = (&mut card.alt_image, &mut card.alt_name) {
-                mem::swap(&mut card.image, image);
-                mem::swap(&mut card.name, name);
+            if let Some(alt) = &mut card.alt {
+                mem::swap(&mut card.normal, alt);
                 mats.get_mut(*children.first().unwrap()).unwrap().0 =
-                    make_material(&mut materials, card.image.clone_weak());
-                card.alt = !card.alt;
+                    make_material(&mut materials, card.normal.image.clone_weak());
+                card.is_alt = !card.is_alt;
             }
             pile.0.push(card)
         }
         if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
-            if let Some(single) = zoom {
-                if single.1.0 != entity.to_bits() {
+            if let Some(mut single) = zoom {
+                if single.1.0.0 != entity.to_bits() {
                     commands.entity(single.0).despawn();
+                } else if input.just_pressed(KeyCode::KeyO)
+                    && let Some(alt) = &pile.0.last().unwrap().alt
+                {
+                    single.2.0 = make_material(
+                        &mut materials,
+                        if single.1.0.1 {
+                            &pile.0.last().unwrap().normal
+                        } else {
+                            alt
+                        }
+                        .image
+                        .clone_weak(),
+                    );
+                    single.1.0.1 = !single.1.0.1;
                 }
             } else if !reversed.contains(entity) {
                 let card = pile.0.last().unwrap();
+                //TODO o no swtichy
                 commands.entity(cament).with_child((
                     Mesh3d(card_stock.0.clone_weak()),
-                    MeshMaterial3d(make_material(&mut materials, card.image.clone_weak())),
+                    MeshMaterial3d(make_material(
+                        &mut materials,
+                        card.normal.image.clone_weak(),
+                    )),
                     Transform::from_xyz(0.0, 0.0, -1024.0),
-                    ZoomHold(entity.to_bits()),
+                    ZoomHold((entity.to_bits(), false)),
                 ));
             }
         } else if let Some(single) = zoom {
@@ -387,51 +407,24 @@ fn setup(
         unlit: true,
         ..default()
     });
-    let card = get_from_img(
-        Bytes::from(fs::read("/home/.r/rmtg/assets/png.png").unwrap()),
-        None,
-        asset_server.clone(),
-        String::new(),
-        None,
-    )
-    .unwrap();
+    let card = Card {
+        normal: CardInfo {
+            image: get_from_img(
+                Bytes::from(fs::read("/home/.r/rmtg/assets/png.png").unwrap()),
+                &asset_server,
+            )
+            .unwrap(),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
     let card_side = materials.add(StandardMaterial {
         base_color: Color::srgb_u8(0x11, 0x0F, 0x02),
         unlit: true,
         ..Default::default()
     });
     new_pile(
-        vec![
-            Card {
-                name: "".to_string(),
-                image: card.image.clone_weak(),
-                alt_name: None,
-                alt_image: None,
-                alt: false,
-            },
-            Card {
-                name: "".to_string(),
-                image: card.image.clone_weak(),
-                alt_name: None,
-                alt_image: None,
-                alt: false,
-            },
-            Card {
-                name: "".to_string(),
-                image: card.image.clone_weak(),
-                alt_name: None,
-                alt_image: None,
-                alt: false,
-            },
-            Card {
-                name: "".to_string(),
-                image: card.image.clone_weak(),
-                alt_name: None,
-                alt_image: None,
-                alt: false,
-            },
-            card,
-        ],
+        vec![card],
         card_stock.clone_weak(),
         &mut materials,
         &mut commands,
@@ -505,13 +498,7 @@ fn listen_for_deck(
         }
     }
 }
-fn get_from_img(
-    bytes: Bytes,
-    alt_bytes: Option<Bytes>,
-    asset_server: AssetServer,
-    name: String,
-    alt_name: Option<String>,
-) -> Option<Card> {
+fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<Image>> {
     fn to_asset(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<Image>> {
         let image = ImageReader::new(Cursor::new(bytes))
             .with_guessed_format()
@@ -533,13 +520,7 @@ fn get_from_img(
         );
         Some(asset_server.add(image))
     }
-    Some(Card {
-        name,
-        image: to_asset(bytes, &asset_server)?,
-        alt_name,
-        alt_image: alt_bytes.and_then(|bytes| to_asset(bytes, &asset_server)),
-        alt: false,
-    })
+    to_asset(bytes, asset_server)
 }
 async fn parse(
     value: &JsonValue,
@@ -560,7 +541,7 @@ async fn parse(
         .members()
         .next()
         .and_then(|a| a["id"].as_str())
-        .unwrap_or(value["id"].as_str().unwrap());
+        .unwrap_or_else(|| value["id"].as_str().unwrap());
     let bytes = get_bytes(id, &client, normal).await?;
     let alt_bytes = if let Some(id) = value["meld_result"]["id"].as_str().or(value["card_faces"]
         .members()
@@ -578,18 +559,66 @@ async fn parse(
             .nth(1)
             .and_then(|a| a["name"].as_str()))
         .map(|a| a.to_string());
-    get_from_img(
-        bytes,
-        alt_bytes,
-        asset_server,
-        value["card_faces"]
-            .members()
-            .next()
-            .and_then(|a| a["name"].as_str())
-            .map(|a| a.to_string())
-            .unwrap_or(value["name"].to_string()),
-        alt_name,
-    )
+    let name = value["card_faces"]
+        .members()
+        .next()
+        .and_then(|a| a["name"].as_str())
+        .map(|a| a.to_string())
+        .unwrap_or_else(|| value["name"].to_string());
+    let image = get_from_img(bytes, &asset_server)?;
+    let alt_image = alt_bytes.and_then(|bytes| get_from_img(bytes, &asset_server));
+    fn get<T: Default, F>(value: &JsonValue, index: &str, f: F) -> (T, T)
+    where
+        F: Fn(&JsonValue) -> T,
+    {
+        (
+            value["card_faces"]
+                .members()
+                .next()
+                .map(|a| f(&a[index]))
+                .or_else(|| Some(f(&value[index])))
+                .unwrap_or_default(),
+            value["card_faces"]
+                .members()
+                .nth(1)
+                .map(|a| f(&a[index]))
+                .unwrap_or_default(),
+        )
+    }
+    let (mana_cost, alt_mana_cost) = get(value, "mana_cost", |a| a.as_str().unwrap().to_string());
+    let (card_type, alt_card_type) = get(value, "type_line", |a| a.as_str().unwrap().to_string());
+    let (text, alt_text) = get(value, "oracle_text", |a| a.as_str().unwrap().to_string());
+    let (colors, alt_colors) = get(value, "colors", |a| {
+        a.members()
+            .map(|a| a.as_str().unwrap().to_string())
+            .collect::<Vec<String>>()
+            .join(":")
+    });
+    let (power, alt_power) = get(value, "power", |a| a.as_u16().unwrap_or_default());
+    let (toughness, alt_toughness) = get(value, "toughness", |a| a.as_u16().unwrap_or_default());
+    Some(Card {
+        normal: CardInfo {
+            name,
+            mana_cost,
+            card_type,
+            text,
+            colors,
+            power,
+            toughness,
+            image,
+        },
+        alt: alt_image.map(|image| CardInfo {
+            name: alt_name.unwrap(),
+            mana_cost: alt_mana_cost,
+            card_type: alt_card_type,
+            text: alt_text,
+            colors: alt_colors,
+            power: alt_power,
+            toughness: alt_toughness,
+            image,
+        }),
+        is_alt: false,
+    })
 }
 #[test]
 fn test_parse() {
@@ -812,7 +841,7 @@ fn new_pile_at(
         return;
     }
     let card = pile.last().unwrap();
-    let top = card.image.clone_weak();
+    let top = card.normal.image.clone_weak();
     let material_handle = make_material(materials, top);
     let size = pile.len() as f32;
     let mut transform1 = Transform::from_rotation(Quat::from_rotation_y(PI));
@@ -886,14 +915,23 @@ struct Deck {
     tokens: Vec<Card>,
     side: Vec<Card>,
 }
-#[derive(Debug)]
+#[derive(Debug, Default)]
 #[allow(dead_code)]
-struct Card {
+struct CardInfo {
     name: String,
+    mana_cost: String,
+    card_type: String,
+    text: String,
+    colors: String,
+    power: u16,
+    toughness: u16,
     image: Handle<Image>,
-    alt_name: Option<String>,
-    alt_image: Option<Handle<Image>>,
-    alt: bool,
+}
+#[derive(Debug, Default)]
+struct Card {
+    normal: CardInfo,
+    alt: Option<CardInfo>,
+    is_alt: bool,
 }
 #[derive(Component)]
 #[allow(dead_code)]
@@ -906,7 +944,7 @@ impl SyncObject {
 #[derive(Component)]
 struct FollowMouse;
 #[derive(Component)]
-struct ZoomHold(u64);
+struct ZoomHold((u64, bool));
 #[derive(Component)]
 struct Reversed;
 struct Clipboard(LazyLock<arboard::Clipboard>);
