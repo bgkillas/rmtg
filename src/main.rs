@@ -1,5 +1,5 @@
 use bevy::asset::RenderAssetUsages;
-use bevy::input::mouse::AccumulatedMouseMotion;
+use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::window::PrimaryWindow;
@@ -21,6 +21,8 @@ use tokio::task::JoinHandle;
 static USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 static CARD_WIDTH: f32 = 488.0;
 static CARD_HEIGHT: f32 = 680.0;
+static START_Y: f32 = 8192.0;
+static START_Z: f32 = -4096.0;
 static GRAVITY: f32 = 128.0;
 static DAMPING: f32 = 4.0;
 fn main() {
@@ -240,14 +242,33 @@ fn listen_for_mouse(
                 reversed,
             );
         } else if input.just_pressed(KeyCode::KeyE) {
-            transform.rotate_y(-PI / 2.0);
+            let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
+            let n = (2.0 * rot / PI).round() as isize;
+            transform.rotation = Quat::from_rotation_z(match n {
+                0 | -2 => -PI / 2.0,
+                1 => 0.0,
+                2 => PI / 2.0,
+                -1 => PI - 0.001,
+                _ => unreachable!(),
+            });
+            transform.rotate_x(-PI / 2.0);
         } else if input.just_pressed(KeyCode::KeyQ) {
-            transform.rotate_y(PI / 2.0);
+            let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
+            let n = (2.0 * rot / PI).round() as isize;
+            transform.rotation = Quat::from_rotation_z(match n {
+                0 | -2 => PI / 2.0,
+                1 => PI - 0.001,
+                2 => -PI / 2.0,
+                -1 => 0.0,
+                _ => unreachable!(),
+            });
+            transform.rotate_x(-PI / 2.0);
         }
     }
 }
 fn cam_translation(
     input: Res<ButtonInput<KeyCode>>,
+    mouse_motion: Res<AccumulatedMouseScroll>,
     mut cam: Single<&mut Transform, With<Camera3d>>,
 ) {
     let scale = if input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
@@ -255,25 +276,38 @@ fn cam_translation(
     } else {
         32.0
     };
+    let apply = |translate: Vec3, cam: &mut Transform| {
+        let mut norm = translate.normalize();
+        norm.y = 0.0;
+        let abs = norm.length();
+        if abs != 0.0 {
+            let translate = norm * translate.length() / abs;
+            cam.translation += translate;
+        }
+    };
     if input.pressed(KeyCode::KeyW) {
         let translate = cam.forward().as_vec3() * scale;
-        cam.translation += translate;
+        apply(translate, &mut cam)
     }
     if input.pressed(KeyCode::KeyA) {
         let translate = cam.left().as_vec3() * scale;
-        cam.translation += translate;
+        apply(translate, &mut cam)
     }
     if input.pressed(KeyCode::KeyD) {
         let translate = cam.right().as_vec3() * scale;
-        cam.translation += translate;
+        apply(translate, &mut cam)
     }
     if input.pressed(KeyCode::KeyS) {
         let translate = cam.back().as_vec3() * scale;
+        apply(translate, &mut cam)
+    }
+    if mouse_motion.delta.y != 0.0 {
+        let translate = cam.forward().as_vec3() * scale * mouse_motion.delta.y * 32.0;
         cam.translation += translate;
     }
     if input.pressed(KeyCode::Space) {
         *cam.into_inner() =
-            Transform::from_xyz(0.0, 2048.0, -2048.0).looking_at(Vec3::ZERO, Vec3::Y);
+            Transform::from_xyz(0.0, START_Y, START_Z).looking_at(Vec3::ZERO, Vec3::Y);
     }
 }
 fn cam_rotation(
@@ -377,7 +411,8 @@ fn setup(
     ));
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(0.0, 2048.0, -2048.0).looking_at(Vec3::ZERO, Vec3::Z),
+        Msaa::Sample8,
+        Transform::from_xyz(0.0, START_Y, START_Z).looking_at(Vec3::ZERO, Vec3::Y),
     ));
     let client = client.0.clone();
     let asset_server = asset_server.clone();
@@ -671,6 +706,18 @@ fn new_pile_at(
     let top = pile.last().unwrap().image.clone_weak();
     let material_handle = make_material(materials, top);
     let size = pile.len() as f32;
+    let mut transform1 = Transform::from_rotation(Quat::from_rotation_y(PI));
+    transform1.translation.z = -size;
+    let mesh = meshes.add(Rectangle::new(2.0 * size, CARD_HEIGHT));
+    let mut transform2 = Transform::from_rotation(Quat::from_rotation_y(PI / 2.0));
+    transform2.translation.x = CARD_WIDTH / 2.0;
+    let mut transform3 = Transform::from_rotation(Quat::from_rotation_y(-PI / 2.0));
+    transform3.translation.x = -CARD_WIDTH / 2.0;
+    let mesh2 = meshes.add(Rectangle::new(CARD_WIDTH, 2.0 * size));
+    let mut transform4 = Transform::from_rotation(Quat::from_rotation_x(PI / 2.0));
+    transform4.translation.y = -CARD_HEIGHT / 2.0;
+    let mut transform5 = Transform::from_rotation(Quat::from_rotation_x(-PI / 2.0));
+    transform5.translation.y = CARD_HEIGHT / 2.0;
     let mut ent = commands.spawn((
         Pile(pile),
         transform,
@@ -686,47 +733,31 @@ fn new_pile_at(
         },
         AdditionalMassProperties::Mass(size),
         Sleeping::disabled(),
+        children![
+            (
+                Mesh3d(card_stock.clone_weak()),
+                MeshMaterial3d(material_handle),
+                Transform::from_xyz(0.0, 0.0, size),
+            ),
+            (Mesh3d(card_stock), MeshMaterial3d(card_back), transform1),
+            (
+                Mesh3d(mesh.clone_weak()),
+                MeshMaterial3d(card_side.clone_weak()),
+                transform2,
+            ),
+            (
+                Mesh3d(mesh),
+                MeshMaterial3d(card_side.clone_weak()),
+                transform3,
+            ),
+            (
+                Mesh3d(mesh2.clone_weak()),
+                MeshMaterial3d(card_side.clone_weak()),
+                transform4,
+            ),
+            (Mesh3d(mesh2), MeshMaterial3d(card_side), transform5)
+        ],
     ));
-    ent.with_children(|parent| {
-        parent.spawn((
-            Mesh3d(card_stock.clone_weak()),
-            MeshMaterial3d(material_handle),
-            Transform::from_xyz(0.0, 0.0, size),
-        ));
-        let mut transform = Transform::from_rotation(Quat::from_rotation_y(PI));
-        transform.translation.z = -size;
-        parent.spawn((Mesh3d(card_stock), MeshMaterial3d(card_back), transform));
-
-        let mesh = meshes.add(Rectangle::new(2.0 * size, CARD_HEIGHT));
-        let mut transform = Transform::from_rotation(Quat::from_rotation_y(PI / 2.0));
-        transform.translation.x = CARD_WIDTH / 2.0;
-        parent.spawn((
-            Mesh3d(mesh.clone_weak()),
-            MeshMaterial3d(card_side.clone_weak()),
-            transform,
-        ));
-
-        let mut transform = Transform::from_rotation(Quat::from_rotation_y(-PI / 2.0));
-        transform.translation.x = -CARD_WIDTH / 2.0;
-        parent.spawn((
-            Mesh3d(mesh),
-            MeshMaterial3d(card_side.clone_weak()),
-            transform,
-        ));
-
-        let mesh = meshes.add(Rectangle::new(CARD_WIDTH, 2.0 * size));
-        let mut transform = Transform::from_rotation(Quat::from_rotation_x(PI / 2.0));
-        transform.translation.y = -CARD_HEIGHT / 2.0;
-        parent.spawn((
-            Mesh3d(mesh.clone_weak()),
-            MeshMaterial3d(card_side.clone_weak()),
-            transform,
-        ));
-
-        let mut transform = Transform::from_rotation(Quat::from_rotation_x(-PI / 2.0));
-        transform.translation.y = CARD_HEIGHT / 2.0;
-        parent.spawn((Mesh3d(mesh), MeshMaterial3d(card_side), transform));
-    });
     if follow_mouse {
         ent.insert(FollowMouse);
     }
