@@ -346,7 +346,6 @@ fn setup(
         Cursor::new(&fs::read("/home/.r/rmtg/assets/png.png").unwrap()),
         asset_server.clone(),
         String::new(),
-        String::new(),
     )
     .unwrap();
     let card_side = materials.add(StandardMaterial {
@@ -357,22 +356,18 @@ fn setup(
     new_pile(
         vec![
             Card {
-                id: "".to_string(),
                 name: "".to_string(),
                 image: card.image.clone_weak(),
             },
             Card {
-                id: "".to_string(),
                 name: "".to_string(),
                 image: card.image.clone_weak(),
             },
             Card {
-                id: "".to_string(),
                 name: "".to_string(),
                 image: card.image.clone_weak(),
             },
             Card {
-                id: "".to_string(),
                 name: "".to_string(),
                 image: card.image.clone_weak(),
             },
@@ -447,12 +442,7 @@ fn listen_for_deck(
         commands.spawn(GetDeck(task));
     }
 }
-fn get_from_img(
-    bytes: Cursor<&[u8]>,
-    asset_server: AssetServer,
-    id: String,
-    name: String,
-) -> Option<Card> {
+fn get_from_img(bytes: Cursor<&[u8]>, asset_server: AssetServer, name: String) -> Option<Card> {
     let image = ImageReader::new(bytes)
         .with_guessed_format()
         .ok()?
@@ -472,7 +462,7 @@ fn get_from_img(
         RenderAssetUsages::RENDER_WORLD,
     );
     let image = asset_server.add(image);
-    Some(Card { id, name, image })
+    Some(Card { name, image })
 }
 async fn parse(
     value: &JsonValue,
@@ -486,7 +476,6 @@ async fn parse(
     get_from_img(
         Cursor::new(bytes.as_ref()),
         asset_server,
-        id.to_string(),
         value["name"].to_string(),
     )
 }
@@ -703,7 +692,8 @@ fn new_pile_at(
     if pile.is_empty() {
         return;
     }
-    let top = pile.last().unwrap().image.clone_weak();
+    let card = pile.last().unwrap();
+    let top = card.image.clone_weak();
     let material_handle = make_material(materials, top);
     let size = pile.len() as f32;
     let mut transform1 = Transform::from_rotation(Quat::from_rotation_y(PI));
@@ -778,7 +768,6 @@ struct Deck {
 }
 #[derive(Debug)]
 struct Card {
-    id: String,
     name: String,
     image: Handle<Image>,
 }
