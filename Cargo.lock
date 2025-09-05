@@ -4972,6 +4972,7 @@ dependencies = [
  "bevy_prng",
  "bevy_rand",
  "bevy_rapier3d",
+ "bytes",
  "futures",
  "image",
  "json",

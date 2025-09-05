@@ -8,10 +8,12 @@ use bevy_prng::WyRand;
 use bevy_rand::global::GlobalEntropy;
 use bevy_rand::prelude::EntropyPlugin;
 use bevy_rapier3d::prelude::*;
+use bytes::Bytes;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
+use rand::RngCore;
 use rand::seq::SliceRandom;
 use std::f32::consts::PI;
 use std::io::Cursor;
@@ -132,11 +134,12 @@ fn follow_mouse(
 }
 fn listen_for_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
-    camera: Single<(&Camera, &GlobalTransform)>,
+    camera: Single<(&Camera, &GlobalTransform, Entity)>,
     window: Single<&Window, With<PrimaryWindow>>,
     rapier_context: ReadRapierContext,
-    mut cards: Query<(&mut Pile, &mut Transform)>,
+    mut cards: Query<(&mut Pile, &mut Transform, &Children)>,
     reversed: Query<&Reversed>,
+    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -145,11 +148,12 @@ fn listen_for_mouse(
     card_stock: Res<CardStock>,
     input: Res<ButtonInput<KeyCode>>,
     mut rand: GlobalEntropy<WyRand>,
+    zoom: Option<Single<(Entity, &ZoomHold)>>,
 ) {
     let Some(cursor_position) = window.cursor_position() else {
         return;
     };
-    let (camera, camera_transform) = camera.into_inner();
+    let (camera, camera_transform, cament) = camera.into_inner();
     let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
         return;
     };
@@ -164,7 +168,7 @@ fn listen_for_mouse(
         QueryFilter::only_dynamic(),
     );
     if let Some((entity, _toi)) = hit
-        && let Ok((mut pile, mut transform)) = cards.get_mut(entity)
+        && let Ok((mut pile, mut transform, children)) = cards.get_mut(entity)
     {
         if input.just_pressed(KeyCode::KeyF) {
             let is_reversed;
@@ -187,6 +191,7 @@ fn listen_for_mouse(
                 card_back.0.clone_weak(),
                 card_side.0.clone_weak(),
                 *transform,
+                &mut rand,
                 false,
                 is_reversed,
             );
@@ -204,6 +209,7 @@ fn listen_for_mouse(
                 card_back.0.clone_weak(),
                 card_side.0.clone_weak(),
                 *transform,
+                &mut rand,
                 false,
                 reversed,
             );
@@ -223,6 +229,7 @@ fn listen_for_mouse(
                     card_back.0.clone_weak(),
                     card_side.0.clone_weak(),
                     *transform,
+                    &mut rand,
                     false,
                     reversed,
                 );
@@ -238,6 +245,7 @@ fn listen_for_mouse(
                 card_back.0.clone_weak(),
                 card_side.0.clone_weak(),
                 *transform,
+                &mut rand,
                 true,
                 reversed,
             );
@@ -263,7 +271,39 @@ fn listen_for_mouse(
                 _ => unreachable!(),
             });
             transform.rotate_x(-PI / 2.0);
+        } else if input.just_pressed(KeyCode::KeyO) {
+            if let Some(single) = &zoom {
+                commands.entity(single.0).despawn();
+            }
+            let mut card = pile.0.pop().unwrap();
+            if let (Some(image), Some(name)) = (&mut card.alt_image, &mut card.alt_name) {
+                mem::swap(&mut card.image, image);
+                mem::swap(&mut card.name, name);
+                mats.get_mut(*children.first().unwrap()).unwrap().0 =
+                    make_material(&mut materials, card.image.clone_weak());
+                card.alt = !card.alt;
+            }
+            pile.0.push(card)
         }
+        if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
+            if let Some(single) = zoom {
+                if single.1.0 != entity.to_bits() {
+                    commands.entity(single.0).despawn();
+                }
+            } else if !reversed.contains(entity) {
+                let card = pile.0.last().unwrap();
+                commands.entity(cament).with_child((
+                    Mesh3d(card_stock.0.clone_weak()),
+                    MeshMaterial3d(make_material(&mut materials, card.image.clone_weak())),
+                    Transform::from_xyz(0.0, 0.0, -1024.0),
+                    ZoomHold(entity.to_bits()),
+                ));
+            }
+        } else if let Some(single) = zoom {
+            commands.entity(single.0).despawn();
+        }
+    } else if let Some(single) = zoom {
+        commands.entity(single.0).despawn();
     }
 }
 fn cam_translation(
@@ -302,8 +342,12 @@ fn cam_translation(
         apply(translate, &mut cam)
     }
     if mouse_motion.delta.y != 0.0 {
-        let translate = cam.forward().as_vec3() * scale * mouse_motion.delta.y * 32.0;
-        cam.translation += translate;
+        let translate = cam.forward().as_vec3() * scale * mouse_motion.delta.y * 16.0;
+        if cam.translation.y < -translate.y {
+            cam.translation.y /= 2.0;
+        } else {
+            cam.translation += translate;
+        }
     }
     if input.pressed(KeyCode::Space) {
         *cam.into_inner() =
@@ -332,6 +376,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut framepace: ResMut<FramepaceSettings>,
+    mut rand: GlobalEntropy<WyRand>,
 ) {
     framepace.limiter = Limiter::from_framerate(60.0);
     let card_stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
@@ -343,9 +388,11 @@ fn setup(
         ..default()
     });
     let card = get_from_img(
-        Cursor::new(&fs::read("/home/.r/rmtg/assets/png.png").unwrap()),
+        Bytes::from(fs::read("/home/.r/rmtg/assets/png.png").unwrap()),
+        None,
         asset_server.clone(),
         String::new(),
+        None,
     )
     .unwrap();
     let card_side = materials.add(StandardMaterial {
@@ -358,18 +405,30 @@ fn setup(
             Card {
                 name: "".to_string(),
                 image: card.image.clone_weak(),
+                alt_name: None,
+                alt_image: None,
+                alt: false,
             },
             Card {
                 name: "".to_string(),
                 image: card.image.clone_weak(),
+                alt_name: None,
+                alt_image: None,
+                alt: false,
             },
             Card {
                 name: "".to_string(),
                 image: card.image.clone_weak(),
+                alt_name: None,
+                alt_image: None,
+                alt: false,
             },
             Card {
                 name: "".to_string(),
                 image: card.image.clone_weak(),
+                alt_name: None,
+                alt_image: None,
+                alt: false,
             },
             card,
         ],
@@ -379,6 +438,7 @@ fn setup(
         &mut meshes,
         material_handle.clone_weak(),
         card_side.clone_weak(),
+        &mut rand,
         0.0,
         0.0,
     );
@@ -411,7 +471,7 @@ fn setup(
     ));
     let client = client.0.clone();
     let asset_server = asset_server.clone();
-    let url = "https://api2.moxfield.com/v3/decks/all/_HGo1kgcB0i-4Iq0vR-LZA".to_string();
+    let url = "https://api2.moxfield.com/v3/decks/all/o7Iy63M1wkWHOx4fM-ODMA".to_string();
     let task = runtime
         .0
         .spawn(async move { get_deck(url, client, asset_server).await });
@@ -428,55 +488,107 @@ fn listen_for_deck(
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
         && input.just_pressed(KeyCode::KeyV)
         && let Ok(paste) = clipboard.0.get_text()
-        && (paste.starts_with("https://moxfield.com/decks/")
-            || paste.starts_with("https://www.moxfield.com/decks/")
-            || paste.len() == 22)
     {
-        let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap_or(&paste);
-        let url = format!("https://api2.moxfield.com/v3/decks/all/{id}");
-        let client = client.0.clone();
-        let asset_server = asset_server.clone();
-        let task = runtime
-            .0
-            .spawn(async move { get_deck(url, client, asset_server).await });
-        commands.spawn(GetDeck(task));
+        let paste = paste.trim();
+        if paste.starts_with("https://moxfield.com/decks/")
+            || paste.starts_with("https://www.moxfield.com/decks/")
+            || paste.len() == 22
+        {
+            let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap_or(paste);
+            let url = format!("https://api2.moxfield.com/v3/decks/all/{id}");
+            let client = client.0.clone();
+            let asset_server = asset_server.clone();
+            let task = runtime
+                .0
+                .spawn(async move { get_deck(url, client, asset_server).await });
+            commands.spawn(GetDeck(task));
+        }
     }
 }
-fn get_from_img(bytes: Cursor<&[u8]>, asset_server: AssetServer, name: String) -> Option<Card> {
-    let image = ImageReader::new(bytes)
-        .with_guessed_format()
-        .ok()?
-        .decode()
-        .ok()?;
-    let rgba = image.to_rgba8();
-    let (width, height) = image.dimensions();
-    let image = Image::new(
-        Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        TextureDimension::D2,
-        rgba.into_raw(),
-        TextureFormat::Rgba8UnormSrgb,
-        RenderAssetUsages::RENDER_WORLD,
-    );
-    let image = asset_server.add(image);
-    Some(Card { name, image })
+fn get_from_img(
+    bytes: Bytes,
+    alt_bytes: Option<Bytes>,
+    asset_server: AssetServer,
+    name: String,
+    alt_name: Option<String>,
+) -> Option<Card> {
+    fn to_asset(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<Image>> {
+        let image = ImageReader::new(Cursor::new(bytes))
+            .with_guessed_format()
+            .ok()?
+            .decode()
+            .ok()?;
+        let rgba = image.to_rgba8();
+        let (width, height) = image.dimensions();
+        let image = Image::new(
+            Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            TextureDimension::D2,
+            rgba.into_raw(),
+            TextureFormat::Rgba8UnormSrgb,
+            RenderAssetUsages::RENDER_WORLD,
+        );
+        Some(asset_server.add(image))
+    }
+    Some(Card {
+        name,
+        image: to_asset(bytes, &asset_server)?,
+        alt_name,
+        alt_image: alt_bytes.and_then(|bytes| to_asset(bytes, &asset_server)),
+        alt: false,
+    })
 }
 async fn parse(
     value: &JsonValue,
     client: reqwest::Client,
     asset_server: AssetServer,
 ) -> Option<Card> {
-    let id = &value["id"];
-    let url = format!("https://assets.moxfield.net/cards/card-{id}-normal.webp");
-    let res = client.get(url).send().await.ok()?;
-    let bytes = res.bytes().await.ok()?;
+    async fn get_bytes(id: &str, client: &reqwest::Client, normal: bool) -> Option<Bytes> {
+        let url = if normal {
+            format!("https://assets.moxfield.net/cards/card-{id}-normal.webp")
+        } else {
+            format!("https://assets.moxfield.net/cards/card-face-{id}-normal.webp")
+        };
+        let res = client.get(url).send().await.ok()?;
+        res.bytes().await.ok()
+    }
+    let normal = value["card_faces"].members().next().is_none();
+    let id = value["card_faces"]
+        .members()
+        .next()
+        .and_then(|a| a["id"].as_str())
+        .unwrap_or(value["id"].as_str().unwrap());
+    let bytes = get_bytes(id, &client, normal).await?;
+    let alt_bytes = if let Some(id) = value["meld_result"]["id"].as_str().or(value["card_faces"]
+        .members()
+        .nth(1)
+        .and_then(|a| a["id"].as_str()))
+    {
+        get_bytes(id, &client, normal).await
+    } else {
+        None
+    };
+    let alt_name = value["meld_result"]["name"]
+        .as_str()
+        .or(value["card_faces"]
+            .members()
+            .nth(1)
+            .and_then(|a| a["name"].as_str()))
+        .map(|a| a.to_string());
     get_from_img(
-        Cursor::new(bytes.as_ref()),
+        bytes,
+        alt_bytes,
         asset_server,
-        value["name"].to_string(),
+        value["card_faces"]
+            .members()
+            .next()
+            .and_then(|a| a["name"].as_str())
+            .map(|a| a.to_string())
+            .unwrap_or(value["name"].to_string()),
+        alt_name,
     )
 }
 #[test]
@@ -594,6 +706,7 @@ fn register_deck(
     card_side: Res<CardSide>,
     card_stock: Res<CardStock>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut rand: GlobalEntropy<WyRand>,
 ) {
     let (entity, mut deck) = query.into_inner();
     if deck.0.is_finished() {
@@ -608,6 +721,7 @@ fn register_deck(
                 &mut meshes,
                 card_back.0.clone_weak(),
                 card_side.0.clone_weak(),
+                &mut rand,
                 -1000.0,
                 0.0,
             );
@@ -619,6 +733,7 @@ fn register_deck(
                 &mut meshes,
                 card_back.0.clone_weak(),
                 card_side.0.clone_weak(),
+                &mut rand,
                 -500.0,
                 0.0,
             );
@@ -630,6 +745,7 @@ fn register_deck(
                 &mut meshes,
                 card_back.0.clone_weak(),
                 card_side.0.clone_weak(),
+                &mut rand,
                 500.0,
                 0.0,
             );
@@ -641,6 +757,7 @@ fn register_deck(
                 &mut meshes,
                 card_back.0.clone_weak(),
                 card_side.0.clone_weak(),
+                &mut rand,
                 1000.0,
                 0.0,
             );
@@ -665,6 +782,7 @@ fn new_pile(
     meshes: &mut Assets<Mesh>,
     card_back: Handle<StandardMaterial>,
     card_side: Handle<StandardMaterial>,
+    rand: &mut GlobalEntropy<WyRand>,
     x: f32,
     z: f32,
 ) {
@@ -673,8 +791,8 @@ fn new_pile(
     transform.rotate_x(-PI / 2.0);
     transform.rotate_y(PI);
     new_pile_at(
-        pile, card_stock, materials, commands, meshes, card_back, card_side, transform, false,
-        false,
+        pile, card_stock, materials, commands, meshes, card_back, card_side, transform, rand,
+        false, false,
     );
 }
 fn new_pile_at(
@@ -686,6 +804,7 @@ fn new_pile_at(
     card_back: Handle<StandardMaterial>,
     card_side: Handle<StandardMaterial>,
     transform: Transform,
+    rand: &mut GlobalEntropy<WyRand>,
     follow_mouse: bool,
     reverse: bool,
 ) {
@@ -722,6 +841,7 @@ fn new_pile_at(
             angular_damping: DAMPING,
         },
         AdditionalMassProperties::Mass(size),
+        SyncObject::new(rand),
         Sleeping::disabled(),
         children![
             (
@@ -767,12 +887,26 @@ struct Deck {
     side: Vec<Card>,
 }
 #[derive(Debug)]
+#[allow(dead_code)]
 struct Card {
     name: String,
     image: Handle<Image>,
+    alt_name: Option<String>,
+    alt_image: Option<Handle<Image>>,
+    alt: bool,
+}
+#[derive(Component)]
+#[allow(dead_code)]
+struct SyncObject(u64);
+impl SyncObject {
+    pub fn new(rand: &mut GlobalEntropy<WyRand>) -> Self {
+        Self(rand.next_u64())
+    }
 }
 #[derive(Component)]
 struct FollowMouse;
+#[derive(Component)]
+struct ZoomHold(u64);
 #[derive(Component)]
 struct Reversed;
 struct Clipboard(LazyLock<arboard::Clipboard>);
