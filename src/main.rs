@@ -25,7 +25,7 @@ static CARD_WIDTH: f32 = 488.0;
 static CARD_HEIGHT: f32 = 680.0;
 static START_Y: f32 = 8192.0;
 static START_Z: f32 = -4096.0;
-static GRAVITY: f32 = 128.0;
+static GRAVITY: f32 = 256.0;
 static DAMPING: f32 = 4.0;
 fn main() {
     let runtime = Runtime(tokio::runtime::Runtime::new().unwrap());
@@ -286,6 +286,8 @@ fn listen_for_mouse(
                 card.is_alt = !card.is_alt;
             }
             pile.0.push(card)
+        } else if input.just_pressed(KeyCode::KeyZ) {
+            //TODO search
         }
         if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
             if let Some(mut single) = zoom {
@@ -308,7 +310,6 @@ fn listen_for_mouse(
                 }
             } else if !reversed.contains(entity) {
                 let card = pile.0.last().unwrap();
-                //TODO o no swtichy
                 commands.entity(cament).with_child((
                     Mesh3d(card_stock.0.clone_weak()),
                     MeshMaterial3d(make_material(
@@ -461,6 +462,27 @@ fn setup(
         Camera3d::default(),
         Msaa::Sample8,
         Transform::from_xyz(0.0, START_Y, START_Z).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
+    commands.spawn((
+        Collider::cuboid(32.0, 32.0, 32.0),
+        Transform::from_xyz(0.0, 64.0, 0.0),
+        RigidBody::Dynamic,
+        GravityScale(GRAVITY),
+        Ccd::enabled(),
+        Velocity::zero(),
+        Damping {
+            linear_damping: DAMPING,
+            angular_damping: DAMPING,
+        },
+        AdditionalMassProperties::Mass(4.0),
+        SyncObject::new(&mut rand),
+        Sleeping::disabled(),
+        Mesh3d(meshes.add(RegularPolygon::new(32.0, 6))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            unlit: true,
+            ..Default::default()
+        })),
     ));
     let client = client.0.clone();
     let asset_server = asset_server.clone();
