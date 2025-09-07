@@ -420,7 +420,7 @@ fn setup(
         ..Default::default()
     };
     let card_side = materials.add(StandardMaterial {
-        base_color: Color::srgb_u8(0x11, 0x0F, 0x02),
+        base_color: bevy::prelude::Color::srgb_u8(0x11, 0x0F, 0x02),
         unlit: true,
         ..Default::default()
     });
@@ -479,7 +479,7 @@ fn setup(
         Sleeping::disabled(),
         Mesh3d(meshes.add(RegularPolygon::new(32.0, 6))),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::WHITE,
+            base_color: bevy::prelude::Color::WHITE,
             unlit: true,
             ..Default::default()
         })),
@@ -608,7 +608,7 @@ async fn parse(
         )
     }
     let (mana_cost, alt_mana_cost) = get(value, "mana_cost", |a| {
-        a.as_str().unwrap_or_default().to_string()
+        a.as_str().unwrap_or_default().into()
     });
     let (card_type, alt_card_type) = get(value, "type_line", |a| {
         a.as_str().unwrap_or_default().to_string()
@@ -616,11 +616,8 @@ async fn parse(
     let (text, alt_text) = get(value, "oracle_text", |a| {
         a.as_str().unwrap_or_default().to_string()
     });
-    let (colors, alt_colors) = get(value, "colors", |a| {
-        a.members()
-            .map(|a| a.as_str().unwrap().to_string())
-            .collect::<Vec<String>>()
-            .join(":")
+    let (color, alt_color) = get(value, "colors", |a| {
+        Color::parse(a.members().map(|a| a.as_str().unwrap()))
     });
     let (power, alt_power) = get(value, "power", |a| a.as_u16().unwrap_or_default());
     let (toughness, alt_toughness) = get(value, "toughness", |a| a.as_u16().unwrap_or_default());
@@ -630,7 +627,7 @@ async fn parse(
             mana_cost,
             card_type,
             text,
-            colors,
+            color,
             power,
             toughness,
             image,
@@ -640,7 +637,7 @@ async fn parse(
             mana_cost: alt_mana_cost,
             card_type: alt_card_type,
             text: alt_text,
-            colors: alt_colors,
+            color: alt_color,
             power: alt_power,
             toughness: alt_toughness,
             image,
@@ -947,13 +944,76 @@ struct Deck {
 #[allow(dead_code)]
 struct CardInfo {
     name: String,
-    mana_cost: String,
-    card_type: String,
+    mana_cost: Cost,
+    card_type: String, //todo parsable
     text: String,
-    colors: String,
+    color: Color,
     power: u16,
     toughness: u16,
     image: Handle<Image>,
+}
+#[derive(Debug, Default)]
+struct Color {
+    red: bool,
+    blue: bool,
+    green: bool,
+    black: bool,
+    white: bool,
+}
+impl Color {
+    fn parse<'a>(value: impl Iterator<Item = &'a str>) -> Self {
+        let mut cost = Self::default();
+        for c in value {
+            match c {
+                "W" => cost.white = true,
+                "U" => cost.blue = true,
+                "B" => cost.black = true,
+                "R" => cost.red = true,
+                "G" => cost.green = true,
+                _ => unreachable!(),
+            }
+        }
+        cost
+    }
+}
+#[derive(Debug, Default)]
+struct Cost {
+    red: u8,
+    blue: u8,
+    green: u8,
+    black: u8,
+    white: u8,
+    colorless: u8,
+    any: u8,
+    pay: u8,
+    var: u8,
+    total: u8,
+}
+impl From<&str> for Cost {
+    fn from(value: &str) -> Self {
+        let mut cost = Self::default();
+        if value.is_empty() {
+            return cost;
+        }
+        let value = &value[1..value.len() - 1];
+        for c in value.split("}{") {
+            cost.total += 1;
+            for c in c.split('/') {
+                match c {
+                    "W" => cost.white += 1,
+                    "U" => cost.blue += 1,
+                    "B" => cost.black += 1,
+                    "R" => cost.red += 1,
+                    "G" => cost.green += 1,
+                    "C" => cost.colorless += 1,
+                    "P" => cost.pay += 1,
+                    "X" => cost.var += 1,
+                    _ => cost.any += c.parse::<u8>().unwrap(),
+                }
+            }
+        }
+        cost
+    }
 }
 #[derive(Debug, Default)]
 struct Card {
