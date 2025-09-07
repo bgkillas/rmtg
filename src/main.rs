@@ -585,8 +585,8 @@ async fn parse(
         .members()
         .next()
         .and_then(|a| a["name"].as_str())
-        .map(|a| a.to_string())
-        .unwrap_or_else(|| value["name"].to_string());
+        .unwrap_or_else(|| value["name"].as_str().unwrap())
+        .to_string();
     let image = get_from_img(bytes, &asset_server)?;
     let alt_image = alt_bytes.and_then(|bytes| get_from_img(bytes, &asset_server));
     fn get<T: Default, F>(value: &JsonValue, index: &str, f: F) -> (T, T)
@@ -607,9 +607,15 @@ async fn parse(
                 .unwrap_or_default(),
         )
     }
-    let (mana_cost, alt_mana_cost) = get(value, "mana_cost", |a| a.as_str().unwrap().to_string());
-    let (card_type, alt_card_type) = get(value, "type_line", |a| a.as_str().unwrap().to_string());
-    let (text, alt_text) = get(value, "oracle_text", |a| a.as_str().unwrap().to_string());
+    let (mana_cost, alt_mana_cost) = get(value, "mana_cost", |a| {
+        a.as_str().unwrap_or_default().to_string()
+    });
+    let (card_type, alt_card_type) = get(value, "type_line", |a| {
+        a.as_str().unwrap_or_default().to_string()
+    });
+    let (text, alt_text) = get(value, "oracle_text", |a| {
+        a.as_str().unwrap_or_default().to_string()
+    });
     let (colors, alt_colors) = get(value, "colors", |a| {
         a.members()
             .map(|a| a.as_str().unwrap().to_string())
@@ -653,7 +659,7 @@ fn test_parse() {
         let asset_server = asset_server.clone();
         let img = runtime
             .block_on(runtime.spawn(async move {
-                let mut json = json::object!(id: "OxoZm");
+                let mut json = json::object!(id: "OxoZm", name: "kilo");
                 parse(
                     &mut json,
                     reqwest::Client::builder()
