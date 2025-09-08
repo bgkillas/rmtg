@@ -29,7 +29,6 @@ pub fn new_pile(
     let size = pile.len() as f32;
     let mut transform = Transform::from_xyz(x, size, z);
     transform.rotate_x(-PI / 2.0);
-    transform.rotate_y(PI);
     new_pile_at(
         pile, card_stock, materials, commands, meshes, card_back, card_side, transform, rand,
         false, false,

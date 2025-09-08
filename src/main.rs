@@ -15,11 +15,11 @@ use bevy_rapier3d::prelude::*;
 use rand::RngCore;
 use std::sync::LazyLock;
 use tokio::task::JoinHandle;
-static USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
+static USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 static CARD_WIDTH: f32 = 488.0;
 static CARD_HEIGHT: f32 = 680.0;
 static START_Y: f32 = 8192.0;
-static START_Z: f32 = -4096.0;
+static START_Z: f32 = 4096.0;
 static GRAVITY: f32 = 256.0;
 static DAMPING: f32 = 4.0;
 fn main() {

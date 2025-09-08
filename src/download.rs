@@ -87,8 +87,7 @@ pub async fn parse(
                 .members()
                 .next()
                 .map(|a| f(&a[index]))
-                .or_else(|| Some(f(&value[index])))
-                .unwrap_or_default(),
+                .unwrap_or_else(|| f(&value[index])),
             value["card_faces"]
                 .members()
                 .nth(1)
