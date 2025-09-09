@@ -10,6 +10,31 @@ use bevy_rapier3d::prelude::*;
 use rand::seq::SliceRandom;
 use std::f32::consts::PI;
 use std::mem;
+pub fn gather_hand(
+    mut hand: Single<(&Transform, &mut Hand), With<Owned>>,
+    mut cards: Query<(Entity, &mut Transform), (With<Pile>, Without<Hand>)>,
+    rapier_context: ReadRapierContext,
+    mut commands: Commands,
+) {
+    let Ok(context) = rapier_context.single() else {
+        return;
+    };
+    context.with_query_pipeline(QueryFilter::only_dynamic(), |query_pipeline| {
+        for ent in query_pipeline.intersect_shape(
+            hand.0.translation,
+            hand.0.rotation,
+            Collider::cuboid(128.0, 128.0, 16.0).raw.0.as_ref(),
+        ) {
+            if let Ok((entity, transform)) = cards.get_mut(ent) {
+                commands
+                    .entity(entity)
+                    .insert((RigidBodyDisabled, InHand(hand.1.count)));
+                hand.1.count += 1;
+            }
+        }
+    });
+}
+pub fn update_hand(mut hand: Single<(&Transform, &mut Children), With<Owned>>) {}
 pub fn follow_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
     camera: Single<(&Camera, &GlobalTransform)>,
@@ -40,22 +65,20 @@ pub fn follow_mouse(
         let Ok(context) = rapier_context.single() else {
             return;
         };
-        if let Some(max) =
-            context.with_query_pipeline(QueryFilter::only_dynamic(), |query_pipeline| {
-                query_pipeline
-                    .intersect_shape(card.1.translation, card.1.rotation, card.4.raw.0.as_ref())
-                    .filter_map(|a| {
-                        if a != card.0
-                            && let Ok((pile, transform)) = cards.get(a)
-                        {
-                            Some(transform.translation.y + pile.0.len() as f32)
-                        } else {
-                            None
-                        }
-                    })
-                    .reduce(f32::max)
-            })
-        {
+        if let Some(max) = context.with_query_pipeline(QueryFilter::new(), |query_pipeline| {
+            query_pipeline
+                .intersect_shape(card.1.translation, card.1.rotation, card.4.raw.0.as_ref())
+                .filter_map(|a| {
+                    if a != card.0
+                        && let Ok((pile, transform)) = cards.get(a)
+                    {
+                        Some(transform.translation.y + pile.0.len() as f32)
+                    } else {
+                        None
+                    }
+                })
+                .reduce(f32::max)
+        }) {
             card.1.translation.y = max + 4.0;
         }
         if let Some(time) =

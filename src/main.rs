@@ -4,7 +4,8 @@ mod setup;
 mod update;
 use crate::setup::setup;
 use crate::update::{
-    cam_rotation, cam_translation, follow_mouse, listen_for_deck, listen_for_mouse, register_deck,
+    cam_rotation, cam_translation, follow_mouse, gather_hand, listen_for_deck, listen_for_mouse,
+    register_deck, update_hand,
 };
 use bevy::prelude::*;
 use bevy_framepace::FramepacePlugin;
@@ -57,7 +58,7 @@ fn main() {
                 register_deck,
                 cam_translation,
                 cam_rotation,
-                (listen_for_mouse, follow_mouse).chain(),
+                (gather_hand, update_hand, listen_for_mouse, follow_mouse).chain(),
             ),
         )
         .run();
@@ -127,9 +128,19 @@ fn test_get_deck() {
     app.add_systems(Update, test);
     app.update();
 }
-#[derive(Component)]
+#[derive(Component, Default, Debug)]
+struct Owned;
+#[derive(Component, Default, Debug)]
+struct InHand(usize);
+#[allow(dead_code)]
+#[derive(Component, Default, Debug)]
+struct Hand {
+    id: usize,
+    count: usize,
+}
+#[derive(Component, Default, Debug)]
 struct Pile(Vec<Card>);
-#[derive(Component)]
+#[derive(Component, Debug)]
 struct GetDeck(JoinHandle<Option<Deck>>);
 #[derive(Debug)]
 struct Deck {
@@ -322,7 +333,7 @@ struct Card {
     alt: Option<CardInfo>,
     is_alt: bool,
 }
-#[derive(Component)]
+#[derive(Component, Default, Debug)]
 #[allow(dead_code)]
 struct SyncObject(u64);
 impl SyncObject {
@@ -330,11 +341,11 @@ impl SyncObject {
         Self(rand.next_u64())
     }
 }
-#[derive(Component)]
+#[derive(Component, Default, Debug)]
 struct FollowMouse;
-#[derive(Component)]
+#[derive(Component, Default, Debug)]
 struct ZoomHold((u64, bool));
-#[derive(Component)]
+#[derive(Component, Default, Debug)]
 struct Reversed;
 struct Clipboard(LazyLock<arboard::Clipboard>);
 impl Resource for Clipboard {}

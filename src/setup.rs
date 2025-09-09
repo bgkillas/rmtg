@@ -58,6 +58,12 @@ pub fn setup(
     commands.insert_resource(CardSide(card_side));
     commands.insert_resource(CardBack(material_handle));
     commands.insert_resource(CardStock(card_stock));
+    commands.spawn((
+        Transform::from_xyz(0.0, 64.0, START_Z / 3.0),
+        Hand::default(),
+        Collider::cuboid(128.0, 128.0, 16.0),
+        Owned,
+    ));
     const T: f32 = 256.0;
     const W: f32 = 16384.0;
     commands.spawn((Transform::from_xyz(0.0, -T, 0.0), Collider::cuboid(W, T, W)));
@@ -91,12 +97,11 @@ pub fn setup(
         Velocity::zero(),
         Damping {
             linear_damping: DAMPING,
-            angular_damping: DAMPING,
+            angular_damping: 0.0,
         },
         AdditionalMassProperties::Mass(4.0),
         SyncObject::new(&mut rand),
-        Sleeping::disabled(),
-        Mesh3d(meshes.add(RegularPolygon::new(32.0, 6))),
+        Mesh3d(meshes.add(RegularPolygon::new(32.0, 4))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::WHITE,
             unlit: true,

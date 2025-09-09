@@ -77,11 +77,10 @@ pub fn new_pile_at(
         Velocity::zero(),
         Damping {
             linear_damping: DAMPING,
-            angular_damping: DAMPING,
+            angular_damping: 0.0,
         },
         AdditionalMassProperties::Mass(size),
         SyncObject::new(rand),
-        Sleeping::disabled(),
         children![
             (
                 Mesh3d(card_stock.clone_weak()),
