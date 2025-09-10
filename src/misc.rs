@@ -46,9 +46,9 @@ pub fn new_pile_at(
     rand: &mut GlobalEntropy<WyRand>,
     follow_mouse: bool,
     reverse: bool,
-) {
+) -> Option<Entity> {
     if pile.is_empty() {
-        return;
+        return None;
     }
     let card = pile.last().unwrap();
     let top = card.normal.image.clone_weak();
@@ -112,4 +112,5 @@ pub fn new_pile_at(
     if reverse {
         ent.insert(Reversed);
     }
+    Some(ent.id())
 }
