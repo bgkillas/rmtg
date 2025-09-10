@@ -32,3 +32,4 @@ bevy_prng = { version = "0.11.3", features = ["rand_chacha", "wyrand"] }
 
 [lints.clippy]
 too_many_arguments = "allow"
+type_complexity = "allow"

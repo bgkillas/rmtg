@@ -58,7 +58,7 @@ fn main() {
                 register_deck,
                 cam_translation,
                 cam_rotation,
-                (gather_hand, update_hand, listen_for_mouse, follow_mouse).chain(),
+                (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
             ),
         )
         .run();
@@ -137,6 +137,7 @@ struct InHand(usize);
 struct Hand {
     id: usize,
     count: usize,
+    removed: Vec<usize>,
 }
 #[derive(Component, Default, Debug)]
 struct Pile(Vec<Card>);

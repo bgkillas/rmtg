@@ -11,8 +11,16 @@ use rand::seq::SliceRandom;
 use std::f32::consts::PI;
 use std::mem;
 pub fn gather_hand(
-    mut hand: Single<(&Transform, &mut Hand), With<Owned>>,
-    mut cards: Query<(Entity, &mut Transform), (With<Pile>, Without<Hand>)>,
+    mut hand: Single<(&Transform, &mut Hand, Entity), With<Owned>>,
+    mut cards: Query<
+        (Entity, &mut GravityScale, &mut Velocity, &Pile),
+        (
+            With<Pile>,
+            Without<Hand>,
+            Without<InHand>,
+            Without<FollowMouse>,
+        ),
+    >,
     rapier_context: ReadRapierContext,
     mut commands: Commands,
 ) {
@@ -25,16 +33,44 @@ pub fn gather_hand(
             hand.0.rotation,
             Collider::cuboid(128.0, 128.0, 16.0).raw.0.as_ref(),
         ) {
-            if let Ok((entity, transform)) = cards.get_mut(ent) {
-                commands
-                    .entity(entity)
-                    .insert((RigidBodyDisabled, InHand(hand.1.count)));
+            if let Ok((entity, mut grav, mut vel, pile)) = cards.get_mut(ent)
+                && pile.0.len() == 1
+            {
+                vel.linvel = Vect::default();
+                vel.angvel = Vect::default();
+                grav.0 = 0.0;
+                commands.entity(entity).insert(InHand(hand.1.count));
                 hand.1.count += 1;
+                commands.entity(hand.2).add_child(entity);
             }
         }
     });
 }
-pub fn update_hand(mut hand: Single<(&Transform, &mut Children), With<Owned>>) {}
+pub fn update_hand(
+    mut hand: Single<(&Transform, &mut Hand, &Children), With<Owned>>,
+    mut card: Query<(&mut InHand, &mut Transform), (With<InHand>, Without<Hand>)>,
+) {
+    for child in hand.2.into_iter() {
+        let (mut entry, mut transform) = card.get_mut(*child).unwrap();
+        if let Some((i, n)) = hand
+            .1
+            .removed
+            .iter()
+            .enumerate()
+            .min_by(|a, b| a.1.cmp(b.1))
+            .map(|(a, b)| (a, *b))
+            && entry.0 > n
+        {
+            hand.1.removed.remove(i);
+            hand.1.removed.push(entry.0); //TODO quite bad
+            entry.0 = n;
+        }
+        let idx = entry.0 as f32 - hand.1.count as f32 / 2.0;
+        transform.translation = Vec3::new((idx + 0.5) * CARD_WIDTH / 2.0, idx * 8.0, 0.0);
+        transform.rotation = Quat::from_rotation_x(-PI / 2.0);
+    }
+    hand.1.removed.clear();
+}
 pub fn follow_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
     camera: Single<(&Camera, &GlobalTransform)>,
@@ -103,9 +139,16 @@ pub fn listen_for_mouse(
     camera: Single<(&Camera, &GlobalTransform, Entity)>,
     window: Single<&Window, With<PrimaryWindow>>,
     rapier_context: ReadRapierContext,
-    mut cards: Query<(&mut Pile, &mut Transform, &Children)>,
-    reversed: Query<&Reversed>,
+    mut cards: Query<(
+        &mut Pile,
+        &mut Transform,
+        &Children,
+        Option<&Reversed>,
+        Option<&ChildOf>,
+        Option<&InHand>,
+    )>,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
+    mut hands: Query<&mut Hand>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -131,14 +174,15 @@ pub fn listen_for_mouse(
         ray.direction.into(),
         f32::MAX,
         true,
-        QueryFilter::only_dynamic(),
+        QueryFilter::new(),
     );
     if let Some((entity, _toi)) = hit
-        && let Ok((mut pile, mut transform, children)) = cards.get_mut(entity)
+        && let Ok((mut pile, mut transform, children, is_rev, parent, inhand)) =
+            cards.get_mut(entity)
     {
         if input.just_pressed(KeyCode::KeyF) {
             let is_reversed;
-            if reversed.contains(entity) {
+            if is_rev.is_some() {
                 is_reversed = false;
                 commands.entity(entity).remove::<Reversed>();
             } else {
@@ -165,7 +209,7 @@ pub fn listen_for_mouse(
         } else if input.just_pressed(KeyCode::KeyR) {
             pile.0.shuffle(&mut rand);
             let pile = mem::take(&mut pile.0);
-            let reversed = reversed.contains(entity);
+            let reversed = is_rev.is_some();
             new_pile_at(
                 pile,
                 card_stock.0.clone_weak(),
@@ -181,7 +225,14 @@ pub fn listen_for_mouse(
             );
             commands.entity(entity).despawn();
         } else if mouse_input.just_pressed(MouseButton::Left) {
-            let reversed = reversed.contains(entity);
+            if let Some(parent) = parent
+                && let Some(inhand) = inhand
+            {
+                let mut hand = hands.get_mut(parent.0).unwrap();
+                hand.count -= 1;
+                hand.removed.push(inhand.0)
+            }
+            let reversed = is_rev.is_some();
             let len = pile.0.len() as f32;
             let new = pile.0.pop().unwrap();
             if !pile.0.is_empty() {
@@ -238,7 +289,7 @@ pub fn listen_for_mouse(
             });
             transform.rotate_x(-PI / 2.0);
         } else if input.just_pressed(KeyCode::KeyO)
-            && !reversed.contains(entity)
+            && is_rev.is_none()
             && zoom
                 .as_ref()
                 .map(|single| single.1.0.0 != entity.to_bits())
@@ -274,7 +325,7 @@ pub fn listen_for_mouse(
                     );
                     single.1.0.1 = !single.1.0.1;
                 }
-            } else if !reversed.contains(entity) {
+            } else if is_rev.is_none() {
                 let card = pile.0.last().unwrap();
                 commands.entity(cament).with_child((
                     Mesh3d(card_stock.0.clone_weak()),
