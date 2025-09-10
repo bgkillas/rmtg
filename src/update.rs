@@ -31,7 +31,7 @@ pub fn gather_hand(
         for ent in query_pipeline.intersect_shape(
             hand.0.translation,
             hand.0.rotation,
-            Collider::cuboid(128.0, 128.0, 16.0).raw.0.as_ref(),
+            Collider::cuboid(1024.0, 128.0, 16.0).raw.0.as_ref(),
         ) {
             if let Ok((entity, mut grav, mut vel, pile)) = cards.get_mut(ent)
                 && pile.0.len() == 1

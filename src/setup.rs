@@ -61,7 +61,7 @@ pub fn setup(
     commands.spawn((
         Transform::from_xyz(0.0, 64.0, START_Z / 3.0),
         Hand::default(),
-        Collider::cuboid(128.0, 128.0, 16.0),
+        Collider::cuboid(1024.0, 128.0, 16.0),
         Owned,
     ));
     const T: f32 = 256.0;
