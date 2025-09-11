@@ -31,7 +31,7 @@ pub fn new_pile(
     transform.rotate_x(-PI / 2.0);
     new_pile_at(
         pile, card_stock, materials, commands, meshes, card_back, card_side, transform, rand,
-        false, false,
+        false, false, None,
     );
 }
 pub fn new_pile_at(
@@ -46,6 +46,7 @@ pub fn new_pile_at(
     rand: &mut GlobalEntropy<WyRand>,
     follow_mouse: bool,
     reverse: bool,
+    parent: Option<Entity>,
 ) -> Option<Entity> {
     if pile.is_empty() {
         return None;
@@ -72,7 +73,7 @@ pub fn new_pile_at(
         Visibility::default(),
         RigidBody::Dynamic,
         Collider::cuboid(CARD_WIDTH / 2.0, CARD_HEIGHT / 2.0, size),
-        GravityScale(if follow_mouse { 0.0 } else { GRAVITY }),
+        GravityScale(if follow_mouse || parent.is_some() { 0.0 } else { GRAVITY }),
         Ccd::enabled(),
         Velocity::zero(),
         Damping {
@@ -111,6 +112,9 @@ pub fn new_pile_at(
     }
     if reverse {
         ent.insert(Reversed);
+    }
+    if let Some(parent) = parent {
+        ent.insert(ChildOf(parent));
     }
     Some(ent.id())
 }

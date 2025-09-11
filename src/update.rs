@@ -27,7 +27,7 @@ pub fn gather_hand(
     let Ok(context) = rapier_context.single() else {
         return;
     };
-    context.with_query_pipeline(QueryFilter::new(), |query_pipeline| {
+    context.with_query_pipeline(QueryFilter::only_dynamic(), |query_pipeline| {
         for ent in query_pipeline.intersect_shape(
             hand.0.translation,
             hand.0.rotation,
@@ -66,7 +66,7 @@ pub fn update_hand(
             entry.0 = n;
         }
         let idx = entry.0 as f32 - hand.1.count as f32 / 2.0;
-        transform.translation = Vec3::new((idx + 0.5) * CARD_WIDTH / 2.0, idx * 8.0, 0.0);
+        transform.translation = Vec3::new((idx + 0.5) * CARD_WIDTH / 2.0, idx * 2.0, 0.0);
         transform.rotation = Quat::from_rotation_x(-PI / 2.0);
     }
     hand.1.removed.clear();
@@ -101,20 +101,22 @@ pub fn follow_mouse(
         let Ok(context) = rapier_context.single() else {
             return;
         };
-        if let Some(max) = context.with_query_pipeline(QueryFilter::new(), |query_pipeline| {
-            query_pipeline
-                .intersect_shape(card.1.translation, card.1.rotation, card.4.raw.0.as_ref())
-                .filter_map(|a| {
-                    if a != card.0
-                        && let Ok((pile, transform)) = cards.get(a)
-                    {
-                        Some(transform.translation.y + pile.0.len() as f32)
-                    } else {
-                        None
-                    }
-                })
-                .reduce(f32::max)
-        }) {
+        if let Some(max) =
+            context.with_query_pipeline(QueryFilter::only_dynamic(), |query_pipeline| {
+                query_pipeline
+                    .intersect_shape(card.1.translation, card.1.rotation, card.4.raw.0.as_ref())
+                    .filter_map(|a| {
+                        if a != card.0
+                            && let Ok((pile, transform)) = cards.get(a)
+                        {
+                            Some(transform.translation.y + pile.0.len() as f32)
+                        } else {
+                            None
+                        }
+                    })
+                    .reduce(f32::max)
+            })
+        {
             card.1.translation.y = max + 4.0;
         }
         if let Some(time) =
@@ -146,7 +148,6 @@ pub fn listen_for_mouse(
         Option<&Reversed>,
         Option<&ChildOf>,
         Option<&InHand>,
-        &mut Velocity,
         &mut GravityScale,
     )>,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
@@ -176,10 +177,10 @@ pub fn listen_for_mouse(
         ray.direction.into(),
         f32::MAX,
         true,
-        QueryFilter::new(),
+        QueryFilter::only_dynamic(),
     );
     if let Some((entity, _toi)) = hit
-        && let Ok((mut pile, mut transform, children, is_rev, parent, inhand, mut vel, mut grav)) =
+        && let Ok((mut pile, mut transform, children, is_rev, parent, inhand, mut grav)) =
             cards.get_mut(entity)
     {
         if input.just_pressed(KeyCode::KeyF) {
@@ -206,6 +207,7 @@ pub fn listen_for_mouse(
                 &mut rand,
                 false,
                 is_reversed,
+                None,
             );
             commands.entity(entity).despawn();
         } else if input.just_pressed(KeyCode::KeyR) {
@@ -224,6 +226,7 @@ pub fn listen_for_mouse(
                 &mut rand,
                 false,
                 reversed,
+                None,
             );
             commands.entity(entity).despawn();
         } else if mouse_input.just_pressed(MouseButton::Left) {
@@ -251,6 +254,7 @@ pub fn listen_for_mouse(
                     &mut rand,
                     false,
                     reversed,
+                    None,
                 );
             }
             commands.entity(entity).despawn();
@@ -267,6 +271,7 @@ pub fn listen_for_mouse(
                 &mut rand,
                 true,
                 reversed,
+                None,
             );
         } else if input.just_pressed(KeyCode::KeyE) {
             let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
@@ -305,10 +310,61 @@ pub fn listen_for_mouse(
                 card.is_alt = !card.is_alt;
             }
             pile.0.push(card)
-        } else if input.just_pressed(KeyCode::Digit1) {
+        } else if input.any_just_pressed([
+            KeyCode::Digit1,
+            KeyCode::Digit2,
+            KeyCode::Digit3,
+            KeyCode::Digit4,
+            KeyCode::Digit5,
+            KeyCode::Digit6,
+            KeyCode::Digit7,
+            KeyCode::Digit8,
+            KeyCode::Digit9,
+        ]) {
             if parent.is_none() {
+                let mut n = 0;
+                macro_rules! get {
+                    ($(($a:expr, $b:expr)),*) => {
+                        $(
+                            if input.just_pressed($a){
+                                n = $b
+                            }
+                        )*
+                    };
+                }
+                get!(
+                    (KeyCode::Digit1, 1),
+                    (KeyCode::Digit2, 2),
+                    (KeyCode::Digit3, 3),
+                    (KeyCode::Digit4, 4),
+                    (KeyCode::Digit5, 5),
+                    (KeyCode::Digit6, 6),
+                    (KeyCode::Digit7, 7),
+                    (KeyCode::Digit8, 8),
+                    (KeyCode::Digit9, 9)
+                );
                 let mut hand = hands.iter_mut().find(|e| e.1.is_some()).unwrap();
-                let new = pile.0.pop().unwrap();
+                for _ in 0..n {
+                    if let Some(new) = pile.0.pop() {
+                        let ent = new_pile_at(
+                            vec![new],
+                            card_stock.0.clone_weak(),
+                            &mut materials,
+                            &mut commands,
+                            &mut meshes,
+                            card_back.0.clone_weak(),
+                            card_side.0.clone_weak(),
+                            Transform::default(),
+                            &mut rand,
+                            false,
+                            false,
+                            Some(hand.2),
+                        )
+                        .unwrap();
+                        commands.entity(ent).insert(InHand(hand.0.count));
+                        hand.0.count += 1;
+                    }
+                }
                 if !pile.0.is_empty() {
                     let reversed = is_rev.is_some();
                     let pile = mem::take(&mut pile.0);
@@ -324,30 +380,10 @@ pub fn listen_for_mouse(
                         &mut rand,
                         false,
                         reversed,
+                        None,
                     );
                 }
                 commands.entity(entity).despawn();
-                transform.translation = Vec3::default();
-                let ent = new_pile_at(
-                    vec![new],
-                    card_stock.0.clone_weak(),
-                    &mut materials,
-                    &mut commands,
-                    &mut meshes,
-                    card_back.0.clone_weak(),
-                    card_side.0.clone_weak(),
-                    *transform,
-                    &mut rand,
-                    false,
-                    false,
-                )
-                .unwrap();
-                vel.linvel = Vect::default();
-                vel.angvel = Vect::default();
-                grav.0 = 0.0;
-                commands.entity(ent).insert(InHand(hand.0.count));
-                hand.0.count += 1;
-                commands.entity(hand.2).add_child(ent);
             }
         } else if input.just_pressed(KeyCode::KeyZ) {
             //TODO search
