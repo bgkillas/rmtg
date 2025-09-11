@@ -1,11 +1,9 @@
 use crate::download::{get_deck, get_from_img};
 use crate::misc::new_pile;
 use crate::*;
-use bevy::prelude::*;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalEntropy;
-use bevy_rapier3d::prelude::*;
 use bytes::Bytes;
 use std::fs;
 pub fn setup(

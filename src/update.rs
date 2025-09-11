@@ -2,11 +2,9 @@ use crate::download::get_deck;
 use crate::misc::{make_material, new_pile, new_pile_at};
 use crate::*;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
-use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalEntropy;
-use bevy_rapier3d::prelude::*;
 use rand::seq::SliceRandom;
 use std::f32::consts::PI;
 use std::mem;
@@ -148,7 +146,6 @@ pub fn listen_for_mouse(
         Option<&Reversed>,
         Option<&ChildOf>,
         Option<&InHand>,
-        &mut GravityScale,
     )>,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
     mut hands: Query<(&mut Hand, Option<&Owned>, Entity)>,
@@ -180,7 +177,7 @@ pub fn listen_for_mouse(
         QueryFilter::only_dynamic(),
     );
     if let Some((entity, _toi)) = hit
-        && let Ok((mut pile, mut transform, children, is_rev, parent, inhand, mut grav)) =
+        && let Ok((mut pile, mut transform, children, is_rev, parent, inhand)) =
             cards.get_mut(entity)
     {
         if input.just_pressed(KeyCode::KeyF) {
@@ -299,7 +296,7 @@ pub fn listen_for_mouse(
             && is_rev.is_none()
             && zoom
                 .as_ref()
-                .map(|single| single.1.0.0 != entity.to_bits())
+                .map(|single| single.1.0 != entity.to_bits())
                 .unwrap_or(true)
         {
             let mut card = pile.0.pop().unwrap();
@@ -390,14 +387,14 @@ pub fn listen_for_mouse(
         }
         if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
             if let Some(mut single) = zoom {
-                if single.1.0.0 != entity.to_bits() {
+                if single.1.0 != entity.to_bits() {
                     commands.entity(single.0).despawn();
                 } else if input.just_pressed(KeyCode::KeyO)
                     && let Some(alt) = &pile.0.last().unwrap().alt
                 {
                     single.2.0 = make_material(
                         &mut materials,
-                        if single.1.0.1 {
+                        if single.1.1 {
                             &pile.0.last().unwrap().normal
                         } else {
                             alt
@@ -405,7 +402,7 @@ pub fn listen_for_mouse(
                         .image
                         .clone_weak(),
                     );
-                    single.1.0.1 = !single.1.0.1;
+                    single.1.1 = !single.1.1;
                 }
             } else if is_rev.is_none() {
                 let card = pile.0.last().unwrap();
@@ -416,7 +413,7 @@ pub fn listen_for_mouse(
                         card.normal.image.clone_weak(),
                     )),
                     Transform::from_xyz(0.0, 0.0, -1024.0),
-                    ZoomHold((entity.to_bits(), false)),
+                    ZoomHold(entity.to_bits(), false),
                 ));
             }
         } else if let Some(single) = zoom {

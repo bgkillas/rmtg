@@ -12,6 +12,9 @@ incremental=true
 codegen-units=1
 opt-level = 3
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
 
@@ -27,8 +30,9 @@ bevy_framepace = "0.19.1"
 tokio={version="1.47.1",features=["rt","rt-multi-thread","macros"]}
 rand = "0.9.2"
 bytes = "1.10.1"
-bevy_rand = {version = "0.11.3", features = ["rand_chacha", "wyrand"] }
+bevy_rand = {version = "0.11.3", features = ["rand_chacha", "wyrand", "wasm_js"] }
 bevy_prng = { version = "0.11.3", features = ["rand_chacha", "wyrand"] }
+wasm-bindgen = "0.2.101"
 
 [lints.clippy]
 too_many_arguments = "allow"

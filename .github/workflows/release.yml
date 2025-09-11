@@ -1,0 +1,305 @@
+name: release
+
+on: [push, pull_request]
+
+jobs:
+  build-egui-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: depends
+      run: |
+        cd ..
+        git clone https://github.com/bgkillas/rupl
+        git clone https://github.com/bgkillas/kalc-lib
+        cd kalc-plot
+    - name: Build egui-full
+      run: cargo build --release --no-default-features --features "egui,rayon,bincode,rug,fastnum"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc-plot-linux-egui
+        path: target/release/kalc-plot
+  build-skia-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y libwayland-dev libxkbcommon-dev pkg-config libudev-dev libinput-dev libdrm-dev libgbm-dev build-essential libxcb1-dev libx11-dev libx11-xcb-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+    - name: depends
+      run: |
+        cd ..
+        git clone https://github.com/bgkillas/rupl
+        git clone https://github.com/bgkillas/kalc-lib
+        cd kalc-plot
+    - name: deps
+      run: |
+        sudo apt update
+        sudo apt install libfontconfig1-dev libfreetype6-dev
+    - name: Build skia-vulkan
+      run: cargo build --release --no-default-features --features "skia,skia-vulkan,wayland,x11,vulkano-x11,rug,fastnum"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc-plot-linux-skia-vulkan
+        path: target/release/kalc-plot
+    - name: Build skia
+      run: cargo build --release --no-default-features --features "skia,arboard,rayon,bincode,x11,wayland,softbuffer,softbuffer-wayland,softbuffer-x11,rug,fastnum"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc-plot-linux-skia
+        path: target/release/kalc-plot
+  build-tiny-skia-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y libwayland-dev libxkbcommon-dev pkg-config libudev-dev libinput-dev libdrm-dev libgbm-dev build-essential libxcb1-dev libx11-dev libx11-xcb-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+    - name: depends
+      run: |
+        cd ..
+        git clone https://github.com/bgkillas/rupl
+        git clone https://github.com/bgkillas/kalc-lib
+        cd kalc-plot
+    - name: Build tiny-full
+      run: cargo build --release --no-default-features --features "tiny-skia,arboard,rayon,bincode,wayland,x11, softbuffer, softbuffer-wayland, softbuffer-x11,rug,fastnum"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc-plot-linux-tiny-skia
+        path: target/release/kalc-plot
+  build-egui-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: depends
+      run: |
+        cd ..
+        git clone https://github.com/bgkillas/rupl
+        git clone https://github.com/bgkillas/kalc-lib
+        cd kalc-plot
+    - name: Build egui-full
+      run: cargo build --release --no-default-features --features "egui,rayon,bincode,rug,fastnum"
+    - name: make .app
+      run: |
+        mkdir -p app/kalc-plot.app/Contents/MacOS
+        cp target/release/kalc-plot app/kalc-plot.app/Contents/MacOS/
+        cp .github/workflows/Info.plist app/kalc-plot.app/Contents/
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc-plot-macos-egui
+        path: app
+  build-skia-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: depends
+      run: |
+        cd ..
+        git clone https://github.com/bgkillas/rupl
+        git clone https://github.com/bgkillas/kalc-lib
+        cd kalc-plot
+    - name: Build skia
+      run: cargo build --release --no-default-features --features "skia,arboard,rayon,bincode,rug,fastnum,softbuffer"
+    - name: make .app
+      run: |
+        mkdir -p app/kalc-plot.app/Contents/MacOS
+        cp target/release/kalc-plot app/kalc-plot.app/Contents/MacOS/
+        cp .github/workflows/Info.plist app/kalc-plot.app/Contents/
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc-plot-macos-skia
+        path: app
+  build-tiny-skia-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: depends
+      run: |
+        cd ..
+        git clone https://github.com/bgkillas/rupl
+        git clone https://github.com/bgkillas/kalc-lib
+        cd kalc-plot
+    - name: Build tiny-full
+      run: cargo build --release --no-default-features --features "tiny-skia,arboard,rayon,bincode,softbuffer,rug,fastnum"
+    - name: make .app
+      run: |
+        mkdir -p app/kalc-plot.app/Contents/MacOS
+        cp target/release/kalc-plot app/kalc-plot.app/Contents/MacOS/
+        cp .github/workflows/Info.plist app/kalc-plot.app/Contents/
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc-plot-macos-tiny-skia
+        path: app
+  build-egui-macos_x86_64:
+    runs-on: macos-13
+    steps:
+    - uses: actions/checkout@v4
+    - name: depends
+      run: |
+        cd ..
+        git clone https://github.com/bgkillas/rupl
+        git clone https://github.com/bgkillas/kalc-lib
+        cd kalc-plot
+    - name: Build egui-full
+      run: cargo build --release --no-default-features --features "egui,rayon,bincode,rug,fastnum"
+    - name: make .app
+      run: |
+        mkdir -p app/kalc-plot.app/Contents/MacOS
+        cp target/release/kalc-plot app/kalc-plot.app/Contents/MacOS/
+        cp .github/workflows/Info.plist app/kalc-plot.app/Contents/
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc-plot-macos-egui-x86_64
+        path: app
+  build-skia-macos_x86_64:
+    runs-on: macos-13
+    steps:
+    - uses: actions/checkout@v4
+    - name: depends
+      run: |
+        cd ..
+        git clone https://github.com/bgkillas/rupl
+        git clone https://github.com/bgkillas/kalc-lib
+        cd kalc-plot
+    - name: Build skia
+      run: cargo build --release --no-default-features --features "skia,arboard,rayon,bincode,rug,fastnum,softbuffer"
+    - name: make .app
+      run: |
+        mkdir -p app/kalc-plot.app/Contents/MacOS
+        cp target/release/kalc-plot app/kalc-plot.app/Contents/MacOS/
+        cp .github/workflows/Info.plist app/kalc-plot.app/Contents/
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc-plot-macos-skia-x86_64
+        path: app
+  build-tiny-skia-macos_x86_64:
+    runs-on: macos-13
+    steps:
+    - uses: actions/checkout@v4
+    - name: depends
+      run: |
+        cd ..
+        git clone https://github.com/bgkillas/rupl
+        git clone https://github.com/bgkillas/kalc-lib
+        cd kalc-plot
+    - name: Build tiny-full
+      run: cargo build --release --no-default-features --features "tiny-skia,arboard,rayon,bincode,softbuffer,rug,fastnum"
+    - name: make .app
+      run: |
+        mkdir -p app/kalc-plot.app/Contents/MacOS
+        cp target/release/kalc-plot app/kalc-plot.app/Contents/MacOS/
+        cp .github/workflows/Info.plist app/kalc-plot.app/Contents/
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc-plot-macos-tiny-skia-x86_64
+        path: app
+  build-egui-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: depends
+      run: |
+        cd ..
+        git clone https://github.com/bgkillas/rupl
+        git clone https://github.com/bgkillas/kalc-lib
+        cd kalc-plot
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+       toolchain: stable
+       target: x86_64-pc-windows-gnu
+       profile: minimal
+       override: true
+    - name: Install MSYS2 and GMP
+      uses: msys2/setup-msys2@v2
+      with:
+       update: true
+       install: >-
+         base-devel
+         mingw-w64-x86_64-rust
+         mingw-w64-x86_64-gcc
+         mingw-w64-x86_64-pkg-config
+         mingw-w64-x86_64-gmp
+         mingw-w64-x86_64-mpfr
+         mingw-w64-x86_64-make
+         mingw-w64-x86_64-clang
+         m4
+         make
+         python
+         openssl
+         git
+         mingw-w64-x86_64-gn
+         mingw-w64-x86_64-fontconfig
+         mingw-w64-x86_64-libpng
+         mingw-w64-x86_64-freetype
+         expat
+         llvm
+         ninja
+       msystem: MINGW64
+    - name: Build egui-full
+      shell: msys2 {0}
+      env:
+        CARGO_HOME: /mingw64/.cargo
+        RUSTUP_HOME: /mingw64/.rustup
+        PKG_CONFIG_PATH: /mingw64/lib/pkgconfig
+        PATH: /mingw64/bin:$PATH
+        CC: clang
+      run: cargo build --release --no-default-features --features "egui,rayon,bincode,rug,fastnum"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc-plot-egui.exe
+        path: target/release/kalc-plot.exe
+  build-tiny-skia-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: depends
+      run: |
+        cd ..
+        git clone https://github.com/bgkillas/rupl
+        git clone https://github.com/bgkillas/kalc-lib
+        cd kalc-plot
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+       toolchain: stable
+       target: x86_64-pc-windows-gnu
+       profile: minimal
+       override: true
+    - name: Install MSYS2 and GMP
+      uses: msys2/setup-msys2@v2
+      with:
+       update: true
+       install: >-
+         base-devel
+         mingw-w64-x86_64-rust
+         mingw-w64-x86_64-gcc
+         mingw-w64-x86_64-pkg-config
+         mingw-w64-x86_64-gmp
+         mingw-w64-x86_64-mpfr
+         mingw-w64-x86_64-make
+         mingw-w64-x86_64-clang
+         m4
+         make
+         python
+         openssl
+         git
+         mingw-w64-x86_64-gn
+         mingw-w64-x86_64-fontconfig
+         mingw-w64-x86_64-libpng
+         mingw-w64-x86_64-freetype
+         expat
+         llvm
+         ninja
+       msystem: MINGW64
+    - name: Build tiny-full
+      shell: msys2 {0}
+      env:
+        CARGO_HOME: /mingw64/.cargo
+        RUSTUP_HOME: /mingw64/.rustup
+        PKG_CONFIG_PATH: /mingw64/lib/pkgconfig
+        PATH: /mingw64/bin:$PATH
+        CC: clang
+      run: cargo build --release --no-default-features --features "tiny-skia,arboard,rayon,bincode,softbuffer,rug,fastnum"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc-plot-tiny-skia.exe
+        path: target/release/kalc-plot.exe

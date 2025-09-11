@@ -1,7 +1,6 @@
 use crate::Color;
 use crate::*;
 use bevy::asset::RenderAssetUsages;
-use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bytes::Bytes;
 use futures::StreamExt;
