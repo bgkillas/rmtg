@@ -31,6 +31,7 @@ jobs:
         run: cargo fmt --check
       - name: lint
         run: |
+         export RUSTFLAGS='--cfg getrandom_backend="wasm_js"'
          cargo clippy --no-default-features --features "wasm" --target wasm32-unknown-unknown -- -D clippy::all
 
       - name: Build WASM app
