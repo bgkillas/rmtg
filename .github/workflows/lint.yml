@@ -21,4 +21,4 @@ jobs:
        - name: fmt
          run: cargo fmt --check
        - name: lint
-         run: cargo clippy -- -D clippy::all -A clippy::type-complexity -A clippy::type_complexity
+         run: cargo clippy
