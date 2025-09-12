@@ -158,6 +158,7 @@ pub fn listen_for_mouse(
     input: Res<ButtonInput<KeyCode>>,
     mut rand: GlobalEntropy<WyRand>,
     zoom: Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
+    piles: ResMut<GetPile>,
 ) {
     let Some(cursor_position) = window.cursor_position() else {
         return;
@@ -193,7 +194,7 @@ pub fn listen_for_mouse(
                 transform.rotate_z(PI);
                 let pile = mem::take(&mut pile.0);
                 new_pile_at(
-                    pile,
+                    Pile(pile),
                     card_base.stock.clone_weak(),
                     &mut materials,
                     &mut commands,
@@ -212,7 +213,7 @@ pub fn listen_for_mouse(
                 let pile = mem::take(&mut pile.0);
                 let reversed = is_rev.is_some();
                 new_pile_at(
-                    pile,
+                    Pile(pile),
                     card_base.stock.clone_weak(),
                     &mut materials,
                     &mut commands,
@@ -240,7 +241,7 @@ pub fn listen_for_mouse(
                 if !pile.0.is_empty() {
                     let pile = mem::take(&mut pile.0);
                     new_pile_at(
-                        pile,
+                        Pile(pile),
                         card_base.stock.clone_weak(),
                         &mut materials,
                         &mut commands,
@@ -257,7 +258,7 @@ pub fn listen_for_mouse(
                 commands.entity(entity).despawn();
                 transform.translation.y += len + 4.0;
                 new_pile_at(
-                    vec![new],
+                    Pile(vec![new]),
                     card_base.stock.clone_weak(),
                     &mut materials,
                     &mut commands,
@@ -292,6 +293,11 @@ pub fn listen_for_mouse(
                     _ => unreachable!(),
                 });
                 transform.rotate_x(-PI / 2.0);
+            } else if input.just_pressed(KeyCode::KeyO)
+                && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
+            {
+                let top = pile.0.last().unwrap();
+                todo!() //use scryfall
             } else if input.just_pressed(KeyCode::KeyO)
                 && is_rev.is_none()
                 && zoom
@@ -344,7 +350,7 @@ pub fn listen_for_mouse(
                     for _ in 0..n {
                         if let Some(new) = pile.0.pop() {
                             let ent = new_pile_at(
-                                vec![new],
+                                Pile(vec![new]),
                                 card_base.stock.clone_weak(),
                                 &mut materials,
                                 &mut commands,
@@ -366,7 +372,7 @@ pub fn listen_for_mouse(
                         let reversed = is_rev.is_some();
                         let pile = mem::take(&mut pile.0);
                         new_pile_at(
-                            pile,
+                            Pile(pile),
                             card_base.stock.clone_weak(),
                             &mut materials,
                             &mut commands,

@@ -173,16 +173,16 @@ pub struct Hand {
 pub struct Pile(pub Vec<Card>);
 #[derive(Resource, Debug, Default)]
 #[cfg(feature = "wasm")]
-pub struct GetDeck(pub Arc<Mutex<Vec<Deck>>>);
+pub struct GetDeck(pub Arc<Mutex<Vec<Pile>>>, Vec2);
 #[derive(Resource, Debug, Default)]
 #[cfg(not(feature = "wasm"))]
-pub struct GetDeck(pub Arc<Mutex<Vec<JoinHandle<Option<Deck>>>>>);
+pub struct GetDeck(pub Arc<Mutex<Vec<JoinHandle<Option<Pile>>>>>, Vec2);
 #[derive(Debug)]
 pub struct Deck {
-    pub commanders: Vec<Card>,
-    pub main: Vec<Card>,
-    pub tokens: Vec<Card>,
-    pub side: Vec<Card>,
+    pub commanders: Pile,
+    pub main: Pile,
+    pub tokens: Pile,
+    pub side: Pile,
 }
 #[derive(Debug, Default)]
 #[allow(dead_code)]
@@ -388,6 +388,7 @@ impl From<&str> for Cost {
 pub struct Card {
     pub normal: CardInfo,
     pub alt: Option<CardInfo>,
+    pub id: String,
     pub is_alt: bool,
 }
 #[derive(Component, Default, Debug)]

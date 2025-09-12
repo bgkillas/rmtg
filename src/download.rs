@@ -7,6 +7,7 @@ use futures::StreamExt;
 use futures::stream::FuturesUnordered;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
+use json::iterators::Members;
 use std::io::Cursor;
 pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<Image>> {
     fn to_asset(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<Image>> {
@@ -32,33 +33,107 @@ pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<I
     }
     to_asset(bytes, asset_server)
 }
+pub async fn parse_scry(
+    json: &JsonValue,
+    client: reqwest::Client,
+    asset_server: AssetServer,
+) -> Option<Card> {
+    parse(json, client, asset_server).await
+}
+pub async fn process_data(
+    json: Members<'_>,
+    client: reqwest::Client,
+    asset_server: AssetServer,
+) -> Vec<Card> {
+    json.map(async |a| parse_scry(a, client.clone(), asset_server.clone()))
+        .collect::<FuturesUnordered<_>>()
+        .filter_map(async |a| a.await)
+        .collect::<Vec<Card>>()
+        .await
+}
+pub async fn get_alts(
+    id: &str,
+    client: reqwest::Client,
+    asset_server: AssetServer,
+) -> Option<Pile> {
+    let url = format!(
+        "https://api.scryfall.com/cards/search?order=released&q=oracleid%{id}&unique=prints"
+    );
+    let res = client.get(url).send().await.ok()?;
+    let res = res.text().await.ok()?;
+    let json = json::parse(&res).ok()?;
+    let size = json["total_cards"].as_usize()?;
+    let mut futures = Vec::new();
+    futures.push(
+        process_data(
+            json["data"].members().clone(),
+            client.clone(),
+            asset_server.clone(),
+        )
+        .await,
+    );
+    while json["has_more"].as_bool()? {
+        let url = json["next_page"].as_str()?;
+        let res = client.get(url).send().await.ok()?;
+        let res = res.text().await.ok()?;
+        let json = json::parse(&res).ok()?;
+        futures
+            .push(process_data(json["data"].members(), client.clone(), asset_server.clone()).await);
+    }
+    let mut vec = Vec::with_capacity(size);
+    vec.extend(
+        futures
+            /*.collect::<Vec<Vec<Card>>>()
+            .await*/
+            .into_iter()
+            .flatten(),
+    );
+    Some(Pile(vec))
+}
+async fn get_bytes(id: &str, client: &reqwest::Client, normal: bool) -> Option<Bytes> {
+    let url = if normal {
+        format!(
+            "https://cards.scryfall.io/png/front/{}/{}/{id}.png",
+            id.get(0..1).unwrap(),
+            id.get(1..2).unwrap()
+        )
+    } else {
+        format!(
+            "https://cards.scryfall.io/png/back/{}/{}/{id}.png",
+            id.get(0..1).unwrap(),
+            id.get(1..2).unwrap()
+        )
+    };
+    let res = client.get(url).send().await.ok()?;
+    res.bytes().await.ok()
+}
+fn get<T: Default, F>(value: &JsonValue, index: &str, f: F) -> (T, T)
+where
+    F: Fn(&JsonValue) -> T,
+{
+    (
+        value["card_faces"]
+            .members()
+            .next()
+            .map(|a| f(&a[index]))
+            .unwrap_or_else(|| f(&value[index])),
+        value["card_faces"]
+            .members()
+            .nth(1)
+            .map(|a| f(&a[index]))
+            .unwrap_or_default(),
+    )
+}
 pub async fn parse(
     value: &JsonValue,
     client: reqwest::Client,
     asset_server: AssetServer,
 ) -> Option<Card> {
-    async fn get_bytes(id: &str, client: &reqwest::Client, normal: bool) -> Option<Bytes> {
-        let url = if normal {
-            format!("https://assets.moxfield.net/cards/card-{id}-normal.webp")
-        } else {
-            format!("https://assets.moxfield.net/cards/card-face-{id}-normal.webp")
-        };
-        let res = client.get(url).send().await.ok()?;
-        res.bytes().await.ok()
-    }
-    let normal = value["card_faces"].members().next().is_none();
-    let id = value["card_faces"]
-        .members()
-        .next()
-        .and_then(|a| a["id"].as_str())
-        .unwrap_or_else(|| value["id"].as_str().unwrap());
-    let bytes = get_bytes(id, &client, normal).await?;
-    let alt_bytes = if let Some(id) = value["meld_result"]["id"].as_str().or(value["card_faces"]
-        .members()
-        .nth(1)
-        .and_then(|a| a["id"].as_str()))
-    {
-        get_bytes(id, &client, normal).await
+    let double = value["card_faces"].members().next().is_some();
+    let id = value["scryfall_id"].as_str()?;
+    let bytes = get_bytes(id, &client, true).await?;
+    let alt_bytes = if double {
+        get_bytes(id, &client, false).await
     } else {
         None
     };
@@ -77,23 +152,6 @@ pub async fn parse(
         .to_string();
     let image = get_from_img(bytes, &asset_server)?;
     let alt_image = alt_bytes.and_then(|bytes| get_from_img(bytes, &asset_server));
-    fn get<T: Default, F>(value: &JsonValue, index: &str, f: F) -> (T, T)
-    where
-        F: Fn(&JsonValue) -> T,
-    {
-        (
-            value["card_faces"]
-                .members()
-                .next()
-                .map(|a| f(&a[index]))
-                .unwrap_or_else(|| f(&value[index])),
-            value["card_faces"]
-                .members()
-                .nth(1)
-                .map(|a| f(&a[index]))
-                .unwrap_or_default(),
-        )
-    }
     let (mana_cost, alt_mana_cost) = get(value, "mana_cost", |a| {
         a.as_str().unwrap_or_default().into()
     });
@@ -129,6 +187,7 @@ pub async fn parse(
             toughness: alt_toughness,
             image,
         }),
+        id: id.to_string(),
         is_alt: false,
     })
 }
@@ -143,11 +202,13 @@ pub async fn get_deck(
     {
         macro_rules! get {
             ($b:expr) => {
-                $b.map(|p| parse(p, client.clone(), asset_server.clone()))
-                    .collect::<FuturesUnordered<_>>()
-                    .filter_map(async |a| a)
-                    .collect::<Vec<Card>>()
-                    .await
+                Pile(
+                    $b.map(|p| parse(p, client.clone(), asset_server.clone()))
+                        .collect::<FuturesUnordered<_>>()
+                        .filter_map(async |a| a)
+                        .collect::<Vec<Card>>()
+                        .await,
+                )
             };
         }
         let tokens = get!(json["tokens"].members());

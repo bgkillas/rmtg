@@ -13,7 +13,7 @@ pub fn make_material(
     })
 }
 pub fn new_pile(
-    pile: Vec<Card>,
+    pile: Pile,
     card_stock: Handle<Mesh>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
     commands: &mut Commands,
@@ -24,7 +24,7 @@ pub fn new_pile(
     x: f32,
     z: f32,
 ) {
-    let size = pile.len() as f32;
+    let size = pile.0.len() as f32;
     let mut transform = Transform::from_xyz(x, size, z);
     transform.rotate_x(-PI / 2.0);
     new_pile_at(
@@ -33,7 +33,7 @@ pub fn new_pile(
     );
 }
 pub fn new_pile_at(
-    pile: Vec<Card>,
+    pile: Pile,
     card_stock: Handle<Mesh>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
     commands: &mut Commands,
@@ -46,13 +46,13 @@ pub fn new_pile_at(
     reverse: bool,
     parent: Option<Entity>,
 ) -> Option<Entity> {
-    if pile.is_empty() {
+    if pile.0.is_empty() {
         return None;
     }
-    let card = pile.last().unwrap();
+    let card = pile.0.last().unwrap();
     let top = card.normal.image.clone_weak();
     let material_handle = make_material(materials, top);
-    let size = pile.len() as f32;
+    let size = pile.0.len() as f32;
     let mut transform1 = Transform::from_rotation(Quat::from_rotation_y(PI));
     transform1.translation.z = -size;
     let mesh = meshes.add(Rectangle::new(2.0 * size, CARD_HEIGHT));
@@ -66,7 +66,7 @@ pub fn new_pile_at(
     let mut transform5 = Transform::from_rotation(Quat::from_rotation_x(-PI / 2.0));
     transform5.translation.y = CARD_HEIGHT / 2.0;
     let mut ent = commands.spawn((
-        Pile(pile),
+        pile,
         transform,
         Visibility::default(),
         RigidBody::Dynamic,
