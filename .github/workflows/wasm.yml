@@ -18,6 +18,10 @@ jobs:
           toolchain: stable
           target: wasm32-unknown-unknown
           override: true
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libwayland-dev libudev-dev libasound2-dev pkg-config
 
       - name: Install wasm-pack
         run: cargo install wasm-pack
