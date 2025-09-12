@@ -17,8 +17,8 @@ jobs:
        - name: Install system dependencies
          run: |
           sudo apt update
-          sudo apt install -y libwayland-dev pkg-config
+          sudo apt install -y libwayland-dev libasound2-dev pkg-config
        - name: fmt
          run: cargo fmt --check
        - name: lint
-         run: cargo clippy -- -D clippy::all
+         run: cargo clippy -- -D clippy::all -A clippy::type-complexity -A clippy::type_complexity

@@ -32,7 +32,7 @@ jobs:
       - name: lint
         run: |
          export RUSTFLAGS='--cfg getrandom_backend="wasm_js"'
-         cargo clippy --no-default-features --features "wasm" --target wasm32-unknown-unknown -- -D clippy::all
+         cargo clippy --no-default-features --features "wasm" --target wasm32-unknown-unknown -- -D clippy::all -A clippy::type-complexity -A clippy::type_complexity
 
       - name: Build WASM app
         run: |

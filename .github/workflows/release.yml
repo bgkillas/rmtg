@@ -10,7 +10,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y libwayland-dev pkg-config
+        sudo apt install -y libwayland-dev libasound2-dev pkg-config
     - name: Build skia
       run: cargo build --release
     - uses: actions/upload-artifact@v4
