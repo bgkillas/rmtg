@@ -21,8 +21,8 @@ pub const CARD_WIDTH: f32 = 488.0;
 pub const CARD_HEIGHT: f32 = 680.0;
 pub const START_Y: f32 = 8192.0;
 pub const START_Z: f32 = 4096.0;
-pub const GRAVITY: f32 = 256.0;
-pub const DAMPING: f32 = 4.0;
+pub const GRAVITY: f32 = 512.0;
+pub const DAMPING: f32 = 1.0;
 mod download;
 mod misc;
 mod setup;
@@ -431,9 +431,9 @@ pub struct Client(pub reqwest::Client);
 impl Resource for Client {}
 pub struct Runtime(pub tokio::runtime::Runtime);
 impl Resource for Runtime {}
-pub struct CardStock(pub Handle<Mesh>);
-impl Resource for CardStock {}
-pub struct CardBack(pub Handle<StandardMaterial>);
-impl Resource for CardBack {}
-pub struct CardSide(pub Handle<StandardMaterial>);
-impl Resource for CardSide {}
+pub struct CardBase {
+    pub stock: Handle<Mesh>,
+    back: Handle<StandardMaterial>,
+    side: Handle<StandardMaterial>,
+}
+impl Resource for CardBase {}

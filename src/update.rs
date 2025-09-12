@@ -5,6 +5,7 @@ use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
 use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalEntropy;
+use rand::Rng;
 use rand::seq::SliceRandom;
 use std::f32::consts::PI;
 use std::mem;
@@ -149,12 +150,11 @@ pub fn listen_for_mouse(
     )>,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
     mut hands: Query<(&mut Hand, Option<&Owned>, Entity)>,
+    mut vels: Query<&mut Velocity>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    card_back: Res<CardBack>,
-    card_side: Res<CardSide>,
-    card_stock: Res<CardStock>,
+    card_base: Res<CardBase>,
     input: Res<ButtonInput<KeyCode>>,
     mut rand: GlobalEntropy<WyRand>,
     zoom: Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
@@ -176,203 +176,77 @@ pub fn listen_for_mouse(
         true,
         QueryFilter::only_dynamic(),
     );
-    if let Some((entity, _toi)) = hit
-        && let Ok((mut pile, mut transform, children, is_rev, parent, inhand)) =
+    if let Some((entity, _)) = hit {
+        if let Ok((mut pile, mut transform, children, is_rev, parent, inhand)) =
             cards.get_mut(entity)
-    {
-        if input.just_pressed(KeyCode::KeyF) {
-            let is_reversed;
-            if is_rev.is_some() {
-                is_reversed = false;
-                commands.entity(entity).remove::<Reversed>();
-            } else {
-                is_reversed = true;
-                commands.entity(entity).insert(Reversed);
-            }
-            pile.0.reverse();
-            transform.rotate_z(PI);
-            let pile = mem::take(&mut pile.0);
-            new_pile_at(
-                pile,
-                card_stock.0.clone_weak(),
-                &mut materials,
-                &mut commands,
-                &mut meshes,
-                card_back.0.clone_weak(),
-                card_side.0.clone_weak(),
-                *transform,
-                &mut rand,
-                false,
-                is_reversed,
-                None,
-            );
-            commands.entity(entity).despawn();
-        } else if input.just_pressed(KeyCode::KeyR) {
-            pile.0.shuffle(&mut rand);
-            let pile = mem::take(&mut pile.0);
-            let reversed = is_rev.is_some();
-            new_pile_at(
-                pile,
-                card_stock.0.clone_weak(),
-                &mut materials,
-                &mut commands,
-                &mut meshes,
-                card_back.0.clone_weak(),
-                card_side.0.clone_weak(),
-                *transform,
-                &mut rand,
-                false,
-                reversed,
-                None,
-            );
-            commands.entity(entity).despawn();
-        } else if mouse_input.just_pressed(MouseButton::Left) {
-            if let Some(parent) = parent
-                && let Some(inhand) = inhand
-            {
-                let mut hand = hands.get_mut(parent.0).unwrap().0;
-                hand.count -= 1;
-                hand.removed.push(inhand.0)
-            }
-            let reversed = is_rev.is_some();
-            let len = pile.0.len() as f32;
-            let new = pile.0.pop().unwrap();
-            if !pile.0.is_empty() {
+        {
+            if input.just_pressed(KeyCode::KeyF) {
+                let is_reversed;
+                if is_rev.is_some() {
+                    is_reversed = false;
+                    commands.entity(entity).remove::<Reversed>();
+                } else {
+                    is_reversed = true;
+                    commands.entity(entity).insert(Reversed);
+                }
+                pile.0.reverse();
+                transform.rotate_z(PI);
                 let pile = mem::take(&mut pile.0);
                 new_pile_at(
                     pile,
-                    card_stock.0.clone_weak(),
+                    card_base.stock.clone_weak(),
                     &mut materials,
                     &mut commands,
                     &mut meshes,
-                    card_back.0.clone_weak(),
-                    card_side.0.clone_weak(),
+                    card_base.back.clone_weak(),
+                    card_base.side.clone_weak(),
+                    *transform,
+                    &mut rand,
+                    false,
+                    is_reversed,
+                    None,
+                );
+                commands.entity(entity).despawn();
+            } else if input.just_pressed(KeyCode::KeyR) {
+                pile.0.shuffle(&mut rand);
+                let pile = mem::take(&mut pile.0);
+                let reversed = is_rev.is_some();
+                new_pile_at(
+                    pile,
+                    card_base.stock.clone_weak(),
+                    &mut materials,
+                    &mut commands,
+                    &mut meshes,
+                    card_base.back.clone_weak(),
+                    card_base.side.clone_weak(),
                     *transform,
                     &mut rand,
                     false,
                     reversed,
                     None,
                 );
-            }
-            commands.entity(entity).despawn();
-            transform.translation.y += len + 4.0;
-            new_pile_at(
-                vec![new],
-                card_stock.0.clone_weak(),
-                &mut materials,
-                &mut commands,
-                &mut meshes,
-                card_back.0.clone_weak(),
-                card_side.0.clone_weak(),
-                *transform,
-                &mut rand,
-                true,
-                reversed,
-                None,
-            );
-        } else if input.just_pressed(KeyCode::KeyE) {
-            let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
-            let n = (2.0 * rot / PI).round() as isize;
-            transform.rotation = Quat::from_rotation_z(match n {
-                0 => -PI / 2.0,
-                1 => 0.0,
-                2 | -2 => PI / 2.0,
-                -1 => PI,
-                _ => unreachable!(),
-            });
-            transform.rotate_x(-PI / 2.0);
-        } else if input.just_pressed(KeyCode::KeyQ) {
-            let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
-            let n = (2.0 * rot / PI).round() as isize;
-            transform.rotation = Quat::from_rotation_z(match n {
-                0 => PI / 2.0,
-                1 => PI,
-                2 | -2 => -PI / 2.0,
-                -1 => 0.0,
-                _ => unreachable!(),
-            });
-            transform.rotate_x(-PI / 2.0);
-        } else if input.just_pressed(KeyCode::KeyO)
-            && is_rev.is_none()
-            && zoom
-                .as_ref()
-                .map(|single| single.1.0 != entity.to_bits())
-                .unwrap_or(true)
-        {
-            let mut card = pile.0.pop().unwrap();
-            if let Some(alt) = &mut card.alt {
-                mem::swap(&mut card.normal, alt);
-                mats.get_mut(*children.first().unwrap()).unwrap().0 =
-                    make_material(&mut materials, card.normal.image.clone_weak());
-                card.is_alt = !card.is_alt;
-            }
-            pile.0.push(card)
-        } else if input.any_just_pressed([
-            KeyCode::Digit1,
-            KeyCode::Digit2,
-            KeyCode::Digit3,
-            KeyCode::Digit4,
-            KeyCode::Digit5,
-            KeyCode::Digit6,
-            KeyCode::Digit7,
-            KeyCode::Digit8,
-            KeyCode::Digit9,
-        ]) {
-            if parent.is_none() {
-                let mut n = 0;
-                macro_rules! get {
-                    ($(($a:expr, $b:expr)),*) => {
-                        $(
-                            if input.just_pressed($a){
-                                n = $b
-                            }
-                        )*
-                    };
+                commands.entity(entity).despawn();
+            } else if mouse_input.just_pressed(MouseButton::Left) {
+                if let Some(parent) = parent
+                    && let Some(inhand) = inhand
+                {
+                    let mut hand = hands.get_mut(parent.0).unwrap().0;
+                    hand.count -= 1;
+                    hand.removed.push(inhand.0)
                 }
-                get!(
-                    (KeyCode::Digit1, 1),
-                    (KeyCode::Digit2, 2),
-                    (KeyCode::Digit3, 3),
-                    (KeyCode::Digit4, 4),
-                    (KeyCode::Digit5, 5),
-                    (KeyCode::Digit6, 6),
-                    (KeyCode::Digit7, 7),
-                    (KeyCode::Digit8, 8),
-                    (KeyCode::Digit9, 9)
-                );
-                let mut hand = hands.iter_mut().find(|e| e.1.is_some()).unwrap();
-                for _ in 0..n {
-                    if let Some(new) = pile.0.pop() {
-                        let ent = new_pile_at(
-                            vec![new],
-                            card_stock.0.clone_weak(),
-                            &mut materials,
-                            &mut commands,
-                            &mut meshes,
-                            card_back.0.clone_weak(),
-                            card_side.0.clone_weak(),
-                            Transform::default(),
-                            &mut rand,
-                            false,
-                            false,
-                            Some(hand.2),
-                        )
-                        .unwrap();
-                        commands.entity(ent).insert(InHand(hand.0.count));
-                        hand.0.count += 1;
-                    }
-                }
+                let reversed = is_rev.is_some();
+                let len = pile.0.len() as f32;
+                let new = pile.0.pop().unwrap();
                 if !pile.0.is_empty() {
-                    let reversed = is_rev.is_some();
                     let pile = mem::take(&mut pile.0);
                     new_pile_at(
                         pile,
-                        card_stock.0.clone_weak(),
+                        card_base.stock.clone_weak(),
                         &mut materials,
                         &mut commands,
                         &mut meshes,
-                        card_back.0.clone_weak(),
-                        card_side.0.clone_weak(),
+                        card_base.back.clone_weak(),
+                        card_base.side.clone_weak(),
                         *transform,
                         &mut rand,
                         false,
@@ -381,43 +255,184 @@ pub fn listen_for_mouse(
                     );
                 }
                 commands.entity(entity).despawn();
-            }
-        } else if input.just_pressed(KeyCode::KeyZ) {
-            //TODO search
-        }
-        if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
-            if let Some(mut single) = zoom {
-                if single.1.0 != entity.to_bits() {
-                    commands.entity(single.0).despawn();
-                } else if input.just_pressed(KeyCode::KeyO)
-                    && let Some(alt) = &pile.0.last().unwrap().alt
-                {
-                    single.2.0 = make_material(
-                        &mut materials,
-                        if single.1.1 {
-                            &pile.0.last().unwrap().normal
-                        } else {
-                            alt
-                        }
-                        .image
-                        .clone_weak(),
-                    );
-                    single.1.1 = !single.1.1;
+                transform.translation.y += len + 4.0;
+                new_pile_at(
+                    vec![new],
+                    card_base.stock.clone_weak(),
+                    &mut materials,
+                    &mut commands,
+                    &mut meshes,
+                    card_base.back.clone_weak(),
+                    card_base.side.clone_weak(),
+                    *transform,
+                    &mut rand,
+                    true,
+                    reversed,
+                    None,
+                );
+            } else if input.just_pressed(KeyCode::KeyE) {
+                let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
+                let n = (2.0 * rot / PI).round() as isize;
+                transform.rotation = Quat::from_rotation_z(match n {
+                    0 => -PI / 2.0,
+                    1 => 0.0,
+                    2 | -2 => PI / 2.0,
+                    -1 => PI,
+                    _ => unreachable!(),
+                });
+                transform.rotate_x(-PI / 2.0);
+            } else if input.just_pressed(KeyCode::KeyQ) {
+                let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
+                let n = (2.0 * rot / PI).round() as isize;
+                transform.rotation = Quat::from_rotation_z(match n {
+                    0 => PI / 2.0,
+                    1 => PI,
+                    2 | -2 => -PI / 2.0,
+                    -1 => 0.0,
+                    _ => unreachable!(),
+                });
+                transform.rotate_x(-PI / 2.0);
+            } else if input.just_pressed(KeyCode::KeyO)
+                && is_rev.is_none()
+                && zoom
+                    .as_ref()
+                    .map(|single| single.1.0 != entity.to_bits())
+                    .unwrap_or(true)
+            {
+                let mut card = pile.0.pop().unwrap();
+                if let Some(alt) = &mut card.alt {
+                    mem::swap(&mut card.normal, alt);
+                    mats.get_mut(*children.first().unwrap()).unwrap().0 =
+                        make_material(&mut materials, card.normal.image.clone_weak());
+                    card.is_alt = !card.is_alt;
                 }
-            } else if is_rev.is_none() {
-                let card = pile.0.last().unwrap();
-                commands.entity(cament).with_child((
-                    Mesh3d(card_stock.0.clone_weak()),
-                    MeshMaterial3d(make_material(
-                        &mut materials,
-                        card.normal.image.clone_weak(),
-                    )),
-                    Transform::from_xyz(0.0, 0.0, -1024.0),
-                    ZoomHold(entity.to_bits(), false),
-                ));
+                pile.0.push(card)
+            } else if input.any_just_pressed([
+                KeyCode::Digit1,
+                KeyCode::Digit2,
+                KeyCode::Digit3,
+                KeyCode::Digit4,
+                KeyCode::Digit5,
+                KeyCode::Digit6,
+                KeyCode::Digit7,
+                KeyCode::Digit8,
+                KeyCode::Digit9,
+            ]) {
+                if parent.is_none() {
+                    let mut n = 0;
+                    macro_rules! get {
+                        ($(($a:expr, $b:expr)),*) => {
+                            $(
+                                if input.just_pressed($a){
+                                    n = $b
+                                }
+                            )*
+                        };
+                    }
+                    get!(
+                        (KeyCode::Digit1, 1),
+                        (KeyCode::Digit2, 2),
+                        (KeyCode::Digit3, 3),
+                        (KeyCode::Digit4, 4),
+                        (KeyCode::Digit5, 5),
+                        (KeyCode::Digit6, 6),
+                        (KeyCode::Digit7, 7),
+                        (KeyCode::Digit8, 8),
+                        (KeyCode::Digit9, 9)
+                    );
+                    let mut hand = hands.iter_mut().find(|e| e.1.is_some()).unwrap();
+                    for _ in 0..n {
+                        if let Some(new) = pile.0.pop() {
+                            let ent = new_pile_at(
+                                vec![new],
+                                card_base.stock.clone_weak(),
+                                &mut materials,
+                                &mut commands,
+                                &mut meshes,
+                                card_base.back.clone_weak(),
+                                card_base.side.clone_weak(),
+                                Transform::default(),
+                                &mut rand,
+                                false,
+                                false,
+                                Some(hand.2),
+                            )
+                            .unwrap();
+                            commands.entity(ent).insert(InHand(hand.0.count));
+                            hand.0.count += 1;
+                        }
+                    }
+                    if !pile.0.is_empty() {
+                        let reversed = is_rev.is_some();
+                        let pile = mem::take(&mut pile.0);
+                        new_pile_at(
+                            pile,
+                            card_base.stock.clone_weak(),
+                            &mut materials,
+                            &mut commands,
+                            &mut meshes,
+                            card_base.back.clone_weak(),
+                            card_base.side.clone_weak(),
+                            *transform,
+                            &mut rand,
+                            false,
+                            reversed,
+                            None,
+                        );
+                    }
+                    commands.entity(entity).despawn();
+                }
+            } else if input.just_pressed(KeyCode::KeyZ) {
+                //TODO search
             }
-        } else if let Some(single) = zoom {
-            commands.entity(single.0).despawn();
+            if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
+                if let Some(mut single) = zoom {
+                    if single.1.0 != entity.to_bits() {
+                        commands.entity(single.0).despawn();
+                    } else if input.just_pressed(KeyCode::KeyO)
+                        && let Some(alt) = &pile.0.last().unwrap().alt
+                    {
+                        single.2.0 = make_material(
+                            &mut materials,
+                            if single.1.1 {
+                                &pile.0.last().unwrap().normal
+                            } else {
+                                alt
+                            }
+                            .image
+                            .clone_weak(),
+                        );
+                        single.1.1 = !single.1.1;
+                    }
+                } else if is_rev.is_none() {
+                    let card = pile.0.last().unwrap();
+                    commands.entity(cament).with_child((
+                        Mesh3d(card_base.stock.clone_weak()),
+                        MeshMaterial3d(make_material(
+                            &mut materials,
+                            card.normal.image.clone_weak(),
+                        )),
+                        Transform::from_xyz(0.0, 0.0, -1024.0),
+                        ZoomHold(entity.to_bits(), false),
+                    ));
+                }
+            } else if let Some(single) = zoom {
+                commands.entity(single.0).despawn();
+            }
+        } else {
+            if let Some(single) = zoom {
+                commands.entity(single.0).despawn();
+            }
+            if mouse_input.just_pressed(MouseButton::Left) {
+                commands.entity(entity).insert(FollowMouse);
+            } else if input.just_pressed(KeyCode::KeyR)
+                && let Ok(mut v) = vels.get_mut(entity)
+            {
+                v.linvel.y = 2048.0;
+                v.angvel.x = rand.random_range(-32.0..32.0);
+                v.angvel.y = rand.random_range(-32.0..32.0);
+                v.angvel.z = rand.random_range(-32.0..32.0);
+            }
         }
     } else if let Some(single) = zoom {
         commands.entity(single.0).despawn();
@@ -549,9 +564,7 @@ pub fn register_deck(
     mut commands: Commands,
     decks: ResMut<GetDeck>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    card_back: Res<CardBack>,
-    card_side: Res<CardSide>,
-    card_stock: Res<CardStock>,
+    card_base: Res<CardBase>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut rand: GlobalEntropy<WyRand>,
     #[cfg(not(feature = "wasm"))] runtime: Res<Runtime>,
@@ -571,48 +584,48 @@ pub fn register_deck(
     } {
         new_pile(
             deck.commanders,
-            card_stock.0.clone_weak(),
+            card_base.stock.clone_weak(),
             &mut materials,
             &mut commands,
             &mut meshes,
-            card_back.0.clone_weak(),
-            card_side.0.clone_weak(),
+            card_base.back.clone_weak(),
+            card_base.side.clone_weak(),
             &mut rand,
             -1000.0,
             0.0,
         );
         new_pile(
             deck.main,
-            card_stock.0.clone_weak(),
+            card_base.stock.clone_weak(),
             &mut materials,
             &mut commands,
             &mut meshes,
-            card_back.0.clone_weak(),
-            card_side.0.clone_weak(),
+            card_base.back.clone_weak(),
+            card_base.side.clone_weak(),
             &mut rand,
             -500.0,
             0.0,
         );
         new_pile(
             deck.side,
-            card_stock.0.clone_weak(),
+            card_base.stock.clone_weak(),
             &mut materials,
             &mut commands,
             &mut meshes,
-            card_back.0.clone_weak(),
-            card_side.0.clone_weak(),
+            card_base.back.clone_weak(),
+            card_base.side.clone_weak(),
             &mut rand,
             500.0,
             0.0,
         );
         new_pile(
             deck.tokens,
-            card_stock.0.clone_weak(),
+            card_base.stock.clone_weak(),
             &mut materials,
             &mut commands,
             &mut meshes,
-            card_back.0.clone_weak(),
-            card_side.0.clone_weak(),
+            card_base.back.clone_weak(),
+            card_base.side.clone_weak(),
             &mut rand,
             1000.0,
             0.0,

@@ -24,9 +24,11 @@ pub fn setup(
         unlit: true,
         ..Default::default()
     });
-    commands.insert_resource(CardSide(card_side));
-    commands.insert_resource(CardBack(material_handle));
-    commands.insert_resource(CardStock(card_stock));
+    commands.insert_resource(CardBase {
+        stock: card_stock,
+        back: material_handle,
+        side: card_side,
+    });
     commands.spawn((
         Transform::from_xyz(0.0, 64.0, START_Z / 3.0),
         Hand::default(),
@@ -57,8 +59,8 @@ pub fn setup(
         Transform::from_xyz(0.0, START_Y, START_Z).looking_at(Vec3::ZERO, Vec3::Y),
     ));
     commands.spawn((
-        Collider::cuboid(32.0, 32.0, 32.0),
-        Transform::from_xyz(0.0, 64.0, 0.0),
+        Collider::cuboid(128.0, 128.0, 128.0),
+        Transform::from_xyz(0.0, 256.0, 0.0),
         RigidBody::Dynamic,
         GravityScale(GRAVITY),
         Ccd::enabled(),
@@ -69,7 +71,7 @@ pub fn setup(
         },
         AdditionalMassProperties::Mass(4.0),
         SyncObject::new(&mut rand),
-        Mesh3d(meshes.add(RegularPolygon::new(32.0, 4))),
+        Mesh3d(meshes.add(RegularPolygon::new(128.0, 4))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::WHITE,
             unlit: true,
