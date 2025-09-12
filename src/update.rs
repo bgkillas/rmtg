@@ -485,18 +485,19 @@ pub fn cam_rotation(
         cam.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, roll);
     }
 }
+#[cfg(not(feature = "wasm"))]
 pub fn listen_for_deck(
     input: Res<ButtonInput<KeyCode>>,
     mut clipboard: ResMut<Clipboard>,
     client: Res<Client>,
     runtime: Res<Runtime>,
-    mut commands: Commands,
     asset_server: Res<AssetServer>,
+    decks: ResMut<GetDeck>,
 ) {
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
         && input.just_pressed(KeyCode::KeyV)
-        && let Ok(paste) = clipboard.0.get_text()
     {
+        let paste = clipboard.get_text();
         let paste = paste.trim();
         if paste.starts_with("https://moxfield.com/decks/")
             || paste.starts_with("https://www.moxfield.com/decks/")
@@ -509,74 +510,112 @@ pub fn listen_for_deck(
             let task = runtime
                 .0
                 .spawn(async move { get_deck(url, client, asset_server).await });
-            commands.spawn(GetDeck(task));
+            decks.0.lock().unwrap().push(task)
         }
+    }
+}
+#[cfg(feature = "wasm")]
+pub fn listen_for_deck(
+    input: Res<ButtonInput<KeyCode>>,
+    clipboard: ResMut<Clipboard>,
+    client: Res<Client>,
+    asset_server: Res<AssetServer>,
+    decks: ResMut<GetDeck>,
+) {
+    if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+        && input.just_pressed(KeyCode::KeyV)
+    {
+        let mut clipboard = *clipboard;
+        let client = client.0.clone();
+        let decks = decks.0.clone();
+        let asset_server = asset_server.clone();
+        wasm_bindgen_futures::spawn_local(async move {
+            let paste = clipboard.get_text().await;
+            let paste = paste.trim();
+            if paste.starts_with("https://moxfield.com/decks/")
+                || paste.starts_with("https://www.moxfield.com/decks/")
+                || paste.len() == 22
+            {
+                let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap_or(paste);
+                let url = format!("https://api2.moxfield.com/v3/decks/all/{id}");
+                if let Some(task) = get_deck(url, client, asset_server).await {
+                    decks.lock().unwrap().push(task)
+                }
+            }
+        })
     }
 }
 pub fn register_deck(
     mut commands: Commands,
-    query: Single<(Entity, &mut GetDeck)>,
-    runtime: Res<Runtime>,
+    decks: ResMut<GetDeck>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     card_back: Res<CardBack>,
     card_side: Res<CardSide>,
     card_stock: Res<CardStock>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut rand: GlobalEntropy<WyRand>,
+    #[cfg(not(feature = "wasm"))] runtime: Res<Runtime>,
 ) {
-    let (entity, mut deck) = query.into_inner();
-    if deck.0.is_finished() {
-        let handle = mem::replace(&mut deck.0, runtime.0.spawn(async { None }));
-        commands.entity(entity).despawn();
-        if let Some(result) = runtime.0.block_on(handle).ok().flatten() {
-            new_pile(
-                result.commanders,
-                card_stock.0.clone_weak(),
-                &mut materials,
-                &mut commands,
-                &mut meshes,
-                card_back.0.clone_weak(),
-                card_side.0.clone_weak(),
-                &mut rand,
-                -1000.0,
-                0.0,
-            );
-            new_pile(
-                result.main,
-                card_stock.0.clone_weak(),
-                &mut materials,
-                &mut commands,
-                &mut meshes,
-                card_back.0.clone_weak(),
-                card_side.0.clone_weak(),
-                &mut rand,
-                -500.0,
-                0.0,
-            );
-            new_pile(
-                result.side,
-                card_stock.0.clone_weak(),
-                &mut materials,
-                &mut commands,
-                &mut meshes,
-                card_back.0.clone_weak(),
-                card_side.0.clone_weak(),
-                &mut rand,
-                500.0,
-                0.0,
-            );
-            new_pile(
-                result.tokens,
-                card_stock.0.clone_weak(),
-                &mut materials,
-                &mut commands,
-                &mut meshes,
-                card_back.0.clone_weak(),
-                card_side.0.clone_weak(),
-                &mut rand,
-                1000.0,
-                0.0,
-            );
+    let mut decks = decks.0.lock().unwrap();
+    for deck in {
+        #[cfg(feature = "wasm")]
+        {
+            decks.drain(..)
         }
+        #[cfg(not(feature = "wasm"))]
+        {
+            decks
+                .extract_if(.., |a| a.is_finished())
+                .filter_map(|a| runtime.0.block_on(a).ok().flatten())
+        }
+    } {
+        new_pile(
+            deck.commanders,
+            card_stock.0.clone_weak(),
+            &mut materials,
+            &mut commands,
+            &mut meshes,
+            card_back.0.clone_weak(),
+            card_side.0.clone_weak(),
+            &mut rand,
+            -1000.0,
+            0.0,
+        );
+        new_pile(
+            deck.main,
+            card_stock.0.clone_weak(),
+            &mut materials,
+            &mut commands,
+            &mut meshes,
+            card_back.0.clone_weak(),
+            card_side.0.clone_weak(),
+            &mut rand,
+            -500.0,
+            0.0,
+        );
+        new_pile(
+            deck.side,
+            card_stock.0.clone_weak(),
+            &mut materials,
+            &mut commands,
+            &mut meshes,
+            card_back.0.clone_weak(),
+            card_side.0.clone_weak(),
+            &mut rand,
+            500.0,
+            0.0,
+        );
+        new_pile(
+            deck.tokens,
+            card_stock.0.clone_weak(),
+            &mut materials,
+            &mut commands,
+            &mut meshes,
+            card_back.0.clone_weak(),
+            card_side.0.clone_weak(),
+            &mut rand,
+            1000.0,
+            0.0,
+        );
     }
 }

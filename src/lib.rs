@@ -3,6 +3,7 @@ use crate::update::{
     cam_rotation, cam_translation, follow_mouse, gather_hand, listen_for_deck, listen_for_mouse,
     register_deck, update_hand,
 };
+use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
 use bevy_framepace::FramepacePlugin;
 use bevy_prng::WyRand;
@@ -10,7 +11,10 @@ use bevy_rand::global::GlobalEntropy;
 use bevy_rand::prelude::EntropyPlugin;
 use bevy_rapier3d::prelude::*;
 use rand::RngCore;
-use std::sync::LazyLock;
+use std::sync::{Arc, Mutex};
+#[cfg(feature = "wasm")]
+use tokio::runtime::Builder;
+#[cfg(not(feature = "wasm"))]
 use tokio::task::JoinHandle;
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = 488.0;
@@ -23,26 +27,44 @@ mod download;
 mod misc;
 mod setup;
 mod update;
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
+#[cfg(feature = "wasm")]
+use wasm_bindgen::prelude::wasm_bindgen;
+#[cfg(feature = "wasm")]
+use wasm_bindgen_futures::JsFuture;
+#[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 pub fn start() {
+    #[cfg(not(feature = "wasm"))]
     let runtime = Runtime(tokio::runtime::Runtime::new().unwrap());
+    #[cfg(feature = "wasm")]
+    let runtime = Runtime(Builder::new_current_thread().enable_all().build().unwrap());
     let client = Client(
         reqwest::Client::builder()
             .user_agent(USER_AGENT)
             .build()
             .unwrap(),
     );
-    let clipboard = Clipboard(LazyLock::new(|| arboard::Clipboard::new().unwrap()));
+    #[cfg(not(feature = "wasm"))]
+    let clipboard = Clipboard(arboard::Clipboard::new().unwrap());
+    #[cfg(feature = "wasm")]
+    let clipboard = Clipboard;
     let app_window = Some(Window {
         title: "rmtg".into(),
+        resizable: true,
+        fit_canvas_to_parent: true,
         ..default()
     });
+    let decks = GetDeck::default();
     App::new()
         .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: app_window,
-                ..default()
-            }),
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: app_window,
+                    ..default()
+                })
+                .set(AssetPlugin {
+                    meta_check: AssetMetaCheck::Never,
+                    ..default()
+                }),
             RapierPhysicsPlugin::<NoUserData>::default(),
             RapierDebugRenderPlugin::default(),
             FramepacePlugin,
@@ -51,6 +73,7 @@ pub fn start() {
         .insert_resource(clipboard)
         .insert_resource(runtime)
         .insert_resource(client)
+        .insert_resource(decks)
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -65,6 +88,7 @@ pub fn start() {
         .run();
 }
 #[test]
+#[cfg(not(feature = "wasm"))]
 fn test_parse() {
     use bevy::prelude::*;
     use reqwest::header::USER_AGENT;
@@ -96,6 +120,7 @@ fn test_parse() {
     app.update();
 }
 #[test]
+#[cfg(not(feature = "wasm"))]
 fn test_get_deck() {
     use bevy::prelude::*;
     use reqwest::header::USER_AGENT;
@@ -146,8 +171,12 @@ pub struct Hand {
 }
 #[derive(Component, Default, Debug)]
 pub struct Pile(pub Vec<Card>);
-#[derive(Component, Debug)]
-pub struct GetDeck(pub JoinHandle<Option<Deck>>);
+#[derive(Resource, Debug, Default)]
+#[cfg(feature = "wasm")]
+pub struct GetDeck(pub Arc<Mutex<Vec<Deck>>>);
+#[derive(Resource, Debug, Default)]
+#[cfg(not(feature = "wasm"))]
+pub struct GetDeck(pub Arc<Mutex<Vec<JoinHandle<Option<Deck>>>>>);
 #[derive(Debug)]
 pub struct Deck {
     pub commanders: Vec<Card>,
@@ -375,7 +404,28 @@ pub struct FollowMouse;
 pub struct ZoomHold(pub u64, pub bool);
 #[derive(Component, Default, Debug)]
 pub struct Reversed;
-pub struct Clipboard(pub LazyLock<arboard::Clipboard>);
+#[cfg(not(feature = "wasm"))]
+pub struct Clipboard(pub arboard::Clipboard);
+#[cfg(feature = "wasm")]
+#[cfg_attr(feature = "wasm", derive(Clone, Copy))]
+pub struct Clipboard;
+impl Clipboard {
+    #[cfg(not(feature = "wasm"))]
+    pub fn get_text(&mut self) -> String {
+        self.0.get_text().unwrap_or_default()
+    }
+    #[cfg(feature = "wasm")]
+    pub async fn get_text(&mut self) -> String {
+        let window = web_sys::window().expect("window");
+        let navigator = window.navigator();
+        let clipboard = navigator.clipboard();
+        JsFuture::from(clipboard.read_text())
+            .await
+            .unwrap()
+            .as_string()
+            .unwrap_or_default()
+    }
+}
 impl Resource for Clipboard {}
 pub struct Client(pub reqwest::Client);
 impl Resource for Client {}
