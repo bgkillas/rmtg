@@ -1,4 +1,4 @@
-use crate::download::{get_alts, get_deck};
+use crate::download::{get_alts, get_deck, spawn_singleton};
 use crate::misc::{make_material, new_pile, new_pile_at};
 use crate::*;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
@@ -299,7 +299,7 @@ pub fn listen_for_mouse(
                 let top = pile.0.last().unwrap();
                 let v = Vec2::new(
                     transform.translation.x,
-                    transform.translation.y + CARD_HEIGHT,
+                    transform.translation.z - CARD_HEIGHT - 1.0,
                 );
                 let client = down.client.0.clone();
                 let get_deck = down.get_deck.clone();
@@ -523,12 +523,32 @@ pub fn listen_for_deck(
     mut clipboard: ResMut<Clipboard>,
     down: ResMut<Download>,
     asset_server: Res<AssetServer>,
+    camera: Single<(&Camera, &GlobalTransform)>,
+    window: Single<&Window, With<PrimaryWindow>>,
 ) {
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
         && input.just_pressed(KeyCode::KeyV)
     {
         let paste = clipboard.get_text();
         let paste = paste.trim();
+        let Some(cursor_position) = window.cursor_position() else {
+            return;
+        };
+        let (camera, camera_transform) = camera.into_inner();
+        let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+            return;
+        };
+        let mut v = Vec2::default();
+        if let Some(time) =
+            ray.intersect_plane(Vec3::default(), InfinitePlane3d { normal: Dir3::Y })
+        {
+            let point = ray.get_point(time);
+            v.x = point.x;
+            v.y = point.z;
+        }
+        let client = down.client.0.clone();
+        let decks = down.get_deck.clone();
+        let asset_server = asset_server.clone();
         if paste.starts_with("https://moxfield.com/decks/")
             || paste.starts_with("https://www.moxfield.com/decks/")
             || paste.len() == 22
@@ -536,11 +556,18 @@ pub fn listen_for_deck(
             let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap_or(paste);
             info!("{id} request received");
             let url = format!("https://api2.moxfield.com/v3/decks/all/{id}");
-            let client = down.client.0.clone();
-            let decks = down.get_deck.clone();
-            let asset_server = asset_server.clone();
+            down.runtime
+                .0
+                .spawn(async move { get_deck(url, client, asset_server, decks, v).await });
+        } else if paste.starts_with("https://scryfall.com/card/") {
+            let mut split = paste.rsplitn(4, '/');
+            let Some(cn) = split.nth(1) else { return };
+            let Some(set) = split.next() else { return };
+            let set = set.to_string();
+            let cn = cn.to_string();
+            info!("{set} {cn} request received");
             down.runtime.0.spawn(async move {
-                get_deck(url, client, asset_server, decks, Vec2::default()).await
+                spawn_singleton(client, asset_server, decks, v, set, cn).await
             });
         }
     }
@@ -551,14 +578,31 @@ pub fn listen_for_deck(
     clipboard: ResMut<Clipboard>,
     asset_server: Res<AssetServer>,
     down: ResMut<Download>,
+    camera: Single<(&Camera, &GlobalTransform)>,
+    window: Single<&Window, With<PrimaryWindow>>,
 ) {
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
         && input.just_pressed(KeyCode::KeyV)
     {
         let mut clipboard = *clipboard;
-        let client = client.0.clone();
-        let decks = decks.0.clone();
+        let client = down.client.0.clone();
+        let decks = down.get_deck.clone();
         let asset_server = asset_server.clone();
+        let Some(cursor_position) = window.cursor_position() else {
+            return;
+        };
+        let (camera, camera_transform) = camera.into_inner();
+        let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+            return;
+        };
+        let mut v = Vec2::default();
+        if let Some(time) =
+            ray.intersect_plane(Vec3::default(), InfinitePlane3d { normal: Dir3::Y })
+        {
+            let point = ray.get_point(time);
+            v.x = point.x;
+            v.y = point.z;
+        }
         wasm_bindgen_futures::spawn_local(async move {
             let paste = clipboard.get_text().await;
             let paste = paste.trim();
@@ -567,10 +611,17 @@ pub fn listen_for_deck(
                 || paste.len() == 22
             {
                 let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap_or(paste);
+                info!("{id} request received");
                 let url = format!("https://api2.moxfield.com/v3/decks/all/{id}");
-                if let Some(task) = get_deck(url, client, asset_server).await {
-                    decks.lock().unwrap().push(task)
-                }
+                get_deck(url, client, asset_server, decks, v).await;
+            } else if paste.starts_with("https://scryfall.com/card/") {
+                let mut split = paste.rsplitn(4, '/');
+                let Some(cn) = split.nth(1) else { return };
+                let Some(set) = split.next() else { return };
+                let set = set.to_string();
+                let cn = cn.to_string();
+                info!("{set} {cn} request received");
+                spawn_singleton(client, asset_server, decks, v, set, cn).await;
             }
         })
     }

@@ -44,6 +44,8 @@ wasm-bindgen = {version="0.2.101", optional = true}
 wasm-bindgen-futures = {version="0.4.51", optional = true}
 web-sys = { version = "0.3.78", optional = true, features = ["Clipboard", "Navigator", "Window"] }
 console_error_panic_hook = { version = "0.1.7", optional = true }
+#serde = { version = "1.0.219", features = ["derive"] }
+#bitcode = {version="0.6.7", features = ["serde"] }
 
 [lints.clippy]
 too_many_arguments = "allow"

@@ -33,19 +33,29 @@ pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<I
     }
     to_asset(bytes, asset_server)
 }
-pub async fn parse_scry(
-    json: &JsonValue,
+pub async fn spawn_singleton(
     client: reqwest::Client,
     asset_server: AssetServer,
-) -> Option<Card> {
-    parse(json, client, asset_server).await
+    get_deck: GetDeck,
+    v: Vec2,
+    set: String,
+    cn: String,
+) -> Option<()> {
+    let url = format!("https://api.scryfall.com/cards/{set}/{cn}");
+    let res = client.get(url).send().await.ok()?;
+    let res = res.text().await.ok()?;
+    let json = json::parse(&res).ok()?;
+    if let Some(card) = parse(&json, client, asset_server).await {
+        get_deck.0.lock().unwrap().push((Pile(vec![card]), v));
+    }
+    None
 }
 pub async fn process_data(
     json: Members<'_>,
     client: reqwest::Client,
     asset_server: AssetServer,
 ) -> Vec<Card> {
-    json.map(async |a| parse_scry(a, client.clone(), asset_server.clone()))
+    json.map(async |a| parse(a, client.clone(), asset_server.clone()))
         .collect::<FuturesUnordered<_>>()
         .filter_map(async |a| a.await)
         .collect::<Vec<Card>>()
@@ -242,11 +252,11 @@ pub async fn get_deck(
         );
         let mut decks = decks.0.lock().unwrap();
         decks.push((main, v));
-        v.x += CARD_WIDTH;
+        v.x += CARD_WIDTH + 1.0;
         decks.push((commanders, v));
-        v.x -= 2.0 * CARD_WIDTH;
+        v.x -= 2.0 * CARD_WIDTH - 2.0;
         decks.push((tokens, v));
-        v.x -= CARD_WIDTH;
+        v.x -= CARD_WIDTH - 1.0;
         decks.push((side, v));
     }
 }
