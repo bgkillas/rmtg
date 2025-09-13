@@ -158,7 +158,11 @@ pub fn listen_for_mouse(
     input: Res<ButtonInput<KeyCode>>,
     mut rand: GlobalEntropy<WyRand>,
     zoom: Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
-    (down, asset_server): (ResMut<Download>, Res<AssetServer>),
+    (down, asset_server, mut game_clipboard): (
+        ResMut<Download>,
+        Res<AssetServer>,
+        ResMut<GameClipboard>,
+    ),
 ) {
     let Some(cursor_position) = window.cursor_position() else {
         return;
@@ -227,6 +231,14 @@ pub fn listen_for_mouse(
                     None,
                 );
                 commands.entity(entity).despawn();
+            } else if input.just_pressed(KeyCode::Backspace)
+                && input.all_pressed([KeyCode::ControlLeft, KeyCode::AltLeft])
+            {
+                commands.entity(entity).despawn();
+            } else if input.just_pressed(KeyCode::KeyC)
+                && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
+            {
+                game_clipboard.0 = Some(pile.clone());
             } else if mouse_input.just_pressed(MouseButton::Left) {
                 if let Some(parent) = parent
                     && let Some(inhand) = inhand
@@ -522,20 +534,24 @@ pub fn cam_rotation(
         cam.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, roll);
     }
 }
-#[cfg(not(feature = "wasm"))]
 pub fn listen_for_deck(
     input: Res<ButtonInput<KeyCode>>,
-    mut clipboard: ResMut<Clipboard>,
+    #[cfg(feature = "wasm")] clipboard: Res<Clipboard>,
+    #[cfg(not(feature = "wasm"))] mut clipboard: ResMut<Clipboard>,
     down: ResMut<Download>,
     asset_server: Res<AssetServer>,
     camera: Single<(&Camera, &GlobalTransform)>,
     window: Single<&Window, With<PrimaryWindow>>,
+    game_clipboard: Res<GameClipboard>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    card_base: Res<CardBase>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut commands: Commands,
+    mut rand: GlobalEntropy<WyRand>,
 ) {
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
         && input.just_pressed(KeyCode::KeyV)
     {
-        let paste = clipboard.get_text();
-        let paste = paste.trim();
         let Some(cursor_position) = window.cursor_position() else {
             return;
         };
@@ -551,84 +567,53 @@ pub fn listen_for_deck(
             v.x = point.x;
             v.y = point.z;
         }
-        let client = down.client.0.clone();
-        let decks = down.get_deck.clone();
-        let asset_server = asset_server.clone();
-        if paste.starts_with("https://moxfield.com/decks/")
-            || paste.starts_with("https://www.moxfield.com/decks/")
-            || paste.len() == 22
-        {
-            let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap_or(paste);
-            info!("{id} request received");
-            let url = format!("https://api2.moxfield.com/v3/decks/all/{id}");
-            down.runtime
-                .0
-                .spawn(async move { get_deck(url, client, asset_server, decks, v).await });
-        } else if paste.starts_with("https://scryfall.com/card/") {
-            let mut split = paste.rsplitn(4, '/');
-            let Some(cn) = split.nth(1) else { return };
-            let Some(set) = split.next() else { return };
-            let set = set.to_string();
-            let cn = cn.to_string();
-            info!("{set} {cn} request received");
-            down.runtime.0.spawn(async move {
-                spawn_singleton(client, asset_server, decks, v, set, cn).await
-            });
+        if !input.pressed(KeyCode::ShiftLeft) {
+            let client = down.client.0.clone();
+            let decks = down.get_deck.clone();
+            let asset_server = asset_server.clone();
+            #[cfg(not(feature = "wasm"))]
+            let paste = clipboard.get_text();
+            #[cfg(feature = "wasm")]
+            let clipboard = *clipboard;
+            let f = async move {
+                #[cfg(feature = "wasm")]
+                let paste = clipboard.get_text().await;
+                let paste = paste.trim();
+                if paste.starts_with("https://moxfield.com/decks/")
+                    || paste.starts_with("https://www.moxfield.com/decks/")
+                    || paste.len() == 22
+                {
+                    let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap_or(paste);
+                    info!("{id} request received");
+                    let url = format!("https://api2.moxfield.com/v3/decks/all/{id}");
+                    get_deck(url, client, asset_server, decks, v).await;
+                } else if paste.starts_with("https://scryfall.com/card/") {
+                    let mut split = paste.rsplitn(4, '/');
+                    let Some(cn) = split.nth(1) else { return };
+                    let Some(set) = split.next() else { return };
+                    let set = set.to_string();
+                    let cn = cn.to_string();
+                    info!("{set} {cn} request received");
+                    spawn_singleton(client, asset_server, decks, v, set, cn).await;
+                }
+            };
+            #[cfg(not(feature = "wasm"))]
+            down.runtime.0.spawn(f);
+            #[cfg(feature = "wasm")]
+            wasm_bindgen_futures::spawn_local(f);
+        } else if let Some(pile) = &game_clipboard.0 {
+            new_pile(
+                pile.clone(),
+                card_base.stock.clone_weak(),
+                &mut materials,
+                &mut commands,
+                &mut meshes,
+                card_base.back.clone_weak(),
+                card_base.side.clone_weak(),
+                &mut rand,
+                v,
+            );
         }
-    }
-}
-#[cfg(feature = "wasm")]
-pub fn listen_for_deck(
-    input: Res<ButtonInput<KeyCode>>,
-    clipboard: ResMut<Clipboard>,
-    asset_server: Res<AssetServer>,
-    down: ResMut<Download>,
-    camera: Single<(&Camera, &GlobalTransform)>,
-    window: Single<&Window, With<PrimaryWindow>>,
-) {
-    if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-        && input.just_pressed(KeyCode::KeyV)
-    {
-        let mut clipboard = *clipboard;
-        let client = down.client.0.clone();
-        let decks = down.get_deck.clone();
-        let asset_server = asset_server.clone();
-        let Some(cursor_position) = window.cursor_position() else {
-            return;
-        };
-        let (camera, camera_transform) = camera.into_inner();
-        let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
-            return;
-        };
-        let mut v = Vec2::default();
-        if let Some(time) =
-            ray.intersect_plane(Vec3::default(), InfinitePlane3d { normal: Dir3::Y })
-        {
-            let point = ray.get_point(time);
-            v.x = point.x;
-            v.y = point.z;
-        }
-        wasm_bindgen_futures::spawn_local(async move {
-            let paste = clipboard.get_text().await;
-            let paste = paste.trim();
-            if paste.starts_with("https://moxfield.com/decks/")
-                || paste.starts_with("https://www.moxfield.com/decks/")
-                || paste.len() == 22
-            {
-                let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap_or(paste);
-                info!("{id} request received");
-                let url = format!("https://api2.moxfield.com/v3/decks/all/{id}");
-                get_deck(url, client, asset_server, decks, v).await;
-            } else if paste.starts_with("https://scryfall.com/card/") {
-                let mut split = paste.rsplitn(4, '/');
-                let Some(cn) = split.nth(1) else { return };
-                let Some(set) = split.next() else { return };
-                let set = set.to_string();
-                let cn = cn.to_string();
-                info!("{set} {cn} request received");
-                spawn_singleton(client, asset_server, decks, v, set, cn).await;
-            }
-        })
     }
 }
 pub fn register_deck(

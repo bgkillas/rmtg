@@ -48,6 +48,7 @@ pub fn start() {
         ..default()
     });
     let get_deck = GetDeck::default();
+    let game_clipboard = GameClipboard(None);
     App::new()
         .add_plugins((
             DefaultPlugins
@@ -65,6 +66,7 @@ pub fn start() {
             EntropyPlugin::<WyRand>::default(),
         ))
         .insert_resource(clipboard)
+        .insert_resource(game_clipboard)
         .insert_resource(Download {
             client,
             #[cfg(not(feature = "wasm"))]
@@ -170,11 +172,11 @@ pub struct Hand {
     pub count: usize,
     pub removed: Vec<usize>,
 }
-#[derive(Component, Default, Debug)]
+#[derive(Component, Default, Debug, Clone)]
 pub struct Pile(pub Vec<Card>);
 #[derive(Resource, Debug, Default, Clone)]
 pub struct GetDeck(pub Arc<Mutex<Vec<(Pile, Vec2)>>>);
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 #[allow(dead_code)]
 pub struct CardInfo {
     pub name: String,
@@ -187,7 +189,7 @@ pub struct CardInfo {
     pub image: Handle<Image>,
 }
 #[allow(dead_code)]
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum SuperType {
     Basic,
     Legendary,
@@ -198,7 +200,7 @@ pub enum SuperType {
     None,
 }
 #[allow(dead_code)]
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum SubType {
     Equipment,
     Fortification,
@@ -238,7 +240,7 @@ impl Type {
     }
 }
 #[allow(dead_code)]
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum Type {
     Land,
     Creature,
@@ -254,7 +256,7 @@ pub enum Type {
 }
 #[allow(dead_code)]
 #[rustfmt::skip]
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum CreatureType {
     TimeLord, Advisor, Aetherborn, Alien, Ally, Angel, Antelope, Ape, Archer, Archon, Armadillo, Army, Artificer, Assassin, AssemblyWorker, Astartes, Atog, Aurochs, Avatar, Azra, Badger, Balloon,
     Barbarian, Bard, Basilisk, Bat, Bear, Beast, Beaver, Beeble, Beholder, Berserker, Bird, Blinkmoth, Boar, Bringer, Brushwagg, Camarid, Camel, Capybara, Caribou, Carrier, Cat, Centaur, Child,
@@ -274,7 +276,7 @@ pub enum CreatureType {
     All
 }
 #[allow(dead_code)]
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Types {
     pub super_type: SuperType,
     pub main_type: Type,
@@ -311,7 +313,7 @@ impl From<&str> for Types {
         ret
     }
 }
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Color {
     pub white: bool,
     pub blue: bool,
@@ -335,7 +337,7 @@ impl Color {
         cost
     }
 }
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Cost {
     pub white: u8,
     pub blue: u8,
@@ -374,7 +376,7 @@ impl From<&str> for Cost {
         cost
     }
 }
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Card {
     pub normal: CardInfo,
     pub alt: Option<CardInfo>,
@@ -396,6 +398,8 @@ pub struct Download {
     runtime: Runtime,
 }
 impl Resource for Download {}
+pub struct GameClipboard(pub Option<Pile>);
+impl Resource for GameClipboard {}
 #[derive(Component, Default, Debug)]
 pub struct FollowMouse;
 #[derive(Component, Default, Debug)]
@@ -413,7 +417,7 @@ impl Clipboard {
         self.0.get_text().unwrap_or_default()
     }
     #[cfg(feature = "wasm")]
-    pub async fn get_text(&mut self) -> String {
+    pub async fn get_text(&self) -> String {
         let window = web_sys::window().expect("window");
         let navigator = window.navigator();
         let clipboard = navigator.clipboard();

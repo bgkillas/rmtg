@@ -33,7 +33,7 @@ reqwest="0.12.23"
 json="0.12.4"
 image="0.25.8"
 futures="0.3.31"
-bevy_rapier3d="0.31.0"
+bevy_rapier3d={version="0.31.0", features = ["enhanced-determinism"]}
 bevy_framepace = "0.19.1"
 tokio={version="1.47.1",features=["rt","macros"]}
 rand = "0.9.2"

@@ -203,52 +203,71 @@ pub async fn parse(
         is_alt: false,
     })
 }
+pub async fn get_pile(
+    iter: impl Iterator<Item = &JsonValue>,
+    client: reqwest::Client,
+    asset_server: AssetServer,
+    decks: GetDeck,
+    v: Vec2,
+) {
+    let pile = iter
+        .map(|p| parse(p, client.clone(), asset_server.clone()))
+        .collect::<FuturesUnordered<_>>()
+        .filter_map(async |a| a)
+        .collect::<Vec<Card>>()
+        .await;
+    let mut decks = decks.0.lock().unwrap();
+    decks.push((Pile(pile), v));
+}
 pub async fn get_deck(
     url: String,
     client: reqwest::Client,
     asset_server: AssetServer,
     decks: GetDeck,
-    mut v: Vec2,
+    v: Vec2,
 ) {
     if let Ok(res) = client.get(url).send().await
         && let Ok(text) = res.text().await
         && let Ok(json) = json::parse(&text)
     {
-        macro_rules! get {
-            ($b:expr) => {
-                Pile(
-                    $b.map(|p| parse(p, client.clone(), asset_server.clone()))
-                        .collect::<FuturesUnordered<_>>()
-                        .filter_map(async |a| a)
-                        .collect::<Vec<Card>>()
-                        .await,
-                )
-            };
-        }
-        let tokens = get!(json["tokens"].members());
         let board = &json["boards"];
-        let main = get!(
-            board["mainboard"]["cards"]
-                .entries()
-                .map(|(_, c)| &c["card"])
-        );
-        let side = get!(
-            board["sideboard"]["cards"]
-                .entries()
-                .map(|(_, c)| &c["card"])
-        );
-        let commanders = get!(
+        let commanders = get_pile(
             board["commanders"]["cards"]
                 .entries()
-                .map(|(_, c)| &c["card"])
+                .map(|(_, c)| &c["card"]),
+            client.clone(),
+            asset_server.clone(),
+            decks.clone(),
+            v + Vec2::new(CARD_WIDTH + 1.0, 0.0),
         );
-        let mut decks = decks.0.lock().unwrap();
-        decks.push((main, v));
-        v.x += CARD_WIDTH + 1.0;
-        decks.push((commanders, v));
-        v.x -= 2.0 * CARD_WIDTH - 2.0;
-        decks.push((tokens, v));
-        v.x -= CARD_WIDTH - 1.0;
-        decks.push((side, v));
+        let main = get_pile(
+            board["mainboard"]["cards"]
+                .entries()
+                .map(|(_, c)| &c["card"]),
+            client.clone(),
+            asset_server.clone(),
+            decks.clone(),
+            v,
+        );
+        let tokens = get_pile(
+            json["tokens"].members(),
+            client.clone(),
+            asset_server.clone(),
+            decks.clone(),
+            v - Vec2::new(CARD_WIDTH + 1.0, 0.0),
+        );
+        let side = get_pile(
+            board["sideboard"]["cards"]
+                .entries()
+                .map(|(_, c)| &c["card"]),
+            client.clone(),
+            asset_server.clone(),
+            decks.clone(),
+            v - Vec2::new(2.0 * CARD_WIDTH + 2.0, 0.0),
+        );
+        commanders.await;
+        main.await;
+        tokens.await;
+        side.await;
     }
 }
