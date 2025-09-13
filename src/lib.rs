@@ -12,8 +12,6 @@ use bevy_rand::prelude::EntropyPlugin;
 use bevy_rapier3d::prelude::*;
 use rand::RngCore;
 use std::sync::{Arc, Mutex};
-#[cfg(feature = "wasm")]
-use tokio::runtime::Builder;
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = 488.0;
 pub const CARD_HEIGHT: f32 = 680.0;
@@ -33,8 +31,6 @@ use wasm_bindgen_futures::JsFuture;
 pub fn start() {
     #[cfg(not(feature = "wasm"))]
     let runtime = Runtime(tokio::runtime::Runtime::new().unwrap());
-    #[cfg(feature = "wasm")]
-    let runtime = Runtime(Builder::new_current_thread().enable_all().build().unwrap());
     let client = Client(
         reqwest::Client::builder()
             .user_agent(USER_AGENT)
@@ -71,6 +67,7 @@ pub fn start() {
         .insert_resource(clipboard)
         .insert_resource(Download {
             client,
+            #[cfg(not(feature = "wasm"))]
             runtime,
             get_deck,
         })
@@ -395,6 +392,7 @@ impl SyncObject {
 pub struct Download {
     client: Client,
     get_deck: GetDeck,
+    #[cfg(not(feature = "wasm"))]
     runtime: Runtime,
 }
 impl Resource for Download {}

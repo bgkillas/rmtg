@@ -306,9 +306,14 @@ pub fn listen_for_mouse(
                 let asset_server = asset_server.clone();
                 let id = top.id.clone();
                 info!("{}: {id} has requested printings", top.normal.name);
+                #[cfg(not(feature = "wasm"))]
                 down.runtime
                     .0
                     .spawn(async move { get_alts(&id, client, asset_server, get_deck, v).await });
+                #[cfg(feature = "wasm")]
+                wasm_bindgen_futures::spawn_local(async move {
+                    get_alts(&id, client, asset_server, get_deck, v).await;
+                })
             } else if input.just_pressed(KeyCode::KeyO)
                 && is_rev.is_none()
                 && zoom
