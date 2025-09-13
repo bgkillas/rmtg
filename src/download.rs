@@ -110,9 +110,9 @@ pub async fn get_alts(
 }
 async fn get_bytes(id: &str, client: &reqwest::Client, normal: bool) -> Option<Bytes> {
     let url = if normal {
-        format!("https://api.scryfall.com/cards/{id}?format=image&version=png",)
+        format!("https://api.scryfall.com/cards/{id}?format=image&version=large",)
     } else {
-        format!("https://api.scryfall.com/cards/{id}?format=image&version=png&face=back",)
+        format!("https://api.scryfall.com/cards/{id}?format=image&version=large&face=back",)
     };
     let res = client.get(url).send().await.ok()?;
     res.bytes().await.ok()
