@@ -8,6 +8,7 @@ pub fn make_material(
 ) -> Handle<StandardMaterial> {
     materials.add(StandardMaterial {
         base_color_texture: Some(top),
+        //alpha_mode: AlphaMode::Premultiplied,
         unlit: true,
         ..default()
     })
@@ -21,11 +22,10 @@ pub fn new_pile(
     card_back: Handle<StandardMaterial>,
     card_side: Handle<StandardMaterial>,
     rand: &mut GlobalEntropy<WyRand>,
-    x: f32,
-    z: f32,
+    v: Vec2,
 ) {
     let size = pile.0.len() as f32;
-    let mut transform = Transform::from_xyz(x, size, z);
+    let mut transform = Transform::from_xyz(v.x, size, v.y);
     transform.rotate_x(-PI / 2.0);
     new_pile_at(
         pile, card_stock, materials, commands, meshes, card_back, card_side, transform, rand,

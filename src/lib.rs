@@ -14,8 +14,6 @@ use rand::RngCore;
 use std::sync::{Arc, Mutex};
 #[cfg(feature = "wasm")]
 use tokio::runtime::Builder;
-#[cfg(not(feature = "wasm"))]
-use tokio::task::JoinHandle;
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = 488.0;
 pub const CARD_HEIGHT: f32 = 680.0;
@@ -53,7 +51,7 @@ pub fn start() {
         fit_canvas_to_parent: true,
         ..default()
     });
-    let decks = GetDeck::default();
+    let get_deck = GetDeck::default();
     App::new()
         .add_plugins((
             DefaultPlugins
@@ -71,9 +69,11 @@ pub fn start() {
             EntropyPlugin::<WyRand>::default(),
         ))
         .insert_resource(clipboard)
-        .insert_resource(runtime)
-        .insert_resource(client)
-        .insert_resource(decks)
+        .insert_resource(Download {
+            client,
+            runtime,
+            get_deck,
+        })
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -131,7 +131,9 @@ fn test_get_deck() {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let tmr = std::time::Instant::now();
         let asset_server = asset_server.clone();
-        let deck = runtime
+        let decks = GetDeck::default();
+        let deck = decks.clone();
+        runtime
             .block_on(runtime.spawn(async move {
                 download::get_deck(
                     "https://api2.moxfield.com/v3/decks/all/_HGo1kgcB0i-4Iq0vR-LZA".to_string(),
@@ -140,19 +142,21 @@ fn test_get_deck() {
                         .build()
                         .unwrap(),
                     asset_server,
+                    deck,
+                    Vec2::default(),
                 )
                 .await
             }))
             .unwrap();
-        assert!(deck.is_some());
-        let deck = deck.unwrap();
+        let deck = decks.0.lock().unwrap();
+        assert_eq!(deck.len(), 4);
         println!(
             "{} {} {} {} {}",
             tmr.elapsed().as_millis(),
-            deck.commanders.len(),
-            deck.main.len(),
-            deck.tokens.len(),
-            deck.side.len()
+            deck[0].0.0.len(),
+            deck[1].0.0.len(),
+            deck[2].0.0.len(),
+            deck[3].0.0.len()
         );
     }
     app.add_systems(Update, test);
@@ -171,19 +175,8 @@ pub struct Hand {
 }
 #[derive(Component, Default, Debug)]
 pub struct Pile(pub Vec<Card>);
-#[derive(Resource, Debug, Default)]
-#[cfg(feature = "wasm")]
-pub struct GetDeck(pub Arc<Mutex<Vec<Pile>>>, Vec2);
-#[derive(Resource, Debug, Default)]
-#[cfg(not(feature = "wasm"))]
-pub struct GetDeck(pub Arc<Mutex<Vec<JoinHandle<Option<Pile>>>>>, Vec2);
-#[derive(Debug)]
-pub struct Deck {
-    pub commanders: Pile,
-    pub main: Pile,
-    pub tokens: Pile,
-    pub side: Pile,
-}
+#[derive(Resource, Debug, Default, Clone)]
+pub struct GetDeck(pub Arc<Mutex<Vec<(Pile, Vec2)>>>);
 #[derive(Debug, Default)]
 #[allow(dead_code)]
 pub struct CardInfo {
@@ -399,6 +392,12 @@ impl SyncObject {
         Self(rand.next_u64())
     }
 }
+pub struct Download {
+    client: Client,
+    get_deck: GetDeck,
+    runtime: Runtime,
+}
+impl Resource for Download {}
 #[derive(Component, Default, Debug)]
 pub struct FollowMouse;
 #[derive(Component, Default, Debug)]

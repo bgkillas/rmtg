@@ -1,4 +1,4 @@
-use crate::download::get_deck;
+use crate::download::{get_alts, get_deck};
 use crate::misc::{make_material, new_pile, new_pile_at};
 use crate::*;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
@@ -158,7 +158,7 @@ pub fn listen_for_mouse(
     input: Res<ButtonInput<KeyCode>>,
     mut rand: GlobalEntropy<WyRand>,
     zoom: Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
-    piles: ResMut<GetPile>,
+    (down, asset_server): (ResMut<Download>, Res<AssetServer>),
 ) {
     let Some(cursor_position) = window.cursor_position() else {
         return;
@@ -297,7 +297,18 @@ pub fn listen_for_mouse(
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
             {
                 let top = pile.0.last().unwrap();
-                todo!() //use scryfall
+                let v = Vec2::new(
+                    transform.translation.x,
+                    transform.translation.y + CARD_HEIGHT,
+                );
+                let client = down.client.0.clone();
+                let get_deck = down.get_deck.clone();
+                let asset_server = asset_server.clone();
+                let id = top.id.clone();
+                info!("{}: {id} has requested printings", top.normal.name);
+                down.runtime
+                    .0
+                    .spawn(async move { get_alts(&id, client, asset_server, get_deck, v).await });
             } else if input.just_pressed(KeyCode::KeyO)
                 && is_rev.is_none()
                 && zoom
@@ -510,10 +521,8 @@ pub fn cam_rotation(
 pub fn listen_for_deck(
     input: Res<ButtonInput<KeyCode>>,
     mut clipboard: ResMut<Clipboard>,
-    client: Res<Client>,
-    runtime: Res<Runtime>,
+    down: ResMut<Download>,
     asset_server: Res<AssetServer>,
-    decks: ResMut<GetDeck>,
 ) {
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
         && input.just_pressed(KeyCode::KeyV)
@@ -525,13 +534,14 @@ pub fn listen_for_deck(
             || paste.len() == 22
         {
             let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap_or(paste);
+            info!("{id} request received");
             let url = format!("https://api2.moxfield.com/v3/decks/all/{id}");
-            let client = client.0.clone();
+            let client = down.client.0.clone();
+            let decks = down.get_deck.clone();
             let asset_server = asset_server.clone();
-            let task = runtime
-                .0
-                .spawn(async move { get_deck(url, client, asset_server).await });
-            decks.0.lock().unwrap().push(task)
+            down.runtime.0.spawn(async move {
+                get_deck(url, client, asset_server, decks, Vec2::default()).await
+            });
         }
     }
 }
@@ -539,9 +549,8 @@ pub fn listen_for_deck(
 pub fn listen_for_deck(
     input: Res<ButtonInput<KeyCode>>,
     clipboard: ResMut<Clipboard>,
-    client: Res<Client>,
     asset_server: Res<AssetServer>,
-    decks: ResMut<GetDeck>,
+    down: ResMut<Download>,
 ) {
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
         && input.just_pressed(KeyCode::KeyV)
@@ -568,28 +577,17 @@ pub fn listen_for_deck(
 }
 pub fn register_deck(
     mut commands: Commands,
-    decks: ResMut<GetDeck>,
+    decks: ResMut<Download>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     card_base: Res<CardBase>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut rand: GlobalEntropy<WyRand>,
-    #[cfg(not(feature = "wasm"))] runtime: Res<Runtime>,
 ) {
-    let mut decks = decks.0.lock().unwrap();
-    for deck in {
-        #[cfg(feature = "wasm")]
-        {
-            decks.drain(..)
-        }
-        #[cfg(not(feature = "wasm"))]
-        {
-            decks
-                .extract_if(.., |a| a.is_finished())
-                .filter_map(|a| runtime.0.block_on(a).ok().flatten())
-        }
-    } {
+    let mut decks = decks.get_deck.0.lock().unwrap();
+    for (deck, v) in decks.drain(..) {
+        info!("deck found of size {} at {} {}", deck.0.len(), v.x, v.y);
         new_pile(
-            deck.commanders,
+            deck,
             card_base.stock.clone_weak(),
             &mut materials,
             &mut commands,
@@ -597,44 +595,7 @@ pub fn register_deck(
             card_base.back.clone_weak(),
             card_base.side.clone_weak(),
             &mut rand,
-            -1000.0,
-            0.0,
-        );
-        new_pile(
-            deck.main,
-            card_base.stock.clone_weak(),
-            &mut materials,
-            &mut commands,
-            &mut meshes,
-            card_base.back.clone_weak(),
-            card_base.side.clone_weak(),
-            &mut rand,
-            -500.0,
-            0.0,
-        );
-        new_pile(
-            deck.side,
-            card_base.stock.clone_weak(),
-            &mut materials,
-            &mut commands,
-            &mut meshes,
-            card_base.back.clone_weak(),
-            card_base.side.clone_weak(),
-            &mut rand,
-            500.0,
-            0.0,
-        );
-        new_pile(
-            deck.tokens,
-            card_base.stock.clone_weak(),
-            &mut materials,
-            &mut commands,
-            &mut meshes,
-            card_base.back.clone_weak(),
-            card_base.side.clone_weak(),
-            &mut rand,
-            1000.0,
-            0.0,
+            v,
         );
     }
 }

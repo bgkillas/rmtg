@@ -55,13 +55,20 @@ pub async fn get_alts(
     id: &str,
     client: reqwest::Client,
     asset_server: AssetServer,
-) -> Option<Pile> {
-    let url = format!(
-        "https://api.scryfall.com/cards/search?order=released&q=oracleid%{id}&unique=prints"
-    );
+    get_deck: GetDeck,
+    v: Vec2,
+) -> Option<()> {
+    let url = format!("https://api.scryfall.com/cards/{id}");
     let res = client.get(url).send().await.ok()?;
     let res = res.text().await.ok()?;
     let json = json::parse(&res).ok()?;
+    let id = &json["oracle_id"];
+    let url = format!(
+        "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A{id}&unique=prints"
+    );
+    let res = client.get(url).send().await.ok()?;
+    let res = res.text().await.ok()?;
+    let mut json = json::parse(&res).ok()?;
     let size = json["total_cards"].as_usize()?;
     let mut futures = Vec::new();
     futures.push(
@@ -76,7 +83,7 @@ pub async fn get_alts(
         let url = json["next_page"].as_str()?;
         let res = client.get(url).send().await.ok()?;
         let res = res.text().await.ok()?;
-        let json = json::parse(&res).ok()?;
+        json = json::parse(&res).ok()?;
         futures
             .push(process_data(json["data"].members(), client.clone(), asset_server.clone()).await);
     }
@@ -88,7 +95,8 @@ pub async fn get_alts(
             .into_iter()
             .flatten(),
     );
-    Some(Pile(vec))
+    get_deck.0.lock().unwrap().push((Pile(vec), v));
+    None
 }
 async fn get_bytes(id: &str, client: &reqwest::Client, normal: bool) -> Option<Bytes> {
     let url = if normal {
@@ -130,7 +138,9 @@ pub async fn parse(
     asset_server: AssetServer,
 ) -> Option<Card> {
     let double = value["card_faces"].members().next().is_some();
-    let id = value["scryfall_id"].as_str()?;
+    let id = value["scryfall_id"]
+        .as_str()
+        .or_else(|| value["id"].as_str())?;
     let bytes = get_bytes(id, &client, true).await?;
     let alt_bytes = if double {
         get_bytes(id, &client, false).await
@@ -195,7 +205,9 @@ pub async fn get_deck(
     url: String,
     client: reqwest::Client,
     asset_server: AssetServer,
-) -> Option<Deck> {
+    decks: GetDeck,
+    mut v: Vec2,
+) {
     if let Ok(res) = client.get(url).send().await
         && let Ok(text) = res.text().await
         && let Ok(json) = json::parse(&text)
@@ -228,13 +240,13 @@ pub async fn get_deck(
                 .entries()
                 .map(|(_, c)| &c["card"])
         );
-        Some(Deck {
-            commanders,
-            main,
-            tokens,
-            side,
-        })
-    } else {
-        None
+        let mut decks = decks.0.lock().unwrap();
+        decks.push((main, v));
+        v.x += CARD_WIDTH;
+        decks.push((commanders, v));
+        v.x -= 2.0 * CARD_WIDTH;
+        decks.push((tokens, v));
+        v.x -= CARD_WIDTH;
+        decks.push((side, v));
     }
 }
