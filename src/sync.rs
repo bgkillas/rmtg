@@ -90,6 +90,11 @@ pub fn apply_sync(
                         None,
                     );
                     commands.entity(ent.unwrap()).insert(id);
+                    networking.send_p2p_packet(
+                        sender,
+                        SendType::Reliable,
+                        &encode(&Packet::Received(lid)),
+                    );
                 }
             }
         }
