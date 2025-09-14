@@ -10,28 +10,25 @@ use json::JsonValue;
 use json::iterators::Members;
 use std::io::Cursor;
 pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<Image>> {
-    fn to_asset(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<Image>> {
-        let image = ImageReader::new(Cursor::new(bytes))
-            .with_guessed_format()
-            .ok()?
-            .decode()
-            .ok()?;
-        let rgba = image.to_rgba8();
-        let (width, height) = image.dimensions();
-        let image = Image::new(
-            Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            TextureDimension::D2,
-            rgba.into_raw(),
-            TextureFormat::Rgba8UnormSrgb,
-            RenderAssetUsages::RENDER_WORLD,
-        );
-        Some(asset_server.add(image))
-    }
-    to_asset(bytes, asset_server)
+    let image = ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()
+        .ok()?
+        .decode()
+        .ok()?;
+    let rgba = image.to_rgba8();
+    let (width, height) = image.dimensions();
+    let image = Image::new(
+        Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        rgba.into_raw(),
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::RENDER_WORLD,
+    );
+    Some(asset_server.add(image))
 }
 pub async fn spawn_singleton(
     client: reqwest::Client,

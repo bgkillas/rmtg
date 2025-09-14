@@ -22,7 +22,9 @@ pub const DAMPING: f32 = 1.0;
 mod download;
 mod misc;
 mod setup;
+pub mod sync;
 mod update;
+use crate::sync::{Peers, SyncCount, apply_sync, get_sync};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
@@ -31,7 +33,7 @@ use wasm_bindgen_futures::JsFuture;
 pub fn start() {
     #[cfg(not(feature = "wasm"))]
     let runtime = Runtime(tokio::runtime::Runtime::new().unwrap());
-    let client = Client(
+    let client = ReqClient(
         reqwest::Client::builder()
             .user_agent(USER_AGENT)
             .build()
@@ -49,42 +51,48 @@ pub fn start() {
     });
     let get_deck = GetDeck::default();
     let game_clipboard = GameClipboard(None);
-    App::new()
-        .add_plugins((
-            DefaultPlugins
-                .set(WindowPlugin {
-                    primary_window: app_window,
-                    ..default()
-                })
-                .set(AssetPlugin {
-                    meta_check: AssetMetaCheck::Never,
-                    ..default()
-                }),
-            RapierPhysicsPlugin::<NoUserData>::default(),
-            RapierDebugRenderPlugin::default(),
-            FramepacePlugin,
-            EntropyPlugin::<WyRand>::default(),
-        ))
-        .insert_resource(clipboard)
-        .insert_resource(game_clipboard)
-        .insert_resource(Download {
-            client,
-            #[cfg(not(feature = "wasm"))]
-            runtime,
-            get_deck,
-        })
-        .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (
-                listen_for_deck,
-                register_deck,
-                cam_translation,
-                cam_rotation,
-                (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
-            ),
-        )
-        .run();
+    let mut app = App::new();
+    #[cfg(feature = "steam")]
+    app.add_plugins(bevy_steamworks::SteamworksPlugin::init_app(480).unwrap());
+    app.add_plugins((
+        DefaultPlugins
+            .set(WindowPlugin {
+                primary_window: app_window,
+                ..default()
+            })
+            .set(AssetPlugin {
+                meta_check: AssetMetaCheck::Never,
+                ..default()
+            }),
+        RapierPhysicsPlugin::<NoUserData>::default(),
+        RapierDebugRenderPlugin::default(),
+        FramepacePlugin,
+        EntropyPlugin::<WyRand>::default(),
+    ))
+    .insert_resource(clipboard)
+    .insert_resource(SyncCount(0))
+    .insert_resource(Peers(Vec::new()))
+    .insert_resource(game_clipboard)
+    .insert_resource(Download {
+        client,
+        #[cfg(not(feature = "wasm"))]
+        runtime,
+        get_deck,
+    })
+    .add_systems(Startup, setup)
+    .add_systems(
+        Update,
+        (
+            listen_for_deck,
+            register_deck,
+            cam_translation,
+            cam_rotation,
+            (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
+        ),
+    )
+    .add_systems(PostUpdate, get_sync)
+    .add_systems(PreUpdate, apply_sync);
+    app.run();
 }
 #[test]
 #[cfg(not(feature = "wasm"))]
@@ -254,8 +262,8 @@ pub enum Type {
     #[default]
     None,
 }
-#[allow(dead_code)]
 #[rustfmt::skip]
+#[allow(dead_code)]
 #[derive(Debug, Default, Clone)]
 pub enum CreatureType {
     TimeLord, Advisor, Aetherborn, Alien, Ally, Angel, Antelope, Ape, Archer, Archon, Armadillo, Army, Artificer, Assassin, AssemblyWorker, Astartes, Atog, Aurochs, Avatar, Azra, Badger, Balloon,
@@ -378,21 +386,13 @@ impl From<&str> for Cost {
 }
 #[derive(Debug, Default, Clone)]
 pub struct Card {
+    pub id: String,
     pub normal: CardInfo,
     pub alt: Option<CardInfo>,
-    pub id: String,
     pub is_alt: bool,
 }
-#[derive(Component, Default, Debug)]
-#[allow(dead_code)]
-pub struct SyncObject(pub u64);
-impl SyncObject {
-    pub fn new(rand: &mut GlobalEntropy<WyRand>) -> Self {
-        Self(rand.next_u64())
-    }
-}
 pub struct Download {
-    client: Client,
+    client: ReqClient,
     get_deck: GetDeck,
     #[cfg(not(feature = "wasm"))]
     runtime: Runtime,
@@ -429,8 +429,8 @@ impl Clipboard {
     }
 }
 impl Resource for Clipboard {}
-pub struct Client(pub reqwest::Client);
-impl Resource for Client {}
+pub struct ReqClient(pub reqwest::Client);
+impl Resource for ReqClient {}
 pub struct Runtime(pub tokio::runtime::Runtime);
 impl Resource for Runtime {}
 pub struct CardBase {

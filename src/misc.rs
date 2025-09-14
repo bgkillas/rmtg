@@ -1,3 +1,4 @@
+use crate::sync::SyncObjectMe;
 use crate::*;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalEntropy;
@@ -23,13 +24,25 @@ pub fn new_pile(
     card_side: Handle<StandardMaterial>,
     rand: &mut GlobalEntropy<WyRand>,
     v: Vec2,
+    count: &mut SyncCount,
 ) {
     let size = pile.0.len() as f32;
     let mut transform = Transform::from_xyz(v.x, size, v.y);
     transform.rotate_x(-PI / 2.0);
     new_pile_at(
-        pile, card_stock, materials, commands, meshes, card_back, card_side, transform, rand,
-        false, false, None,
+        pile,
+        card_stock,
+        materials,
+        commands,
+        meshes,
+        card_back,
+        card_side,
+        transform,
+        rand,
+        false,
+        false,
+        None,
+        Some(count),
     );
 }
 pub fn new_pile_at(
@@ -45,6 +58,7 @@ pub fn new_pile_at(
     follow_mouse: bool,
     reverse: bool,
     parent: Option<Entity>,
+    count: Option<&mut SyncCount>,
 ) -> Option<Entity> {
     if pile.0.is_empty() {
         return None;
@@ -83,7 +97,6 @@ pub fn new_pile_at(
             angular_damping: 0.0,
         },
         AdditionalMassProperties::Mass(size),
-        SyncObject::new(rand),
         children![
             (
                 Mesh3d(card_stock.clone_weak()),
@@ -109,6 +122,9 @@ pub fn new_pile_at(
             (Mesh3d(mesh2), MeshMaterial3d(card_side), transform5)
         ],
     ));
+    if let Some(count) = count {
+        ent.insert(SyncObjectMe::new(rand, count));
+    }
     if follow_mouse {
         ent.insert(FollowMouse);
     }

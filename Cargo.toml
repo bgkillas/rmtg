@@ -22,9 +22,10 @@ crate-type = ["cdylib", "rlib"]
 wasm-opt = false
 
 [features]
-default=["bin"]
+default=["bin", "steam"]
 bin=["dep:arboard", "tokio/rt-multi-thread"]
 wasm=["bevy_rand/wasm_js", "dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:web-sys", "dep:console_error_panic_hook"]
+steam=["dep:bevy-steamworks"]
 
 [dependencies]
 bevy={version="0.16.1", features = ["bevy_dev_tools", "wayland", "jpeg"]}
@@ -44,8 +45,11 @@ wasm-bindgen = {version="0.2.101", optional = true}
 wasm-bindgen-futures = {version="0.4.51", optional = true}
 web-sys = { version = "0.3.78", optional = true, features = ["Clipboard", "Navigator", "Window"] }
 console_error_panic_hook = { version = "0.1.7", optional = true }
+bevy-steamworks ={version= "0.14", optional = true}
 #serde = { version = "1.0.219", features = ["derive"] }
 #bitcode = {version="0.6.7", features = ["serde"] }
+bitcode = "0.6.7"
+lz4_flex = {version="0.11.5", default-features = false}
 
 [lints.clippy]
 too_many_arguments = "allow"

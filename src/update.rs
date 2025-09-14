@@ -158,10 +158,11 @@ pub fn listen_for_mouse(
     input: Res<ButtonInput<KeyCode>>,
     mut rand: GlobalEntropy<WyRand>,
     zoom: Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
-    (down, asset_server, mut game_clipboard): (
+    (down, asset_server, mut game_clipboard, mut count): (
         ResMut<Download>,
         Res<AssetServer>,
         ResMut<GameClipboard>,
+        ResMut<SyncCount>,
     ),
 ) {
     let Some(cursor_position) = window.cursor_position() else {
@@ -210,6 +211,7 @@ pub fn listen_for_mouse(
                     false,
                     is_reversed,
                     None,
+                    Some(&mut count),
                 );
                 commands.entity(entity).despawn();
             } else if input.just_pressed(KeyCode::KeyR) {
@@ -229,6 +231,7 @@ pub fn listen_for_mouse(
                     false,
                     reversed,
                     None,
+                    Some(&mut count),
                 );
                 commands.entity(entity).despawn();
             } else if input.just_pressed(KeyCode::Backspace)
@@ -265,6 +268,7 @@ pub fn listen_for_mouse(
                         false,
                         reversed,
                         None,
+                        Some(&mut count),
                     );
                 }
                 commands.entity(entity).despawn();
@@ -282,6 +286,7 @@ pub fn listen_for_mouse(
                     true,
                     reversed,
                     None,
+                    Some(&mut count),
                 );
             } else if input.just_pressed(KeyCode::KeyE) {
                 let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
@@ -390,6 +395,7 @@ pub fn listen_for_mouse(
                                 false,
                                 false,
                                 Some(hand.2),
+                                Some(&mut count),
                             )
                             .unwrap();
                             commands.entity(ent).insert(InHand(hand.0.count));
@@ -412,6 +418,7 @@ pub fn listen_for_mouse(
                             false,
                             reversed,
                             None,
+                            Some(&mut count),
                         );
                     }
                     commands.entity(entity).despawn();
@@ -548,6 +555,7 @@ pub fn listen_for_deck(
     mut meshes: ResMut<Assets<Mesh>>,
     mut commands: Commands,
     mut rand: GlobalEntropy<WyRand>,
+    mut count: ResMut<SyncCount>,
 ) {
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
         && input.just_pressed(KeyCode::KeyV)
@@ -612,6 +620,7 @@ pub fn listen_for_deck(
                 card_base.side.clone_weak(),
                 &mut rand,
                 v,
+                &mut count,
             );
         }
     }
@@ -623,6 +632,7 @@ pub fn register_deck(
     card_base: Res<CardBase>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut rand: GlobalEntropy<WyRand>,
+    mut count: ResMut<SyncCount>,
 ) {
     let mut decks = decks.get_deck.0.lock().unwrap();
     for (deck, v) in decks.drain(..) {
@@ -637,6 +647,7 @@ pub fn register_deck(
             card_base.side.clone_weak(),
             &mut rand,
             v,
+            &mut count,
         );
     }
 }

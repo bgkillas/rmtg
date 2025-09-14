@@ -1,14 +1,11 @@
 use crate::*;
 use bevy_framepace::{FramepaceSettings, Limiter};
-use bevy_prng::WyRand;
-use bevy_rand::global::GlobalEntropy;
 pub fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut framepace: ResMut<FramepaceSettings>,
-    mut rand: GlobalEntropy<WyRand>,
 ) {
     framepace.limiter = Limiter::from_framerate(60.0);
     let card_stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
@@ -70,7 +67,6 @@ pub fn setup(
             angular_damping: 0.0,
         },
         AdditionalMassProperties::Mass(4.0),
-        SyncObject::new(&mut rand),
         Mesh3d(meshes.add(RegularPolygon::new(128.0, 4))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::WHITE,
