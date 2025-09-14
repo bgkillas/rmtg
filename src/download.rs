@@ -184,7 +184,7 @@ pub async fn parse(
             color,
             power,
             toughness,
-            image,
+            image: image.into(),
         },
         alt: alt_image.map(|image| CardInfo {
             name: alt_name.unwrap(),
@@ -194,7 +194,7 @@ pub async fn parse(
             color: alt_color,
             power: alt_power,
             toughness: alt_toughness,
-            image,
+            image: image.into(),
         }),
         id: id.to_string(),
         is_alt: false,

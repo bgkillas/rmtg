@@ -38,7 +38,7 @@ pub fn new_pile(
         card_back,
         card_side,
         transform,
-        rand,
+        Some(rand),
         false,
         false,
         None,
@@ -54,7 +54,7 @@ pub fn new_pile_at(
     card_back: Handle<StandardMaterial>,
     card_side: Handle<StandardMaterial>,
     transform: Transform,
-    rand: &mut GlobalEntropy<WyRand>,
+    rand: Option<&mut GlobalEntropy<WyRand>>,
     follow_mouse: bool,
     reverse: bool,
     parent: Option<Entity>,
@@ -64,7 +64,7 @@ pub fn new_pile_at(
         return None;
     }
     let card = pile.0.last().unwrap();
-    let top = card.normal.image.clone_weak();
+    let top = card.normal.image().clone_weak();
     let material_handle = make_material(materials, top);
     let size = pile.0.len() as f32;
     let mut transform1 = Transform::from_rotation(Quat::from_rotation_y(PI));
@@ -123,7 +123,7 @@ pub fn new_pile_at(
         ],
     ));
     if let Some(count) = count {
-        ent.insert(SyncObjectMe::new(rand, count));
+        ent.insert(SyncObjectMe::new(rand.unwrap(), count));
     }
     if follow_mouse {
         ent.insert(FollowMouse);

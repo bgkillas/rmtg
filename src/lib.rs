@@ -10,7 +10,9 @@ use bevy_prng::WyRand;
 use bevy_rand::global::GlobalEntropy;
 use bevy_rand::prelude::EntropyPlugin;
 use bevy_rapier3d::prelude::*;
+use bitcode::{Decode, Encode};
 use rand::RngCore;
+use std::mem::MaybeUninit;
 use std::sync::{Arc, Mutex};
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = 488.0;
@@ -24,7 +26,7 @@ mod misc;
 mod setup;
 pub mod sync;
 mod update;
-use crate::sync::{Peers, SyncCount, apply_sync, get_sync};
+use crate::sync::{Peers, Sent, SyncCount, apply_sync, get_sync};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
@@ -70,8 +72,9 @@ pub fn start() {
         EntropyPlugin::<WyRand>::default(),
     ))
     .insert_resource(clipboard)
-    .insert_resource(SyncCount(0))
-    .insert_resource(Peers(Vec::new()))
+    .insert_resource(SyncCount::default())
+    .insert_resource(Sent::default())
+    .insert_resource(Peers::default())
     .insert_resource(game_clipboard)
     .insert_resource(Download {
         client,
@@ -180,11 +183,16 @@ pub struct Hand {
     pub count: usize,
     pub removed: Vec<usize>,
 }
-#[derive(Component, Default, Debug, Clone)]
+#[derive(Component, Default, Debug, Clone, Encode, Decode)]
 pub struct Pile(pub Vec<Card>);
+impl Pile {
+    fn clone_no_image(&self) -> Self {
+        Pile(self.0.iter().map(|a| a.clone_no_image()).collect())
+    }
+}
 #[derive(Resource, Debug, Default, Clone)]
 pub struct GetDeck(pub Arc<Mutex<Vec<(Pile, Vec2)>>>);
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Encode, Decode)]
 #[allow(dead_code)]
 pub struct CardInfo {
     pub name: String,
@@ -194,10 +202,47 @@ pub struct CardInfo {
     pub color: Color,
     pub power: u16,
     pub toughness: u16,
-    pub image: Handle<Image>,
+    #[bitcode(skip)]
+    image: UninitImage,
+}
+impl CardInfo {
+    pub fn clone_no_image(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            mana_cost: self.mana_cost,
+            card_type: self.card_type,
+            text: self.text.clone(),
+            color: self.color,
+            power: self.power,
+            toughness: self.toughness,
+            image: Default::default(),
+        }
+    }
+}
+#[derive(Debug)]
+struct UninitImage(MaybeUninit<Handle<Image>>);
+impl From<Handle<Image>> for UninitImage {
+    fn from(value: Handle<Image>) -> Self {
+        Self(MaybeUninit::new(value))
+    }
+}
+impl Clone for UninitImage {
+    fn clone(&self) -> Self {
+        unsafe { self.0.assume_init_ref().clone().into() }
+    }
+}
+impl Default for UninitImage {
+    fn default() -> Self {
+        Self(MaybeUninit::uninit())
+    }
+}
+impl CardInfo {
+    pub fn image(&self) -> &Handle<Image> {
+        unsafe { self.image.0.assume_init_ref() }
+    }
 }
 #[allow(dead_code)]
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
 pub enum SuperType {
     Basic,
     Legendary,
@@ -208,7 +253,7 @@ pub enum SuperType {
     None,
 }
 #[allow(dead_code)]
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
 pub enum SubType {
     Equipment,
     Fortification,
@@ -248,7 +293,7 @@ impl Type {
     }
 }
 #[allow(dead_code)]
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
 pub enum Type {
     Land,
     Creature,
@@ -262,29 +307,8 @@ pub enum Type {
     #[default]
     None,
 }
-#[rustfmt::skip]
 #[allow(dead_code)]
-#[derive(Debug, Default, Clone)]
-pub enum CreatureType {
-    TimeLord, Advisor, Aetherborn, Alien, Ally, Angel, Antelope, Ape, Archer, Archon, Armadillo, Army, Artificer, Assassin, AssemblyWorker, Astartes, Atog, Aurochs, Avatar, Azra, Badger, Balloon,
-    Barbarian, Bard, Basilisk, Bat, Bear, Beast, Beaver, Beeble, Beholder, Berserker, Bird, Blinkmoth, Boar, Bringer, Brushwagg, Camarid, Camel, Capybara, Caribou, Carrier, Cat, Centaur, Child,
-    Chimera, Citizen, Cleric, Clown, Cockatrice, Construct, Coward, Coyote, Crab, Crocodile, Ctan, Custodes, Cyberman, Cyclops, Dalek, Dauthi, Demigod, Demon, Deserter, Detective, Devil, Dinosaur,
-    Djinn, Doctor, Dog, Dragon, Drake, Dreadnought, Drone, Druid, Dryad, Dwarf, Efreet, Egg, Elder, Eldrazi, Elemental, Elephant, Elf, Elk, Employee, Eye, Faerie, Ferret, Fish, Flagbearer, Fox,
-    Fractal, Frog, Fungus, Gamer, Gargoyle, Germ, Giant, Gith, Glimmer, Gnoll, Gnome, Goat, Goblin, God, Golem, Gorgon, Graveborn, Gremlin, Griffin, Guest, Hag, Halfling, Hamster, Harpy, Hellion,
-    Hippo, Hippogriff, Homarid, Homunculus, Horror, Horse, Human, Hydra, Hyena, Illusion, Imp, Incarnation, Inkling, Inquisitor, Insect, Jackal, Jellyfish, Juggernaut, Kavu, Kirin, Kithkin, Knight,
-    Kobold, Kor, Kraken, Llama, Lamia, Lammasu, Leech, Leviathan, Lhurgoyf, Licid, Lizard, Manticore, Masticore, Mercenary, Merfolk, Metathran, Minion, Minotaur, Mite, Mole, Monger, Mongoose, Monk,
-    Monkey, Moonfolk, Mount, Mouse, Mutant, Myr, Mystic, Nautilus, Necron, Nephilim, Nightmare, Nightstalker, Ninja, Noble, Noggle, Nomad, Nymph, Octopus, Ogre, Ooze, Orb, Orc, Orgg, Otter, Ouphe,
-    Ox, Oyster, Pangolin, Peasant, Pegasus, Pentavite, Performer, Pest, Phelddagrif, Phoenix, Phyrexian, Pilot, Pincher, Pirate, Plant, Porcupine, Possum, Praetor, Primarch, Prism, Processor, Rabbit,
-    Raccoon, Ranger, Rat, Rebel, Reflection, Rhino, Rigger, Robot, Rogue, Sable, Salamander, Samurai, Sand, Saproling, Satyr, Scarecrow, Scientist, Scion, Scorpion, Scout, Sculpture, Serf, Serpent,
-    Servo, Shade, Shaman, Shapeshifter, Shark, Sheep, Siren, Skeleton, Skunk, Slith, Sliver, Sloth, Slug, Snail, Snake, Soldier, Soltari, Spawn, Specter, Spellshaper, Sphinx, Spider, Spike, Spirit,
-    Splinter, Sponge, Squid, Squirrel, Starfish, Surrakar, Survivor, Synth, Tentacle, Tetravite, Thalakos, Thopter, Thrull, Tiefling, Toy, Treefolk, Trilobite, Triskelavite, Troll, Turtle, Tyranid,
-    Unicorn, Vampire, Varmint, Vedalken, Volver, Wall, Walrus, Warlock, Warrior, Weasel, Weird, Werewolf, Whale, Wizard, Wolf, Wolverine, Wombat, Worm, Wraith, Wurm, Yeti, Zombie, Zubera,
-    #[default]
-    None,
-    All
-}
-#[allow(dead_code)]
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
 pub struct Types {
     pub super_type: SuperType,
     pub main_type: Type,
@@ -321,7 +345,7 @@ impl From<&str> for Types {
         ret
     }
 }
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
 pub struct Color {
     pub white: bool,
     pub blue: bool,
@@ -345,7 +369,7 @@ impl Color {
         cost
     }
 }
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
 pub struct Cost {
     pub white: u8,
     pub blue: u8,
@@ -384,22 +408,32 @@ impl From<&str> for Cost {
         cost
     }
 }
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct Card {
     pub id: String,
     pub normal: CardInfo,
     pub alt: Option<CardInfo>,
     pub is_alt: bool,
 }
+impl Card {
+    pub fn clone_no_image(&self) -> Self {
+        Self {
+            id: self.id.clone(),
+            normal: self.normal.clone_no_image(),
+            alt: self.alt.as_ref().map(|a| a.clone_no_image()),
+            is_alt: self.is_alt,
+        }
+    }
+}
+#[derive(Resource)]
 pub struct Download {
     client: ReqClient,
     get_deck: GetDeck,
     #[cfg(not(feature = "wasm"))]
     runtime: Runtime,
 }
-impl Resource for Download {}
+#[derive(Resource)]
 pub struct GameClipboard(pub Option<Pile>);
-impl Resource for GameClipboard {}
 #[derive(Component, Default, Debug)]
 pub struct FollowMouse;
 #[derive(Component, Default, Debug)]
@@ -407,9 +441,11 @@ pub struct ZoomHold(pub u64, pub bool);
 #[derive(Component, Default, Debug)]
 pub struct Reversed;
 #[cfg(not(feature = "wasm"))]
+#[derive(Resource)]
 pub struct Clipboard(pub arboard::Clipboard);
 #[cfg(feature = "wasm")]
 #[cfg_attr(feature = "wasm", derive(Clone, Copy))]
+#[derive(Resource)]
 pub struct Clipboard;
 impl Clipboard {
     #[cfg(not(feature = "wasm"))]
@@ -428,14 +464,319 @@ impl Clipboard {
             .unwrap_or_default()
     }
 }
-impl Resource for Clipboard {}
+#[derive(Resource)]
 pub struct ReqClient(pub reqwest::Client);
-impl Resource for ReqClient {}
+#[derive(Resource)]
 pub struct Runtime(pub tokio::runtime::Runtime);
-impl Resource for Runtime {}
+#[derive(Resource)]
 pub struct CardBase {
     pub stock: Handle<Mesh>,
     back: Handle<StandardMaterial>,
     side: Handle<StandardMaterial>,
 }
-impl Resource for CardBase {}
+#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
+pub enum CreatureType {
+    TimeLord,
+    Advisor,
+    Aetherborn,
+    Alien,
+    Ally,
+    Angel,
+    Antelope,
+    Ape,
+    Archer,
+    Archon,
+    Armadillo,
+    Army,
+    Artificer,
+    Assassin,
+    AssemblyWorker,
+    Astartes,
+    Atog,
+    Aurochs,
+    Avatar,
+    Azra,
+    Badger,
+    Balloon,
+    Barbarian,
+    Bard,
+    Basilisk,
+    Bat,
+    Bear,
+    Beast,
+    Beaver,
+    Beeble,
+    Beholder,
+    Berserker,
+    Bird,
+    Blinkmoth,
+    Boar,
+    Bringer,
+    Brushwagg,
+    Camarid,
+    Camel,
+    Capybara,
+    Caribou,
+    Carrier,
+    Cat,
+    Centaur,
+    Child,
+    Chimera,
+    Citizen,
+    Cleric,
+    Clown,
+    Cockatrice,
+    Construct,
+    Coward,
+    Coyote,
+    Crab,
+    Crocodile,
+    Ctan,
+    Custodes,
+    Cyberman,
+    Cyclops,
+    Dalek,
+    Dauthi,
+    Demigod,
+    Demon,
+    Deserter,
+    Detective,
+    Devil,
+    Dinosaur,
+    Djinn,
+    Doctor,
+    Dog,
+    Dragon,
+    Drake,
+    Dreadnought,
+    Drone,
+    Druid,
+    Dryad,
+    Dwarf,
+    Efreet,
+    Egg,
+    Elder,
+    Eldrazi,
+    Elemental,
+    Elephant,
+    Elf,
+    Elk,
+    Employee,
+    Eye,
+    Faerie,
+    Ferret,
+    Fish,
+    Flagbearer,
+    Fox,
+    Fractal,
+    Frog,
+    Fungus,
+    Gamer,
+    Gargoyle,
+    Germ,
+    Giant,
+    Gith,
+    Glimmer,
+    Gnoll,
+    Gnome,
+    Goat,
+    Goblin,
+    God,
+    Golem,
+    Gorgon,
+    Graveborn,
+    Gremlin,
+    Griffin,
+    Guest,
+    Hag,
+    Halfling,
+    Hamster,
+    Harpy,
+    Hellion,
+    Hippo,
+    Hippogriff,
+    Homarid,
+    Homunculus,
+    Horror,
+    Horse,
+    Human,
+    Hydra,
+    Hyena,
+    Illusion,
+    Imp,
+    Incarnation,
+    Inkling,
+    Inquisitor,
+    Insect,
+    Jackal,
+    Jellyfish,
+    Juggernaut,
+    Kavu,
+    Kirin,
+    Kithkin,
+    Knight,
+    Kobold,
+    Kor,
+    Kraken,
+    Llama,
+    Lamia,
+    Lammasu,
+    Leech,
+    Leviathan,
+    Lhurgoyf,
+    Licid,
+    Lizard,
+    Manticore,
+    Masticore,
+    Mercenary,
+    Merfolk,
+    Metathran,
+    Minion,
+    Minotaur,
+    Mite,
+    Mole,
+    Monger,
+    Mongoose,
+    Monk,
+    Monkey,
+    Moonfolk,
+    Mount,
+    Mouse,
+    Mutant,
+    Myr,
+    Mystic,
+    Nautilus,
+    Necron,
+    Nephilim,
+    Nightmare,
+    Nightstalker,
+    Ninja,
+    Noble,
+    Noggle,
+    Nomad,
+    Nymph,
+    Octopus,
+    Ogre,
+    Ooze,
+    Orb,
+    Orc,
+    Orgg,
+    Otter,
+    Ouphe,
+    Ox,
+    Oyster,
+    Pangolin,
+    Peasant,
+    Pegasus,
+    Pentavite,
+    Performer,
+    Pest,
+    Phelddagrif,
+    Phoenix,
+    Phyrexian,
+    Pilot,
+    Pincher,
+    Pirate,
+    Plant,
+    Porcupine,
+    Possum,
+    Praetor,
+    Primarch,
+    Prism,
+    Processor,
+    Rabbit,
+    Raccoon,
+    Ranger,
+    Rat,
+    Rebel,
+    Reflection,
+    Rhino,
+    Rigger,
+    Robot,
+    Rogue,
+    Sable,
+    Salamander,
+    Samurai,
+    Sand,
+    Saproling,
+    Satyr,
+    Scarecrow,
+    Scientist,
+    Scion,
+    Scorpion,
+    Scout,
+    Sculpture,
+    Serf,
+    Serpent,
+    Servo,
+    Shade,
+    Shaman,
+    Shapeshifter,
+    Shark,
+    Sheep,
+    Siren,
+    Skeleton,
+    Skunk,
+    Slith,
+    Sliver,
+    Sloth,
+    Slug,
+    Snail,
+    Snake,
+    Soldier,
+    Soltari,
+    Spawn,
+    Specter,
+    Spellshaper,
+    Sphinx,
+    Spider,
+    Spike,
+    Spirit,
+    Splinter,
+    Sponge,
+    Squid,
+    Squirrel,
+    Starfish,
+    Surrakar,
+    Survivor,
+    Synth,
+    Tentacle,
+    Tetravite,
+    Thalakos,
+    Thopter,
+    Thrull,
+    Tiefling,
+    Toy,
+    Treefolk,
+    Trilobite,
+    Triskelavite,
+    Troll,
+    Turtle,
+    Tyranid,
+    Unicorn,
+    Vampire,
+    Varmint,
+    Vedalken,
+    Volver,
+    Wall,
+    Walrus,
+    Warlock,
+    Warrior,
+    Weasel,
+    Weird,
+    Werewolf,
+    Whale,
+    Wizard,
+    Wolf,
+    Wolverine,
+    Wombat,
+    Worm,
+    Wraith,
+    Wurm,
+    Yeti,
+    Zombie,
+    Zubera,
+    #[default]
+    None,
+    All,
+}

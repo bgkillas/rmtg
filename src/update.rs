@@ -207,7 +207,7 @@ pub fn listen_for_mouse(
                     card_base.back.clone_weak(),
                     card_base.side.clone_weak(),
                     *transform,
-                    &mut rand,
+                    Some(&mut rand),
                     false,
                     is_reversed,
                     None,
@@ -227,7 +227,7 @@ pub fn listen_for_mouse(
                     card_base.back.clone_weak(),
                     card_base.side.clone_weak(),
                     *transform,
-                    &mut rand,
+                    Some(&mut rand),
                     false,
                     reversed,
                     None,
@@ -264,7 +264,7 @@ pub fn listen_for_mouse(
                         card_base.back.clone_weak(),
                         card_base.side.clone_weak(),
                         *transform,
-                        &mut rand,
+                        Some(&mut rand),
                         false,
                         reversed,
                         None,
@@ -282,7 +282,7 @@ pub fn listen_for_mouse(
                     card_base.back.clone_weak(),
                     card_base.side.clone_weak(),
                     *transform,
-                    &mut rand,
+                    Some(&mut rand),
                     true,
                     reversed,
                     None,
@@ -342,7 +342,7 @@ pub fn listen_for_mouse(
                 if let Some(alt) = &mut card.alt {
                     mem::swap(&mut card.normal, alt);
                     mats.get_mut(*children.first().unwrap()).unwrap().0 =
-                        make_material(&mut materials, card.normal.image.clone_weak());
+                        make_material(&mut materials, card.normal.image().clone_weak());
                     card.is_alt = !card.is_alt;
                 }
                 pile.0.push(card)
@@ -391,7 +391,7 @@ pub fn listen_for_mouse(
                                 card_base.back.clone_weak(),
                                 card_base.side.clone_weak(),
                                 Transform::default(),
-                                &mut rand,
+                                Some(&mut rand),
                                 false,
                                 false,
                                 Some(hand.2),
@@ -414,7 +414,7 @@ pub fn listen_for_mouse(
                             card_base.back.clone_weak(),
                             card_base.side.clone_weak(),
                             *transform,
-                            &mut rand,
+                            Some(&mut rand),
                             false,
                             reversed,
                             None,
@@ -440,7 +440,7 @@ pub fn listen_for_mouse(
                             } else {
                                 alt
                             }
-                            .image
+                            .image()
                             .clone_weak(),
                         );
                         single.1.1 = !single.1.1;
@@ -451,7 +451,7 @@ pub fn listen_for_mouse(
                         Mesh3d(card_base.stock.clone_weak()),
                         MeshMaterial3d(make_material(
                             &mut materials,
-                            card.normal.image.clone_weak(),
+                            card.normal.image().clone_weak(),
                         )),
                         Transform::from_xyz(0.0, 0.0, -1024.0),
                         ZoomHold(entity.to_bits(), false),
