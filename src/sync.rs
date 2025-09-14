@@ -107,15 +107,17 @@ pub fn new_lobby(
     mut clipboard: ResMut<Clipboard>,
     create: Res<LobbyCreateChannel>,
     join: Res<LobbyJoinChannel>,
+    down: Res<Download>,
 ) {
     if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft]) {
         if input.just_pressed(KeyCode::KeyN) {
             let send = create.sender.clone();
+            let handle = down.runtime.0.handle().clone();
             client
                 .matchmaking()
                 .create_lobby(LobbyType::FriendsOnly, 250, move |id| {
                     if let Ok(id) = id {
-                        tokio::spawn(async move {
+                        handle.spawn(async move {
                             let _ = send.send(id).await;
                         });
                     }
@@ -124,11 +126,12 @@ pub fn new_lobby(
             && let Ok(id) = clipboard.get_text().parse()
         {
             let send = join.sender.clone();
+            let handle = down.runtime.0.handle().clone();
             client
                 .matchmaking()
                 .join_lobby(LobbyId::from_raw(id), move |id| {
                     if let Ok(id) = id {
-                        tokio::spawn(async move {
+                        handle.spawn(async move {
                             let _ = send.send(id).await;
                         });
                     }
