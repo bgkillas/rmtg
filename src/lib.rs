@@ -14,6 +14,7 @@ use bitcode::{Decode, Encode};
 use rand::RngCore;
 use std::mem::MaybeUninit;
 use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc::channel;
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = 488.0;
 pub const CARD_HEIGHT: f32 = 680.0;
@@ -26,7 +27,10 @@ mod misc;
 mod setup;
 pub mod sync;
 mod update;
-use crate::sync::{Peers, Sent, SyncCount, apply_sync, callbacks, get_sync, new_lobby};
+use crate::sync::{
+    LobbyCreateChannel, LobbyJoinChannel, Peers, Sent, SyncCount, apply_sync, get_sync, new_lobby,
+    on_create_lobby, on_join_lobby,
+};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
@@ -54,6 +58,8 @@ pub fn start() {
     let get_deck = GetDeck::default();
     let game_clipboard = GameClipboard(None);
     let mut app = App::new();
+    let (tx1, rx1) = channel(4);
+    let (tx2, rx2) = channel(4);
     #[cfg(feature = "steam")]
     app.add_plugins(bevy_steamworks::SteamworksPlugin::init_app(480).unwrap());
     app.add_plugins((
@@ -71,6 +77,14 @@ pub fn start() {
         FramepacePlugin,
         EntropyPlugin::<WyRand>::default(),
     ))
+    .insert_resource(LobbyCreateChannel {
+        sender: tx1,
+        receiver: rx1,
+    })
+    .insert_resource(LobbyJoinChannel {
+        sender: tx2,
+        receiver: rx2,
+    })
     .insert_resource(clipboard)
     .insert_resource(SyncCount::default())
     .insert_resource(Sent::default())
@@ -91,7 +105,8 @@ pub fn start() {
             cam_translation,
             cam_rotation,
             new_lobby,
-            callbacks,
+            on_create_lobby,
+            on_join_lobby,
             (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
         ),
     )

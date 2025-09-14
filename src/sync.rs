@@ -1,10 +1,9 @@
 use crate::misc::new_pile_at;
 use crate::*;
-use bevy_steamworks::{
-    CallbackResult, Client, LobbyId, LobbyType, SendType, SteamId, SteamworksEvent,
-};
+use bevy_steamworks::{Client, LobbyId, LobbyType, SendType, SteamId};
 use bitcode::{Decode, Encode, decode, encode};
 use std::collections::HashSet;
+use tokio::sync::mpsc::{Receiver, Sender};
 pub fn get_sync(
     client: Res<Client>,
     query: Query<(&SyncObjectMe, &Transform)>,
@@ -31,6 +30,7 @@ pub fn apply_sync(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut commands: Commands,
+    mut peers: ResMut<Peers>,
 ) {
     let networking = client.networking();
     while let Some(size) = networking.is_p2p_packet_available() {
@@ -98,6 +98,17 @@ pub fn apply_sync(
                         &encode(&Packet::Received(lid)),
                     );
                 }
+                Packet::Joined => {
+                    for peer in &peers.0 {
+                        client.networking().send_p2p_packet(
+                            *peer,
+                            SendType::Reliable,
+                            &encode(&Packet::UserJoined(sender.raw())),
+                        );
+                    }
+                    peers.0.push(sender)
+                }
+                Packet::UserJoined(id) => peers.0.push(SteamId::from_raw(id)),
             }
         }
     }
@@ -106,28 +117,60 @@ pub fn new_lobby(
     input: Res<ButtonInput<KeyCode>>,
     client: Res<Client>,
     mut clipboard: ResMut<Clipboard>,
+    create: Res<LobbyCreateChannel>,
+    join: Res<LobbyJoinChannel>,
 ) {
     if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft]) {
         if input.just_pressed(KeyCode::KeyN) {
+            let send = create.sender.clone();
             client
                 .matchmaking()
-                .create_lobby(LobbyType::FriendsOnly, 250, move |_| {});
+                .create_lobby(LobbyType::FriendsOnly, 250, move |id| {
+                    if let Ok(id) = id {
+                        tokio::spawn(async move {
+                            let _ = send.send(id).await;
+                        });
+                    }
+                });
         } else if input.just_pressed(KeyCode::KeyM)
             && let Ok(id) = clipboard.get_text().parse()
         {
+            let send = join.sender.clone();
             client
                 .matchmaking()
-                .join_lobby(LobbyId::from_raw(id), |_| {})
+                .join_lobby(LobbyId::from_raw(id), move |id| {
+                    if let Ok(id) = id {
+                        tokio::spawn(async move {
+                            let _ = send.send(id).await;
+                        });
+                    }
+                })
         }
     }
 }
-pub fn callbacks(mut event: EventReader<SteamworksEvent>, mut clipboard: ResMut<Clipboard>) {
-    for event in event.read() {
-        let SteamworksEvent::CallbackResult(callback) = event;
-        if let CallbackResult::LobbyCreated(lobby) = callback {
-            clipboard.0.set_text(lobby.lobby.raw().to_string()).unwrap();
-        }
+pub fn on_create_lobby(mut create: ResMut<LobbyCreateChannel>, mut clipboard: ResMut<Clipboard>) {
+    while let Ok(event) = create.receiver.try_recv() {
+        clipboard.0.set_text(event.raw().to_string()).unwrap();
     }
+}
+pub fn on_join_lobby(mut join: ResMut<LobbyJoinChannel>, client: Res<Client>) {
+    while let Ok(event) = join.receiver.try_recv() {
+        client.networking().send_p2p_packet(
+            client.matchmaking().lobby_owner(event),
+            SendType::Reliable,
+            &encode(&Packet::Joined),
+        );
+    }
+}
+#[derive(Resource)]
+pub struct LobbyCreateChannel {
+    pub sender: Sender<LobbyId>,
+    pub receiver: Receiver<LobbyId>,
+}
+#[derive(Resource)]
+pub struct LobbyJoinChannel {
+    pub sender: Sender<LobbyId>,
+    pub receiver: Receiver<LobbyId>,
 }
 #[derive(Resource, Default)]
 pub struct Sent(HashSet<SyncObject>);
@@ -137,6 +180,8 @@ pub enum Packet {
     Request(SyncObjectMe),
     Received(SyncObjectMe),
     New(SyncObjectMe, Pile, Trans),
+    UserJoined(u64),
+    Joined,
 }
 #[derive(Encode, Decode)]
 pub struct Trans {
