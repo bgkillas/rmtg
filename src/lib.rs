@@ -26,7 +26,7 @@ mod misc;
 mod setup;
 pub mod sync;
 mod update;
-use crate::sync::{Peers, Sent, SyncCount, apply_sync, get_sync};
+use crate::sync::{Peers, Sent, SyncCount, apply_sync, callbacks, get_sync, new_lobby};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
@@ -90,6 +90,8 @@ pub fn start() {
             register_deck,
             cam_translation,
             cam_rotation,
+            new_lobby,
+            callbacks,
             (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
         ),
     )

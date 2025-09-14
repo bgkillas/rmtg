@@ -1,6 +1,8 @@
 use crate::misc::new_pile_at;
 use crate::*;
-use bevy_steamworks::{Client, SendType, SteamId};
+use bevy_steamworks::{
+    CallbackResult, Client, LobbyId, LobbyType, SendType, SteamId, SteamworksEvent,
+};
 use bitcode::{Decode, Encode, decode, encode};
 use std::collections::HashSet;
 pub fn get_sync(
@@ -97,6 +99,33 @@ pub fn apply_sync(
                     );
                 }
             }
+        }
+    }
+}
+pub fn new_lobby(
+    input: Res<ButtonInput<KeyCode>>,
+    client: Res<Client>,
+    mut clipboard: ResMut<Clipboard>,
+) {
+    if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft]) {
+        if input.just_pressed(KeyCode::KeyN) {
+            client
+                .matchmaking()
+                .create_lobby(LobbyType::FriendsOnly, 250, move |_| {});
+        } else if input.just_pressed(KeyCode::KeyM)
+            && let Ok(id) = clipboard.get_text().parse()
+        {
+            client
+                .matchmaking()
+                .join_lobby(LobbyId::from_raw(id), |_| {})
+        }
+    }
+}
+pub fn callbacks(mut event: EventReader<SteamworksEvent>, mut clipboard: ResMut<Clipboard>) {
+    for event in event.read() {
+        let SteamworksEvent::CallbackResult(callback) = event;
+        if let CallbackResult::LobbyCreated(lobby) = callback {
+            clipboard.0.set_text(lobby.lobby.raw().to_string()).unwrap();
         }
     }
 }
