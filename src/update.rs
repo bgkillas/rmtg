@@ -212,6 +212,7 @@ pub fn listen_for_mouse(
                     is_reversed,
                     None,
                     Some(&mut count),
+                    None,
                 );
                 commands.entity(entity).despawn();
             } else if input.just_pressed(KeyCode::KeyR) {
@@ -232,6 +233,7 @@ pub fn listen_for_mouse(
                     reversed,
                     None,
                     Some(&mut count),
+                    None,
                 );
                 commands.entity(entity).despawn();
             } else if input.just_pressed(KeyCode::Backspace)
@@ -269,6 +271,7 @@ pub fn listen_for_mouse(
                         reversed,
                         None,
                         Some(&mut count),
+                        None,
                     );
                 }
                 commands.entity(entity).despawn();
@@ -287,6 +290,7 @@ pub fn listen_for_mouse(
                     reversed,
                     None,
                     Some(&mut count),
+                    None,
                 );
             } else if input.just_pressed(KeyCode::KeyE) {
                 let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
@@ -396,6 +400,7 @@ pub fn listen_for_mouse(
                                 false,
                                 Some(hand.2),
                                 Some(&mut count),
+                                None,
                             )
                             .unwrap();
                             commands.entity(ent).insert(InHand(hand.0.count));
@@ -419,6 +424,7 @@ pub fn listen_for_mouse(
                             reversed,
                             None,
                             Some(&mut count),
+                            None,
                         );
                     }
                     commands.entity(entity).despawn();
@@ -621,6 +627,7 @@ pub fn listen_for_deck(
                 &mut rand,
                 v,
                 &mut count,
+                None,
             );
         }
     }
@@ -635,7 +642,7 @@ pub fn register_deck(
     mut count: ResMut<SyncCount>,
 ) {
     let mut decks = decks.get_deck.0.lock().unwrap();
-    for (deck, v) in decks.drain(..) {
+    for (deck, v, id) in decks.drain(..) {
         info!("deck found of size {} at {} {}", deck.0.len(), v.x, v.y);
         new_pile(
             deck,
@@ -648,6 +655,7 @@ pub fn register_deck(
             &mut rand,
             v,
             &mut count,
+            id,
         );
     }
 }

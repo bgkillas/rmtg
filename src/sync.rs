@@ -1,4 +1,4 @@
-use crate::misc::new_pile_at;
+use crate::download::add_images;
 use crate::*;
 use bevy_steamworks::{Client, LobbyId, LobbyType, SendType, SteamId};
 use bitcode::{Decode, Encode, decode, encode};
@@ -26,10 +26,8 @@ pub fn apply_sync(
     client: Res<Client>,
     mut query: Query<(&SyncObject, &mut Transform, &Pile)>,
     mut sent: ResMut<Sent>,
-    card_base: Res<CardBase>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    down: Res<Download>,
     mut peers: ResMut<Peers>,
 ) {
     let networking = client.networking();
@@ -76,22 +74,12 @@ pub fn apply_sync(
                 Packet::New(lid, pile, trans) => {
                     let user = sender.raw();
                     let id = SyncObject { user, id: lid.0 };
-                    let ent = new_pile_at(
-                        pile,
-                        card_base.stock.clone_weak(),
-                        &mut materials,
-                        &mut commands,
-                        &mut meshes,
-                        card_base.back.clone_weak(),
-                        card_base.side.clone_weak(),
-                        trans.into(),
-                        None,
-                        false,
-                        false,
-                        None,
-                        None,
-                    );
-                    commands.entity(ent.unwrap()).insert(id);
+                    let deck = down.get_deck.clone();
+                    let client = down.client.0.clone();
+                    let asset_server = asset_server.clone();
+                    down.runtime.0.spawn(async move {
+                        add_images(pile, trans.into(), id, deck, client, asset_server).await
+                    });
                     networking.send_p2p_packet(
                         sender,
                         SendType::Reliable,

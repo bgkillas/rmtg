@@ -28,8 +28,8 @@ mod setup;
 pub mod sync;
 mod update;
 use crate::sync::{
-    LobbyCreateChannel, LobbyJoinChannel, Peers, Sent, SyncCount, apply_sync, get_sync, new_lobby,
-    on_create_lobby, on_join_lobby,
+    LobbyCreateChannel, LobbyJoinChannel, Peers, Sent, SyncCount, SyncObject, apply_sync, get_sync,
+    new_lobby, on_create_lobby, on_join_lobby,
 };
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -208,7 +208,7 @@ impl Pile {
     }
 }
 #[derive(Resource, Debug, Default, Clone)]
-pub struct GetDeck(pub Arc<Mutex<Vec<(Pile, Vec2)>>>);
+pub struct GetDeck(pub Arc<Mutex<Vec<(Pile, Vec2, Option<SyncObject>)>>>);
 #[derive(Debug, Default, Clone, Encode, Decode)]
 #[allow(dead_code)]
 pub struct CardInfo {

@@ -1,4 +1,5 @@
 use crate::Color;
+use crate::sync::SyncObject;
 use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
@@ -43,7 +44,7 @@ pub async fn spawn_singleton(
     let res = res.text().await.ok()?;
     let json = json::parse(&res).ok()?;
     if let Some(card) = parse(&json, client, asset_server).await {
-        get_deck.0.lock().unwrap().push((Pile(vec![card]), v));
+        get_deck.0.lock().unwrap().push((Pile(vec![card]), v, None));
     }
     None
 }
@@ -102,7 +103,27 @@ pub async fn get_alts(
             .into_iter()
             .flatten(),
     );
-    get_deck.0.lock().unwrap().push((Pile(vec), v));
+    get_deck.0.lock().unwrap().push((Pile(vec), v, None));
+    None
+}
+pub async fn add_images(
+    mut pile: Pile,
+    transform: Transform,
+    id: SyncObject,
+    deck: GetDeck,
+    client: reqwest::Client,
+    asset_server: AssetServer,
+) -> Option<()> {
+    for p in pile.0.iter_mut() {
+        let bytes = get_bytes(&p.id, &client, true);
+        if let Some(c) = p.alt.as_mut() {
+            let bytes = get_bytes(&p.id, &client, false);
+            c.image = get_from_img(bytes.await?, &asset_server)?.into();
+        }
+        p.normal.image = get_from_img(bytes.await?, &asset_server)?.into();
+    }
+    let v = Vec2::new(transform.translation.x, transform.translation.z);
+    deck.0.lock().unwrap().push((pile, v, Some(id)));
     None
 }
 async fn get_bytes(id: &str, client: &reqwest::Client, normal: bool) -> Option<Bytes> {
@@ -140,12 +161,13 @@ pub async fn parse(
     let id = value["scryfall_id"]
         .as_str()
         .or_else(|| value["id"].as_str())?;
-    let bytes = get_bytes(id, &client, true).await?;
+    let bytes = get_bytes(id, &client, true);
     let alt_bytes = if double {
         get_bytes(id, &client, false).await
     } else {
         None
     };
+    let bytes = bytes.await?;
     let alt_name = value["meld_result"]["name"]
         .as_str()
         .or(value["card_faces"]
@@ -214,7 +236,7 @@ pub async fn get_pile(
         .collect::<Vec<Card>>()
         .await;
     let mut decks = decks.0.lock().unwrap();
-    decks.push((Pile(pile), v));
+    decks.push((Pile(pile), v, None));
 }
 pub async fn get_deck(
     url: String,

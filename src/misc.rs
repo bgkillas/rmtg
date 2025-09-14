@@ -25,6 +25,7 @@ pub fn new_pile(
     rand: &mut GlobalEntropy<WyRand>,
     v: Vec2,
     count: &mut SyncCount,
+    id: Option<SyncObject>,
 ) {
     let size = pile.0.len() as f32;
     let mut transform = Transform::from_xyz(v.x, size, v.y);
@@ -43,6 +44,7 @@ pub fn new_pile(
         false,
         None,
         Some(count),
+        id,
     );
 }
 pub fn new_pile_at(
@@ -59,6 +61,7 @@ pub fn new_pile_at(
     reverse: bool,
     parent: Option<Entity>,
     count: Option<&mut SyncCount>,
+    id: Option<SyncObject>,
 ) -> Option<Entity> {
     if pile.0.is_empty() {
         return None;
@@ -124,6 +127,8 @@ pub fn new_pile_at(
     ));
     if let Some(count) = count {
         ent.insert(SyncObjectMe::new(rand.unwrap(), count));
+    } else if let Some(id) = id {
+        ent.insert(id);
     }
     if follow_mouse {
         ent.insert(FollowMouse);
