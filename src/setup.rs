@@ -1,3 +1,4 @@
+use crate::sync::spawn_hand;
 use crate::*;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use std::f32::consts::PI;
@@ -38,21 +39,21 @@ pub fn setup(
         ..default()
     });
     let mat_mesh = meshes.add(Rectangle::new(MAT_WIDTH, MAT_HEIGHT));
-    let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, -8.0, MAT_HEIGHT / 2.0);
+    let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, -16.0, MAT_HEIGHT / 2.0);
     transform.rotate_x(-PI / 2.0);
     commands.spawn((
         Mesh3d(mat_mesh.clone_weak()),
         MeshMaterial3d(playmat.clone_weak()),
         transform,
     ));
-    let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, -8.0, MAT_HEIGHT / 2.0);
+    let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, -16.0, MAT_HEIGHT / 2.0);
     transform.rotate_x(-PI / 2.0);
     commands.spawn((
         Mesh3d(mat_mesh.clone_weak()),
         MeshMaterial3d(playmat.clone_weak()),
         transform,
     ));
-    let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, -8.0, -MAT_HEIGHT / 2.0);
+    let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, -16.0, -MAT_HEIGHT / 2.0);
     transform.rotate_x(-PI / 2.0);
     transform.rotate_y(PI);
     commands.spawn((
@@ -60,10 +61,11 @@ pub fn setup(
         MeshMaterial3d(playmat.clone_weak()),
         transform,
     ));
-    let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, -8.0, -MAT_HEIGHT / 2.0);
+    let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, -16.0, -MAT_HEIGHT / 2.0);
     transform.rotate_x(-PI / 2.0);
     transform.rotate_y(PI);
     commands.spawn((Mesh3d(mat_mesh), MeshMaterial3d(playmat), transform));
+    spawn_hand(0, &mut commands);
     const T: f32 = 256.0;
     const W: f32 = 16384.0;
     commands.spawn((Transform::from_xyz(0.0, -T, 0.0), Collider::cuboid(W, T, W)));

@@ -252,13 +252,34 @@ pub fn listen_for_mouse(
                     hand.count -= 1;
                     hand.removed.push(inhand.0)
                 }
-                let reversed = is_rev.is_some();
-                let len = pile.0.len() as f32;
-                let new = pile.0.pop().unwrap();
-                if !pile.0.is_empty() {
-                    let pile = mem::take(&mut pile.0);
+                transform.translation.y += 4.0;
+                if input.pressed(KeyCode::ControlLeft) {
+                    let reversed = is_rev.is_some();
+                    let len = pile.0.len() as f32;
+                    let new = pile.0.pop().unwrap();
+                    if !pile.0.is_empty() {
+                        let pile = mem::take(&mut pile.0);
+                        new_pile_at(
+                            Pile(pile),
+                            card_base.stock.clone_weak(),
+                            &mut materials,
+                            &mut commands,
+                            &mut meshes,
+                            card_base.back.clone_weak(),
+                            card_base.side.clone_weak(),
+                            *transform,
+                            Some(&mut rand),
+                            false,
+                            reversed,
+                            None,
+                            Some(&mut count),
+                            None,
+                        );
+                    }
+                    commands.entity(entity).despawn();
+                    transform.translation.y += len + 4.0;
                     new_pile_at(
-                        Pile(pile),
+                        Pile(vec![new]),
                         card_base.stock.clone_weak(),
                         &mut materials,
                         &mut commands,
@@ -267,31 +288,19 @@ pub fn listen_for_mouse(
                         card_base.side.clone_weak(),
                         *transform,
                         Some(&mut rand),
-                        false,
+                        true,
                         reversed,
                         None,
                         Some(&mut count),
                         None,
                     );
+                } else {
+                    commands
+                        .entity(entity)
+                        .insert(FollowMouse)
+                        .remove::<InHand>()
+                        .remove_parent_in_place();
                 }
-                commands.entity(entity).despawn();
-                transform.translation.y += len + 4.0;
-                new_pile_at(
-                    Pile(vec![new]),
-                    card_base.stock.clone_weak(),
-                    &mut materials,
-                    &mut commands,
-                    &mut meshes,
-                    card_base.back.clone_weak(),
-                    card_base.side.clone_weak(),
-                    *transform,
-                    Some(&mut rand),
-                    true,
-                    reversed,
-                    None,
-                    Some(&mut count),
-                    None,
-                );
             } else if input.just_pressed(KeyCode::KeyE) {
                 let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
                 let n = (2.0 * rot / PI).round() as isize;

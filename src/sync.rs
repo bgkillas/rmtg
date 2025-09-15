@@ -32,6 +32,7 @@ pub fn apply_sync(
     down: Res<Download>,
     mut peers: ResMut<Peers>,
     mut commands: Commands,
+    hand: Single<Entity, (With<Owned>, With<Hand>)>,
 ) {
     let networking = client.networking();
     while let Some(size) = networking.is_p2p_packet_available() {
@@ -114,6 +115,7 @@ pub fn apply_sync(
                 }
                 Packet::SetUser => {
                     peers.me = peers.list.len();
+                    commands.entity(*hand).despawn();
                     spawn_hand(peers.me, &mut commands);
                 }
             }
@@ -177,14 +179,9 @@ pub fn new_lobby(
         }
     }
 }
-pub fn on_create_lobby(
-    mut create: ResMut<LobbyCreateChannel>,
-    mut clipboard: ResMut<Clipboard>,
-    mut commands: Commands,
-) {
+pub fn on_create_lobby(mut create: ResMut<LobbyCreateChannel>, mut clipboard: ResMut<Clipboard>) {
     while let Ok(event) = create.receiver.try_recv() {
         clipboard.0.set_text(event.raw().to_string()).unwrap();
-        spawn_hand(0, &mut commands)
     }
 }
 pub fn on_join_lobby(
