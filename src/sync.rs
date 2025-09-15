@@ -1,8 +1,10 @@
 use crate::download::add_images;
+use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
 use crate::*;
 use bevy_steamworks::{Client, LobbyId, LobbyType, SendType, SteamId};
 use bitcode::{Decode, Encode, decode, encode};
 use std::collections::HashSet;
+use std::f32::consts::PI;
 use tokio::sync::mpsc::{Receiver, Sender};
 pub fn get_sync(
     client: Res<Client>,
@@ -16,7 +18,7 @@ pub fn get_sync(
     }
     let packet = Packet::Pos(v);
     let bytes = encode(&packet);
-    for peer in &peers.0 {
+    for peer in &peers.list {
         client
             .networking()
             .send_p2p_packet(*peer, SendType::Reliable, &bytes);
@@ -29,6 +31,7 @@ pub fn apply_sync(
     asset_server: Res<AssetServer>,
     down: Res<Download>,
     mut peers: ResMut<Peers>,
+    mut commands: Commands,
 ) {
     let networking = client.networking();
     while let Some(size) = networking.is_p2p_packet_available() {
@@ -87,19 +90,48 @@ pub fn apply_sync(
                     );
                 }
                 Packet::Joined => {
-                    for peer in &peers.0 {
+                    for peer in &peers.list {
                         client.networking().send_p2p_packet(
                             *peer,
                             SendType::Reliable,
                             &encode(&Packet::UserJoined(sender.raw())),
                         );
+                        client.networking().send_p2p_packet(
+                            sender,
+                            SendType::Reliable,
+                            &encode(&Packet::UserJoined(peer.raw())),
+                        );
                     }
-                    peers.0.push(sender)
+                    client.networking().send_p2p_packet(
+                        sender,
+                        SendType::Reliable,
+                        &encode(&Packet::SetUser),
+                    );
+                    peers.list.push(sender)
                 }
-                Packet::UserJoined(id) => peers.0.push(SteamId::from_raw(id)),
+                Packet::UserJoined(id) => {
+                    peers.list.push(SteamId::from_raw(id));
+                }
+                Packet::SetUser => {
+                    peers.me = peers.list.len();
+                    spawn_hand(peers.me, &mut commands);
+                }
             }
         }
     }
+}
+pub fn spawn_hand(me: usize, commands: &mut Commands) {
+    let mut transform = match me {
+        0 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
+        1 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0),
+        2 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
+        3 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0),
+        _ => Transform::from_xyz(0.0, 64.0, 0.0),
+    };
+    if me == 2 || me == 3 {
+        transform.rotate_y(PI);
+    }
+    commands.spawn((transform, Hand::default(), Owned));
 }
 pub fn new_lobby(
     input: Res<ButtonInput<KeyCode>>,
@@ -139,18 +171,27 @@ pub fn new_lobby(
         }
     }
 }
-pub fn on_create_lobby(mut create: ResMut<LobbyCreateChannel>, mut clipboard: ResMut<Clipboard>) {
+pub fn on_create_lobby(
+    mut create: ResMut<LobbyCreateChannel>,
+    mut clipboard: ResMut<Clipboard>,
+    mut commands: Commands,
+) {
     while let Ok(event) = create.receiver.try_recv() {
         clipboard.0.set_text(event.raw().to_string()).unwrap();
+        spawn_hand(0, &mut commands)
     }
 }
-pub fn on_join_lobby(mut join: ResMut<LobbyJoinChannel>, client: Res<Client>) {
+pub fn on_join_lobby(
+    mut join: ResMut<LobbyJoinChannel>,
+    client: Res<Client>,
+    mut peers: ResMut<Peers>,
+) {
     while let Ok(event) = join.receiver.try_recv() {
-        client.networking().send_p2p_packet(
-            client.matchmaking().lobby_owner(event),
-            SendType::Reliable,
-            &encode(&Packet::Joined),
-        );
+        let owner = client.matchmaking().lobby_owner(event);
+        client
+            .networking()
+            .send_p2p_packet(owner, SendType::Reliable, &encode(&Packet::Joined));
+        peers.list.push(owner);
     }
 }
 #[derive(Resource)]
@@ -172,6 +213,7 @@ pub enum Packet {
     Received(SyncObjectMe),
     New(SyncObjectMe, Pile, Trans),
     UserJoined(u64),
+    SetUser,
     Joined,
 }
 #[derive(Encode, Decode)]
@@ -213,4 +255,7 @@ impl SyncObjectMe {
 #[derive(Resource, Default)]
 pub struct SyncCount(pub usize);
 #[derive(Resource, Default)]
-pub struct Peers(pub Vec<SteamId>);
+pub struct Peers {
+    pub list: Vec<SteamId>,
+    pub me: usize,
+}
