@@ -1,7 +1,10 @@
 use crate::download::add_images;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
 use crate::*;
-use bevy_steamworks::{Client, LobbyId, LobbyType, SendType, SteamId, SteamworksEvent};
+use bevy_steamworks::{
+    CallbackResult, Client, LobbyId, LobbyType, P2PSessionRequest, SendType, SteamId,
+    SteamworksEvent,
+};
 use bitcode::{Decode, Encode, decode, encode};
 use std::collections::HashSet;
 use std::f32::consts::PI;
@@ -122,9 +125,12 @@ pub fn apply_sync(
         }
     }
 }
-pub fn callbacks(mut callback: EventReader<SteamworksEvent>) {
+pub fn callbacks(mut callback: EventReader<SteamworksEvent>, client: Res<Client>) {
     for event in callback.read() {
         let SteamworksEvent::CallbackResult(event) = event;
+        if let CallbackResult::P2PSessionRequest(P2PSessionRequest { remote: user }) = event {
+            client.networking().accept_p2p_session(*user);
+        }
         println!("{event:?}");
     }
 }
