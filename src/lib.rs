@@ -28,8 +28,8 @@ mod setup;
 pub mod sync;
 mod update;
 use crate::sync::{
-    LobbyCreateChannel, LobbyJoinChannel, Peers, Sent, SyncCount, SyncObject, apply_sync, get_sync,
-    new_lobby, on_create_lobby, on_join_lobby,
+    LobbyCreateChannel, LobbyJoinChannel, Peers, Sent, SyncCount, SyncObject, apply_sync,
+    callbacks, get_sync, new_lobby, on_create_lobby, on_join_lobby,
 };
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -100,6 +100,7 @@ pub fn start() {
     .add_systems(
         Update,
         (
+            callbacks,
             listen_for_deck,
             register_deck,
             cam_translation,

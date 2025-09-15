@@ -1,7 +1,7 @@
 use crate::download::add_images;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
 use crate::*;
-use bevy_steamworks::{Client, LobbyId, LobbyType, SendType, SteamId};
+use bevy_steamworks::{Client, LobbyId, LobbyType, SendType, SteamId, SteamworksEvent};
 use bitcode::{Decode, Encode, decode, encode};
 use std::collections::HashSet;
 use std::f32::consts::PI;
@@ -118,6 +118,12 @@ pub fn apply_sync(
                 }
             }
         }
+    }
+}
+pub fn callbacks(mut callback: EventReader<SteamworksEvent>) {
+    for event in callback.read() {
+        let SteamworksEvent::CallbackResult(event) = event;
+        println!("{event:?}");
     }
 }
 pub fn spawn_hand(me: usize, commands: &mut Commands) {
