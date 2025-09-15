@@ -123,12 +123,12 @@ pub fn apply_sync(
 pub fn spawn_hand(me: usize, commands: &mut Commands) {
     let mut transform = match me {
         0 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
-        1 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0),
-        2 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
+        1 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
+        2 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0),
         3 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0),
         _ => Transform::from_xyz(0.0, 64.0, 0.0),
     };
-    if me == 2 || me == 3 {
+    if me == 1 || me == 3 {
         transform.rotate_y(PI);
     }
     commands.spawn((transform, Hand::default(), Owned));
