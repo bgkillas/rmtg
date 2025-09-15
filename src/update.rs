@@ -1,6 +1,7 @@
 use crate::download::{get_alts, get_deck, spawn_singleton};
 use crate::misc::{make_material, new_pile, new_pile_at};
 use crate::*;
+use bevy::ecs::relationship::RelationshipSourceCollection;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
 use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
@@ -12,7 +13,13 @@ use std::mem;
 pub fn gather_hand(
     mut hand: Single<(&Transform, &mut Hand, Entity), With<Owned>>,
     mut cards: Query<
-        (Entity, &mut GravityScale, &mut Velocity, &Pile),
+        (
+            Entity,
+            &mut GravityScale,
+            &mut LinearVelocity,
+            &mut AngularVelocity,
+            &Pile,
+        ),
         (
             With<Pile>,
             Without<Hand>,
@@ -20,30 +27,27 @@ pub fn gather_hand(
             Without<FollowMouse>,
         ),
     >,
-    rapier_context: ReadRapierContext,
+    spatial: SpatialQuery,
     mut commands: Commands,
 ) {
-    let Ok(context) = rapier_context.single() else {
-        return;
-    };
-    context.with_query_pipeline(QueryFilter::only_dynamic(), |query_pipeline| {
-        for ent in query_pipeline.intersect_shape(
-            hand.0.translation,
-            hand.0.rotation,
-            Collider::cuboid(1024.0, 128.0, 16.0).raw.0.as_ref(),
-        ) {
-            if let Ok((entity, mut grav, mut vel, pile)) = cards.get_mut(ent)
-                && pile.0.len() == 1
-            {
-                vel.linvel = Vect::default();
-                vel.angvel = Vect::default();
-                grav.0 = 0.0;
-                commands.entity(entity).insert(InHand(hand.1.count));
-                hand.1.count += 1;
-                commands.entity(hand.2).add_child(entity);
-            }
+    let intersections = spatial.shape_intersections(
+        &Collider::cuboid(2048.0, 256.0, 32.0),
+        hand.0.translation,
+        hand.0.rotation,
+        &SpatialQueryFilter::DEFAULT,
+    );
+    for ent in intersections {
+        if let Ok((entity, mut grav, mut linvel, mut angvel, pile)) = cards.get_mut(ent)
+            && pile.0.len() == 1
+        {
+            linvel.0 = Default::default();
+            angvel.0 = Default::default();
+            grav.0 = 0.0;
+            commands.entity(entity).insert(InHand(hand.1.count));
+            hand.1.count += 1;
+            commands.entity(hand.2).add_child(entity);
         }
-    });
+    }
 }
 pub fn update_hand(
     mut hand: Single<(&Transform, &mut Hand, &Children), With<Owned>>,
@@ -79,7 +83,7 @@ pub fn follow_mouse(
             Entity,
             &mut Transform,
             &mut GravityScale,
-            &mut Velocity,
+            &mut LinearVelocity,
             &Collider,
         ),
         With<FollowMouse>,
@@ -87,7 +91,7 @@ pub fn follow_mouse(
     cards: Query<(&Pile, &Transform), Without<FollowMouse>>,
     mut commands: Commands,
     time_since: Res<Time>,
-    rapier_context: ReadRapierContext,
+    spatial: SpatialQuery,
 ) {
     let Some(cursor_position) = window.cursor_position() else {
         return;
@@ -97,24 +101,24 @@ pub fn follow_mouse(
         return;
     };
     if mouse_input.pressed(MouseButton::Left) {
-        let Ok(context) = rapier_context.single() else {
-            return;
-        };
-        if let Some(max) =
-            context.with_query_pipeline(QueryFilter::only_dynamic(), |query_pipeline| {
-                query_pipeline
-                    .intersect_shape(card.1.translation, card.1.rotation, card.4.raw.0.as_ref())
-                    .filter_map(|a| {
-                        if a != card.0
-                            && let Ok((pile, transform)) = cards.get(a)
-                        {
-                            Some(transform.translation.y + pile.0.len() as f32)
-                        } else {
-                            None
-                        }
-                    })
-                    .reduce(f32::max)
+        if let Some(max) = spatial
+            .shape_intersections(
+                card.4,
+                card.1.translation,
+                card.1.rotation,
+                &SpatialQueryFilter::DEFAULT,
+            )
+            .iter()
+            .filter_map(|a| {
+                if a != card.0
+                    && let Ok((pile, transform)) = cards.get(a)
+                {
+                    Some(transform.translation.y + pile.0.len() as f32)
+                } else {
+                    None
+                }
             })
+            .reduce(f32::max)
         {
             card.1.translation.y = max + 4.0;
         }
@@ -129,7 +133,7 @@ pub fn follow_mouse(
             ray.intersect_plane(card.1.translation, InfinitePlane3d { normal: Dir3::Y })
         {
             let point = ray.get_point(time);
-            card.3.linvel = (point - card.1.translation) / time_since.delta_secs()
+            card.3.0 = (point - card.1.translation) / time_since.delta_secs();
         }
         commands.entity(card.0).remove::<FollowMouse>();
         card.2.0 = GRAVITY
@@ -139,7 +143,7 @@ pub fn listen_for_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
     camera: Single<(&Camera, &GlobalTransform, Entity)>,
     window: Single<&Window, With<PrimaryWindow>>,
-    rapier_context: ReadRapierContext,
+    spatial: SpatialQuery,
     mut cards: Query<(
         &mut Pile,
         &mut Transform,
@@ -150,7 +154,7 @@ pub fn listen_for_mouse(
     )>,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
     mut hands: Query<(&mut Hand, Option<&Owned>, Entity)>,
-    mut vels: Query<&mut Velocity>,
+    mut vels: Query<(&mut LinearVelocity, &mut AngularVelocity)>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -172,17 +176,14 @@ pub fn listen_for_mouse(
     let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
         return;
     };
-    let Ok(context) = rapier_context.single() else {
-        return;
-    };
-    let hit = context.cast_ray(
+    let hit = spatial.cast_ray(
         ray.origin,
-        ray.direction.into(),
+        ray.direction,
         f32::MAX,
         true,
-        QueryFilter::only_dynamic(),
+        &SpatialQueryFilter::DEFAULT,
     );
-    if let Some((entity, _)) = hit {
+    if let Some(RayHitData { entity, .. }) = hit {
         if let Ok((mut pile, mut transform, children, is_rev, parent, inhand)) =
             cards.get_mut(entity)
         {
@@ -482,12 +483,12 @@ pub fn listen_for_mouse(
             if mouse_input.just_pressed(MouseButton::Left) {
                 commands.entity(entity).insert(FollowMouse);
             } else if input.just_pressed(KeyCode::KeyR)
-                && let Ok(mut v) = vels.get_mut(entity)
+                && let Ok((mut lv, mut av)) = vels.get_mut(entity)
             {
-                v.linvel.y = 2048.0;
-                v.angvel.x = rand.random_range(-32.0..32.0);
-                v.angvel.y = rand.random_range(-32.0..32.0);
-                v.angvel.z = rand.random_range(-32.0..32.0);
+                lv.y = 2048.0;
+                av.x = rand.random_range(-32.0..32.0);
+                av.y = rand.random_range(-32.0..32.0);
+                av.z = rand.random_range(-32.0..32.0);
             }
         }
     } else if let Some(single) = zoom {

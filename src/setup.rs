@@ -39,21 +39,21 @@ pub fn setup(
         ..default()
     });
     let mat_mesh = meshes.add(Rectangle::new(MAT_WIDTH, MAT_HEIGHT));
-    let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, -16.0, MAT_HEIGHT / 2.0);
+    let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
     transform.rotate_x(-PI / 2.0);
     commands.spawn((
         Mesh3d(mat_mesh.clone_weak()),
         MeshMaterial3d(playmat.clone_weak()),
         transform,
     ));
-    let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, -16.0, MAT_HEIGHT / 2.0);
+    let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
     transform.rotate_x(-PI / 2.0);
     commands.spawn((
         Mesh3d(mat_mesh.clone_weak()),
         MeshMaterial3d(playmat.clone_weak()),
         transform,
     ));
-    let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, -16.0, -MAT_HEIGHT / 2.0);
+    let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
     transform.rotate_x(-PI / 2.0);
     transform.rotate_y(PI);
     commands.spawn((
@@ -61,29 +61,37 @@ pub fn setup(
         MeshMaterial3d(playmat.clone_weak()),
         transform,
     ));
-    let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, -16.0, -MAT_HEIGHT / 2.0);
+    let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
     transform.rotate_x(-PI / 2.0);
     transform.rotate_y(PI);
     commands.spawn((Mesh3d(mat_mesh), MeshMaterial3d(playmat), transform));
     spawn_hand(0, &mut commands);
     const T: f32 = 256.0;
     const W: f32 = 16384.0;
-    commands.spawn((Transform::from_xyz(0.0, -T, 0.0), Collider::cuboid(W, T, W)));
+    commands.spawn((
+        Transform::from_xyz(0.0, -T, 0.0),
+        Collider::cuboid(2.0 * W, 2.0 * T, 2.0 * W),
+        RigidBody::Static,
+    ));
     commands.spawn((
         Transform::from_xyz(W + T / 2.0, T / 2.0, 0.0),
-        Collider::cuboid(T, T, W),
+        Collider::cuboid(2.0 * T, 2.0 * T, 2.0 * W),
+        RigidBody::Static,
     ));
     commands.spawn((
         Transform::from_xyz(-(W + T / 2.0), T / 2.0, 0.0),
-        Collider::cuboid(T, T, W),
+        Collider::cuboid(2.0 * T, 2.0 * T, 2.0 * W),
+        RigidBody::Static,
     ));
     commands.spawn((
         Transform::from_xyz(0.0, T / 2.0, W + T / 2.0),
-        Collider::cuboid(W, T, T),
+        Collider::cuboid(2.0 * W, 2.0 * T, 2.0 * T),
+        RigidBody::Static,
     ));
     commands.spawn((
         Transform::from_xyz(0.0, T / 2.0, -(W + T / 2.0)),
-        Collider::cuboid(W, T, T),
+        Collider::cuboid(2.0 * W, 2.0 * T, 2.0 * T),
+        RigidBody::Static,
     ));
     commands.spawn((
         Camera3d::default(),
@@ -91,18 +99,11 @@ pub fn setup(
         Transform::from_xyz(0.0, START_Y, START_Z).looking_at(Vec3::ZERO, Vec3::Y),
     ));
     commands.spawn((
-        Collider::cuboid(128.0, 128.0, 128.0),
-        Transform::from_xyz(0.0, 256.0, 0.0),
+        Collider::cuboid(256.0, 256.0, 256.0),
+        Transform::from_xyz(0.0, 128.0, 0.0),
         RigidBody::Dynamic,
         GravityScale(GRAVITY),
-        Ccd::enabled(),
-        Velocity::zero(),
-        Damping {
-            linear_damping: DAMPING,
-            angular_damping: 0.0,
-        },
-        AdditionalMassProperties::Mass(4.0),
-        Mesh3d(meshes.add(RegularPolygon::new(128.0, 4))),
+        Mesh3d(meshes.add(Cuboid::from_length(256.0))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::WHITE,
             unlit: true,

@@ -87,19 +87,12 @@ pub fn new_pile_at(
         transform,
         Visibility::default(),
         RigidBody::Dynamic,
-        Collider::cuboid(CARD_WIDTH / 2.0, CARD_HEIGHT / 2.0, size),
+        Collider::cuboid(CARD_WIDTH, CARD_HEIGHT, 2.0 * size),
         GravityScale(if follow_mouse || parent.is_some() {
             0.0
         } else {
             GRAVITY
         }),
-        Ccd::enabled(),
-        Velocity::zero(),
-        Damping {
-            linear_damping: DAMPING,
-            angular_damping: 0.0,
-        },
-        AdditionalMassProperties::Mass(size),
         children![
             (
                 Mesh3d(card_stock.clone_weak()),

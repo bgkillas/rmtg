@@ -3,13 +3,13 @@ use crate::update::{
     cam_rotation, cam_translation, follow_mouse, gather_hand, listen_for_deck, listen_for_mouse,
     register_deck, update_hand,
 };
+use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
 use bevy_framepace::FramepacePlugin;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalEntropy;
 use bevy_rand::prelude::EntropyPlugin;
-use bevy_rapier3d::prelude::*;
 use bitcode::{Decode, Encode};
 use rand::RngCore;
 use std::mem::MaybeUninit;
@@ -72,8 +72,8 @@ pub fn start() {
                 meta_check: AssetMetaCheck::Never,
                 ..default()
             }),
-        RapierPhysicsPlugin::<NoUserData>::default(),
-        RapierDebugRenderPlugin::default(),
+        PhysicsPlugins::default(),
+        PhysicsDebugPlugin::default(),
         FramepacePlugin,
         EntropyPlugin::<WyRand>::default(),
     ))
