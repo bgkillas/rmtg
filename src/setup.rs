@@ -1,5 +1,6 @@
 use crate::*;
 use bevy_framepace::{FramepaceSettings, Limiter};
+use std::f32::consts::PI;
 pub fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -31,6 +32,62 @@ pub fn setup(
         Hand::default(),
         Owned,
     ));
+    let mat = asset_server.load("mat.png");
+    const MAT_WIDTH: f32 = 872.0;
+    const MAT_HEIGHT: f32 = 525.0;
+    let playmat = materials.add(StandardMaterial {
+        base_color_texture: Some(mat),
+        alpha_mode: AlphaMode::Opaque,
+        unlit: true,
+        ..default()
+    });
+    const MAT_SCALE: f32 = 10.0;
+    let mat_mesh = meshes.add(Rectangle::new(
+        MAT_WIDTH * MAT_SCALE,
+        MAT_HEIGHT * MAT_SCALE,
+    ));
+    let mut transform = Transform::from_xyz(
+        MAT_WIDTH * MAT_SCALE / 2.0,
+        -8.0,
+        MAT_HEIGHT * MAT_SCALE / 2.0,
+    );
+    transform.rotate_x(-PI / 2.0);
+    commands.spawn((
+        Mesh3d(mat_mesh.clone_weak()),
+        MeshMaterial3d(playmat.clone_weak()),
+        transform,
+    ));
+    let mut transform = Transform::from_xyz(
+        -MAT_WIDTH * MAT_SCALE / 2.0,
+        -8.0,
+        MAT_HEIGHT * MAT_SCALE / 2.0,
+    );
+    transform.rotate_x(-PI / 2.0);
+    commands.spawn((
+        Mesh3d(mat_mesh.clone_weak()),
+        MeshMaterial3d(playmat.clone_weak()),
+        transform,
+    ));
+    let mut transform = Transform::from_xyz(
+        MAT_WIDTH * MAT_SCALE / 2.0,
+        -8.0,
+        -MAT_HEIGHT * MAT_SCALE / 2.0,
+    );
+    transform.rotate_x(-PI / 2.0);
+    transform.rotate_y(PI);
+    commands.spawn((
+        Mesh3d(mat_mesh.clone_weak()),
+        MeshMaterial3d(playmat.clone_weak()),
+        transform,
+    ));
+    let mut transform = Transform::from_xyz(
+        -MAT_WIDTH * MAT_SCALE / 2.0,
+        -8.0,
+        -MAT_HEIGHT * MAT_SCALE / 2.0,
+    );
+    transform.rotate_x(-PI / 2.0);
+    transform.rotate_y(PI);
+    commands.spawn((Mesh3d(mat_mesh), MeshMaterial3d(playmat), transform));
     const T: f32 = 256.0;
     const W: f32 = 16384.0;
     commands.spawn((Transform::from_xyz(0.0, -T, 0.0), Collider::cuboid(W, T, W)));
