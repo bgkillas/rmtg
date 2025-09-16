@@ -1,5 +1,5 @@
 use crate::download::{get_alts, get_deck, spawn_singleton};
-use crate::misc::{make_material, new_pile, new_pile_at};
+use crate::misc::{is_reversed, make_material, new_pile, new_pile_at};
 use crate::sync::{Packet, SyncObjectMe};
 use crate::*;
 use bevy::ecs::relationship::RelationshipSourceCollection;
@@ -151,7 +151,6 @@ pub fn listen_for_mouse(
         &mut Pile,
         &mut Transform,
         &Children,
-        Option<&Reversed>,
         Option<&ChildOf>,
         Option<&InHand>,
     )>,
@@ -187,59 +186,18 @@ pub fn listen_for_mouse(
         &SpatialQueryFilter::DEFAULT,
     );
     if let Some(RayHitData { entity, .. }) = hit {
-        if let Ok((mut pile, mut transform, children, is_rev, parent, inhand)) =
-            cards.get_mut(entity)
-        {
+        if let Ok((mut pile, mut transform, children, parent, inhand)) = cards.get_mut(entity) {
             if input.just_pressed(KeyCode::KeyF) {
-                let is_reversed;
-                if is_rev.is_some() {
-                    is_reversed = false;
-                    commands.entity(entity).remove::<Reversed>();
-                } else {
-                    is_reversed = true;
-                    commands.entity(entity).insert(Reversed);
-                }
                 pile.0.reverse();
                 transform.rotate_z(PI);
-                let pile = mem::take(&mut pile.0);
-                new_pile_at(
-                    Pile(pile),
-                    card_base.stock.clone_weak(),
-                    &mut materials,
-                    &mut commands,
-                    &mut meshes,
-                    card_base.back.clone_weak(),
-                    card_base.side.clone_weak(),
-                    *transform,
-                    Some(&mut rand),
-                    false,
-                    is_reversed,
-                    None,
-                    Some(&mut count),
-                    None,
-                );
-                commands.entity(entity).despawn();
+                let card = pile.0.first().unwrap();
+                mats.get_mut(*children.first().unwrap()).unwrap().0 =
+                    make_material(&mut materials, card.normal.image().clone_weak());
             } else if input.just_pressed(KeyCode::KeyR) {
                 pile.0.shuffle(&mut rand);
-                let pile = mem::take(&mut pile.0);
-                let reversed = is_rev.is_some();
-                new_pile_at(
-                    Pile(pile),
-                    card_base.stock.clone_weak(),
-                    &mut materials,
-                    &mut commands,
-                    &mut meshes,
-                    card_base.back.clone_weak(),
-                    card_base.side.clone_weak(),
-                    *transform,
-                    Some(&mut rand),
-                    false,
-                    reversed,
-                    None,
-                    Some(&mut count),
-                    None,
-                );
-                commands.entity(entity).despawn();
+                let card = pile.0.last().unwrap();
+                mats.get_mut(*children.first().unwrap()).unwrap().0 =
+                    make_material(&mut materials, card.normal.image().clone_weak());
             } else if input.just_pressed(KeyCode::Backspace)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::AltLeft])
             {
@@ -258,29 +216,16 @@ pub fn listen_for_mouse(
                 }
                 transform.translation.y += 4.0;
                 if input.pressed(KeyCode::ControlLeft) {
-                    let reversed = is_rev.is_some();
                     let len = pile.0.len() as f32;
                     let new = pile.0.pop().unwrap();
                     if !pile.0.is_empty() {
-                        let pile = mem::take(&mut pile.0);
-                        new_pile_at(
-                            Pile(pile),
-                            card_base.stock.clone_weak(),
-                            &mut materials,
-                            &mut commands,
-                            &mut meshes,
-                            card_base.back.clone_weak(),
-                            card_base.side.clone_weak(),
-                            *transform,
-                            Some(&mut rand),
-                            false,
-                            reversed,
-                            None,
-                            Some(&mut count),
-                            None,
-                        );
+                        let card = pile.0.last().unwrap();
+                        mats.get_mut(*children.first().unwrap()).unwrap().0 =
+                            make_material(&mut materials, card.normal.image().clone_weak());
+                        //let mut meshes = children.iter().map(|c| mesh_children.get_mut(c).unwrap());
+                        //TODO adjust meshes
                     }
-                    commands.entity(entity).despawn();
+                    let mut transform = *transform;
                     transform.translation.y += len + 4.0;
                     new_pile_at(
                         Pile(vec![new]),
@@ -290,10 +235,9 @@ pub fn listen_for_mouse(
                         &mut meshes,
                         card_base.back.clone_weak(),
                         card_base.side.clone_weak(),
-                        *transform,
+                        transform,
                         Some(&mut rand),
                         true,
-                        reversed,
                         None,
                         Some(&mut count),
                         None,
@@ -349,7 +293,7 @@ pub fn listen_for_mouse(
                     get_alts(&id, client, asset_server, get_deck, v).await;
                 })
             } else if input.just_pressed(KeyCode::KeyO)
-                && is_rev.is_none()
+                && !is_reversed(&transform)
                 && zoom
                     .as_ref()
                     .map(|single| single.1.0 != entity.to_bits())
@@ -410,7 +354,6 @@ pub fn listen_for_mouse(
                                 Transform::default(),
                                 Some(&mut rand),
                                 false,
-                                false,
                                 Some(hand.2),
                                 Some(&mut count),
                                 None,
@@ -421,7 +364,6 @@ pub fn listen_for_mouse(
                         }
                     }
                     if !pile.0.is_empty() {
-                        let reversed = is_rev.is_some();
                         let pile = mem::take(&mut pile.0);
                         new_pile_at(
                             Pile(pile),
@@ -434,7 +376,6 @@ pub fn listen_for_mouse(
                             *transform,
                             Some(&mut rand),
                             false,
-                            reversed,
                             None,
                             Some(&mut count),
                             None,
@@ -464,7 +405,7 @@ pub fn listen_for_mouse(
                         );
                         single.1.1 = !single.1.1;
                     }
-                } else if is_rev.is_none() {
+                } else if !is_reversed(&transform) {
                     let card = pile.0.last().unwrap();
                     commands.entity(cament).with_child((
                         Mesh3d(card_base.stock.clone_weak()),

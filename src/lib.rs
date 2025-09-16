@@ -456,8 +456,6 @@ pub struct GameClipboard(pub Option<Pile>);
 pub struct FollowMouse;
 #[derive(Component, Default, Debug)]
 pub struct ZoomHold(pub u64, pub bool);
-#[derive(Component, Default, Debug)]
-pub struct Reversed;
 #[cfg(not(feature = "wasm"))]
 #[derive(Resource)]
 pub struct Clipboard(pub arboard::Clipboard);

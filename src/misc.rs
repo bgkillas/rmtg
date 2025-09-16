@@ -41,7 +41,6 @@ pub fn new_pile(
         transform,
         Some(rand),
         false,
-        false,
         None,
         Some(count),
         id,
@@ -58,7 +57,6 @@ pub fn new_pile_at(
     transform: Transform,
     rand: Option<&mut GlobalEntropy<WyRand>>,
     follow_mouse: bool,
-    reverse: bool,
     parent: Option<Entity>,
     count: Option<&mut SyncCount>,
     id: Option<SyncObject>,
@@ -126,11 +124,11 @@ pub fn new_pile_at(
     if follow_mouse {
         ent.insert(FollowMouse);
     }
-    if reverse {
-        ent.insert(Reversed);
-    }
     if let Some(parent) = parent {
         ent.insert(ChildOf(parent));
     }
     Some(ent.id())
+}
+pub fn is_reversed(transform: &Transform) -> bool {
+    transform.rotation.xyz().y.is_sign_negative()
 }
