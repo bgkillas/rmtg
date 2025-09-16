@@ -118,10 +118,10 @@ pub fn new_pile_at(
             (Mesh3d(mesh2), MeshMaterial3d(card_side), transform5)
         ],
     ));
-    if let Some(count) = count {
-        ent.insert(SyncObjectMe::new(rand.unwrap(), count));
-    } else if let Some(id) = id {
+    if let Some(id) = id {
         ent.insert(id);
+    } else if let Some(count) = count {
+        ent.insert(SyncObjectMe::new(rand.unwrap(), count));
     }
     if follow_mouse {
         ent.insert(FollowMouse);
