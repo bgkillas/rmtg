@@ -14,6 +14,7 @@ pub fn get_sync(
     query: Query<(&SyncObjectMe, &Transform)>,
     count: Res<SyncCount>,
     peers: Res<Peers>,
+    mut killed: ResMut<Killed>,
 ) {
     let mut v = Vec::with_capacity(count.0);
     for (id, transform) in query {
@@ -26,10 +27,19 @@ pub fn get_sync(
             .networking()
             .send_p2p_packet(*peer, SendType::Reliable, &bytes);
     }
+    for dead in killed.0.drain(..) {
+        let packet = Packet::Dead(dead);
+        let bytes = encode(&packet);
+        for peer in &peers.list {
+            client
+                .networking()
+                .send_p2p_packet(*peer, SendType::Reliable, &bytes);
+        }
+    }
 }
 pub fn apply_sync(
     client: Res<Client>,
-    mut query: Query<(&SyncObject, &mut Transform)>,
+    mut query: Query<(&SyncObject, &mut Transform, Entity)>,
     mut queryme: Query<(&SyncObjectMe, &mut Transform, &Pile), Without<SyncObject>>,
     mut sent: ResMut<Sent>,
     asset_server: Res<AssetServer>,
@@ -50,7 +60,7 @@ pub fn apply_sync(
                         let id = SyncObject { user, id: lid.0 };
                         if let Some(mut t) = query
                             .iter_mut()
-                            .find_map(|(a, b)| if *a == id { Some(b) } else { None })
+                            .find_map(|(a, b, _)| if *a == id { Some(b) } else { None })
                         {
                             *t = trans.into()
                         } else if sent.0.insert(id) {
@@ -117,6 +127,16 @@ pub fn apply_sync(
                     peers.me = peers.list.len();
                     commands.entity(*hand).despawn();
                     spawn_hand(peers.me, &mut commands);
+                }
+                Packet::Dead(lid) => {
+                    let user = sender.raw();
+                    let id = SyncObject { user, id: lid.0 };
+                    if let Some(e) = query
+                        .iter_mut()
+                        .find_map(|(a, _, b)| if *a == id { Some(b) } else { None })
+                    {
+                        commands.entity(e).despawn();
+                    }
                 }
             }
         }
@@ -241,11 +261,14 @@ pub struct LobbyJoinChannel {
 }
 #[derive(Resource, Default)]
 pub struct Sent(pub HashSet<SyncObject>);
+#[derive(Resource, Default)]
+pub struct Killed(pub Vec<SyncObjectMe>);
 #[derive(Encode, Decode, Debug)]
 pub enum Packet {
     Pos(Vec<(SyncObjectMe, Trans)>),
     Request(SyncObjectMe),
     Received(SyncObjectMe),
+    Dead(SyncObjectMe),
     New(SyncObjectMe, Pile, Trans),
     UserJoined(u64),
     SetUser,

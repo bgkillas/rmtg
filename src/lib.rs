@@ -28,7 +28,7 @@ mod setup;
 pub mod sync;
 mod update;
 use crate::sync::{
-    LobbyCreateChannel, LobbyJoinChannel, Peers, Sent, SyncCount, SyncObject, apply_sync,
+    Killed, LobbyCreateChannel, LobbyJoinChannel, Peers, Sent, SyncCount, SyncObject, apply_sync,
     callbacks, get_sync, new_lobby, on_create_lobby, on_join_lobby,
 };
 #[cfg(feature = "wasm")]
@@ -89,6 +89,7 @@ pub fn start() {
     .insert_resource(SyncCount::default())
     .insert_resource(Sent::default())
     .insert_resource(Peers::default())
+    .insert_resource(Killed::default())
     .insert_resource(game_clipboard)
     .insert_resource(Download {
         client,

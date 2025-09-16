@@ -164,11 +164,13 @@ pub fn listen_for_mouse(
     input: Res<ButtonInput<KeyCode>>,
     mut rand: GlobalEntropy<WyRand>,
     zoom: Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
-    (down, asset_server, mut game_clipboard, mut count): (
+    (down, asset_server, mut game_clipboard, mut count, mut killed, ids): (
         ResMut<Download>,
         Res<AssetServer>,
         ResMut<GameClipboard>,
         ResMut<SyncCount>,
+        ResMut<Killed>,
+        Query<&SyncObjectMe>,
     ),
 ) {
     let Some(cursor_position) = window.cursor_position() else {
@@ -201,6 +203,7 @@ pub fn listen_for_mouse(
             } else if input.just_pressed(KeyCode::Backspace)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::AltLeft])
             {
+                killed.0.push(*ids.get(entity).unwrap());
                 commands.entity(entity).despawn();
             } else if input.just_pressed(KeyCode::KeyC)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
@@ -364,24 +367,14 @@ pub fn listen_for_mouse(
                         }
                     }
                     if !pile.0.is_empty() {
-                        let pile = mem::take(&mut pile.0);
-                        new_pile_at(
-                            Pile(pile),
-                            card_base.stock.clone_weak(),
-                            &mut materials,
-                            &mut commands,
-                            &mut meshes,
-                            card_base.back.clone_weak(),
-                            card_base.side.clone_weak(),
-                            *transform,
-                            Some(&mut rand),
-                            false,
-                            None,
-                            Some(&mut count),
-                            None,
-                        );
+                        let card = pile.0.last().unwrap();
+                        mats.get_mut(*children.first().unwrap()).unwrap().0 =
+                            make_material(&mut materials, card.normal.image().clone_weak());
+                        //TODO
+                    } else {
+                        killed.0.push(*ids.get(entity).unwrap());
+                        commands.entity(entity).despawn();
                     }
-                    commands.entity(entity).despawn();
                 }
             } else if input.just_pressed(KeyCode::KeyZ) {
                 //TODO search
