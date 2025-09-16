@@ -215,7 +215,7 @@ pub fn listen_for_mouse(
                     hand.removed.push(inhand.0)
                 }
                 transform.translation.y += 4.0;
-                if input.pressed(KeyCode::ControlLeft) {
+                if input.pressed(KeyCode::ControlLeft) && pile.0.len() > 1 {
                     let len = pile.0.len() as f32;
                     let new = pile.0.pop().unwrap();
                     if !pile.0.is_empty() {
