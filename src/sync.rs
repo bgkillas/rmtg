@@ -2,8 +2,8 @@ use crate::download::add_images;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
 use crate::*;
 use bevy_steamworks::{
-    CallbackResult, Client, LobbyId, LobbyType, P2PSessionRequest, SendType, SteamId,
-    SteamworksEvent,
+    CallbackResult, Client, GameLobbyJoinRequested, LobbyId, LobbyType, Matchmaking,
+    P2PSessionRequest, SendType, SteamId, SteamworksEvent,
 };
 use bitcode::{Decode, Encode, decode, encode};
 use std::collections::HashSet;
@@ -130,11 +130,31 @@ pub fn apply_sync(
         }
     }
 }
-pub fn callbacks(mut callback: EventReader<SteamworksEvent>, client: Res<Client>) {
+pub fn callbacks(
+    mut callback: EventReader<SteamworksEvent>,
+    client: Res<Client>,
+    down: Res<Download>,
+    join: Res<LobbyJoinChannel>,
+) {
     for event in callback.read() {
         let SteamworksEvent::CallbackResult(event) = event;
-        if let CallbackResult::P2PSessionRequest(P2PSessionRequest { remote: user }) = event {
-            client.networking().accept_p2p_session(*user);
+        match event {
+            CallbackResult::P2PSessionRequest(P2PSessionRequest { remote }) => {
+                client.networking().accept_p2p_session(*remote);
+            }
+            CallbackResult::GameLobbyJoinRequested(GameLobbyJoinRequested {
+                lobby_steam_id,
+                ..
+            }) => {
+                let send = join.sender.clone();
+                join_lobby(
+                    *lobby_steam_id,
+                    down.runtime.0.handle().clone(),
+                    client.matchmaking(),
+                    send,
+                )
+            }
+            _ => {}
         }
         println!("{event:?}");
     }
@@ -177,18 +197,28 @@ pub fn new_lobby(
             && let Ok(id) = clipboard.get_text().parse()
         {
             let send = join.sender.clone();
-            let handle = down.runtime.0.handle().clone();
-            client
-                .matchmaking()
-                .join_lobby(LobbyId::from_raw(id), move |id| {
-                    if let Ok(id) = id {
-                        handle.spawn(async move {
-                            let _ = send.send(id).await;
-                        });
-                    }
-                })
+            join_lobby(
+                LobbyId::from_raw(id),
+                down.runtime.0.handle().clone(),
+                client.matchmaking(),
+                send,
+            )
         }
     }
+}
+fn join_lobby(
+    id: LobbyId,
+    down: tokio::runtime::Handle,
+    client: Matchmaking,
+    join: Sender<LobbyId>,
+) {
+    client.join_lobby(id, move |id| {
+        if let Ok(id) = id {
+            down.spawn(async move {
+                let _ = join.send(id).await;
+            });
+        }
+    })
 }
 pub fn on_create_lobby(mut create: ResMut<LobbyCreateChannel>, mut clipboard: ResMut<Clipboard>) {
     while let Ok(event) = create.receiver.try_recv() {

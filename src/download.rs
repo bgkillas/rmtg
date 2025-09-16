@@ -5,6 +5,7 @@ use bevy::asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bytes::Bytes;
 use futures::StreamExt;
+use futures::future::join_all;
 use futures::stream::FuturesUnordered;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
@@ -114,14 +115,19 @@ pub async fn add_images(
     client: reqwest::Client,
     asset_server: AssetServer,
 ) -> Option<()> {
-    for p in pile.0.iter_mut() {
+    join_all(pile.0.iter_mut().map(|p| async {
         let bytes = get_bytes(&p.id, &client, true);
         if let Some(c) = p.alt.as_mut() {
             let bytes = get_bytes(&p.id, &client, false);
-            c.image = get_from_img(bytes.await?, &asset_server)?.into();
+            c.image = get_from_img(bytes.await.unwrap(), &asset_server)
+                .unwrap()
+                .into();
         }
-        p.normal.image = get_from_img(bytes.await?, &asset_server)?.into();
-    }
+        p.normal.image = get_from_img(bytes.await.unwrap(), &asset_server)
+            .unwrap()
+            .into();
+    }))
+    .await;
     let v = Vec2::new(transform.translation.x, transform.translation.z);
     deck.0.lock().unwrap().push((pile, v, Some(id)));
     None
