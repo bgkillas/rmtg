@@ -1,11 +1,14 @@
 use crate::download::{get_alts, get_deck, spawn_singleton};
 use crate::misc::{make_material, new_pile, new_pile_at};
+use crate::sync::{Packet, SyncObjectMe};
 use crate::*;
 use bevy::ecs::relationship::RelationshipSourceCollection;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
 use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalEntropy;
+use bevy_steamworks::{Client, SendType, SteamId};
+use bitcode::encode;
 use rand::Rng;
 use rand::seq::SliceRandom;
 use std::f32::consts::PI;
@@ -650,6 +653,8 @@ pub fn register_deck(
     mut meshes: ResMut<Assets<Mesh>>,
     mut rand: GlobalEntropy<WyRand>,
     mut count: ResMut<SyncCount>,
+    client: Res<Client>,
+    mut sent: ResMut<Sent>,
 ) {
     let mut decks = decks.get_deck.0.lock().unwrap();
     for (deck, v, id) in decks.drain(..) {
@@ -667,5 +672,13 @@ pub fn register_deck(
             &mut count,
             id,
         );
+        if let Some(id) = id {
+            sent.0.remove(&id);
+            client.networking().send_p2p_packet(
+                SteamId::from_raw(id.user),
+                SendType::Reliable,
+                &encode(&Packet::Received(SyncObjectMe(id.id))),
+            );
+        }
     }
 }

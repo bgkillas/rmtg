@@ -53,7 +53,7 @@ pub fn apply_sync(
                             .find_map(|(a, b)| if *a == id { Some(b) } else { None })
                         {
                             *t = trans.into()
-                        } else {
+                        } else if sent.0.insert(id) {
                             let bytes = encode(&Packet::Request(lid));
                             networking.send_p2p_packet(sender, SendType::Reliable, &bytes);
                         }
@@ -68,10 +68,12 @@ pub fn apply_sync(
                             .iter_mut()
                             .find_map(|(a, b, c)| if a.0 == lid.0 { Some((b, c)) } else { None })
                         {
+                            println!("a {id:?}");
                             let bytes =
                                 encode(&Packet::New(lid, c.clone_no_image(), Trans::from(&b)));
                             networking.send_p2p_packet(sender, SendType::Reliable, &bytes);
                         } else {
+                            println!("b {id:?}");
                             sent.0.remove(&id);
                         }
                     }
@@ -92,11 +94,6 @@ pub fn apply_sync(
                     down.runtime.0.spawn(async move {
                         add_images(pile, trans.into(), id, deck, client, asset_server).await
                     });
-                    networking.send_p2p_packet(
-                        sender,
-                        SendType::Reliable,
-                        &encode(&Packet::Received(lid)),
-                    );
                 }
                 Packet::Joined => {
                     println!("{event:?} {peers:?}");
@@ -222,7 +219,7 @@ pub struct LobbyJoinChannel {
     pub receiver: Receiver<LobbyId>,
 }
 #[derive(Resource, Default)]
-pub struct Sent(HashSet<SyncObject>);
+pub struct Sent(pub HashSet<SyncObject>);
 #[derive(Encode, Decode, Debug)]
 pub enum Packet {
     Pos(Vec<(SyncObjectMe, Trans)>),
