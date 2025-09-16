@@ -29,7 +29,8 @@ pub fn get_sync(
 }
 pub fn apply_sync(
     client: Res<Client>,
-    mut query: Query<(&SyncObject, &mut Transform, &Pile)>,
+    mut query: Query<(&SyncObject, &mut Transform)>,
+    mut queryme: Query<(&SyncObjectMe, &mut Transform, &Pile), Without<SyncObject>>,
     mut sent: ResMut<Sent>,
     asset_server: Res<AssetServer>,
     down: Res<Download>,
@@ -49,7 +50,7 @@ pub fn apply_sync(
                         let id = SyncObject { user, id: lid.0 };
                         if let Some(mut t) = query
                             .iter_mut()
-                            .find_map(|(a, b, _)| if *a == id { Some(b) } else { None })
+                            .find_map(|(a, b)| if *a == id { Some(b) } else { None })
                         {
                             *t = trans.into()
                         } else {
@@ -63,9 +64,9 @@ pub fn apply_sync(
                     let user = sender.raw();
                     let id = SyncObject { user, id: lid.0 };
                     if sent.0.insert(id) {
-                        if let Some((b, c)) = query
+                        if let Some((b, c)) = queryme
                             .iter_mut()
-                            .find_map(|(a, b, c)| if *a == id { Some((b, c)) } else { None })
+                            .find_map(|(a, b, c)| if a.0 == lid.0 { Some((b, c)) } else { None })
                         {
                             let bytes =
                                 encode(&Packet::New(lid, c.clone_no_image(), Trans::from(&b)));
