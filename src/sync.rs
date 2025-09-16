@@ -60,7 +60,6 @@ pub fn apply_sync(
                     }
                 }
                 Packet::Request(lid) => {
-                    println!("{event:?} {peers:?}");
                     let user = sender.raw();
                     let id = SyncObject { user, id: lid.0 };
                     if sent.0.insert(id) {
@@ -68,24 +67,20 @@ pub fn apply_sync(
                             .iter_mut()
                             .find_map(|(a, b, c)| if a.0 == lid.0 { Some((b, c)) } else { None })
                         {
-                            println!("a {id:?}");
                             let bytes =
                                 encode(&Packet::New(lid, c.clone_no_image(), Trans::from(&b)));
                             networking.send_p2p_packet(sender, SendType::Reliable, &bytes);
                         } else {
-                            println!("b {id:?}");
                             sent.0.remove(&id);
                         }
                     }
                 }
                 Packet::Received(lid) => {
-                    println!("{event:?} {peers:?}");
                     let user = sender.raw();
                     let id = SyncObject { user, id: lid.0 };
                     sent.0.remove(&id);
                 }
                 Packet::New(lid, pile, trans) => {
-                    println!("{lid:?} {trans:?} {peers:?}");
                     let user = sender.raw();
                     let id = SyncObject { user, id: lid.0 };
                     let deck = down.get_deck.clone();
@@ -96,7 +91,6 @@ pub fn apply_sync(
                     });
                 }
                 Packet::Joined => {
-                    println!("{event:?} {peers:?}");
                     for peer in &peers.list {
                         client.networking().send_p2p_packet(
                             *peer,
@@ -117,11 +111,9 @@ pub fn apply_sync(
                     peers.list.push(sender)
                 }
                 Packet::UserJoined(id) => {
-                    println!("{event:?} {peers:?}");
                     peers.list.push(SteamId::from_raw(id));
                 }
                 Packet::SetUser => {
-                    println!("{event:?} {peers:?}");
                     peers.me = peers.list.len();
                     commands.entity(*hand).despawn();
                     spawn_hand(peers.me, &mut commands);
@@ -156,7 +148,6 @@ pub fn callbacks(
             }
             _ => {}
         }
-        println!("{event:?}");
     }
 }
 pub fn spawn_hand(me: usize, commands: &mut Commands) {
