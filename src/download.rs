@@ -134,9 +134,17 @@ pub async fn add_images(
 }
 async fn get_bytes(id: &str, client: &reqwest::Client, normal: bool) -> Option<Bytes> {
     let url = if normal {
-        format!("https://api.scryfall.com/cards/{id}?format=image&version=large",)
+        format!(
+            "https://cards.scryfall.io/large/front/{}/{}/{id}.jpg",
+            &id[0..1],
+            &id[1..2]
+        )
     } else {
-        format!("https://api.scryfall.com/cards/{id}?format=image&version=large&face=back",)
+        format!(
+            "https://cards.scryfall.io/large/back/{}/{}/{id}.jpg",
+            &id[0..1],
+            &id[1..2]
+        )
     };
     let res = client.get(url).send().await.ok()?;
     res.bytes().await.ok()
