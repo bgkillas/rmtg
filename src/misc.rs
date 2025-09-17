@@ -136,3 +136,24 @@ pub fn is_reversed(transform: &Transform) -> bool {
         .0
         .is_sign_positive()
 }
+pub fn get_card<'a>(pile: &'a Pile, transform: &Transform) -> &'a Card {
+    if is_reversed(transform) {
+        pile.0.first().unwrap()
+    } else {
+        pile.0.last().unwrap()
+    }
+}
+pub fn get_mut_card<'a>(pile: &'a mut Pile, transform: &Transform) -> &'a mut Card {
+    if is_reversed(transform) {
+        pile.0.first_mut().unwrap()
+    } else {
+        pile.0.last_mut().unwrap()
+    }
+}
+pub fn take_card(pile: &mut Pile, transform: &Transform) -> Card {
+    if is_reversed(transform) {
+        pile.0.remove(0)
+    } else {
+        pile.0.pop().unwrap()
+    }
+}
