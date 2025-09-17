@@ -157,3 +157,15 @@ pub fn take_card(pile: &mut Pile, transform: &Transform) -> Card {
         pile.0.pop().unwrap()
     }
 }
+pub fn repaint_face(
+    mats: &mut Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    card: &Card,
+    children: &Children,
+) {
+    mats.get_mut(*children.first().unwrap()).unwrap().0 =
+        make_material(materials, card.normal.image().clone_weak());
+}
+pub fn adjust_meshes() {
+    //TODO
+}

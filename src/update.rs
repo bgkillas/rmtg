@@ -1,6 +1,7 @@
 use crate::download::{get_alts, get_deck, spawn_singleton};
 use crate::misc::{
-    get_card, get_mut_card, is_reversed, make_material, new_pile, new_pile_at, take_card,
+    adjust_meshes, get_card, get_mut_card, is_reversed, make_material, new_pile, new_pile_at,
+    repaint_face, take_card,
 };
 use crate::sync::{Packet, SyncObjectMe};
 use crate::*;
@@ -197,8 +198,7 @@ pub fn listen_for_mouse(
                 if pile.0.len() > 1 {
                     pile.0.shuffle(&mut rand);
                     let card = pile.0.last().unwrap();
-                    mats.get_mut(*children.first().unwrap()).unwrap().0 =
-                        make_material(&mut materials, card.normal.image().clone_weak());
+                    repaint_face(&mut mats, &mut materials, card, children);
                 }
             } else if input.just_pressed(KeyCode::Backspace)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::AltLeft])
@@ -223,10 +223,8 @@ pub fn listen_for_mouse(
                     let new = take_card(&mut pile, &transform);
                     if !pile.0.is_empty() {
                         let card = pile.0.last().unwrap();
-                        mats.get_mut(*children.first().unwrap()).unwrap().0 =
-                            make_material(&mut materials, card.normal.image().clone_weak());
-                        //let mut meshes = children.iter().map(|c| mesh_children.get_mut(c).unwrap());
-                        //TODO adjust meshes
+                        repaint_face(&mut mats, &mut materials, card, children);
+                        adjust_meshes();
                     }
                     let mut transform = *transform;
                     transform.translation.y += len + 4.0;
@@ -314,8 +312,7 @@ pub fn listen_for_mouse(
                 let card = get_mut_card(&mut pile, &transform);
                 if let Some(alt) = &mut card.alt {
                     mem::swap(&mut card.normal, alt);
-                    mats.get_mut(*children.first().unwrap()).unwrap().0 =
-                        make_material(&mut materials, card.normal.image().clone_weak());
+                    repaint_face(&mut mats, &mut materials, card, children);
                     card.is_alt = !card.is_alt;
                 }
             } else if input.any_just_pressed([
@@ -377,9 +374,8 @@ pub fn listen_for_mouse(
                     }
                     if !pile.0.is_empty() {
                         let card = pile.0.last().unwrap();
-                        mats.get_mut(*children.first().unwrap()).unwrap().0 =
-                            make_material(&mut materials, card.normal.image().clone_weak());
-                        //TODO
+                        repaint_face(&mut mats, &mut materials, card, children);
+                        adjust_meshes();
                     } else {
                         killed.0.push(*ids.get(entity).unwrap());
                         commands.entity(entity).despawn();
