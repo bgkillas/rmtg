@@ -190,16 +190,20 @@ pub fn listen_for_mouse(
     if let Some(RayHitData { entity, .. }) = hit {
         if let Ok((mut pile, mut transform, children, parent, inhand)) = cards.get_mut(entity) {
             if input.just_pressed(KeyCode::KeyF) {
-                pile.0.reverse();
                 transform.rotate_z(PI);
-                let card = pile.0.first().unwrap();
-                mats.get_mut(*children.first().unwrap()).unwrap().0 =
-                    make_material(&mut materials, card.normal.image().clone_weak());
+                if pile.0.len() > 1 {
+                    //todo make get_top function which gets off of bottom or top of deck depending on transform
+                    let card = pile.0.first().unwrap();
+                    mats.get_mut(*children.first().unwrap()).unwrap().0 =
+                        make_material(&mut materials, card.normal.image().clone_weak());
+                }
             } else if input.just_pressed(KeyCode::KeyR) {
-                pile.0.shuffle(&mut rand);
-                let card = pile.0.last().unwrap();
-                mats.get_mut(*children.first().unwrap()).unwrap().0 =
-                    make_material(&mut materials, card.normal.image().clone_weak());
+                if pile.0.len() > 1 {
+                    pile.0.shuffle(&mut rand);
+                    let card = pile.0.last().unwrap();
+                    mats.get_mut(*children.first().unwrap()).unwrap().0 =
+                        make_material(&mut materials, card.normal.image().clone_weak());
+                }
             } else if input.just_pressed(KeyCode::Backspace)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::AltLeft])
             {
@@ -255,6 +259,7 @@ pub fn listen_for_mouse(
             } else if input.just_pressed(KeyCode::KeyE) {
                 let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
                 let n = (2.0 * rot / PI).round() as isize;
+                let rev = is_reversed(&transform);
                 transform.rotation = Quat::from_rotation_z(match n {
                     0 => -PI / 2.0,
                     1 => 0.0,
@@ -263,9 +268,13 @@ pub fn listen_for_mouse(
                     _ => unreachable!(),
                 });
                 transform.rotate_x(-PI / 2.0);
+                if rev {
+                    transform.rotate_z(PI);
+                }
             } else if input.just_pressed(KeyCode::KeyQ) {
                 let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
                 let n = (2.0 * rot / PI).round() as isize;
+                let rev = is_reversed(&transform);
                 transform.rotation = Quat::from_rotation_z(match n {
                     0 => PI / 2.0,
                     1 => PI,
@@ -274,6 +283,9 @@ pub fn listen_for_mouse(
                     _ => unreachable!(),
                 });
                 transform.rotate_x(-PI / 2.0);
+                if rev {
+                    transform.rotate_z(PI);
+                }
             } else if input.just_pressed(KeyCode::KeyO)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
             {

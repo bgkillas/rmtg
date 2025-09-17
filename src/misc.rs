@@ -130,5 +130,9 @@ pub fn new_pile_at(
     Some(ent.id())
 }
 pub fn is_reversed(transform: &Transform) -> bool {
-    transform.rotation.xyz().y.is_sign_negative()
+    transform
+        .rotation
+        .to_euler(EulerRot::XYZ)
+        .0
+        .is_sign_positive()
 }
