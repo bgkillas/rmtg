@@ -149,7 +149,7 @@ pub fn listen_for_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
     camera: Single<(&Camera, &GlobalTransform, Entity)>,
     window: Single<&Window, With<PrimaryWindow>>,
-    spatial: SpatialQuery,
+    mut pset: ParamSet<(SpatialQuery, Query<&mut Collider>)>,
     mut cards: Query<(
         &mut Pile,
         &mut Transform,
@@ -167,13 +167,14 @@ pub fn listen_for_mouse(
     input: Res<ButtonInput<KeyCode>>,
     mut rand: GlobalEntropy<WyRand>,
     zoom: Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
-    (down, asset_server, mut game_clipboard, mut count, mut killed, ids): (
+    (down, asset_server, mut game_clipboard, mut count, mut killed, ids, mut query_meshes): (
         ResMut<Download>,
         Res<AssetServer>,
         ResMut<GameClipboard>,
         ResMut<SyncCount>,
         ResMut<Killed>,
         Query<&SyncObjectMe>,
+        Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
     ),
 ) {
     let Some(cursor_position) = window.cursor_position() else {
@@ -183,13 +184,14 @@ pub fn listen_for_mouse(
     let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
         return;
     };
-    let hit = spatial.cast_ray(
+    let hit = pset.p0().cast_ray(
         ray.origin,
         ray.direction,
         f32::MAX,
         true,
         &SpatialQueryFilter::DEFAULT,
     );
+    let mut colliders = pset.p1();
     if let Some(RayHitData { entity, .. }) = hit {
         if let Ok((mut pile, mut transform, children, parent, inhand)) = cards.get_mut(entity) {
             if input.just_pressed(KeyCode::KeyF) {
@@ -224,7 +226,14 @@ pub fn listen_for_mouse(
                     if !pile.0.is_empty() {
                         let card = pile.0.last().unwrap();
                         repaint_face(&mut mats, &mut materials, card, children);
-                        adjust_meshes();
+                        adjust_meshes(
+                            &pile,
+                            children,
+                            &mut meshes,
+                            &mut query_meshes,
+                            &mut transform,
+                            &mut colliders.get_mut(entity).unwrap(),
+                        );
                     }
                     let mut transform = *transform;
                     transform.translation.y += len + 4.0;
@@ -375,7 +384,14 @@ pub fn listen_for_mouse(
                     if !pile.0.is_empty() {
                         let card = pile.0.last().unwrap();
                         repaint_face(&mut mats, &mut materials, card, children);
-                        adjust_meshes();
+                        adjust_meshes(
+                            &pile,
+                            children,
+                            &mut meshes,
+                            &mut query_meshes,
+                            &mut transform,
+                            &mut colliders.get_mut(entity).unwrap(),
+                        );
                     } else {
                         killed.0.push(*ids.get(entity).unwrap());
                         commands.entity(entity).despawn();
