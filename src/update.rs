@@ -37,7 +37,7 @@ pub fn gather_hand(
     mut commands: Commands,
 ) {
     let intersections = spatial.shape_intersections(
-        &Collider::cuboid(2048.0, 256.0, 32.0),
+        &Collider::cuboid(4096.0, 256.0, 32.0),
         hand.0.translation,
         hand.0.rotation,
         &SpatialQueryFilter::DEFAULT,
@@ -50,6 +50,7 @@ pub fn gather_hand(
             angvel.0 = Default::default();
             grav.0 = 0.0;
             commands.entity(entity).insert(InHand(hand.1.count));
+            commands.entity(entity).insert(RigidBodyDisabled);
             hand.1.count += 1;
             commands.entity(hand.2).add_child(entity);
         }
@@ -84,6 +85,10 @@ pub fn follow_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
     camera: Single<(&Camera, &GlobalTransform)>,
     window: Single<&Window, With<PrimaryWindow>>,
+    cards: Query<(&Pile, &Transform), Without<FollowMouse>>,
+    mut commands: Commands,
+    time_since: Res<Time>,
+    mut pset: ParamSet<(SpatialQuery, Single<&mut Position, With<FollowMouse>>)>,
     mut card: Single<
         (
             Entity,
@@ -94,10 +99,6 @@ pub fn follow_mouse(
         ),
         With<FollowMouse>,
     >,
-    cards: Query<(&Pile, &Transform), Without<FollowMouse>>,
-    mut commands: Commands,
-    time_since: Res<Time>,
-    spatial: SpatialQuery,
 ) {
     let Some(cursor_position) = window.cursor_position() else {
         return;
@@ -107,7 +108,8 @@ pub fn follow_mouse(
         return;
     };
     if mouse_input.pressed(MouseButton::Left) {
-        if let Some(max) = spatial
+        if let Some(max) = pset
+            .p0()
             .shape_intersections(
                 card.4,
                 card.1.translation,
@@ -127,12 +129,14 @@ pub fn follow_mouse(
             .reduce(f32::max)
         {
             card.1.translation.y = max + 4.0;
+            pset.p1().y = max + 4.0;
         }
         if let Some(time) =
             ray.intersect_plane(card.1.translation, InfinitePlane3d { normal: Dir3::Y })
         {
             let point = ray.get_point(time);
             card.1.translation = point;
+            pset.p1().0 = point;
         }
     } else {
         if let Some(time) =
@@ -217,9 +221,11 @@ pub fn listen_for_mouse(
                 {
                     let mut hand = hands.get_mut(parent.0).unwrap().0;
                     hand.count -= 1;
-                    hand.removed.push(inhand.0)
+                    hand.removed.push(inhand.0);
+                    transform.translation.y += 128.0;
+                } else {
+                    transform.translation.y += 4.0;
                 }
-                transform.translation.y += 4.0;
                 if input.pressed(KeyCode::ControlLeft) && pile.0.len() > 1 {
                     let len = pile.0.len() as f32;
                     let new = take_card(&mut pile, &transform);
@@ -257,6 +263,7 @@ pub fn listen_for_mouse(
                         .entity(entity)
                         .insert(FollowMouse)
                         .remove::<InHand>()
+                        .remove::<RigidBodyDisabled>()
                         .remove_parent_in_place();
                 }
             } else if input.just_pressed(KeyCode::KeyE) {
@@ -378,6 +385,7 @@ pub fn listen_for_mouse(
                             )
                             .unwrap();
                             commands.entity(ent).insert(InHand(hand.0.count));
+                            commands.entity(ent).insert(RigidBodyDisabled);
                             hand.0.count += 1;
                         }
                     }
