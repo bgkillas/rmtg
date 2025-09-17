@@ -10,6 +10,7 @@ use bevy_framepace::FramepacePlugin;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalEntropy;
 use bevy_rand::prelude::EntropyPlugin;
+use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
 use bitcode::{Decode, Encode};
 use rand::RngCore;
 use std::mem::MaybeUninit;
@@ -76,6 +77,7 @@ pub fn start() {
         PhysicsDebugPlugin::default(),
         FramepacePlugin,
         EntropyPlugin::<WyRand>::default(),
+        Text3dPlugin::default(),
     ))
     .insert_resource(LobbyCreateChannel {
         sender: tx1,
@@ -84,6 +86,10 @@ pub fn start() {
     .insert_resource(LobbyJoinChannel {
         sender: tx2,
         receiver: rx2,
+    })
+    .insert_resource(LoadFonts {
+        font_paths: vec!["assets/fonts/noto.ttf".to_owned()],
+        ..Default::default()
     })
     .insert_resource(clipboard)
     .insert_resource(SyncCount::default())

@@ -171,7 +171,7 @@ pub fn listen_for_mouse(
     input: Res<ButtonInput<KeyCode>>,
     mut rand: GlobalEntropy<WyRand>,
     zoom: Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
-    (down, asset_server, mut game_clipboard, mut count, mut killed, ids, mut query_meshes): (
+    (down, asset_server, mut game_clipboard, mut count, mut killed, ids, mut query_meshes, follow): (
         ResMut<Download>,
         Res<AssetServer>,
         ResMut<GameClipboard>,
@@ -179,6 +179,7 @@ pub fn listen_for_mouse(
         ResMut<Killed>,
         Query<&SyncObjectMe>,
         Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
+        Option<Single<Entity, With<FollowMouse>>>
     ),
 ) {
     let Some(cursor_position) = window.cursor_position() else {
@@ -243,6 +244,9 @@ pub fn listen_for_mouse(
                     }
                     let mut transform = *transform;
                     transform.translation.y += len + 4.0;
+                    if let Some(e) = follow {
+                        commands.entity(*e).remove::<FollowMouse>();
+                    }
                     new_pile_at(
                         Pile(vec![new]),
                         card_base.stock.clone_weak(),
@@ -259,6 +263,9 @@ pub fn listen_for_mouse(
                         None,
                     );
                 } else {
+                    if let Some(e) = follow {
+                        commands.entity(*e).remove::<FollowMouse>();
+                    }
                     commands
                         .entity(entity)
                         .insert(FollowMouse)
@@ -447,14 +454,20 @@ pub fn listen_for_mouse(
                 commands.entity(single.0).despawn();
             }
             if mouse_input.just_pressed(MouseButton::Left) {
+                if let Some(e) = follow {
+                    commands.entity(*e).remove::<FollowMouse>();
+                }
                 commands.entity(entity).insert(FollowMouse);
             } else if input.just_pressed(KeyCode::KeyR)
                 && let Ok((mut lv, mut av)) = vels.get_mut(entity)
             {
-                lv.y = 2048.0;
-                av.x = rand.random_range(-32.0..32.0);
-                av.y = rand.random_range(-32.0..32.0);
-                av.z = rand.random_range(-32.0..32.0);
+                lv.y = 4096.0;
+                av.x = if rand.random() { 1.0 } else { -1.0 }
+                    * (rand.random_range(32.0..64.0) + av.x.abs());
+                av.y = if rand.random() { 1.0 } else { -1.0 }
+                    * (rand.random_range(32.0..64.0) + av.y.abs());
+                av.z = if rand.random() { 1.0 } else { -1.0 }
+                    * (rand.random_range(32.0..64.0) + av.z.abs());
             }
         }
     } else if let Some(single) = zoom {

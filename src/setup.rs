@@ -1,6 +1,7 @@
 use crate::sync::spawn_hand;
 use crate::*;
 use bevy_framepace::{FramepaceSettings, Limiter};
+use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 use std::f32::consts::PI;
 const MAT_SCALE: f32 = 10.0;
 pub const MAT_WIDTH: f32 = 872.0 * MAT_SCALE;
@@ -74,23 +75,23 @@ pub fn setup(
         RigidBody::Static,
     ));
     commands.spawn((
-        Transform::from_xyz(W + T / 2.0, T / 2.0, 0.0),
-        Collider::cuboid(2.0 * T, 2.0 * T, 2.0 * W),
+        Transform::from_xyz(W + T / 2.0, W / 2.0, 0.0),
+        Collider::cuboid(2.0 * T, 2.0 * W, 2.0 * W),
         RigidBody::Static,
     ));
     commands.spawn((
-        Transform::from_xyz(-(W + T / 2.0), T / 2.0, 0.0),
-        Collider::cuboid(2.0 * T, 2.0 * T, 2.0 * W),
+        Transform::from_xyz(-(W + T / 2.0), W / 2.0, 0.0),
+        Collider::cuboid(2.0 * T, 2.0 * W, 2.0 * W),
         RigidBody::Static,
     ));
     commands.spawn((
-        Transform::from_xyz(0.0, T / 2.0, W + T / 2.0),
-        Collider::cuboid(2.0 * W, 2.0 * T, 2.0 * T),
+        Transform::from_xyz(0.0, W / 2.0, W + T / 2.0),
+        Collider::cuboid(2.0 * W, 2.0 * W, 2.0 * T),
         RigidBody::Static,
     ));
     commands.spawn((
-        Transform::from_xyz(0.0, T / 2.0, -(W + T / 2.0)),
-        Collider::cuboid(2.0 * W, 2.0 * T, 2.0 * T),
+        Transform::from_xyz(0.0, W / 2.0, -(W + T / 2.0)),
+        Collider::cuboid(2.0 * W, 2.0 * W, 2.0 * T),
         RigidBody::Static,
     ));
     commands.spawn((
@@ -98,16 +99,47 @@ pub fn setup(
         Msaa::Sample8,
         Transform::from_xyz(0.0, START_Y, START_Z).looking_at(Vec3::ZERO, Vec3::Y),
     ));
-    commands.spawn((
-        Collider::cuboid(256.0, 256.0, 256.0),
-        Transform::from_xyz(0.0, 128.0, 0.0),
-        RigidBody::Dynamic,
-        GravityScale(GRAVITY),
-        Mesh3d(meshes.add(Cuboid::from_length(256.0))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::WHITE,
-            unlit: true,
-            ..Default::default()
-        })),
-    ));
+    commands
+        .spawn((
+            Collider::cuboid(256.0, 256.0, 256.0),
+            Transform::from_xyz(0.0, 128.0, 0.0),
+            RigidBody::Dynamic,
+            GravityScale(GRAVITY),
+            Mesh3d(meshes.add(Cuboid::from_length(256.0))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: bevy::prelude::Color::WHITE,
+                unlit: true,
+                ..Default::default()
+            })),
+        ))
+        .with_children(|parent| {
+            for i in 1..=6 {
+                let (x, y, z) = match i {
+                    1 => (0.0, 128.1, 0.0),
+                    2 => (128.1, 0.0, 0.0),
+                    3 => (0.0, 0.0, 128.1),
+                    4 => (0.0, 0.0, -128.1),
+                    5 => (-128.1, 0.0, 0.0),
+                    6 => (0.0, -128.1, 0.0),
+                    _ => unreachable!(),
+                };
+                parent.spawn((
+                    Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
+                    Text3d::new(i.to_string()),
+                    Mesh3d(meshes.add(Rectangle::new(256.0, 256.0))),
+                    MeshMaterial3d(asset_server.add(StandardMaterial {
+                        base_color_texture: Some(TextAtlas::DEFAULT_IMAGE.clone()),
+                        base_color: bevy::prelude::Color::BLACK,
+                        alpha_mode: AlphaMode::Blend,
+                        unlit: true,
+                        ..Default::default()
+                    })),
+                    Text3dStyling {
+                        size: 128.0,
+                        anchor: TextAnchor::CENTER,
+                        ..Default::default()
+                    },
+                ));
+            }
+        });
 }
