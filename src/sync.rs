@@ -12,7 +12,7 @@ use std::f32::consts::PI;
 use tokio::sync::mpsc::{Receiver, Sender};
 pub fn get_sync(
     client: Res<Client>,
-    query: Query<(&SyncObjectMe, &Transform, Option<&InHand>)>,
+    query: Query<(&SyncObjectMe, &GlobalTransform, Option<&InHand>)>,
     count: Res<SyncCount>,
     peers: Res<Peers>,
     mut killed: ResMut<Killed>,
@@ -48,7 +48,7 @@ pub fn apply_sync(
         &Children,
         Option<&Pile>,
     )>,
-    mut queryme: Query<(&SyncObjectMe, &mut Transform, &Pile), Without<SyncObject>>,
+    mut queryme: Query<(&SyncObjectMe, &GlobalTransform, &Pile), Without<SyncObject>>,
     mut sent: ResMut<Sent>,
     asset_server: Res<AssetServer>,
     down: Res<Download>,
@@ -108,7 +108,7 @@ pub fn apply_sync(
                             .find_map(|(a, b, c)| if a.0 == lid.0 { Some((b, c)) } else { None })
                         {
                             let bytes =
-                                encode(&Packet::New(lid, c.clone_no_image(), Trans::from(&b)));
+                                encode(&Packet::New(lid, c.clone_no_image(), Trans::from(b)));
                             networking.send_p2p_packet(sender, SendType::Reliable, &bytes);
                         } else {
                             sent.0.remove(&id);
@@ -310,10 +310,12 @@ pub struct Trans {
     pub rotation: u128,
 }
 impl Trans {
-    fn from(value: &Transform) -> Self {
+    fn from(value: &GlobalTransform) -> Self {
         Self {
-            translation: unsafe { std::mem::transmute::<Vec3, (u32, u32, u32)>(value.translation) },
-            rotation: unsafe { std::mem::transmute::<Quat, u128>(value.rotation) },
+            translation: unsafe {
+                std::mem::transmute::<Vec3, (u32, u32, u32)>(value.translation())
+            },
+            rotation: unsafe { std::mem::transmute::<Quat, u128>(value.rotation()) },
         }
     }
 }
