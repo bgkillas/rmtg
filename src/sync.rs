@@ -2,8 +2,8 @@ use crate::download::add_images;
 use crate::misc::repaint_face;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
 use crate::*;
-use bevy_steamworks::networking_sockets::{NetConnection, NetPollGroup};
-use bevy_steamworks::networking_types::{NetworkingIdentity, SendFlags};
+use bevy_steamworks::networking_sockets::{NetConnection, NetPollGroup, NetworkingSockets};
+use bevy_steamworks::networking_types::{NetworkingConnectionState, NetworkingIdentity, SendFlags};
 use bevy_steamworks::{
     CallbackResult, ChatMemberStateChange, Client, GameLobbyJoinRequested, LobbyChatUpdate,
     LobbyId, LobbyType, Matchmaking, SteamId, SteamworksEvent,
@@ -11,11 +11,13 @@ use bevy_steamworks::{
 use bitcode::{Decode, Encode, decode, encode};
 use std::collections::{HashMap, HashSet};
 use std::f32::consts::PI;
+use std::mem;
 use tokio::sync::mpsc::{Receiver, Sender};
 pub fn get_sync(
+    client: Res<Client>,
     query: Query<(&SyncObjectMe, &GlobalTransform, Option<&InHand>)>,
     count: Res<SyncCount>,
-    peers: Res<Peers>,
+    mut peers: ResMut<Peers>,
     mut killed: ResMut<Killed>,
 ) {
     let mut v = Vec::with_capacity(count.0);
@@ -24,14 +26,16 @@ pub fn get_sync(
     }
     let packet = Packet::Pos(v);
     let bytes = encode(&packet);
-    for con in peers.list.values() {
-        con.send_message(&bytes, SendFlags::RELIABLE).unwrap();
+    let socket = client.networking_sockets();
+    for con in peers.list.values_mut() {
+        con.poll(&socket);
+        con.send_message(&bytes, SendFlags::RELIABLE);
     }
     for dead in killed.0.drain(..) {
         let packet = Packet::Dead(dead);
         let bytes = encode(&packet);
         for con in peers.list.values() {
-            con.send_message(&bytes, SendFlags::RELIABLE).unwrap();
+            con.send_message(&bytes, SendFlags::RELIABLE);
         }
     }
 }
@@ -95,7 +99,7 @@ pub fn apply_sync(
                         }
                     } else if sent.0.insert(id) {
                         let bytes = encode(&Packet::Request(lid));
-                        con.send_message(&bytes, SendFlags::RELIABLE).unwrap();
+                        con.send_message(&bytes, SendFlags::RELIABLE);
                     }
                 }
             }
@@ -108,7 +112,7 @@ pub fn apply_sync(
                         .find_map(|(a, b, c)| if a.0 == lid.0 { Some((b, c)) } else { None })
                     {
                         let bytes = encode(&Packet::New(lid, c.clone_no_image(), Trans::from(b)));
-                        con.send_message(&bytes, SendFlags::RELIABLE).unwrap();
+                        con.send_message(&bytes, SendFlags::RELIABLE);
                     } else {
                         sent.0.remove(&id);
                     }
@@ -242,7 +246,7 @@ fn connect(peers: &mut Peers, client: &Client, poll_group: &PollGroup, peer: Ste
         .connect_p2p(peer_identity, 0, None)
         .unwrap();
     connection.set_poll_group(&poll_group.0);
-    peers.list.insert(peer, connection);
+    peers.list.insert(peer, Connection::Waiting(connection));
 }
 #[derive(Resource)]
 pub struct LobbyJoinChannel {
@@ -304,8 +308,31 @@ impl SyncObjectMe {
 pub struct SyncCount(pub usize);
 #[derive(Resource, Default)]
 pub struct Peers {
-    pub list: HashMap<SteamId, NetConnection>,
+    pub list: HashMap<SteamId, Connection>,
     pub me: usize,
+}
+pub enum Connection {
+    Connected(NetConnection),
+    Waiting(NetConnection),
+    Temp,
+}
+impl Connection {
+    pub fn send_message(&self, data: &[u8], send: SendFlags) {
+        if let Connection::Connected(con) = self {
+            con.send_message(data, send).unwrap();
+        }
+    }
+    pub fn poll(&mut self, socket: &NetworkingSockets) {
+        if let Connection::Waiting(con) = self {
+            let info = socket.get_connection_info(con).unwrap();
+            if info.state().unwrap() == NetworkingConnectionState::Connected {
+                let Connection::Waiting(current) = mem::replace(self, Connection::Temp) else {
+                    return;
+                };
+                *self = Connection::Connected(current);
+            }
+        }
+    }
 }
 #[derive(Component)]
 pub struct InOtherHand;

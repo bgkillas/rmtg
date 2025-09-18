@@ -243,12 +243,14 @@ pub async fn get_pile(
     decks: GetDeck,
     v: Vec2,
 ) {
+    println!("e");
     let pile = iter
         .map(|p| parse(p, client.clone(), asset_server.clone()))
         .collect::<FuturesUnordered<_>>()
         .filter_map(async |a| a)
         .collect::<Vec<Card>>()
         .await;
+    println!("f");
     let mut decks = decks.0.lock().unwrap();
     decks.push((Pile(pile), v, None));
 }
@@ -259,11 +261,34 @@ pub async fn get_deck(
     decks: GetDeck,
     v: Vec2,
 ) {
-    if let Ok(res) = client.get(url).send().await
-        && let Ok(text) = res.text().await
-        && let Ok(json) = json::parse(&text)
+    let t = client.get(url).send().await;
+    println!("a {t:?}");
+    if let Ok(res) = t
+        && let Ok(text) = {
+            println!("b {res:?}");
+            println!("b1 {:?}", res.status());
+            match res.text().await {
+                Ok(e) => Ok(e),
+                Err(e) => {
+                    println!("{e:?}");
+                    Err(e)
+                }
+            }
+        }
+        && let Ok(json) = {
+            println!("c {text:?}");
+            match json::parse(&text) {
+                Ok(_) => {}
+                Err(e) => {
+                    println!("{e:?}")
+                }
+            }
+            json::parse(&text)
+        }
     {
+        println!("d");
         let board = &json["boards"];
+        println!("{}", board.len());
         let commanders = get_pile(
             board["commanders"]["cards"]
                 .entries()
