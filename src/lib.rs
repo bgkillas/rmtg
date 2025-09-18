@@ -29,8 +29,8 @@ mod setup;
 pub mod sync;
 mod update;
 use crate::sync::{
-    Killed, LobbyJoinChannel, Peers, Sent, SyncCount, SyncObject, apply_sync, callbacks, get_sync,
-    new_lobby, on_join_lobby,
+    Killed, LobbyCreateChannel, LobbyJoinChannel, Peers, Sent, SyncCount, SyncObject, apply_sync,
+    callbacks, get_sync, new_lobby, on_create_lobby, on_join_lobby,
 };
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -59,6 +59,7 @@ pub fn start() {
     let get_deck = GetDeck::default();
     let game_clipboard = GameClipboard(None);
     let mut app = App::new();
+    let (tx, rx) = channel(4);
     let (tx2, rx2) = channel(4);
     #[cfg(feature = "steam")]
     app.add_plugins(bevy_steamworks::SteamworksPlugin::init_app(480).unwrap());
@@ -81,6 +82,10 @@ pub fn start() {
     .insert_resource(LobbyJoinChannel {
         sender: tx2,
         receiver: rx2,
+    })
+    .insert_resource(LobbyCreateChannel {
+        sender: tx,
+        receiver: rx,
     })
     .insert_resource(LoadFonts {
         font_paths: vec!["assets/fonts/noto.ttf".to_owned()],
@@ -109,6 +114,7 @@ pub fn start() {
             cam_rotation,
             new_lobby,
             on_join_lobby,
+            on_create_lobby,
             (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
         ),
     )

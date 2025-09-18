@@ -59,7 +59,7 @@ jobs:
        profile: minimal
        override: true
     - name: Build
-      run: cargo build --release
+      run: cargo build --release --features "native"
     - uses: actions/upload-artifact@v4
       with:
         name: rmtg.exe

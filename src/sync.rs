@@ -20,6 +20,10 @@ pub fn get_sync(
     mut peers: ResMut<Peers>,
     mut killed: ResMut<Killed>,
 ) {
+    if let Some(id) = peers.lobby_id {
+        println!("{:?}", client.matchmaking().lobby_members(id));
+        println!("{:?}", peers.list.keys().collect::<Vec<_>>());
+    }
     let mut v = Vec::with_capacity(count.0);
     for (id, transform, in_hand) in query {
         v.push((*id, Trans::from(transform), in_hand.is_some()))
@@ -205,13 +209,26 @@ pub fn spawn_hand(me: usize, commands: &mut Commands) {
     }
     commands.spawn((transform, Hand::default(), Owned));
 }
-pub fn new_lobby(input: Res<ButtonInput<KeyCode>>, client: Res<Client>) {
+pub fn new_lobby(
+    input: Res<ButtonInput<KeyCode>>,
+    client: Res<Client>,
+    create: Res<LobbyCreateChannel>,
+    down: Res<Download>,
+) {
     if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft])
         && input.just_pressed(KeyCode::KeyN)
     {
+        let send = create.sender.clone();
+        let handle = down.runtime.0.handle().clone();
         client
             .matchmaking()
-            .create_lobby(LobbyType::FriendsOnly, 250, |_| {});
+            .create_lobby(LobbyType::FriendsOnly, 250, move |id| {
+                if let Ok(id) = id {
+                    handle.spawn(async move {
+                        let _ = send.send(id).await;
+                    });
+                }
+            });
     }
 }
 fn join_lobby(
@@ -237,6 +254,12 @@ pub fn on_join_lobby(
     while let Ok(event) = join.receiver.try_recv() {
         let owner = client.matchmaking().lobby_owner(event);
         connect(&mut peers, &client, &poll_group, owner);
+        peers.lobby_id = Some(event);
+    }
+}
+pub fn on_create_lobby(mut create: ResMut<LobbyCreateChannel>, mut peers: ResMut<Peers>) {
+    while let Ok(event) = create.receiver.try_recv() {
+        peers.lobby_id = Some(event);
     }
 }
 fn connect(peers: &mut Peers, client: &Client, poll_group: &PollGroup, peer: SteamId) {
@@ -250,6 +273,11 @@ fn connect(peers: &mut Peers, client: &Client, poll_group: &PollGroup, peer: Ste
 }
 #[derive(Resource)]
 pub struct LobbyJoinChannel {
+    pub sender: Sender<LobbyId>,
+    pub receiver: Receiver<LobbyId>,
+}
+#[derive(Resource)]
+pub struct LobbyCreateChannel {
     pub sender: Sender<LobbyId>,
     pub receiver: Receiver<LobbyId>,
 }
@@ -274,18 +302,16 @@ pub struct Trans {
 impl Trans {
     fn from(value: &GlobalTransform) -> Self {
         Self {
-            translation: unsafe {
-                std::mem::transmute::<Vec3, (u32, u32, u32)>(value.translation())
-            },
-            rotation: unsafe { std::mem::transmute::<Quat, u128>(value.rotation()) },
+            translation: unsafe { mem::transmute::<Vec3, (u32, u32, u32)>(value.translation()) },
+            rotation: unsafe { mem::transmute::<Quat, u128>(value.rotation()) },
         }
     }
 }
 impl From<Trans> for Transform {
     fn from(value: Trans) -> Self {
         Self {
-            translation: unsafe { std::mem::transmute::<(u32, u32, u32), Vec3>(value.translation) },
-            rotation: unsafe { std::mem::transmute::<u128, Quat>(value.rotation) },
+            translation: unsafe { mem::transmute::<(u32, u32, u32), Vec3>(value.translation) },
+            rotation: unsafe { mem::transmute::<u128, Quat>(value.rotation) },
             scale: Vec3::splat(1.0),
         }
     }
@@ -310,6 +336,7 @@ pub struct SyncCount(pub usize);
 pub struct Peers {
     pub list: HashMap<SteamId, Connection>,
     pub me: usize,
+    pub lobby_id: Option<LobbyId>,
 }
 pub enum Connection {
     Connected(NetConnection),
