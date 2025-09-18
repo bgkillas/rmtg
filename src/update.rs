@@ -3,6 +3,7 @@ use crate::misc::{
     adjust_meshes, get_card, get_mut_card, is_reversed, make_material, new_pile, new_pile_at,
     repaint_face, take_card,
 };
+use crate::setup::{T, W};
 use crate::sync::{Packet, SyncObjectMe};
 use crate::*;
 use bevy::ecs::relationship::RelationshipSourceCollection;
@@ -517,6 +518,10 @@ pub fn cam_translation(
             cam.translation += translate;
         }
     }
+    cam.translation = cam.translation.clamp(
+        Vec3::new(T - W, 1.0, T - W),
+        Vec3::new(W - T, 2.0 * (W - 2.0 * T), W - T),
+    );
     if input.pressed(KeyCode::Space) {
         *cam.into_inner() =
             Transform::from_xyz(0.0, START_Y, START_Z).looking_at(Vec3::ZERO, Vec3::Y);

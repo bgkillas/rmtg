@@ -6,6 +6,8 @@ use std::f32::consts::PI;
 const MAT_SCALE: f32 = 10.0;
 pub const MAT_WIDTH: f32 = 872.0 * MAT_SCALE;
 pub const MAT_HEIGHT: f32 = 525.0 * MAT_SCALE;
+pub const T: f32 = 256.0;
+pub const W: f32 = 16384.0;
 pub fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -67,32 +69,71 @@ pub fn setup(
     transform.rotate_y(PI);
     commands.spawn((Mesh3d(mat_mesh), MeshMaterial3d(playmat), transform));
     spawn_hand(0, &mut commands);
-    const T: f32 = 256.0;
-    const W: f32 = 16384.0;
     commands.spawn((
         Transform::from_xyz(0.0, -T, 0.0),
         Collider::cuboid(2.0 * W, 2.0 * T, 2.0 * W),
         RigidBody::Static,
+        Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * T - 2.0, 2.0 * W))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: bevy::prelude::Color::BLACK,
+            unlit: true,
+            ..Default::default()
+        })),
     ));
     commands.spawn((
-        Transform::from_xyz(W + T / 2.0, W / 2.0, 0.0),
+        Transform::from_xyz(0.0, 2.0 * (W - T), 0.0),
+        Collider::cuboid(2.0 * W, 2.0 * T, 2.0 * W),
+        RigidBody::Static,
+        Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * T, 2.0 * W))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: bevy::prelude::Color::BLACK,
+            unlit: true,
+            ..Default::default()
+        })),
+    ));
+    commands.spawn((
+        Transform::from_xyz(W + T / 2.0, W - T, 0.0),
         Collider::cuboid(2.0 * T, 2.0 * W, 2.0 * W),
         RigidBody::Static,
+        Mesh3d(meshes.add(Cuboid::new(2.0 * T, 2.0 * W, 2.0 * W))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: bevy::prelude::Color::BLACK,
+            unlit: true,
+            ..Default::default()
+        })),
     ));
     commands.spawn((
-        Transform::from_xyz(-(W + T / 2.0), W / 2.0, 0.0),
+        Transform::from_xyz(-(W + T / 2.0), W - T, 0.0),
         Collider::cuboid(2.0 * T, 2.0 * W, 2.0 * W),
         RigidBody::Static,
+        Mesh3d(meshes.add(Cuboid::new(2.0 * T, 2.0 * W, 2.0 * W))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: bevy::prelude::Color::BLACK,
+            unlit: true,
+            ..Default::default()
+        })),
     ));
     commands.spawn((
-        Transform::from_xyz(0.0, W / 2.0, W + T / 2.0),
+        Transform::from_xyz(0.0, W - T, W + T / 2.0),
         Collider::cuboid(2.0 * W, 2.0 * W, 2.0 * T),
         RigidBody::Static,
+        Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, 2.0 * T))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: bevy::prelude::Color::BLACK,
+            unlit: true,
+            ..Default::default()
+        })),
     ));
     commands.spawn((
-        Transform::from_xyz(0.0, W / 2.0, -(W + T / 2.0)),
+        Transform::from_xyz(0.0, W - T, -(W + T / 2.0)),
         Collider::cuboid(2.0 * W, 2.0 * W, 2.0 * T),
         RigidBody::Static,
+        Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, 2.0 * T))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: bevy::prelude::Color::BLACK,
+            unlit: true,
+            ..Default::default()
+        })),
     ));
     commands.spawn((
         Camera3d::default(),
@@ -115,12 +156,12 @@ pub fn setup(
         .with_children(|parent| {
             for i in 1..=6 {
                 let (x, y, z) = match i {
-                    1 => (0.0, 128.1, 0.0),
-                    2 => (128.1, 0.0, 0.0),
-                    3 => (0.0, 0.0, 128.1),
-                    4 => (0.0, 0.0, -128.1),
-                    5 => (-128.1, 0.0, 0.0),
-                    6 => (0.0, -128.1, 0.0),
+                    1 => (0.0, 129.0, 0.0),
+                    2 => (129.0, 0.0, 0.0),
+                    3 => (0.0, 0.0, 129.0),
+                    4 => (0.0, 0.0, -129.0),
+                    5 => (-129.0, 0.0, 0.0),
+                    6 => (0.0, -129.0, 0.0),
                     _ => unreachable!(),
                 };
                 parent.spawn((
