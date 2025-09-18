@@ -1,4 +1,5 @@
 use crate::download::add_images;
+use crate::misc::repaint_face;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
 use crate::*;
 use bevy_steamworks::{
@@ -11,14 +12,14 @@ use std::f32::consts::PI;
 use tokio::sync::mpsc::{Receiver, Sender};
 pub fn get_sync(
     client: Res<Client>,
-    query: Query<(&SyncObjectMe, &Transform)>,
+    query: Query<(&SyncObjectMe, &Transform, Option<&InHand>)>,
     count: Res<SyncCount>,
     peers: Res<Peers>,
     mut killed: ResMut<Killed>,
 ) {
     let mut v = Vec::with_capacity(count.0);
-    for (id, transform) in query {
-        v.push((*id, Trans::from(transform)))
+    for (id, transform, in_hand) in query {
+        v.push((*id, Trans::from(transform), in_hand.is_some()))
     }
     let packet = Packet::Pos(v);
     let bytes = encode(&packet);
@@ -39,7 +40,14 @@ pub fn get_sync(
 }
 pub fn apply_sync(
     client: Res<Client>,
-    mut query: Query<(&SyncObject, &mut Transform, Entity)>,
+    mut query: Query<(
+        &SyncObject,
+        &mut Transform,
+        Entity,
+        Option<&InOtherHand>,
+        &Children,
+        Option<&Pile>,
+    )>,
     mut queryme: Query<(&SyncObjectMe, &mut Transform, &Pile), Without<SyncObject>>,
     mut sent: ResMut<Sent>,
     asset_server: Res<AssetServer>,
@@ -47,6 +55,8 @@ pub fn apply_sync(
     mut peers: ResMut<Peers>,
     mut commands: Commands,
     hand: Single<Entity, (With<Owned>, With<Hand>)>,
+    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let networking = client.networking();
     while let Some(size) = networking.is_p2p_packet_available() {
@@ -56,13 +66,33 @@ pub fn apply_sync(
             match event {
                 Packet::Pos(data) => {
                     let user = sender.raw();
-                    for (lid, trans) in data {
+                    for (lid, trans, in_hand) in data {
                         let id = SyncObject { user, id: lid.0 };
-                        if let Some(mut t) = query
-                            .iter_mut()
-                            .find_map(|(a, b, _)| if *a == id { Some(b) } else { None })
+                        if let Some((mut t, hand, children, entity, pile)) =
+                            query.iter_mut().find_map(|(a, b, e, h, c, p)| {
+                                if *a == id {
+                                    Some((b, h, c, e, p))
+                                } else {
+                                    None
+                                }
+                            })
                         {
-                            *t = trans.into()
+                            *t = trans.into();
+                            if let Some(pile) = pile
+                                && in_hand != hand.is_some()
+                            {
+                                if in_hand {
+                                    commands.entity(entity).insert(InOtherHand);
+                                    mats.get_mut(*children.first().unwrap()).unwrap().0 = mats
+                                        .get_mut(*children.get(1).unwrap())
+                                        .unwrap()
+                                        .0
+                                        .clone_weak();
+                                } else {
+                                    commands.entity(entity).remove::<InOtherHand>();
+                                    repaint_face(&mut mats, &mut materials, &pile.0[0], children);
+                                }
+                            }
                         } else if sent.0.insert(id) {
                             let bytes = encode(&Packet::Request(lid));
                             networking.send_p2p_packet(sender, SendType::Reliable, &bytes);
@@ -133,7 +163,7 @@ pub fn apply_sync(
                     let id = SyncObject { user, id: lid.0 };
                     if let Some(e) = query
                         .iter_mut()
-                        .find_map(|(a, _, b)| if *a == id { Some(b) } else { None })
+                        .find_map(|(a, _, b, _, _, _)| if *a == id { Some(b) } else { None })
                     {
                         commands.entity(e).despawn();
                     }
@@ -265,7 +295,7 @@ pub struct Sent(pub HashSet<SyncObject>);
 pub struct Killed(pub Vec<SyncObjectMe>);
 #[derive(Encode, Decode, Debug)]
 pub enum Packet {
-    Pos(Vec<(SyncObjectMe, Trans)>),
+    Pos(Vec<(SyncObjectMe, Trans, bool)>),
     Request(SyncObjectMe),
     Received(SyncObjectMe),
     Dead(SyncObjectMe),
@@ -317,3 +347,5 @@ pub struct Peers {
     pub list: Vec<SteamId>,
     pub me: usize,
 }
+#[derive(Component)]
+pub struct InOtherHand;

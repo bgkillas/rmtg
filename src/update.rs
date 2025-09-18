@@ -89,7 +89,7 @@ pub fn follow_mouse(
     cards: Query<(&Pile, &Transform), Without<FollowMouse>>,
     mut commands: Commands,
     time_since: Res<Time>,
-    mut pset: ParamSet<(SpatialQuery, Single<&mut Position, With<FollowMouse>>)>,
+    spatial: SpatialQuery,
     mut card: Single<
         (
             Entity,
@@ -109,8 +109,7 @@ pub fn follow_mouse(
         return;
     };
     if mouse_input.pressed(MouseButton::Left) {
-        if let Some(max) = pset
-            .p0()
+        if let Some(max) = spatial
             .shape_intersections(
                 card.4,
                 card.1.translation,
@@ -130,14 +129,12 @@ pub fn follow_mouse(
             .reduce(f32::max)
         {
             card.1.translation.y = max + 4.0;
-            pset.p1().y = max + 4.0;
         }
         if let Some(time) =
             ray.intersect_plane(card.1.translation, InfinitePlane3d { normal: Dir3::Y })
         {
             let point = ray.get_point(time);
             card.1.translation = point;
-            pset.p1().0 = point;
         }
     } else {
         if let Some(time) =
