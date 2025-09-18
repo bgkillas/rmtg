@@ -6,7 +6,7 @@ use bevy_steamworks::networking_sockets::{NetConnection, NetPollGroup};
 use bevy_steamworks::networking_types::{NetworkingIdentity, SendFlags};
 use bevy_steamworks::{
     CallbackResult, ChatMemberStateChange, Client, GameLobbyJoinRequested, LobbyChatUpdate,
-    LobbyId, LobbyType, Matchmaking, SendType, SteamId, SteamworksEvent,
+    LobbyId, LobbyType, Matchmaking, SteamId, SteamworksEvent,
 };
 use bitcode::{Decode, Encode, decode, encode};
 use std::collections::{HashMap, HashSet};
@@ -36,7 +36,6 @@ pub fn get_sync(
     }
 }
 pub fn apply_sync(
-    client: Res<Client>,
     mut query: Query<(
         &SyncObject,
         &mut Transform,
@@ -57,9 +56,9 @@ pub fn apply_sync(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut poll: ResMut<PollGroup>,
 ) {
-    let networking = client.networking();
     for packet in poll.0.receive_messages(1024) {
         let sender = packet.identity_peer().steam_id().unwrap();
+        let con = peers.list.get(&sender).unwrap();
         let data = packet.data();
         let event = decode(data).unwrap();
         match event {
@@ -96,7 +95,7 @@ pub fn apply_sync(
                         }
                     } else if sent.0.insert(id) {
                         let bytes = encode(&Packet::Request(lid));
-                        networking.send_p2p_packet(sender, SendType::Reliable, &bytes);
+                        con.send_message(&bytes, SendFlags::RELIABLE).unwrap();
                     }
                 }
             }
@@ -109,7 +108,7 @@ pub fn apply_sync(
                         .find_map(|(a, b, c)| if a.0 == lid.0 { Some((b, c)) } else { None })
                     {
                         let bytes = encode(&Packet::New(lid, c.clone_no_image(), Trans::from(b)));
-                        networking.send_p2p_packet(sender, SendType::Reliable, &bytes);
+                        con.send_message(&bytes, SendFlags::RELIABLE).unwrap();
                     } else {
                         sent.0.remove(&id);
                     }
@@ -165,6 +164,7 @@ pub fn callbacks(
                 member_state_change,
                 ..
             }) => {
+                println!("{:?} {:?}", user_changed, member_state_change);
                 if *member_state_change == ChatMemberStateChange::Entered {
                     connect(&mut peers, &client, &poll_group, *user_changed);
                 } else {
@@ -175,6 +175,7 @@ pub fn callbacks(
                 lobby_steam_id,
                 ..
             }) => {
+                println!("{:?}", lobby_steam_id);
                 let send = join.sender.clone();
                 join_lobby(
                     *lobby_steam_id,
