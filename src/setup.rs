@@ -1,7 +1,8 @@
-use crate::sync::spawn_hand;
+use crate::sync::{PollGroup, spawn_hand};
 use crate::*;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
+use bevy_steamworks::Client;
 use std::f32::consts::PI;
 const MAT_SCALE: f32 = 10.0;
 pub const MAT_WIDTH: f32 = 872.0 * MAT_SCALE;
@@ -14,7 +15,13 @@ pub fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut framepace: ResMut<FramepaceSettings>,
+    client: Res<Client>,
 ) {
+    client.networking_messages().session_request_callback(|r| {
+        r.accept();
+    });
+    let poll_group = client.networking_sockets().create_poll_group();
+    commands.insert_resource(PollGroup(poll_group));
     framepace.limiter = Limiter::from_framerate(60.0);
     let card_stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
     let card_back = asset_server.load("back.jpg");

@@ -2,16 +2,17 @@ use crate::download::add_images;
 use crate::misc::repaint_face;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
 use crate::*;
+use bevy_steamworks::networking_sockets::{NetConnection, NetPollGroup};
+use bevy_steamworks::networking_types::{NetworkingIdentity, SendFlags};
 use bevy_steamworks::{
-    CallbackResult, Client, GameLobbyJoinRequested, LobbyId, LobbyType, Matchmaking,
-    P2PSessionRequest, SendType, SteamId, SteamworksEvent,
+    CallbackResult, ChatMemberStateChange, Client, GameLobbyJoinRequested, LobbyChatUpdate,
+    LobbyId, LobbyType, Matchmaking, SendType, SteamId, SteamworksEvent,
 };
 use bitcode::{Decode, Encode, decode, encode};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::f32::consts::PI;
 use tokio::sync::mpsc::{Receiver, Sender};
 pub fn get_sync(
-    client: Res<Client>,
     query: Query<(&SyncObjectMe, &GlobalTransform, Option<&InHand>)>,
     count: Res<SyncCount>,
     peers: Res<Peers>,
@@ -23,18 +24,14 @@ pub fn get_sync(
     }
     let packet = Packet::Pos(v);
     let bytes = encode(&packet);
-    for peer in &peers.list {
-        client
-            .networking()
-            .send_p2p_packet(*peer, SendType::Reliable, &bytes);
+    for con in peers.list.values() {
+        con.send_message(&bytes, SendFlags::RELIABLE).unwrap();
     }
     for dead in killed.0.drain(..) {
         let packet = Packet::Dead(dead);
         let bytes = encode(&packet);
-        for peer in &peers.list {
-            client
-                .networking()
-                .send_p2p_packet(*peer, SendType::Reliable, &bytes);
+        for con in peers.list.values() {
+            con.send_message(&bytes, SendFlags::RELIABLE).unwrap();
         }
     }
 }
@@ -47,6 +44,7 @@ pub fn apply_sync(
         Option<&InOtherHand>,
         &Children,
         Option<&Pile>,
+        &mut GravityScale,
     )>,
     mut queryme: Query<(&SyncObjectMe, &GlobalTransform, &Pile), Without<SyncObject>>,
     mut sent: ResMut<Sent>,
@@ -57,116 +55,95 @@ pub fn apply_sync(
     hand: Single<Entity, (With<Owned>, With<Hand>)>,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut poll: ResMut<PollGroup>,
 ) {
     let networking = client.networking();
-    while let Some(size) = networking.is_p2p_packet_available() {
-        let mut data = vec![0; size];
-        if let Some((sender, _)) = networking.read_p2p_packet(&mut data) {
-            let event = decode(&data).unwrap();
-            match event {
-                Packet::Pos(data) => {
-                    let user = sender.raw();
-                    for (lid, trans, in_hand) in data {
-                        let id = SyncObject { user, id: lid.0 };
-                        if let Some((mut t, hand, children, entity, pile)) =
-                            query.iter_mut().find_map(|(a, b, e, h, c, p)| {
-                                if *a == id {
-                                    Some((b, h, c, e, p))
-                                } else {
-                                    None
-                                }
-                            })
-                        {
-                            *t = trans.into();
-                            if let Some(pile) = pile
-                                && in_hand != hand.is_some()
-                            {
-                                if in_hand {
-                                    commands.entity(entity).insert(InOtherHand);
-                                    mats.get_mut(*children.first().unwrap()).unwrap().0 = mats
-                                        .get_mut(*children.get(1).unwrap())
-                                        .unwrap()
-                                        .0
-                                        .clone_weak();
-                                } else {
-                                    commands.entity(entity).remove::<InOtherHand>();
-                                    repaint_face(&mut mats, &mut materials, &pile.0[0], children);
-                                }
+    for packet in poll.0.receive_messages(1024) {
+        let sender = packet.identity_peer().steam_id().unwrap();
+        let data = packet.data();
+        let event = decode(data).unwrap();
+        match event {
+            Packet::Pos(data) => {
+                let user = sender.raw();
+                for (lid, trans, in_hand) in data {
+                    let id = SyncObject { user, id: lid.0 };
+                    if let Some((mut t, hand, children, entity, pile, mut gravity)) =
+                        query.iter_mut().find_map(|(a, b, e, h, c, p, g)| {
+                            if *a == id {
+                                Some((b, h, c, e, p, g))
+                            } else {
+                                None
                             }
-                        } else if sent.0.insert(id) {
-                            let bytes = encode(&Packet::Request(lid));
-                            networking.send_p2p_packet(sender, SendType::Reliable, &bytes);
-                        }
-                    }
-                }
-                Packet::Request(lid) => {
-                    let user = sender.raw();
-                    let id = SyncObject { user, id: lid.0 };
-                    if sent.0.insert(id) {
-                        if let Some((b, c)) = queryme
-                            .iter_mut()
-                            .find_map(|(a, b, c)| if a.0 == lid.0 { Some((b, c)) } else { None })
-                        {
-                            let bytes =
-                                encode(&Packet::New(lid, c.clone_no_image(), Trans::from(b)));
-                            networking.send_p2p_packet(sender, SendType::Reliable, &bytes);
-                        } else {
-                            sent.0.remove(&id);
-                        }
-                    }
-                }
-                Packet::Received(lid) => {
-                    let user = sender.raw();
-                    let id = SyncObject { user, id: lid.0 };
-                    sent.0.remove(&id);
-                }
-                Packet::New(lid, pile, trans) => {
-                    let user = sender.raw();
-                    let id = SyncObject { user, id: lid.0 };
-                    let deck = down.get_deck.clone();
-                    let client = down.client.0.clone();
-                    let asset_server = asset_server.clone();
-                    down.runtime.0.spawn(async move {
-                        add_images(pile, trans.into(), id, deck, client, asset_server).await
-                    });
-                }
-                Packet::Joined => {
-                    for peer in &peers.list {
-                        client.networking().send_p2p_packet(
-                            *peer,
-                            SendType::Reliable,
-                            &encode(&Packet::UserJoined(sender.raw())),
-                        );
-                        client.networking().send_p2p_packet(
-                            sender,
-                            SendType::Reliable,
-                            &encode(&Packet::UserJoined(peer.raw())),
-                        );
-                    }
-                    client.networking().send_p2p_packet(
-                        sender,
-                        SendType::Reliable,
-                        &encode(&Packet::SetUser),
-                    );
-                    peers.list.push(sender)
-                }
-                Packet::UserJoined(id) => {
-                    peers.list.push(SteamId::from_raw(id));
-                }
-                Packet::SetUser => {
-                    peers.me = peers.list.len();
-                    commands.entity(*hand).despawn();
-                    spawn_hand(peers.me, &mut commands);
-                }
-                Packet::Dead(lid) => {
-                    let user = sender.raw();
-                    let id = SyncObject { user, id: lid.0 };
-                    if let Some(e) = query
-                        .iter_mut()
-                        .find_map(|(a, _, b, _, _, _)| if *a == id { Some(b) } else { None })
+                        })
                     {
-                        commands.entity(e).despawn();
+                        *t = trans.into();
+                        if let Some(pile) = pile
+                            && in_hand != hand.is_some()
+                        {
+                            if in_hand {
+                                commands.entity(entity).insert(InOtherHand);
+                                mats.get_mut(*children.first().unwrap()).unwrap().0 = mats
+                                    .get_mut(*children.get(1).unwrap())
+                                    .unwrap()
+                                    .0
+                                    .clone_weak();
+                                gravity.0 = 0.0
+                            } else {
+                                commands.entity(entity).remove::<InOtherHand>();
+                                repaint_face(&mut mats, &mut materials, &pile.0[0], children);
+                                gravity.0 = GRAVITY;
+                            }
+                        }
+                    } else if sent.0.insert(id) {
+                        let bytes = encode(&Packet::Request(lid));
+                        networking.send_p2p_packet(sender, SendType::Reliable, &bytes);
                     }
+                }
+            }
+            Packet::Request(lid) => {
+                let user = sender.raw();
+                let id = SyncObject { user, id: lid.0 };
+                if sent.0.insert(id) {
+                    if let Some((b, c)) = queryme
+                        .iter_mut()
+                        .find_map(|(a, b, c)| if a.0 == lid.0 { Some((b, c)) } else { None })
+                    {
+                        let bytes = encode(&Packet::New(lid, c.clone_no_image(), Trans::from(b)));
+                        networking.send_p2p_packet(sender, SendType::Reliable, &bytes);
+                    } else {
+                        sent.0.remove(&id);
+                    }
+                }
+            }
+            Packet::Received(lid) => {
+                let user = sender.raw();
+                let id = SyncObject { user, id: lid.0 };
+                sent.0.remove(&id);
+            }
+            Packet::New(lid, pile, trans) => {
+                let user = sender.raw();
+                let id = SyncObject { user, id: lid.0 };
+                let deck = down.get_deck.clone();
+                let client = down.client.0.clone();
+                let asset_server = asset_server.clone();
+                down.runtime.0.spawn(async move {
+                    add_images(pile, trans.into(), id, deck, client, asset_server).await
+                });
+            }
+            Packet::SetUser => {
+                peers.me = peers.list.len();
+                info!("joined as number {} user", peers.me);
+                commands.entity(*hand).despawn();
+                spawn_hand(peers.me, &mut commands);
+            }
+            Packet::Dead(lid) => {
+                let user = sender.raw();
+                let id = SyncObject { user, id: lid.0 };
+                if let Some(e) = query
+                    .iter_mut()
+                    .find_map(|(a, _, b, _, _, _, _)| if *a == id { Some(b) } else { None })
+                {
+                    commands.entity(e).despawn();
                 }
             }
         }
@@ -177,12 +154,22 @@ pub fn callbacks(
     client: Res<Client>,
     down: Res<Download>,
     join: Res<LobbyJoinChannel>,
+    mut peers: ResMut<Peers>,
+    poll_group: Res<PollGroup>,
 ) {
     for event in callback.read() {
         let SteamworksEvent::CallbackResult(event) = event;
         match event {
-            CallbackResult::P2PSessionRequest(P2PSessionRequest { remote }) => {
-                client.networking().accept_p2p_session(*remote);
+            CallbackResult::LobbyChatUpdate(LobbyChatUpdate {
+                user_changed,
+                member_state_change,
+                ..
+            }) => {
+                if *member_state_change == ChatMemberStateChange::Entered {
+                    connect(&mut peers, &client, &poll_group, *user_changed);
+                } else {
+                    peers.list.remove(user_changed);
+                }
             }
             CallbackResult::GameLobbyJoinRequested(GameLobbyJoinRequested {
                 lobby_steam_id,
@@ -213,38 +200,13 @@ pub fn spawn_hand(me: usize, commands: &mut Commands) {
     }
     commands.spawn((transform, Hand::default(), Owned));
 }
-pub fn new_lobby(
-    input: Res<ButtonInput<KeyCode>>,
-    client: Res<Client>,
-    mut clipboard: ResMut<Clipboard>,
-    create: Res<LobbyCreateChannel>,
-    join: Res<LobbyJoinChannel>,
-    down: Res<Download>,
-) {
-    if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft]) {
-        if input.just_pressed(KeyCode::KeyN) {
-            let send = create.sender.clone();
-            let handle = down.runtime.0.handle().clone();
-            client
-                .matchmaking()
-                .create_lobby(LobbyType::FriendsOnly, 250, move |id| {
-                    if let Ok(id) = id {
-                        handle.spawn(async move {
-                            let _ = send.send(id).await;
-                        });
-                    }
-                });
-        } else if input.just_pressed(KeyCode::KeyM)
-            && let Ok(id) = clipboard.get_text().parse()
-        {
-            let send = join.sender.clone();
-            join_lobby(
-                LobbyId::from_raw(id),
-                down.runtime.0.handle().clone(),
-                client.matchmaking(),
-                send,
-            )
-        }
+pub fn new_lobby(input: Res<ButtonInput<KeyCode>>, client: Res<Client>) {
+    if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft])
+        && input.just_pressed(KeyCode::KeyN)
+    {
+        client
+            .matchmaking()
+            .create_lobby(LobbyType::FriendsOnly, 250, |_| {});
     }
 }
 fn join_lobby(
@@ -261,28 +223,25 @@ fn join_lobby(
         }
     })
 }
-pub fn on_create_lobby(mut create: ResMut<LobbyCreateChannel>, mut clipboard: ResMut<Clipboard>) {
-    while let Ok(event) = create.receiver.try_recv() {
-        clipboard.0.set_text(event.raw().to_string()).unwrap();
-    }
-}
 pub fn on_join_lobby(
     mut join: ResMut<LobbyJoinChannel>,
     client: Res<Client>,
     mut peers: ResMut<Peers>,
+    poll_group: Res<PollGroup>,
 ) {
     while let Ok(event) = join.receiver.try_recv() {
         let owner = client.matchmaking().lobby_owner(event);
-        client
-            .networking()
-            .send_p2p_packet(owner, SendType::Reliable, &encode(&Packet::Joined));
-        peers.list.push(owner);
+        connect(&mut peers, &client, &poll_group, owner);
     }
 }
-#[derive(Resource)]
-pub struct LobbyCreateChannel {
-    pub sender: Sender<LobbyId>,
-    pub receiver: Receiver<LobbyId>,
+fn connect(peers: &mut Peers, client: &Client, poll_group: &PollGroup, peer: SteamId) {
+    let peer_identity = NetworkingIdentity::new_steam_id(peer);
+    let connection = client
+        .networking_sockets()
+        .connect_p2p(peer_identity, 0, None)
+        .unwrap();
+    connection.set_poll_group(&poll_group.0);
+    peers.list.insert(peer, connection);
 }
 #[derive(Resource)]
 pub struct LobbyJoinChannel {
@@ -300,9 +259,7 @@ pub enum Packet {
     Received(SyncObjectMe),
     Dead(SyncObjectMe),
     New(SyncObjectMe, Pile, Trans),
-    UserJoined(u64),
     SetUser,
-    Joined,
 }
 #[derive(Encode, Decode, Debug)]
 pub struct Trans {
@@ -344,10 +301,12 @@ impl SyncObjectMe {
 }
 #[derive(Resource, Default)]
 pub struct SyncCount(pub usize);
-#[derive(Resource, Default, Debug)]
+#[derive(Resource, Default)]
 pub struct Peers {
-    pub list: Vec<SteamId>,
+    pub list: HashMap<SteamId, NetConnection>,
     pub me: usize,
 }
 #[derive(Component)]
 pub struct InOtherHand;
+#[derive(Resource)]
+pub struct PollGroup(pub NetPollGroup);
