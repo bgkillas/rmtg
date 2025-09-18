@@ -2,8 +2,12 @@ use crate::download::add_images;
 use crate::misc::repaint_face;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
 use crate::*;
-use bevy_steamworks::networking_sockets::{NetConnection, NetPollGroup, NetworkingSockets};
-use bevy_steamworks::networking_types::{NetworkingConnectionState, NetworkingIdentity, SendFlags};
+use bevy_steamworks::networking_sockets::{
+    ListenSocket, NetConnection, NetPollGroup, NetworkingSockets,
+};
+use bevy_steamworks::networking_types::{
+    ListenSocketEvent, NetworkingConnectionState, NetworkingIdentity, SendFlags,
+};
 use bevy_steamworks::{
     CallbackResult, ChatMemberStateChange, Client, GameLobbyJoinRequested, LobbyChatUpdate,
     LobbyId, LobbyType, Matchmaking, SteamId, SteamworksEvent,
@@ -64,7 +68,9 @@ pub fn apply_sync(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut poll: ResMut<PollGroup>,
 ) {
-    for packet in poll.0.receive_messages(1024) {
+    println!("a");
+    for packet in poll.poll.receive_messages(1024) {
+        println!("b");
         let sender = packet.identity_peer().steam_id().unwrap();
         let con = peers.list.get(&sender).unwrap();
         let data = packet.data();
@@ -195,6 +201,23 @@ pub fn callbacks(
             _ => {}
         }
     }
+    let listen = poll_group.listen.lock().unwrap();
+    while let Some(event) = listen.try_receive_event() {
+        match event {
+            ListenSocketEvent::Connecting(event) => {
+                event.accept().unwrap();
+            }
+            ListenSocketEvent::Connected(event) => {
+                let id = event.remote().steam_id().unwrap();
+                let connection = event.take_connection();
+                connection.set_poll_group(&poll_group.poll);
+                peers.list.insert(id, Connection::Waiting(connection));
+            }
+            ListenSocketEvent::Disconnected(event) => {
+                peers.list.remove(&event.remote().steam_id().unwrap());
+            }
+        }
+    }
 }
 pub fn spawn_hand(me: usize, commands: &mut Commands) {
     let mut transform = match me {
@@ -268,7 +291,7 @@ fn connect(peers: &mut Peers, client: &Client, poll_group: &PollGroup, peer: Ste
         .networking_sockets()
         .connect_p2p(peer_identity, 0, None)
         .unwrap();
-    connection.set_poll_group(&poll_group.0);
+    connection.set_poll_group(&poll_group.poll);
     peers.list.insert(peer, Connection::Waiting(connection));
 }
 #[derive(Resource)]
@@ -351,7 +374,9 @@ impl Connection {
     }
     pub fn poll(&mut self, socket: &NetworkingSockets) {
         if let Connection::Waiting(con) = self {
+            println!("AAAAAAAAFDFSDFFFFFFFFFFF");
             let info = socket.get_connection_info(con).unwrap();
+            println!("{info:?} {:?}", info.state().unwrap());
             if info.state().unwrap() == NetworkingConnectionState::Connected {
                 let Connection::Waiting(current) = mem::replace(self, Connection::Temp) else {
                     return;
@@ -364,4 +389,7 @@ impl Connection {
 #[derive(Component)]
 pub struct InOtherHand;
 #[derive(Resource)]
-pub struct PollGroup(pub NetPollGroup);
+pub struct PollGroup {
+    pub poll: NetPollGroup,
+    pub listen: Mutex<ListenSocket>,
+}

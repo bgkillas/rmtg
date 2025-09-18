@@ -17,11 +17,19 @@ pub fn setup(
     mut framepace: ResMut<FramepaceSettings>,
     client: Res<Client>,
 ) {
+    client.networking_utils().init_relay_network_access();
     client.networking_messages().session_request_callback(|r| {
         r.accept();
     });
-    let poll_group = client.networking_sockets().create_poll_group();
-    commands.insert_resource(PollGroup(poll_group));
+    let networking_sockets = client.networking_sockets();
+    let poll_group = networking_sockets.create_poll_group();
+    commands.insert_resource(PollGroup {
+        poll: poll_group,
+        listen: networking_sockets
+            .create_listen_socket_p2p(0, None)
+            .expect("handle to be valid")
+            .into(),
+    });
     framepace.limiter = Limiter::from_framerate(60.0);
     let card_stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
     let card_back = asset_server.load("back.jpg");
