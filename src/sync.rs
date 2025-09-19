@@ -23,6 +23,7 @@ pub fn get_sync(
     count: Res<SyncCount>,
     mut peers: ResMut<Peers>,
     mut killed: ResMut<Killed>,
+    mut take_owner: ResMut<TakeOwner>,
 ) {
     let mut v = Vec::with_capacity(count.0);
     for (id, transform, in_hand) in query {
@@ -31,10 +32,6 @@ pub fn get_sync(
     let packet = Packet::Pos(v);
     let bytes = encode(&packet);
     let socket = client.networking_sockets();
-    for con in peers.list.values_mut() {
-        con.poll(&socket);
-        con.send_message(&bytes, SendFlags::RELIABLE);
-    }
     for dead in killed.0.drain(..) {
         let packet = Packet::Dead(dead);
         let bytes = encode(&packet);
@@ -42,10 +39,21 @@ pub fn get_sync(
             con.send_message(&bytes, SendFlags::RELIABLE);
         }
     }
+    for (from, to) in take_owner.0.drain(..) {
+        let packet = Packet::Take(from, to);
+        let bytes = encode(&packet);
+        for con in peers.list.values() {
+            con.send_message(&bytes, SendFlags::RELIABLE);
+        }
+    }
+    for con in peers.list.values_mut() {
+        con.poll(&socket);
+        con.send_message(&bytes, SendFlags::RELIABLE);
+    }
 }
 pub fn apply_sync(
     mut query: Query<(
-        &SyncObject,
+        &mut SyncObject,
         &mut Transform,
         Entity,
         Option<&InOtherHand>,
@@ -53,7 +61,7 @@ pub fn apply_sync(
         Option<&Pile>,
         &mut GravityScale,
     )>,
-    mut queryme: Query<(&SyncObjectMe, &GlobalTransform, &Pile), Without<SyncObject>>,
+    mut queryme: Query<(&SyncObjectMe, &GlobalTransform, &Pile, Entity), Without<SyncObject>>,
     mut sent: ResMut<Sent>,
     asset_server: Res<AssetServer>,
     down: Res<Download>,
@@ -107,13 +115,34 @@ pub fn apply_sync(
                     }
                 }
             }
+            Packet::Take(from, to) => {
+                let new = SyncObject {
+                    user: sender.raw(),
+                    id: to.0,
+                };
+                if from.user == peers.my_id.raw() {
+                    if let Some((_, _, _, e)) = queryme.iter().find(|(id, _, _, _)| id.0 == from.id)
+                    {
+                        commands
+                            .entity(e)
+                            .remove::<SyncObjectMe>()
+                            .remove::<FollowMouse>()
+                            .insert(new);
+                    }
+                } else if let Some((mut id, _, _, _, _, _, _)) = query
+                    .iter_mut()
+                    .find(|(id, _, _, _, _, _, _)| *id.as_ref() == from)
+                {
+                    *id = new
+                }
+            }
             Packet::Request(lid) => {
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
                 if sent.0.insert(id) {
                     if let Some((b, c)) = queryme
                         .iter_mut()
-                        .find_map(|(a, b, c)| if a.0 == lid.0 { Some((b, c)) } else { None })
+                        .find_map(|(a, b, c, _)| if a.0 == lid.0 { Some((b, c)) } else { None })
                     {
                         let bytes = encode(&Packet::New(lid, c.clone_no_image(), Trans::from(b)));
                         con.send_message(&bytes, SendFlags::RELIABLE);
@@ -313,6 +342,7 @@ pub enum Packet {
     Request(SyncObjectMe),
     Received(SyncObjectMe),
     Dead(SyncObjectMe),
+    Take(SyncObject, SyncObjectMe),
     New(SyncObjectMe, Pile, Trans),
     SetUser(usize),
 }
@@ -407,3 +437,5 @@ pub struct PollGroup {
     pub poll: NetPollGroup,
     pub listen: Mutex<ListenSocket>,
 }
+#[derive(Resource)]
+pub struct TakeOwner(pub Vec<(SyncObject, SyncObjectMe)>);

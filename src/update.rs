@@ -4,7 +4,7 @@ use crate::misc::{
     repaint_face, take_card,
 };
 use crate::setup::{T, W};
-use crate::sync::{Packet, SyncObjectMe};
+use crate::sync::{Packet, SyncObjectMe, TakeOwner};
 use crate::*;
 use bevy::ecs::relationship::RelationshipSourceCollection;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
@@ -169,15 +169,28 @@ pub fn listen_for_mouse(
     input: Res<ButtonInput<KeyCode>>,
     mut rand: GlobalEntropy<WyRand>,
     zoom: Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
-    (down, asset_server, mut game_clipboard, mut count, mut killed, ids, mut query_meshes, follow): (
+    (
+        down,
+        asset_server,
+        mut game_clipboard,
+        mut count,
+        mut killed,
+        ids,
+        others_ids,
+        mut query_meshes,
+        follow,
+        mut take_owner,
+    ): (
         ResMut<Download>,
         Res<AssetServer>,
         ResMut<GameClipboard>,
         ResMut<SyncCount>,
         ResMut<Killed>,
         Query<&SyncObjectMe>,
+        Query<&SyncObject>,
         Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
-        Option<Single<Entity, With<FollowMouse>>>
+        Option<Single<Entity, With<FollowMouse>>>,
+        ResMut<TakeOwner>,
     ),
 ) {
     let Some(cursor_position) = window.cursor_position() else {
@@ -208,6 +221,9 @@ pub fn listen_for_mouse(
             } else if input.just_pressed(KeyCode::Backspace)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::AltLeft])
             {
+                if ids.contains(entity) {
+                    count.0 -= 1;
+                }
                 killed.0.push(*ids.get(entity).unwrap());
                 commands.entity(entity).despawn();
             } else if input.just_pressed(KeyCode::KeyC)
@@ -263,6 +279,12 @@ pub fn listen_for_mouse(
                 } else {
                     if let Some(e) = follow {
                         commands.entity(*e).remove::<FollowMouse>();
+                    }
+                    if let Ok(id) = others_ids.get(entity) {
+                        let myid = SyncObjectMe::new(&mut rand, &mut count);
+                        take_owner.0.push((*id, myid));
+                        commands.entity(entity).insert(myid);
+                        commands.entity(entity).remove::<SyncObject>();
                     }
                     commands
                         .entity(entity)
@@ -406,6 +428,9 @@ pub fn listen_for_mouse(
                             &mut colliders.get_mut(entity).unwrap(),
                         );
                     } else {
+                        if ids.contains(entity) {
+                            count.0 -= 1;
+                        }
                         killed.0.push(*ids.get(entity).unwrap());
                         commands.entity(entity).despawn();
                     }
@@ -454,6 +479,12 @@ pub fn listen_for_mouse(
             if mouse_input.just_pressed(MouseButton::Left) {
                 if let Some(e) = follow {
                     commands.entity(*e).remove::<FollowMouse>();
+                }
+                if let Ok(id) = others_ids.get(entity) {
+                    let myid = SyncObjectMe::new(&mut rand, &mut count);
+                    take_owner.0.push((*id, myid));
+                    commands.entity(entity).insert(myid);
+                    commands.entity(entity).remove::<SyncObject>();
                 }
                 commands.entity(entity).insert(FollowMouse);
             } else if input.just_pressed(KeyCode::KeyR)

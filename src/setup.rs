@@ -1,4 +1,4 @@
-use crate::sync::{PollGroup, spawn_hand};
+use crate::sync::{PollGroup, SyncObjectMe, spawn_hand};
 use crate::*;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
@@ -17,6 +17,8 @@ pub fn setup(
     mut framepace: ResMut<FramepaceSettings>,
     client: Res<Client>,
     mut peers: ResMut<Peers>,
+    mut rand: GlobalEntropy<WyRand>,
+    mut count: ResMut<SyncCount>,
 ) {
     peers.my_id = client.user().steam_id();
     client.networking_utils().init_relay_network_access();
@@ -169,6 +171,7 @@ pub fn setup(
                 unlit: true,
                 ..Default::default()
             })),
+            SyncObjectMe::new(&mut rand, &mut count),
         ))
         .with_children(|parent| {
             for i in 1..=6 {
