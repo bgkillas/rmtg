@@ -13,10 +13,16 @@ jobs:
         sudo apt install -y libwayland-dev libudev-dev libasound2-dev pkg-config
     - name: Build skia
       run: cargo build --release
+    - name: make
+      run: |
+        mkdir rmtg
+        cp target/release/rmtg rmtg
+        cp libsteam_api.so rmtg
+        cp -R assets rmtg
     - uses: actions/upload-artifact@v4
       with:
-        name: rmtg
-        path: target/release/rmtg
+        name: rmtg-linux
+        path: rmtg
   build-macos:
     runs-on: macos-latest
     steps:
@@ -25,28 +31,15 @@ jobs:
       run: cargo build --release
     - name: make .app
       run: |
-        mkdir -p app/rmtg.app/Contents/MacOS
-        cp target/release/rmtg app/rmtg.app/Contents/MacOS/
-        cp .github/workflows/Info.plist app/rmtg.app/Contents/
+        mkdir -p rmtg.app/Contents/MacOS
+        cp target/release/rmtg rmtg.app/Contents/MacOS/
+        cp libsteam_api.dylib rmtg.app/Contents/MacOS/
+        cp .github/workflows/Info.plist rmtg.app/Contents/
+        cp -R assets rmtg.app/Contents
     - uses: actions/upload-artifact@v4
       with:
         name: rmtg-macos
-        path: app
-  build-macos_x86_64:
-    runs-on: macos-13
-    steps:
-    - uses: actions/checkout@v4
-    - name: Build skia
-      run: cargo build --release
-    - name: make .app
-      run: |
-        mkdir -p app/rmtg.app/Contents/MacOS
-        cp target/release/rmtg app/rmtg.app/Contents/MacOS/
-        cp .github/workflows/Info.plist app/rmtg.app/Contents/
-    - uses: actions/upload-artifact@v4
-      with:
-        name: rmtg-macos-x86_64
-        path: app
+        path: rmtg.app
   build-windows:
     runs-on: windows-latest
     steps:
@@ -60,7 +53,13 @@ jobs:
        override: true
     - name: Build
       run: cargo build --release --features "native"
+    - name: make
+      run: |
+        mkdir rmtg
+        cp target/release/rmtg.exe rmtg
+        cp steam_api64.dll rmtg
+        cp -R assets rmtg
     - uses: actions/upload-artifact@v4
       with:
-        name: rmtg.exe
-        path: target/release/rmtg.exe
+        name: rmtg-win
+        path: rmtg
