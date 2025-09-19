@@ -114,6 +114,7 @@ pub fn setup(
         Transform::from_xyz(W + T / 2.0, W - T, 0.0),
         Collider::cuboid(2.0 * T, 2.0 * W, 2.0 * W),
         RigidBody::Static,
+        Wall,
         Mesh3d(meshes.add(Cuboid::new(2.0 * T, 2.0 * W, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::BLACK,
@@ -125,6 +126,7 @@ pub fn setup(
         Transform::from_xyz(-(W + T / 2.0), W - T, 0.0),
         Collider::cuboid(2.0 * T, 2.0 * W, 2.0 * W),
         RigidBody::Static,
+        Wall,
         Mesh3d(meshes.add(Cuboid::new(2.0 * T, 2.0 * W, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::BLACK,
@@ -136,6 +138,7 @@ pub fn setup(
         Transform::from_xyz(0.0, W - T, W + T / 2.0),
         Collider::cuboid(2.0 * W, 2.0 * W, 2.0 * T),
         RigidBody::Static,
+        Wall,
         Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, 2.0 * T))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::BLACK,
@@ -147,6 +150,7 @@ pub fn setup(
         Transform::from_xyz(0.0, W - T, -(W + T / 2.0)),
         Collider::cuboid(2.0 * W, 2.0 * W, 2.0 * T),
         RigidBody::Static,
+        Wall,
         Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, 2.0 * T))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::BLACK,
@@ -204,3 +208,5 @@ pub fn setup(
             }
         });
 }
+#[derive(Component)]
+pub struct Wall;

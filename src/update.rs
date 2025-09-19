@@ -3,7 +3,7 @@ use crate::misc::{
     adjust_meshes, get_card, get_mut_card, is_reversed, make_material, new_pile, new_pile_at,
     repaint_face, take_card,
 };
-use crate::setup::{T, W};
+use crate::setup::{T, W, Wall};
 use crate::sync::{Packet, SyncObjectMe, TakeOwner};
 use crate::*;
 use bevy::ecs::relationship::RelationshipSourceCollection;
@@ -90,6 +90,7 @@ pub fn follow_mouse(
     mut commands: Commands,
     time_since: Res<Time>,
     spatial: SpatialQuery,
+    walls: Query<(), With<Wall>>,
     mut card: Single<
         (
             Entity,
@@ -118,7 +119,9 @@ pub fn follow_mouse(
             )
             .iter()
             .filter_map(|a| {
-                if let Ok((collider, transform)) = cards.get(a) {
+                if !walls.contains(a)
+                    && let Ok((collider, transform)) = cards.get(a)
+                {
                     let y = collider
                         .aabb(transform.translation, transform.rotation)
                         .max
@@ -136,7 +139,9 @@ pub fn follow_mouse(
         if let Some(time) =
             ray.intersect_plane(card.1.translation, InfinitePlane3d { normal: Dir3::Y })
         {
-            let point = ray.get_point(time);
+            let mut point = ray.get_point(time);
+            point.x = point.x.clamp(T - W, W - T);
+            point.z = point.z.clamp(T - W, W - T);
             card.1.translation = point;
         }
     } else {
