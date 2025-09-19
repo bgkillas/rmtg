@@ -5,6 +5,7 @@ edition = "2024"
 description = "a magic the gathering card game player"
 license = "GPL-3.0-only"
 repository = "https://github.com/bgkillas/rmtg"
+build = "build.rs"
 
 [profile.release]
 lto = true
