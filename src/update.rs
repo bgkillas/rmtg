@@ -86,7 +86,7 @@ pub fn follow_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
     camera: Single<(&Camera, &GlobalTransform)>,
     window: Single<&Window, With<PrimaryWindow>>,
-    cards: Query<(&Pile, &Transform), Without<FollowMouse>>,
+    cards: Query<(&Collider, &Transform), Without<FollowMouse>>,
     mut commands: Commands,
     time_since: Res<Time>,
     spatial: SpatialQuery,
@@ -118,16 +118,19 @@ pub fn follow_mouse(
             )
             .iter()
             .filter_map(|a| {
-                if a != card.0
-                    && let Ok((pile, transform)) = cards.get(a)
-                {
-                    Some(transform.translation.y + pile.0.len() as f32)
+                if let Ok((collider, transform)) = cards.get(a) {
+                    let y = collider
+                        .aabb(transform.translation, transform.rotation)
+                        .max
+                        .y;
+                    Some(y)
                 } else {
                     None
                 }
             })
             .reduce(f32::max)
         {
+            let max = max.max(card.4.aabb(card.1.translation, card.1.rotation).max.y);
             card.1.translation.y = max + 4.0;
         }
         if let Some(time) =
@@ -180,6 +183,7 @@ pub fn listen_for_mouse(
         mut query_meshes,
         follow,
         mut take_owner,
+        mut grav,
     ): (
         ResMut<Download>,
         Res<AssetServer>,
@@ -191,6 +195,7 @@ pub fn listen_for_mouse(
         Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
         Option<Single<Entity, With<FollowMouse>>>,
         ResMut<TakeOwner>,
+        Query<&mut GravityScale>,
     ),
 ) {
     let Some(cursor_position) = window.cursor_position() else {
@@ -286,6 +291,7 @@ pub fn listen_for_mouse(
                         commands.entity(entity).insert(myid);
                         commands.entity(entity).remove::<SyncObject>();
                     }
+                    grav.get_mut(entity).unwrap().0 = 0.0;
                     commands
                         .entity(entity)
                         .insert(FollowMouse)
@@ -472,7 +478,7 @@ pub fn listen_for_mouse(
             } else if let Some(single) = zoom {
                 commands.entity(single.0).despawn();
             }
-        } else {
+        } else if let Ok(mut grav) = grav.get_mut(entity) {
             if let Some(single) = zoom {
                 commands.entity(single.0).despawn();
             }
@@ -486,6 +492,7 @@ pub fn listen_for_mouse(
                     commands.entity(entity).insert(myid);
                     commands.entity(entity).remove::<SyncObject>();
                 }
+                grav.0 = 0.0;
                 commands.entity(entity).insert(FollowMouse);
             } else if input.just_pressed(KeyCode::KeyR)
                 && let Ok((mut lv, mut av)) = vels.get_mut(entity)

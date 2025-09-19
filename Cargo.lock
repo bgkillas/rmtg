@@ -384,6 +384,7 @@ dependencies = [
  "bitflags 2.9.4",
  "derive_more",
  "itertools 0.13.0",
+ "libm",
  "nalgebra",
  "parry3d",
  "parry3d-f64",
@@ -4337,6 +4338,7 @@ dependencies = [
  "downcast-rs 1.2.1",
  "either",
  "ena",
+ "indexmap",
  "log",
  "nalgebra",
  "num-derive",
@@ -4364,6 +4366,7 @@ dependencies = [
  "downcast-rs 1.2.1",
  "either",
  "ena",
+ "indexmap",
  "log",
  "nalgebra",
  "num-derive",
@@ -5323,6 +5326,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c99284beb21666094ba2b75bbceda012e610f5479dfcc2d6e2426f53197ffd95"
 dependencies = [
  "approx",
+ "libm",
  "num-complex",
  "num-traits",
  "paste",
