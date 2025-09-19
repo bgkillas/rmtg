@@ -37,7 +37,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
 use wasm_bindgen_futures::JsFuture;
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
-const APPID: u32 = 4046880;
+const APPID: u32 = 480; // 4046880
 pub fn start() {
     #[cfg(not(feature = "wasm"))]
     let runtime = Runtime(tokio::runtime::Runtime::new().unwrap());
