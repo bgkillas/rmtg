@@ -11,14 +11,14 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y libwayland-dev libudev-dev libasound2-dev pkg-config
-    - name: Build skia
+    - name: Build
       run: cargo build --release
     - name: make
       run: |
-        mkdir -p rmtg/rmtg
-        cp target/release/rmtg rmtg/rmtg
-        cp libsteam_api.so rmtg/rmtg
-        cp -R assets rmtg/rmtg
+        mkdir -p rmtg
+        cp target/release/rmtg rmtg
+        cp libsteam_api.so rmtg
+        cp -R assets rmtg
     - uses: actions/upload-artifact@v4
       with:
         name: rmtg-linux
@@ -27,19 +27,19 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Build skia
+    - name: Build
       run: cargo build --release
     - name: make .app
       run: |
-        mkdir -p rmtg/rmtg.app/Contents/MacOS
-        cp target/release/rmtg rmtg/rmtg.app/Contents/MacOS/
-        cp libsteam_api.dylib rmtg/rmtg.app/Contents/MacOS/
-        cp .github/workflows/Info.plist rmtg/rmtg.app/Contents/
-        cp -R assets rmtg/rmtg.app/Contents
+        mkdir -p rmtg.app/Contents/MacOS
+        cp target/release/rmtg rmtg.app/Contents/MacOS/
+        cp libsteam_api.dylib rmtg.app/Contents/MacOS/
+        cp .github/workflows/Info.plist rmtg.app/Contents/
+        cp -R assets rmtg.app/Contents
     - uses: actions/upload-artifact@v4
       with:
         name: rmtg-macos
-        path: rmtg
+        path: rmtg.app
   build-windows:
     runs-on: windows-latest
     steps:
@@ -55,10 +55,10 @@ jobs:
       run: cargo build --release --features "native"
     - name: make
       run: |
-        mkdir rmtg/rmtg
-        cp target/release/rmtg.exe rmtg/rmtg
-        cp steam_api64.dll rmtg/rmtg
-        cp -R assets rmtg/rmtg
+        mkdir rmtg
+        cp target/release/rmtg.exe rmtg
+        cp steam_api64.dll rmtg
+        cp -R assets rmtg
     - uses: actions/upload-artifact@v4
       with:
         name: rmtg-win

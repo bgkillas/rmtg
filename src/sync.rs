@@ -22,8 +22,7 @@ pub fn get_sync(
     query: Query<(&SyncObjectMe, &GlobalTransform, Option<&InHand>)>,
     count: Res<SyncCount>,
     mut peers: ResMut<Peers>,
-    mut killed: ResMut<Killed>,
-    mut take_owner: ResMut<TakeOwner>,
+    mut sync_actions: ResMut<SyncActions>,
 ) {
     let mut v = Vec::with_capacity(count.0);
     for (id, transform, in_hand) in query {
@@ -32,14 +31,14 @@ pub fn get_sync(
     let packet = Packet::Pos(v);
     let bytes = encode(&packet);
     let socket = client.networking_sockets();
-    for dead in killed.0.drain(..) {
+    for dead in sync_actions.killed.drain(..) {
         let packet = Packet::Dead(dead);
         let bytes = encode(&packet);
         for con in peers.list.values() {
             con.send_message(&bytes, SendFlags::RELIABLE);
         }
     }
-    for (from, to) in take_owner.0.drain(..) {
+    for (from, to) in sync_actions.take_owner.drain(..) {
         let packet = Packet::Take(from, to);
         let bytes = encode(&packet);
         for con in peers.list.values() {
@@ -55,6 +54,8 @@ pub fn apply_sync(
     mut query: Query<(
         &mut SyncObject,
         &mut Transform,
+        &mut Position,
+        &mut Rotation,
         Entity,
         Option<&InOtherHand>,
         &Children,
@@ -82,16 +83,18 @@ pub fn apply_sync(
                 let user = sender.raw();
                 for (lid, trans, in_hand) in data {
                     let id = SyncObject { user, id: lid.0 };
-                    if let Some((mut t, hand, children, entity, pile, mut gravity)) =
-                        query.iter_mut().find_map(|(a, b, e, h, c, p, g)| {
+                    if let Some((mut t, mut p, mut r, hand, children, entity, pile, mut gravity)) =
+                        query.iter_mut().find_map(|(a, b, z, r, e, h, c, p, g)| {
                             if *a == id {
-                                Some((b, h, c, e, p, g))
+                                Some((b, z, r, h, c, e, p, g))
                             } else {
                                 None
                             }
                         })
                     {
                         *t = trans.into();
+                        *p = t.translation.into();
+                        *r = t.rotation.into();
                         if let Some(pile) = pile
                             && in_hand != hand.is_some()
                         {
@@ -129,9 +132,9 @@ pub fn apply_sync(
                             .remove::<FollowMouse>()
                             .insert(new);
                     }
-                } else if let Some((mut id, _, _, _, _, _, _)) = query
+                } else if let Some((mut id, _, _, _, _, _, _, _, _)) = query
                     .iter_mut()
-                    .find(|(id, _, _, _, _, _, _)| *id.as_ref() == from)
+                    .find(|(id, _, _, _, _, _, _, _, _)| *id.as_ref() == from)
                 {
                     *id = new
                 }
@@ -177,7 +180,7 @@ pub fn apply_sync(
                 let id = SyncObject { user, id: lid.0 };
                 if let Some(e) = query
                     .iter_mut()
-                    .find_map(|(a, _, b, _, _, _, _)| if *a == id { Some(b) } else { None })
+                    .find_map(|(a, _, _, _, b, _, _, _, _)| if *a == id { Some(b) } else { None })
                 {
                     commands.entity(e).despawn();
                 }
@@ -335,7 +338,10 @@ pub struct LobbyCreateChannel {
 #[derive(Resource, Default)]
 pub struct Sent(pub HashSet<SyncObject>);
 #[derive(Resource, Default)]
-pub struct Killed(pub Vec<SyncObjectMe>);
+pub struct SyncActions {
+    pub killed: Vec<SyncObjectMe>,
+    pub take_owner: Vec<(SyncObject, SyncObjectMe)>,
+}
 #[derive(Encode, Decode, Debug)]
 pub enum Packet {
     Pos(Vec<(SyncObjectMe, Trans, bool)>),
@@ -437,5 +443,3 @@ pub struct PollGroup {
     pub poll: NetPollGroup,
     pub listen: Mutex<ListenSocket>,
 }
-#[derive(Resource, Default)]
-pub struct TakeOwner(pub Vec<(SyncObject, SyncObjectMe)>);

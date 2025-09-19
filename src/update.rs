@@ -4,7 +4,7 @@ use crate::misc::{
     repaint_face, take_card,
 };
 use crate::setup::{T, W, Wall};
-use crate::sync::{Packet, SyncObjectMe, TakeOwner};
+use crate::sync::{Packet, SyncObjectMe};
 use crate::*;
 use bevy::ecs::relationship::RelationshipSourceCollection;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
@@ -182,24 +182,22 @@ pub fn listen_for_mouse(
         asset_server,
         mut game_clipboard,
         mut count,
-        mut killed,
+        mut sync_actions,
         ids,
         others_ids,
         mut query_meshes,
         follow,
-        mut take_owner,
         mut grav,
     ): (
         ResMut<Download>,
         Res<AssetServer>,
         ResMut<GameClipboard>,
         ResMut<SyncCount>,
-        ResMut<Killed>,
+        ResMut<SyncActions>,
         Query<&SyncObjectMe>,
         Query<&SyncObject>,
         Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
         Option<Single<Entity, With<FollowMouse>>>,
-        ResMut<TakeOwner>,
         Query<&mut GravityScale>,
     ),
 ) {
@@ -234,7 +232,7 @@ pub fn listen_for_mouse(
                 if ids.contains(entity) {
                     count.0 -= 1;
                 }
-                killed.0.push(*ids.get(entity).unwrap());
+                sync_actions.killed.push(*ids.get(entity).unwrap());
                 commands.entity(entity).despawn();
             } else if input.just_pressed(KeyCode::KeyC)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
@@ -292,7 +290,7 @@ pub fn listen_for_mouse(
                     }
                     if let Ok(id) = others_ids.get(entity) {
                         let myid = SyncObjectMe::new(&mut rand, &mut count);
-                        take_owner.0.push((*id, myid));
+                        sync_actions.take_owner.push((*id, myid));
                         commands.entity(entity).insert(myid);
                         commands.entity(entity).remove::<SyncObject>();
                     }
@@ -442,7 +440,7 @@ pub fn listen_for_mouse(
                         if ids.contains(entity) {
                             count.0 -= 1;
                         }
-                        killed.0.push(*ids.get(entity).unwrap());
+                        sync_actions.killed.push(*ids.get(entity).unwrap());
                         commands.entity(entity).despawn();
                     }
                 }
@@ -493,7 +491,7 @@ pub fn listen_for_mouse(
                 }
                 if let Ok(id) = others_ids.get(entity) {
                     let myid = SyncObjectMe::new(&mut rand, &mut count);
-                    take_owner.0.push((*id, myid));
+                    sync_actions.take_owner.push((*id, myid));
                     commands.entity(entity).insert(myid);
                     commands.entity(entity).remove::<SyncObject>();
                 }

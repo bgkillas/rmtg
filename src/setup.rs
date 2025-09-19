@@ -92,6 +92,7 @@ pub fn setup(
         Transform::from_xyz(0.0, -T, 0.0),
         Collider::cuboid(2.0 * W, 2.0 * T, 2.0 * W),
         RigidBody::Static,
+        Floor,
         Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * T - 2.0, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::BLACK,
@@ -103,6 +104,7 @@ pub fn setup(
         Transform::from_xyz(0.0, 2.0 * (W - T), 0.0),
         Collider::cuboid(2.0 * W, 2.0 * T, 2.0 * W),
         RigidBody::Static,
+        Ceiling,
         Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * T, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::BLACK,
@@ -210,3 +212,7 @@ pub fn setup(
 }
 #[derive(Component)]
 pub struct Wall;
+#[derive(Component)]
+pub struct Floor;
+#[derive(Component)]
+pub struct Ceiling;

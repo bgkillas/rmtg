@@ -29,7 +29,7 @@ mod setup;
 pub mod sync;
 mod update;
 use crate::sync::{
-    Killed, LobbyCreateChannel, LobbyJoinChannel, Peers, Sent, SyncCount, SyncObject, TakeOwner,
+    LobbyCreateChannel, LobbyJoinChannel, Peers, Sent, SyncActions, SyncCount, SyncObject,
     apply_sync, callbacks, get_sync, new_lobby, on_create_lobby, on_join_lobby,
 };
 #[cfg(feature = "wasm")]
@@ -95,8 +95,7 @@ pub fn start() {
     .insert_resource(SyncCount::default())
     .insert_resource(Sent::default())
     .insert_resource(Peers::default())
-    .insert_resource(Killed::default())
-    .insert_resource(TakeOwner::default())
+    .insert_resource(SyncActions::default())
     .insert_resource(game_clipboard)
     .insert_resource(Download {
         client,
@@ -126,7 +125,6 @@ pub fn start() {
 #[test]
 #[cfg(not(feature = "wasm"))]
 fn test_parse() {
-    use bevy::prelude::*;
     use reqwest::header::USER_AGENT;
     let mut app = App::new();
     app.add_plugins(AssetPlugin::default());
@@ -158,7 +156,6 @@ fn test_parse() {
 #[test]
 #[cfg(not(feature = "wasm"))]
 fn test_get_deck() {
-    use bevy::prelude::*;
     use reqwest::header::USER_AGENT;
     let mut app = App::new();
     app.add_plugins(AssetPlugin::default());
