@@ -37,6 +37,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
 use wasm_bindgen_futures::JsFuture;
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
+const APPID: u32 = 4046880;
 pub fn start() {
     #[cfg(not(feature = "wasm"))]
     let runtime = Runtime(tokio::runtime::Runtime::new().unwrap());
@@ -62,7 +63,7 @@ pub fn start() {
     let (tx, rx) = channel(4);
     let (tx2, rx2) = channel(4);
     #[cfg(feature = "steam")]
-    app.add_plugins(bevy_steamworks::SteamworksPlugin::init_app(480).unwrap());
+    app.add_plugins(bevy_steamworks::SteamworksPlugin::init_app(APPID).unwrap());
     app.add_plugins((
         DefaultPlugins
             .set(WindowPlugin {
