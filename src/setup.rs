@@ -2,7 +2,8 @@ use crate::sync::{PollGroup, SyncObjectMe, spawn_hand};
 use crate::*;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
-use bevy_steamworks::Client;
+use bevy_steamworks::{Client, LobbyId};
+use std::env::args;
 use std::f32::consts::PI;
 use std::fs;
 const MAT_SCALE: f32 = 10.0;
@@ -21,6 +22,21 @@ pub fn setup(
     mut rand: GlobalEntropy<WyRand>,
     mut count: ResMut<SyncCount>,
 ) {
+    let mut next = false;
+    let mut lobby = None;
+    let mut f = |arg: &str| {
+        if arg == "+connect_lobby" {
+            next = true;
+        } else if next {
+            lobby = Some(LobbyId::from_raw(arg.parse::<u64>().unwrap()));
+        }
+    };
+    for arg in args() {
+        f(&arg)
+    }
+    for arg in client.apps().launch_command_line().split(" ") {
+        f(arg)
+    }
     let _ = fs::create_dir("./cache");
     peers.my_id = client.user().steam_id();
     client.networking_utils().init_relay_network_access();
