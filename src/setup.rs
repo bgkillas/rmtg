@@ -16,7 +16,9 @@ pub fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut framepace: ResMut<FramepaceSettings>,
     client: Res<Client>,
+    mut peers: ResMut<Peers>,
 ) {
+    peers.my_id = client.user().steam_id();
     client.networking_utils().init_relay_network_access();
     client.networking_messages().session_request_callback(|r| {
         r.accept();

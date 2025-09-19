@@ -9,8 +9,8 @@ use bevy_steamworks::networking_types::{
     ListenSocketEvent, NetworkingConnectionState, NetworkingIdentity, SendFlags,
 };
 use bevy_steamworks::{
-    CallbackResult, ChatMemberStateChange, Client, GameLobbyJoinRequested, LobbyChatUpdate,
-    LobbyId, LobbyType, Matchmaking, SteamId, SteamworksEvent,
+    CallbackResult, Client, GameLobbyJoinRequested, LobbyId, LobbyType, Matchmaking, SteamId,
+    SteamworksEvent,
 };
 use bitcode::{Decode, Encode, decode, encode};
 use std::collections::{HashMap, HashSet};
@@ -24,10 +24,6 @@ pub fn get_sync(
     mut peers: ResMut<Peers>,
     mut killed: ResMut<Killed>,
 ) {
-    if let Some(id) = peers.lobby_id {
-        println!("{:?}", client.matchmaking().lobby_members(id));
-        println!("{:?}", peers.list.keys().collect::<Vec<_>>());
-    }
     let mut v = Vec::with_capacity(count.0);
     for (id, transform, in_hand) in query {
         v.push((*id, Trans::from(transform), in_hand.is_some()))
@@ -68,9 +64,7 @@ pub fn apply_sync(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut poll: ResMut<PollGroup>,
 ) {
-    println!("a");
     for packet in poll.poll.receive_messages(1024) {
-        println!("b");
         let sender = packet.identity_peer().steam_id().unwrap();
         let con = peers.list.get(&sender).unwrap();
         let data = packet.data();
@@ -143,8 +137,8 @@ pub fn apply_sync(
                     add_images(pile, trans.into(), id, deck, client, asset_server).await
                 });
             }
-            Packet::SetUser => {
-                peers.me = peers.list.len();
+            Packet::SetUser(id) => {
+                peers.me = id;
                 info!("joined as number {} user", peers.me);
                 commands.entity(*hand).despawn();
                 spawn_hand(peers.me, &mut commands);
@@ -172,33 +166,18 @@ pub fn callbacks(
 ) {
     for event in callback.read() {
         let SteamworksEvent::CallbackResult(event) = event;
-        match event {
-            CallbackResult::LobbyChatUpdate(LobbyChatUpdate {
-                user_changed,
-                member_state_change,
-                ..
-            }) => {
-                println!("{:?} {:?}", user_changed, member_state_change);
-                if *member_state_change == ChatMemberStateChange::Entered {
-                    connect(&mut peers, &client, &poll_group, *user_changed);
-                } else {
-                    peers.list.remove(user_changed);
-                }
-            }
-            CallbackResult::GameLobbyJoinRequested(GameLobbyJoinRequested {
-                lobby_steam_id,
-                ..
-            }) => {
-                println!("{:?}", lobby_steam_id);
-                let send = join.sender.clone();
-                join_lobby(
-                    *lobby_steam_id,
-                    down.runtime.0.handle().clone(),
-                    client.matchmaking(),
-                    send,
-                )
-            }
-            _ => {}
+        if let CallbackResult::GameLobbyJoinRequested(GameLobbyJoinRequested {
+            lobby_steam_id,
+            ..
+        }) = event
+        {
+            let send = join.sender.clone();
+            join_lobby(
+                *lobby_steam_id,
+                down.runtime.0.handle().clone(),
+                client.matchmaking(),
+                send,
+            )
         }
     }
     let listen = poll_group.listen.lock().unwrap();
@@ -209,12 +188,21 @@ pub fn callbacks(
             }
             ListenSocketEvent::Connected(event) => {
                 let id = event.remote().steam_id().unwrap();
+                info!("connected to {id:?}");
                 let connection = event.take_connection();
                 connection.set_poll_group(&poll_group.poll);
+                if peers.is_host {
+                    peers.count += 1;
+                    connection
+                        .send_message(&encode(&Packet::SetUser(peers.count)), SendFlags::RELIABLE)
+                        .unwrap();
+                }
                 peers.list.insert(id, Connection::Waiting(connection));
             }
             ListenSocketEvent::Disconnected(event) => {
-                peers.list.remove(&event.remote().steam_id().unwrap());
+                let id = event.remote().steam_id().unwrap();
+                peers.list.remove(&id);
+                info!("disconnected from {id:?}");
             }
         }
     }
@@ -276,13 +264,24 @@ pub fn on_join_lobby(
 ) {
     while let Ok(event) = join.receiver.try_recv() {
         let owner = client.matchmaking().lobby_owner(event);
-        connect(&mut peers, &client, &poll_group, owner);
-        peers.lobby_id = Some(event);
+        peers.host_id = owner;
+        peers.is_host = false;
+        info!("connecting to {owner:?}");
+        let my_id = peers.my_id;
+        for id in client.matchmaking().lobby_members(event) {
+            if id != my_id {
+                connect(&mut peers, &client, &poll_group, id);
+            }
+        }
+        peers.lobby_id = event;
     }
 }
 pub fn on_create_lobby(mut create: ResMut<LobbyCreateChannel>, mut peers: ResMut<Peers>) {
     while let Ok(event) = create.receiver.try_recv() {
-        peers.lobby_id = Some(event);
+        peers.host_id = peers.my_id;
+        peers.is_host = true;
+        info!("created lobby {event:?}");
+        peers.lobby_id = event;
     }
 }
 fn connect(peers: &mut Peers, client: &Client, poll_group: &PollGroup, peer: SteamId) {
@@ -315,7 +314,7 @@ pub enum Packet {
     Received(SyncObjectMe),
     Dead(SyncObjectMe),
     New(SyncObjectMe, Pile, Trans),
-    SetUser,
+    SetUser(usize),
 }
 #[derive(Encode, Decode, Debug)]
 pub struct Trans {
@@ -355,11 +354,28 @@ impl SyncObjectMe {
 }
 #[derive(Resource, Default)]
 pub struct SyncCount(pub usize);
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct Peers {
     pub list: HashMap<SteamId, Connection>,
     pub me: usize,
-    pub lobby_id: Option<LobbyId>,
+    pub count: usize,
+    pub lobby_id: LobbyId,
+    pub host_id: SteamId,
+    pub my_id: SteamId,
+    pub is_host: bool,
+}
+impl Default for Peers {
+    fn default() -> Self {
+        Self {
+            list: Default::default(),
+            me: 0,
+            count: 0,
+            lobby_id: LobbyId::from_raw(0),
+            host_id: SteamId::from_raw(0),
+            my_id: SteamId::from_raw(0),
+            is_host: false,
+        }
+    }
 }
 pub enum Connection {
     Connected(NetConnection),
@@ -374,9 +390,7 @@ impl Connection {
     }
     pub fn poll(&mut self, socket: &NetworkingSockets) {
         if let Connection::Waiting(con) = self {
-            println!("AAAAAAAAFDFSDFFFFFFFFFFF");
             let info = socket.get_connection_info(con).unwrap();
-            println!("{info:?} {:?}", info.state().unwrap());
             if info.state().unwrap() == NetworkingConnectionState::Connected {
                 let Connection::Waiting(current) = mem::replace(self, Connection::Temp) else {
                     return;
