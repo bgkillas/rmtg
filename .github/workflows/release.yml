@@ -5,6 +5,8 @@ on: [push, pull_request]
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+    container:
+      image: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest
     steps:
     - uses: actions/checkout@v4
     - name: Install system dependencies
