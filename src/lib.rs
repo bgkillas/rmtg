@@ -29,8 +29,8 @@ mod setup;
 pub mod sync;
 mod update;
 use crate::sync::{
-    Killed, LobbyCreateChannel, LobbyJoinChannel, Peers, Sent, SyncCount, SyncObject, apply_sync,
-    callbacks, get_sync, new_lobby, on_create_lobby, on_join_lobby,
+    Killed, LobbyCreateChannel, LobbyJoinChannel, Peers, Sent, SyncCount, SyncObject, TakeOwner,
+    apply_sync, callbacks, get_sync, new_lobby, on_create_lobby, on_join_lobby,
 };
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -96,6 +96,7 @@ pub fn start() {
     .insert_resource(Sent::default())
     .insert_resource(Peers::default())
     .insert_resource(Killed::default())
+    .insert_resource(TakeOwner::default())
     .insert_resource(game_clipboard)
     .insert_resource(Download {
         client,

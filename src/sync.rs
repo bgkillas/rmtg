@@ -437,5 +437,5 @@ pub struct PollGroup {
     pub poll: NetPollGroup,
     pub listen: Mutex<ListenSocket>,
 }
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct TakeOwner(pub Vec<(SyncObject, SyncObjectMe)>);
