@@ -9,7 +9,6 @@ pub fn make_material(
 ) -> Handle<StandardMaterial> {
     materials.add(StandardMaterial {
         base_color_texture: Some(top),
-        //alpha_mode: AlphaMode::Premultiplied,
         unlit: true,
         ..default()
     })

@@ -47,8 +47,8 @@ pub fn gather_hand(
         if let Ok((entity, mut grav, mut linvel, mut angvel, pile)) = cards.get_mut(ent)
             && pile.0.len() == 1
         {
-            linvel.0 = Default::default();
-            angvel.0 = Default::default();
+            linvel.0 = default();
+            angvel.0 = default();
             grav.0 = 0.0;
             commands.entity(entity).insert(InHand(hand.1.count));
             commands.entity(entity).insert(RigidBodyDisabled);
@@ -219,7 +219,7 @@ pub fn listen_for_mouse(
     if let Some(RayHitData { entity, .. }) = hit {
         if let Ok((mut pile, mut transform, children, parent, inhand)) = cards.get_mut(entity) {
             if input.just_pressed(KeyCode::KeyF) {
-                transform.rotate_z(PI);
+                transform.rotate_local_y(PI);
             } else if input.just_pressed(KeyCode::KeyR) {
                 if pile.0.len() > 1 {
                     pile.0.shuffle(&mut rand);

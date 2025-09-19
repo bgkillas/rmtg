@@ -10,6 +10,7 @@ use futures::stream::FuturesUnordered;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
 use json::iterators::Members;
+use std::fs;
 use std::io::Cursor;
 pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<Image>> {
     let image = ImageReader::new(Cursor::new(bytes))
@@ -133,21 +134,31 @@ pub async fn add_images(
     None
 }
 async fn get_bytes(id: &str, client: &reqwest::Client, normal: bool) -> Option<Bytes> {
-    let url = if normal {
-        format!(
-            "https://cards.scryfall.io/large/front/{}/{}/{id}.jpg",
-            &id[0..1],
-            &id[1..2]
-        )
+    let path = format!("./cache/{id}-{}.jpg", if normal { 0 } else { 1 });
+    if let Ok(data) = fs::read(&path) {
+        Some(data.into())
     } else {
-        format!(
-            "https://cards.scryfall.io/large/back/{}/{}/{id}.jpg",
-            &id[0..1],
-            &id[1..2]
-        )
-    };
-    let res = client.get(url).send().await.ok()?;
-    res.bytes().await.ok()
+        let url = if normal {
+            format!(
+                "https://cards.scryfall.io/large/front/{}/{}/{id}.jpg",
+                &id[0..1],
+                &id[1..2]
+            )
+        } else {
+            format!(
+                "https://cards.scryfall.io/large/back/{}/{}/{id}.jpg",
+                &id[0..1],
+                &id[1..2]
+            )
+        };
+        let res = client.get(url).send().await.ok()?;
+        if let Ok(bytes) = res.bytes().await {
+            let _ = fs::write(path, &bytes);
+            Some(bytes)
+        } else {
+            None
+        }
+    }
 }
 fn get<T: Default, F>(value: &JsonValue, index: &str, f: F) -> (T, T)
 where

@@ -403,7 +403,7 @@ pub struct Peers {
 impl Default for Peers {
     fn default() -> Self {
         Self {
-            list: Default::default(),
+            list: default(),
             me: 0,
             count: 0,
             lobby_id: LobbyId::from_raw(0),

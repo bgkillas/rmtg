@@ -89,7 +89,7 @@ pub fn start() {
     })
     .insert_resource(LoadFonts {
         font_paths: vec!["assets/fonts/noto.ttf".to_owned()],
-        ..Default::default()
+        ..default()
     })
     .insert_resource(clipboard)
     .insert_resource(SyncCount::default())
@@ -238,7 +238,7 @@ impl CardInfo {
             color: self.color,
             power: self.power,
             toughness: self.toughness,
-            image: Default::default(),
+            image: default(),
         }
     }
 }

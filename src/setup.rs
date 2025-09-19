@@ -4,6 +4,7 @@ use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 use bevy_steamworks::Client;
 use std::f32::consts::PI;
+use std::fs;
 const MAT_SCALE: f32 = 10.0;
 pub const MAT_WIDTH: f32 = 872.0 * MAT_SCALE;
 pub const MAT_HEIGHT: f32 = 525.0 * MAT_SCALE;
@@ -20,6 +21,7 @@ pub fn setup(
     mut rand: GlobalEntropy<WyRand>,
     mut count: ResMut<SyncCount>,
 ) {
+    let _ = fs::create_dir("./cache");
     peers.my_id = client.user().steam_id();
     client.networking_utils().init_relay_network_access();
     client.networking_messages().session_request_callback(|r| {
@@ -46,7 +48,7 @@ pub fn setup(
     let card_side = materials.add(StandardMaterial {
         base_color: bevy::prelude::Color::srgb_u8(0x11, 0x0F, 0x02),
         unlit: true,
-        ..Default::default()
+        ..default()
     });
     commands.insert_resource(CardBase {
         stock: card_stock,
@@ -96,8 +98,7 @@ pub fn setup(
         Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * T - 2.0, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::BLACK,
-            unlit: true,
-            ..Default::default()
+            ..default()
         })),
     ));
     commands.spawn((
@@ -108,8 +109,7 @@ pub fn setup(
         Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * T, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::BLACK,
-            unlit: true,
-            ..Default::default()
+            ..default()
         })),
     ));
     commands.spawn((
@@ -120,8 +120,7 @@ pub fn setup(
         Mesh3d(meshes.add(Cuboid::new(2.0 * T, 2.0 * W, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::BLACK,
-            unlit: true,
-            ..Default::default()
+            ..default()
         })),
     ));
     commands.spawn((
@@ -132,8 +131,7 @@ pub fn setup(
         Mesh3d(meshes.add(Cuboid::new(2.0 * T, 2.0 * W, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::BLACK,
-            unlit: true,
-            ..Default::default()
+            ..default()
         })),
     ));
     commands.spawn((
@@ -144,8 +142,7 @@ pub fn setup(
         Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, 2.0 * T))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::BLACK,
-            unlit: true,
-            ..Default::default()
+            ..default()
         })),
     ));
     commands.spawn((
@@ -156,8 +153,7 @@ pub fn setup(
         Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, 2.0 * T))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::BLACK,
-            unlit: true,
-            ..Default::default()
+            ..default()
         })),
     ));
     commands.spawn((
@@ -175,7 +171,7 @@ pub fn setup(
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: bevy::prelude::Color::WHITE,
                 unlit: true,
-                ..Default::default()
+                ..default()
             })),
             SyncObjectMe::new(&mut rand, &mut count),
         ))
@@ -199,12 +195,12 @@ pub fn setup(
                         base_color: bevy::prelude::Color::BLACK,
                         alpha_mode: AlphaMode::Blend,
                         unlit: true,
-                        ..Default::default()
+                        ..default()
                     })),
                     Text3dStyling {
                         size: 128.0,
                         anchor: TextAnchor::CENTER,
-                        ..Default::default()
+                        ..default()
                     },
                 ));
             }
