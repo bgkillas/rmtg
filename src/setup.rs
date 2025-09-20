@@ -1,5 +1,7 @@
 use crate::sync::{PollGroup, SyncObjectMe, spawn_hand};
 use crate::*;
+use bevy::asset::RenderAssetUsages;
+use bevy::render::mesh::{Indices, PrimitiveTopology};
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 use bevy_steamworks::{Client, LobbyId};
@@ -221,6 +223,121 @@ pub fn setup(
                 ));
             }
         });
+    let mesh = mesh_ico(64.0);
+    commands.spawn((
+        ColliderConstructor::ConvexHullFromMesh,
+        Transform::from_xyz(256.0, 128.0, 0.0),
+        RigidBody::Dynamic,
+        GravityScale(GRAVITY),
+        Mesh3d(meshes.add(mesh)),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: bevy::prelude::Color::WHITE,
+            unlit: true,
+            ..default()
+        })),
+        SyncObjectMe::new(&mut rand, &mut count),
+    ));
+}
+fn mesh_ico(m: f32) -> Mesh {
+    let phi = ((0.5 + 5.0f64.sqrt() / 2.0) * m as f64) as f32;
+    let mut verticies: Vec<[f32; 3]> = Vec::with_capacity(12);
+    for y in [-m, m] {
+        for z in [-phi, phi] {
+            verticies.push([0.0, y, z])
+        }
+    }
+    for x in [-m, m] {
+        for y in [-phi, phi] {
+            verticies.push([x, y, 0.0])
+        }
+    }
+    for x in [-phi, phi] {
+        for z in [-m, m] {
+            verticies.push([x, 0.0, z])
+        }
+    }
+    let mut f = Vec::with_capacity(60);
+    for (i, a) in verticies.iter().enumerate() {
+        let [ax, ay, az] = a;
+        let an = ax * ax + ay * ay + az * az;
+        for (j, b) in verticies.iter().enumerate() {
+            let [bx, by, bz] = b;
+            let bn = bx * bx + by * by + bz * bz;
+            let t = (ax * bx + ay * by + az * bz) / (an * bn).sqrt();
+            let t = t.acos();
+            if (t - 1.1071488).abs() < 0.25 {
+                f.push([i as u16, j as u16]);
+            }
+        }
+    }
+    let mut indecies = Vec::with_capacity(60);
+    for a in &f {
+        for b in &f {
+            for c in &f {
+                if a[1] == b[0] && b[1] == c[0] && c[1] == a[0] && a[0] < b[0] && b[0] < c[0] {
+                    let [ox, oy, oz] = verticies[a[0] as usize];
+                    let u = verticies[b[0] as usize];
+                    let v = verticies[c[0] as usize];
+                    let n = [
+                        u[1] * v[2] - u[2] * v[1],
+                        u[2] * v[0] - u[0] * v[2],
+                        u[0] * v[1] - u[1] * v[0],
+                    ];
+                    let dot = n[0] * ox + n[1] * oy + n[2] * oz;
+                    indecies.push(a[0]);
+                    if dot > 0.0 {
+                        indecies.push(b[0]);
+                        indecies.push(c[0]);
+                    } else {
+                        indecies.push(c[0]);
+                        indecies.push(b[0]);
+                    }
+                }
+            }
+        }
+    }
+    Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::RENDER_WORLD,
+    )
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, verticies)
+    .with_inserted_indices(Indices::U16(indecies))
+}
+#[allow(dead_code)]
+fn mesh_dodec() -> Mesh {
+    let phi = 0.5 + 5.0f32.sqrt() / 2.0;
+    let phir = phi.recip();
+    let mut vertexes: Vec<[f32; 3]> = Vec::with_capacity(20);
+    for x in [-1.0, 1.0] {
+        for y in [-1.0, 1.0] {
+            for z in [-1.0, 1.0] {
+                vertexes.push([x, y, z])
+            }
+        }
+    }
+    for y in [-phir, phir] {
+        for z in [-phi, phi] {
+            vertexes.push([0.0, y, z])
+        }
+    }
+    for x in [-phir, phir] {
+        for y in [-phi, phi] {
+            vertexes.push([x, y, 0.0])
+        }
+    }
+    for x in [-phi, phi] {
+        for z in [-phir, phir] {
+            vertexes.push([x, 0.0, z])
+        }
+    }
+    Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::RENDER_WORLD,
+    )
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertexes)
+    .with_inserted_indices(Indices::U16(vec![
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 0,
+    ]))
 }
 #[derive(Component)]
 pub struct Wall;
