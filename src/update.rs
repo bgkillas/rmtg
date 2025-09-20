@@ -508,6 +508,8 @@ pub fn listen_for_mouse(
                 av.z = if rand.random() { 1.0 } else { -1.0 }
                     * (rand.random_range(32.0..64.0) + av.z.abs());
             }
+        } else if let Some(single) = zoom {
+            commands.entity(single.0).despawn();
         }
     } else if let Some(single) = zoom {
         commands.entity(single.0).despawn();

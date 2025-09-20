@@ -19,14 +19,28 @@ use std::mem;
 use tokio::sync::mpsc::{Receiver, Sender};
 pub fn get_sync(
     client: Res<Client>,
-    query: Query<(&SyncObjectMe, &GlobalTransform, Option<&InHand>)>,
+    query: Query<(
+        &SyncObjectMe,
+        &GlobalTransform,
+        &LinearVelocity,
+        &AngularVelocity,
+        Option<&InHand>,
+    )>,
     count: Res<SyncCount>,
     mut peers: ResMut<Peers>,
     mut sync_actions: ResMut<SyncActions>,
 ) {
     let mut v = Vec::with_capacity(count.0);
-    for (id, transform, in_hand) in query {
-        v.push((*id, Trans::from(transform), in_hand.is_some()))
+    for (id, transform, vel, ang, in_hand) in query {
+        if sync_actions.take_owner.iter().any(|(_, b)| b == id) {
+            continue;
+        }
+        v.push((
+            *id,
+            Trans::from(transform),
+            Phys::from(vel, ang),
+            in_hand.is_some(),
+        ))
     }
     let packet = Packet::Pos(v);
     let bytes = encode(&packet);
@@ -56,6 +70,8 @@ pub fn apply_sync(
         &mut Transform,
         &mut Position,
         &mut Rotation,
+        &mut LinearVelocity,
+        &mut AngularVelocity,
         Entity,
         Option<&InOtherHand>,
         &Children,
@@ -91,17 +107,32 @@ pub fn apply_sync(
         match event {
             Packet::Pos(data) => {
                 let user = sender.raw();
-                for (lid, trans, in_hand) in data {
+                for (lid, trans, phys, in_hand) in data {
                     let id = SyncObject { user, id: lid.0 };
-                    if let Some((mut t, mut p, mut r, hand, children, entity, pile, mut gravity)) =
-                        query.iter_mut().find_map(|(a, b, z, r, e, h, c, p, g)| {
+                    if let Some((
+                        mut t,
+                        mut p,
+                        mut r,
+                        hand,
+                        children,
+                        entity,
+                        pile,
+                        mut gravity,
+                        mut lv,
+                        mut av,
+                    )) = query
+                        .iter_mut()
+                        .find_map(|(a, b, z, r, lv, av, e, h, c, p, g)| {
                             if *a == id {
-                                Some((b, z, r, h, c, e, p, g))
+                                Some((b, z, r, h, c, e, p, g, lv, av))
                             } else {
                                 None
                             }
                         })
                     {
+                        let (lvt, avt) = phys.to();
+                        *lv = lvt;
+                        *av = avt;
                         *t = trans.into();
                         *p = t.translation.into();
                         *r = t.rotation.into();
@@ -143,9 +174,9 @@ pub fn apply_sync(
                             .remove::<FollowMouse>()
                             .insert(new);
                     }
-                } else if let Some((mut id, _, _, _, _, _, _, _, _)) = query
+                } else if let Some((mut id, _, _, _, _, _, _, _, _, _, _)) = query
                     .iter_mut()
-                    .find(|(id, _, _, _, _, _, _, _, _)| *id.as_ref() == from)
+                    .find(|(id, _, _, _, _, _, _, _, _, _, _)| *id.as_ref() == from)
                 {
                     *id = new
                 }
@@ -221,10 +252,9 @@ pub fn apply_sync(
             Packet::Dead(lid) => {
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
-                if let Some(e) = query
-                    .iter_mut()
-                    .find_map(|(a, _, _, _, b, _, _, _, _)| if *a == id { Some(b) } else { None })
-                {
+                if let Some(e) = query.iter_mut().find_map(
+                    |(a, _, _, _, _, _, b, _, _, _, _)| if *a == id { Some(b) } else { None },
+                ) {
                     commands.entity(e).despawn();
                 }
             }
@@ -387,7 +417,7 @@ pub struct SyncActions {
 }
 #[derive(Encode, Decode, Debug)]
 pub enum Packet {
-    Pos(Vec<(SyncObjectMe, Trans, bool)>),
+    Pos(Vec<(SyncObjectMe, Trans, Phys, bool)>),
     Request(SyncObjectMe),
     Received(SyncObjectMe),
     Dead(SyncObjectMe),
@@ -395,6 +425,22 @@ pub enum Packet {
     New(SyncObjectMe, Pile, Trans),
     NewShape(SyncObjectMe, Shape, Trans),
     SetUser(usize),
+}
+#[derive(Encode, Decode, Debug)]
+pub struct Phys {
+    pub vel: (u32, u32, u32),
+    pub ang: (u32, u32, u32),
+}
+impl Phys {
+    fn from(pos: &LinearVelocity, ang: &AngularVelocity) -> Self {
+        Self {
+            vel: unsafe { mem::transmute::<LinearVelocity, (u32, u32, u32)>(*pos) },
+            ang: unsafe { mem::transmute::<AngularVelocity, (u32, u32, u32)>(*ang) },
+        }
+    }
+    fn to(self) -> (LinearVelocity, AngularVelocity) {
+        unsafe { mem::transmute::<Self, (LinearVelocity, AngularVelocity)>(self) }
+    }
 }
 #[derive(Encode, Decode, Component, Copy, Clone, Debug)]
 pub enum Shape {
@@ -428,7 +474,7 @@ pub struct SyncObject {
     pub user: u64,
     pub id: u64,
 }
-#[derive(Component, Default, Debug, Encode, Decode, Copy, Clone)]
+#[derive(Component, Default, Debug, Encode, Decode, Eq, PartialEq, Copy, Clone)]
 #[allow(dead_code)]
 pub struct SyncObjectMe(pub u64);
 impl SyncObjectMe {
