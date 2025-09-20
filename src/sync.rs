@@ -1,6 +1,6 @@
 use crate::download::add_images;
 use crate::misc::repaint_face;
-use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
+use crate::setup::{MAT_HEIGHT, MAT_WIDTH, spawn_cube, spawn_ico};
 use crate::*;
 use bevy_steamworks::networking_sockets::{
     ListenSocket, NetConnection, NetPollGroup, NetworkingSockets,
@@ -62,7 +62,16 @@ pub fn apply_sync(
         Option<&Pile>,
         &mut GravityScale,
     )>,
-    mut queryme: Query<(&SyncObjectMe, &GlobalTransform, &Pile, Entity), Without<SyncObject>>,
+    mut queryme: Query<
+        (
+            &SyncObjectMe,
+            &GlobalTransform,
+            Option<&Pile>,
+            Option<&Shape>,
+            Entity,
+        ),
+        Without<SyncObject>,
+    >,
     mut sent: ResMut<Sent>,
     asset_server: Res<AssetServer>,
     down: Res<Download>,
@@ -72,6 +81,7 @@ pub fn apply_sync(
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut poll: ResMut<PollGroup>,
+    mut meshes: ResMut<Assets<Mesh>>,
 ) {
     for packet in poll.poll.receive_messages(1024) {
         let sender = packet.identity_peer().steam_id().unwrap();
@@ -124,7 +134,8 @@ pub fn apply_sync(
                     id: to.0,
                 };
                 if from.user == peers.my_id.raw() {
-                    if let Some((_, _, _, e)) = queryme.iter().find(|(id, _, _, _)| id.0 == from.id)
+                    if let Some((_, _, _, _, e)) =
+                        queryme.iter().find(|(id, _, _, _, _)| id.0 == from.id)
                     {
                         commands
                             .entity(e)
@@ -143,12 +154,17 @@ pub fn apply_sync(
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
                 if sent.0.insert(id) {
-                    if let Some((b, c)) = queryme
-                        .iter_mut()
-                        .find_map(|(a, b, c, _)| if a.0 == lid.0 { Some((b, c)) } else { None })
-                    {
-                        let bytes = encode(&Packet::New(lid, c.clone_no_image(), Trans::from(b)));
-                        con.send_message(&bytes, SendFlags::RELIABLE);
+                    if let Some((b, c, s)) = queryme.iter_mut().find_map(|(a, b, c, s, _)| {
+                        if a.0 == lid.0 { Some((b, c, s)) } else { None }
+                    }) {
+                        if let Some(c) = c {
+                            let bytes =
+                                encode(&Packet::New(lid, c.clone_no_image(), Trans::from(b)));
+                            con.send_message(&bytes, SendFlags::RELIABLE);
+                        } else if let Some(s) = s {
+                            let bytes = encode(&Packet::NewShape(lid, *s, Trans::from(b)));
+                            con.send_message(&bytes, SendFlags::RELIABLE);
+                        }
                     } else {
                         sent.0.remove(&id);
                     }
@@ -168,6 +184,33 @@ pub fn apply_sync(
                 down.runtime.0.spawn(async move {
                     add_images(pile, trans.into(), id, deck, client, asset_server).await
                 });
+            }
+            Packet::NewShape(lid, shape, trans) => {
+                let user = sender.raw();
+                let id = SyncObject { user, id: lid.0 };
+                match shape {
+                    Shape::Cube => {
+                        spawn_cube(
+                            256.0,
+                            trans.into(),
+                            &mut commands,
+                            &mut meshes,
+                            &mut materials,
+                            &asset_server,
+                        )
+                        .insert(id);
+                    }
+                    Shape::Icosahedron => {
+                        spawn_ico(
+                            64.0,
+                            trans.into(),
+                            &mut commands,
+                            &mut meshes,
+                            &mut materials,
+                        )
+                        .insert(id);
+                    }
+                }
             }
             Packet::SetUser(id) => {
                 peers.me = id;
@@ -350,7 +393,13 @@ pub enum Packet {
     Dead(SyncObjectMe),
     Take(SyncObject, SyncObjectMe),
     New(SyncObjectMe, Pile, Trans),
+    NewShape(SyncObjectMe, Shape, Trans),
     SetUser(usize),
+}
+#[derive(Encode, Decode, Component, Copy, Clone, Debug)]
+pub enum Shape {
+    Cube,
+    Icosahedron,
 }
 #[derive(Encode, Decode, Debug)]
 pub struct Trans {

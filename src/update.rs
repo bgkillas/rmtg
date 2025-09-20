@@ -404,7 +404,7 @@ pub fn listen_for_mouse(
                     for _ in 0..n {
                         if !pile.0.is_empty() {
                             let new = take_card(&mut pile, &transform);
-                            let ent = new_pile_at(
+                            let mut ent = new_pile_at(
                                 Pile(vec![new]),
                                 card_base.stock.clone_weak(),
                                 &mut materials,
@@ -420,8 +420,8 @@ pub fn listen_for_mouse(
                                 None,
                             )
                             .unwrap();
-                            commands.entity(ent).insert(InHand(hand.0.count));
-                            commands.entity(ent).insert(RigidBodyDisabled);
+                            ent.insert(InHand(hand.0.count));
+                            ent.insert(RigidBodyDisabled);
                             hand.0.count += 1;
                         }
                     }

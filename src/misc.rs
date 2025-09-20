@@ -61,11 +61,11 @@ fn topbottom(size: f32, meshes: &mut Assets<Mesh>) -> (Handle<Mesh>, Transform, 
     transform5.translation.y = CARD_HEIGHT / 2.0;
     (mesh2, transform4, transform5)
 }
-pub fn new_pile_at(
+pub fn new_pile_at<'a>(
     pile: Pile,
     card_stock: Handle<Mesh>,
     materials: &mut Assets<StandardMaterial>,
-    commands: &mut Commands,
+    commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     card_back: Handle<StandardMaterial>,
     card_side: Handle<StandardMaterial>,
@@ -75,7 +75,7 @@ pub fn new_pile_at(
     parent: Option<Entity>,
     count: Option<&mut SyncCount>,
     id: Option<SyncObject>,
-) -> Option<Entity> {
+) -> Option<EntityCommands<'a>> {
     if pile.0.is_empty() {
         return None;
     }
@@ -134,7 +134,7 @@ pub fn new_pile_at(
     if let Some(parent) = parent {
         ent.insert(ChildOf(parent));
     }
-    Some(ent.id())
+    Some(ent)
 }
 pub fn is_reversed(transform: &Transform) -> bool {
     transform

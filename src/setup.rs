@@ -1,4 +1,4 @@
-use crate::sync::{PollGroup, SyncObjectMe, spawn_hand};
+use crate::sync::{PollGroup, Shape, SyncObjectMe, spawn_hand};
 use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::render::mesh::{Indices, PrimitiveTopology};
@@ -179,54 +179,90 @@ pub fn setup(
         Msaa::Sample8,
         Transform::from_xyz(0.0, START_Y, START_Z).looking_at(Vec3::ZERO, Vec3::Y),
     ));
-    commands
-        .spawn((
-            Collider::cuboid(256.0, 256.0, 256.0),
-            Transform::from_xyz(0.0, 128.0, 0.0),
-            RigidBody::Dynamic,
-            GravityScale(GRAVITY),
-            Mesh3d(meshes.add(Cuboid::from_length(256.0))),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: bevy::prelude::Color::WHITE,
-                unlit: true,
-                ..default()
-            })),
-            SyncObjectMe::new(&mut rand, &mut count),
-        ))
-        .with_children(|parent| {
-            for i in 1..=6 {
-                let (x, y, z) = match i {
-                    1 => (0.0, 129.0, 0.0),
-                    2 => (129.0, 0.0, 0.0),
-                    3 => (0.0, 0.0, 129.0),
-                    4 => (0.0, 0.0, -129.0),
-                    5 => (-129.0, 0.0, 0.0),
-                    6 => (0.0, -129.0, 0.0),
-                    _ => unreachable!(),
-                };
-                parent.spawn((
-                    Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
-                    Text3d::new(i.to_string()),
-                    Mesh3d(meshes.add(Rectangle::new(256.0, 256.0))),
-                    MeshMaterial3d(asset_server.add(StandardMaterial {
-                        base_color_texture: Some(TextAtlas::DEFAULT_IMAGE.clone()),
-                        base_color: bevy::prelude::Color::BLACK,
-                        alpha_mode: AlphaMode::Blend,
-                        unlit: true,
-                        ..default()
-                    })),
-                    Text3dStyling {
-                        size: 128.0,
-                        anchor: TextAnchor::CENTER,
-                        ..default()
-                    },
-                ));
-            }
-        });
-    let mesh = mesh_ico(64.0);
+    let mut cube = spawn_cube(
+        256.0,
+        Transform::from_xyz(0.0, 128.0, 0.0),
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        &asset_server,
+    );
+    cube.insert(SyncObjectMe::new(&mut rand, &mut count));
+    let mut ico = spawn_ico(
+        64.0,
+        Transform::from_xyz(256.0, 128.0, 0.0),
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+    );
+    ico.insert(SyncObjectMe::new(&mut rand, &mut count));
+}
+pub fn spawn_cube<'a>(
+    m: f32,
+    transform: Transform,
+    commands: &'a mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    asset_server: &AssetServer,
+) -> EntityCommands<'a> {
+    let d = m / 2.0 + 1.0;
+    let mut cube = commands.spawn((
+        Collider::cuboid(m, m, m),
+        transform,
+        RigidBody::Dynamic,
+        GravityScale(GRAVITY),
+        Shape::Cube,
+        Mesh3d(meshes.add(Cuboid::from_length(m))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: bevy::prelude::Color::WHITE,
+            unlit: true,
+            ..default()
+        })),
+    ));
+    cube.with_children(|parent| {
+        for i in 1..=6 {
+            let (x, y, z) = match i {
+                1 => (0.0, d, 0.0),
+                2 => (d, 0.0, 0.0),
+                3 => (0.0, 0.0, d),
+                4 => (0.0, 0.0, -d),
+                5 => (-d, 0.0, 0.0),
+                6 => (0.0, -d, 0.0),
+                _ => unreachable!(),
+            };
+            parent.spawn((
+                Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
+                Text3d::new(i.to_string()),
+                Mesh3d(meshes.add(Rectangle::new(m, m))),
+                MeshMaterial3d(asset_server.add(StandardMaterial {
+                    base_color_texture: Some(TextAtlas::DEFAULT_IMAGE.clone()),
+                    base_color: bevy::prelude::Color::BLACK,
+                    alpha_mode: AlphaMode::Blend,
+                    unlit: true,
+                    ..default()
+                })),
+                Text3dStyling {
+                    size: m / 2.0,
+                    anchor: TextAnchor::CENTER,
+                    ..default()
+                },
+            ));
+        }
+    });
+    cube
+}
+pub fn spawn_ico<'a>(
+    m: f32,
+    transform: Transform,
+    commands: &'a mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+) -> EntityCommands<'a> {
+    let mesh = mesh_ico(m);
     commands.spawn((
         ColliderConstructor::ConvexHullFromMesh,
-        Transform::from_xyz(256.0, 128.0, 0.0),
+        transform,
+        Shape::Icosahedron,
         RigidBody::Dynamic,
         GravityScale(GRAVITY),
         Mesh3d(meshes.add(mesh)),
@@ -235,10 +271,9 @@ pub fn setup(
             unlit: true,
             ..default()
         })),
-        SyncObjectMe::new(&mut rand, &mut count),
-    ));
+    ))
 }
-fn mesh_ico(m: f32) -> Mesh {
+pub fn mesh_ico(m: f32) -> Mesh {
     let phi = ((0.5 + 5.0f64.sqrt() / 2.0) * m as f64) as f32;
     let mut verticies: Vec<[f32; 3]> = Vec::with_capacity(12);
     for y in [-m, m] {

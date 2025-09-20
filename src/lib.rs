@@ -136,7 +136,7 @@ fn test_parse() {
         let asset_server = asset_server.clone();
         let img = runtime
             .block_on(runtime.spawn(async move {
-                let mut json = json::object!(id: "OxoZm", name: "kilo");
+                let mut json = json::object!(scryfall_id: "64b0acfa-1a8d-4a94-8972-c9bb235e4897", name: "kilo");
                 download::parse(
                     &mut json,
                     reqwest::Client::builder()
@@ -153,6 +153,12 @@ fn test_parse() {
     }
     app.add_systems(Update, test);
     app.update();
+}
+#[test]
+fn test_mesh() {
+    let tmr = std::time::Instant::now();
+    std::hint::black_box(setup::mesh_ico(1.0));
+    println!("{}", tmr.elapsed().as_nanos())
 }
 #[test]
 #[cfg(not(feature = "wasm"))]
