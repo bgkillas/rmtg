@@ -29,6 +29,7 @@ pub fn get_sync(
     count: Res<SyncCount>,
     mut peers: ResMut<Peers>,
     mut sync_actions: ResMut<SyncActions>,
+    mut sent: ResMut<Sent>,
 ) {
     let mut v = Vec::with_capacity(count.0);
     for (id, transform, vel, ang, in_hand) in query {
@@ -53,6 +54,7 @@ pub fn get_sync(
         }
     }
     for (from, to) in sync_actions.take_owner.drain(..) {
+        sent.0.insert(from);
         let packet = Packet::Take(from, to);
         let bytes = encode(&packet);
         for con in peers.list.values() {
@@ -109,6 +111,9 @@ pub fn apply_sync(
                 let user = sender.raw();
                 for (lid, trans, phys, in_hand) in data {
                     let id = SyncObject { user, id: lid.0 };
+                    if sent.0.contains(&id) {
+                        continue;
+                    }
                     if let Some((
                         mut t,
                         mut p,
@@ -165,6 +170,8 @@ pub fn apply_sync(
                     id: to.0,
                 };
                 if from.user == peers.my_id.raw() {
+                    let bytes = encode(&Packet::Received(SyncObjectMe(from.id)));
+                    con.send_message(&bytes, SendFlags::RELIABLE);
                     if let Some((_, _, _, _, e)) =
                         queryme.iter().find(|(id, _, _, _, _)| id.0 == from.id)
                     {
@@ -178,6 +185,7 @@ pub fn apply_sync(
                     .iter_mut()
                     .find(|(id, _, _, _, _, _, _, _, _, _, _)| *id.as_ref() == from)
                 {
+                    sent.0.insert(*id); //TODO never removed
                     *id = new
                 }
             }
