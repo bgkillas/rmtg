@@ -65,6 +65,7 @@ pub fn get_sync(
         con.poll(&socket);
         con.send_message(&bytes, SendFlags::RELIABLE);
     }
+    peers.flush();
 }
 pub fn apply_sync(
     mut query: Query<(
@@ -422,6 +423,9 @@ pub struct Sent(pub HashSet<SyncObject>);
 pub struct SyncActions {
     pub killed: Vec<SyncObjectMe>,
     pub take_owner: Vec<(SyncObject, SyncObjectMe)>,
+    pub reorder: Vec<(SyncObjectMe, Vec<String>)>, //TODO
+    pub draw: Vec<(SyncObjectMe, Vec<SyncObjectMe>)>,
+    pub flip: Vec<SyncObjectMe>,
 }
 #[derive(Encode, Decode, Debug)]
 pub enum Packet {
@@ -502,6 +506,15 @@ pub struct Peers {
     pub host_id: SteamId,
     pub my_id: SteamId,
     pub is_host: bool,
+}
+impl Peers {
+    fn flush(&mut self) {
+        self.list.values_mut().for_each(|c| {
+            if let Connection::Connected(con) = c {
+                con.flush_messages().unwrap();
+            }
+        })
+    }
 }
 impl Default for Peers {
     fn default() -> Self {
