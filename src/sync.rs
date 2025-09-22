@@ -1,5 +1,5 @@
 use crate::download::add_images;
-use crate::misc::repaint_face;
+use crate::misc::{get_mut_card, repaint_face};
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH, spawn_cube, spawn_ico};
 use crate::*;
 use bevy_steamworks::networking_sockets::{
@@ -53,6 +53,13 @@ pub fn get_sync(
             con.send_message(&bytes, SendFlags::RELIABLE);
         }
     }
+    for flip in sync_actions.flip.drain(..) {
+        let packet = Packet::Flip(flip.0, flip.1);
+        let bytes = encode(&packet);
+        for con in peers.list.values() {
+            con.send_message(&bytes, SendFlags::RELIABLE);
+        }
+    }
     for (from, to) in sync_actions.take_owner.drain(..) {
         sent.0.insert(from);
         let packet = Packet::Take(from, to);
@@ -78,7 +85,7 @@ pub fn apply_sync(
         Entity,
         Option<&InOtherHand>,
         &Children,
-        Option<&Pile>,
+        Option<&mut Pile>,
         &mut GravityScale,
     )>,
     mut queryme: Query<
@@ -267,6 +274,25 @@ pub fn apply_sync(
                     commands.entity(e).despawn();
                 }
             }
+            Packet::Flip(lid, is_alt) => {
+                let user = sender.raw();
+                let id = SyncObject { user, id: lid.0 };
+                if let Some((transform, children, mut pile)) = query.iter_mut().find_map(
+                    |(a, b, _, _, _, _, _, _, c, d, _)| {
+                        if *a == id { Some((b, c, d)) } else { None }
+                    },
+                ) && let Some(pile) = &mut pile
+                {
+                    let card = get_mut_card(pile, &transform);
+                    if is_alt != card.is_alt
+                        && let Some(alt) = &mut card.alt
+                    {
+                        mem::swap(&mut card.normal, alt);
+                        repaint_face(&mut mats, &mut materials, card, children);
+                        card.is_alt = !card.is_alt;
+                    }
+                }
+            }
         }
     }
 }
@@ -425,7 +451,7 @@ pub struct SyncActions {
     pub take_owner: Vec<(SyncObject, SyncObjectMe)>,
     pub reorder: Vec<(SyncObjectMe, Vec<String>)>, //TODO
     pub draw: Vec<(SyncObjectMe, Vec<SyncObjectMe>)>,
-    pub flip: Vec<SyncObjectMe>,
+    pub flip: Vec<(SyncObjectMe, bool)>,
 }
 #[derive(Encode, Decode, Debug)]
 pub enum Packet {
@@ -436,6 +462,7 @@ pub enum Packet {
     Take(SyncObject, SyncObjectMe),
     New(SyncObjectMe, Pile, Trans),
     NewShape(SyncObjectMe, Shape, Trans),
+    Flip(SyncObjectMe, bool),
     SetUser(usize),
 }
 #[derive(Encode, Decode, Debug)]

@@ -367,6 +367,9 @@ pub fn listen_for_mouse(
                     repaint_face(&mut mats, &mut materials, card, children);
                     card.is_alt = !card.is_alt;
                 }
+                if let Ok(id) = ids.get(entity) {
+                    sync_actions.flip.push((*id, card.is_alt));
+                }
             } else if input.any_just_pressed([
                 KeyCode::Digit1,
                 KeyCode::Digit2,
