@@ -14,8 +14,8 @@ use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
 use bitcode::{Decode, Encode};
 use rand::RngCore;
 use std::mem::MaybeUninit;
+use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc::channel;
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = 488.0;
 pub const CARD_HEIGHT: f32 = 680.0;
@@ -60,8 +60,8 @@ pub fn start() {
     let get_deck = GetDeck::default();
     let game_clipboard = GameClipboard(None);
     let mut app = App::new();
-    let (tx, rx) = channel(4);
-    let (tx2, rx2) = channel(4);
+    let (tx, rx) = channel();
+    let (tx2, rx2) = channel();
     #[cfg(feature = "steam")]
     app.add_plugins(bevy_steamworks::SteamworksPlugin::init_app(APPID).unwrap());
     app.add_plugins((
@@ -81,12 +81,12 @@ pub fn start() {
         Text3dPlugin::default(),
     ))
     .insert_resource(LobbyJoinChannel {
-        sender: tx2,
-        receiver: rx2,
+        sender: Arc::new(tx2.into()),
+        receiver: Arc::new(rx2.into()),
     })
     .insert_resource(LobbyCreateChannel {
-        sender: tx,
-        receiver: rx,
+        sender: Arc::new(tx.into()),
+        receiver: Arc::new(rx.into()),
     })
     .insert_resource(LoadFonts {
         font_paths: vec!["assets/fonts/noto.ttf".to_owned()],
@@ -118,8 +118,7 @@ pub fn start() {
             (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
         ),
     )
-    .add_systems(PostUpdate, (callbacks, get_sync).chain())
-    .add_systems(PreUpdate, apply_sync);
+    .add_systems(PostUpdate, (callbacks, get_sync, apply_sync).chain());
     app.run();
 }
 #[test]
