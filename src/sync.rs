@@ -106,6 +106,7 @@ pub fn apply_sync(
     mut meshes: ResMut<Assets<Mesh>>,
     card_base: Res<CardBase>,
 ) {
+    let mut done = false;
     for packet in poll.poll.receive_messages(1024) {
         let sender = packet.identity_peer().steam_id().unwrap();
         let con = peers.list.get(&sender).unwrap();
@@ -117,6 +118,8 @@ pub fn apply_sync(
                 for (lid, trans, phys, in_hand) in data {
                     let id = SyncObject { user, id: lid.0 };
                     if sent.0.contains(&id) {
+                        done = true;
+                        println!("X");
                         continue;
                     }
                     if let Some((
@@ -164,6 +167,7 @@ pub fn apply_sync(
                             }
                         }
                     } else if sent.0.insert(id) {
+                        done = true;
                         println!("r");
                         let bytes = encode(&Packet::Request(lid));
                         con.send_message(&bytes, SendFlags::RELIABLE);
@@ -176,6 +180,8 @@ pub fn apply_sync(
                     id: to.0,
                 };
                 if from.user == peers.my_id.raw() {
+                    done = true;
+                    println!("ta");
                     let bytes = encode(&Packet::Received(SyncObjectMe(from.id)));
                     con.send_message(&bytes, SendFlags::RELIABLE);
                     if let Some((_, _, _, _, e)) =
@@ -191,19 +197,24 @@ pub fn apply_sync(
                     .iter_mut()
                     .find(|(id, _, _, _, _, _, _, _, _, _, _)| *id.as_ref() == from)
                 {
+                    done = true;
+                    println!("t");
                     sent.0.insert(*id); //TODO never removed
                     *id = new
                 }
             }
             Packet::Request(lid) => {
+                done = true;
                 println!("a");
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
                 if sent.0.insert(id) {
+                    done = true;
                     println!("b");
                     if let Some((b, c, s)) = queryme.iter_mut().find_map(|(a, b, c, s, _)| {
                         if a.0 == lid.0 { Some((b, c, s)) } else { None }
                     }) {
+                        done = true;
                         println!("c");
                         if let Some(c) = c {
                             let bytes =
@@ -337,6 +348,9 @@ pub fn apply_sync(
             }
         }
     }
+    if done {
+        println!("Z");
+    }
 }
 pub fn callbacks(
     mut callback: EventReader<SteamworksEvent>,
@@ -375,8 +389,9 @@ pub fn callbacks(
                         .unwrap()
                         .steam_id()
                         .unwrap();
-                    let con = peers.list.get_mut(&peer).unwrap();
-                    con.connected = true
+                    if let Some(con) = peers.list.get_mut(&peer) {
+                        con.connected = true
+                    }
                 }
             }
             _ => {}
