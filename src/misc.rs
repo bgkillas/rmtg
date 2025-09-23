@@ -38,11 +38,10 @@ pub fn new_pile(
         card_back,
         card_side,
         transform,
-        Some(rand),
         false,
         None,
-        Some(count),
         id,
+        Some(SyncObjectMe::new(rand, count)),
     );
 }
 fn side(size: f32, meshes: &mut Assets<Mesh>) -> (Handle<Mesh>, Transform, Transform) {
@@ -70,11 +69,10 @@ pub fn new_pile_at<'a>(
     card_back: Handle<StandardMaterial>,
     card_side: Handle<StandardMaterial>,
     transform: Transform,
-    rand: Option<&mut GlobalEntropy<WyRand>>,
     follow_mouse: bool,
     parent: Option<Entity>,
-    count: Option<&mut SyncCount>,
     id: Option<SyncObject>,
+    sync_object: Option<SyncObjectMe>,
 ) -> Option<EntityCommands<'a>> {
     if pile.0.is_empty() {
         return None;
@@ -125,8 +123,8 @@ pub fn new_pile_at<'a>(
     ));
     if let Some(id) = id {
         ent.insert(id);
-    } else if let Some(count) = count {
-        ent.insert(SyncObjectMe::new(rand.unwrap(), count));
+    } else if let Some(obj) = sync_object {
+        ent.insert(obj);
     }
     if follow_mouse {
         ent.insert(FollowMouse);

@@ -1,5 +1,5 @@
 use crate::download::add_images;
-use crate::misc::{get_mut_card, repaint_face};
+use crate::misc::{get_mut_card, new_pile_at, repaint_face};
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH, spawn_cube, spawn_ico};
 use crate::*;
 use bevy_steamworks::networking_sockets::{
@@ -54,7 +54,7 @@ pub fn get_sync(
         }
     }
     for flip in sync_actions.flip.drain(..) {
-        let packet = Packet::Flip(flip.0, flip.1);
+        let packet = Packet::Flip(flip);
         let bytes = encode(&packet);
         for con in peers.list.values() {
             con.send_message(&bytes, SendFlags::RELIABLE);
@@ -108,6 +108,7 @@ pub fn apply_sync(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut poll: ResMut<PollGroup>,
     mut meshes: ResMut<Assets<Mesh>>,
+    card_base: Res<CardBase>,
 ) {
     for packet in poll.poll.receive_messages(1024) {
         let sender = packet.identity_peer().steam_id().unwrap();
@@ -243,7 +244,6 @@ pub fn apply_sync(
                             &mut commands,
                             &mut meshes,
                             &mut materials,
-                            &asset_server,
                         )
                         .insert(id);
                     }
@@ -274,7 +274,7 @@ pub fn apply_sync(
                     commands.entity(e).despawn();
                 }
             }
-            Packet::Flip(lid, is_alt) => {
+            Packet::Flip(lid) => {
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
                 if let Some((transform, children, mut pile)) = query.iter_mut().find_map(
@@ -284,12 +284,54 @@ pub fn apply_sync(
                 ) && let Some(pile) = &mut pile
                 {
                     let card = get_mut_card(pile, &transform);
-                    if is_alt != card.is_alt
-                        && let Some(alt) = &mut card.alt
-                    {
+                    if let Some(alt) = &mut card.alt {
                         mem::swap(&mut card.normal, alt);
                         repaint_face(&mut mats, &mut materials, card, children);
                         card.is_alt = !card.is_alt;
+                    }
+                }
+            }
+            Packet::Reorder(lid, order) => {
+                let user = sender.raw();
+                let id = SyncObject { user, id: lid.0 };
+                if let Some(mut pile) = query.iter_mut().find_map(
+                    |(a, _, _, _, _, _, _, _, _, d, _)| {
+                        if *a == id { Some(d) } else { None }
+                    },
+                ) && let Some(pile) = &mut pile
+                {
+                    for (i, id) in order.into_iter().enumerate() {
+                        let n = pile.0[i..].iter().position(|c| c.id == id).unwrap() + i;
+                        pile.0.swap(i, n);
+                    }
+                }
+            }
+            Packet::Draw(lid, to, start) => {
+                let user = sender.raw();
+                let id = SyncObject { user, id: lid.0 };
+                if let Some(mut pile) = query.iter_mut().find_map(
+                    |(a, _, _, _, _, _, _, _, _, d, _)| {
+                        if *a == id { Some(d) } else { None }
+                    },
+                ) && let Some(pile) = &mut pile
+                {
+                    let len = to.len();
+                    for ((id, trans), card) in to.into_iter().zip(pile.0.drain(start - len..start))
+                    {
+                        new_pile_at(
+                            Pile(vec![card]),
+                            card_base.stock.clone_weak(),
+                            &mut materials,
+                            &mut commands,
+                            &mut meshes,
+                            card_base.back.clone_weak(),
+                            card_base.side.clone_weak(),
+                            trans.into(),
+                            false,
+                            None,
+                            Some(SyncObject { user, id: id.0 }),
+                            None,
+                        );
                     }
                 }
             }
@@ -450,8 +492,8 @@ pub struct SyncActions {
     pub killed: Vec<SyncObjectMe>,
     pub take_owner: Vec<(SyncObject, SyncObjectMe)>,
     pub reorder: Vec<(SyncObjectMe, Vec<String>)>, //TODO
-    pub draw: Vec<(SyncObjectMe, Vec<SyncObjectMe>)>,
-    pub flip: Vec<(SyncObjectMe, bool)>,
+    pub draw: Vec<(SyncObjectMe, Pile, usize)>,
+    pub flip: Vec<SyncObjectMe>,
 }
 #[derive(Encode, Decode, Debug)]
 pub enum Packet {
@@ -462,7 +504,9 @@ pub enum Packet {
     Take(SyncObject, SyncObjectMe),
     New(SyncObjectMe, Pile, Trans),
     NewShape(SyncObjectMe, Shape, Trans),
-    Flip(SyncObjectMe, bool),
+    Flip(SyncObjectMe),
+    Reorder(SyncObjectMe, Vec<String>),
+    Draw(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize),
     SetUser(usize),
 }
 #[derive(Encode, Decode, Debug)]

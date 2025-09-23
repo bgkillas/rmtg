@@ -269,6 +269,7 @@ pub fn listen_for_mouse(
                     if let Some(e) = follow {
                         commands.entity(*e).remove::<FollowMouse>();
                     }
+                    let id = SyncObjectMe::new(&mut rand, &mut count);
                     new_pile_at(
                         Pile(vec![new]),
                         card_base.stock.clone_weak(),
@@ -278,11 +279,10 @@ pub fn listen_for_mouse(
                         card_base.back.clone_weak(),
                         card_base.side.clone_weak(),
                         transform,
-                        Some(&mut rand),
                         true,
                         None,
-                        Some(&mut count),
                         None,
+                        Some(id),
                     );
                 } else {
                     if let Some(e) = follow {
@@ -368,7 +368,7 @@ pub fn listen_for_mouse(
                     card.is_alt = !card.is_alt;
                 }
                 if let Ok(id) = ids.get(entity) {
-                    sync_actions.flip.push((*id, card.is_alt));
+                    sync_actions.flip.push(*id);
                 }
             } else if input.any_just_pressed([
                 KeyCode::Digit1,
@@ -416,11 +416,10 @@ pub fn listen_for_mouse(
                                 card_base.back.clone_weak(),
                                 card_base.side.clone_weak(),
                                 Transform::default(),
-                                Some(&mut rand),
                                 false,
                                 Some(hand.2),
-                                Some(&mut count),
                                 None,
+                                Some(SyncObjectMe::new(&mut rand, &mut count)),
                             )
                             .unwrap();
                             ent.insert(InHand(hand.0.count));

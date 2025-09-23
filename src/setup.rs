@@ -185,7 +185,6 @@ pub fn setup(
         &mut commands,
         &mut meshes,
         &mut materials,
-        &asset_server,
     );
     cube.insert(SyncObjectMe::new(&mut rand, &mut count));
     let mut ico = spawn_ico(
@@ -203,7 +202,6 @@ pub fn spawn_cube<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
-    asset_server: &AssetServer,
 ) -> EntityCommands<'a> {
     let d = m / 2.0 + 1.0;
     let mut cube = commands.spawn((
@@ -234,10 +232,10 @@ pub fn spawn_cube<'a>(
                 Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
                 Text3d::new(i.to_string()),
                 Mesh3d(meshes.add(Rectangle::new(m, m))),
-                MeshMaterial3d(asset_server.add(StandardMaterial {
-                    base_color_texture: Some(TextAtlas::DEFAULT_IMAGE.clone()),
+                MeshMaterial3d(materials.add(StandardMaterial {
+                    base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
+                    alpha_mode: AlphaMode::Premultiplied,
                     base_color: bevy::prelude::Color::BLACK,
-                    alpha_mode: AlphaMode::Blend,
                     unlit: true,
                     ..default()
                 })),
