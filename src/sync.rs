@@ -44,14 +44,14 @@ pub fn get_sync(
         let packet = Packet::Dead(dead);
         let bytes = encode(&packet);
         for con in peers.list.values() {
-            let _ = con.send_message(&bytes, SendFlags::RELIABLE);
+            con.send_message(&bytes, SendFlags::RELIABLE);
         }
     }
     for flip in sync_actions.flip.drain(..) {
         let packet = Packet::Flip(flip);
         let bytes = encode(&packet);
         for con in peers.list.values() {
-            let _ = con.send_message(&bytes, SendFlags::RELIABLE);
+            con.send_message(&bytes, SendFlags::RELIABLE);
         }
     }
     for (from, to) in sync_actions.take_owner.drain(..) {
@@ -59,11 +59,11 @@ pub fn get_sync(
         let packet = Packet::Take(from, to);
         let bytes = encode(&packet);
         for con in peers.list.values() {
-            let _ = con.send_message(&bytes, SendFlags::RELIABLE);
+            con.send_message(&bytes, SendFlags::RELIABLE);
         }
     }
     for con in peers.list.values_mut() {
-        let _ = con.send_message(&bytes, SendFlags::RELIABLE);
+        con.send_message(&bytes, SendFlags::RELIABLE);
     }
     peers.flush();
 }
@@ -161,8 +161,9 @@ pub fn apply_sync(
                             }
                         }
                     } else if sent.0.insert(id) {
+                        println!("r");
                         let bytes = encode(&Packet::Request(lid));
-                        let _ = con.send_message(&bytes, SendFlags::RELIABLE);
+                        con.send_message(&bytes, SendFlags::RELIABLE);
                     }
                 }
             }
@@ -173,7 +174,7 @@ pub fn apply_sync(
                 };
                 if from.user == peers.my_id.raw() {
                     let bytes = encode(&Packet::Received(SyncObjectMe(from.id)));
-                    let _ = con.send_message(&bytes, SendFlags::RELIABLE);
+                    con.send_message(&bytes, SendFlags::RELIABLE);
                     if let Some((_, _, _, _, e)) =
                         queryme.iter().find(|(id, _, _, _, _)| id.0 == from.id)
                     {
@@ -204,10 +205,10 @@ pub fn apply_sync(
                         if let Some(c) = c {
                             let bytes =
                                 encode(&Packet::New(lid, c.clone_no_image(), Trans::from(b)));
-                            let _ = con.send_message(&bytes, SendFlags::RELIABLE);
+                            con.send_message(&bytes, SendFlags::RELIABLE);
                         } else if let Some(s) = s {
                             let bytes = encode(&Packet::NewShape(lid, *s, Trans::from(b)));
-                            let _ = con.send_message(&bytes, SendFlags::RELIABLE);
+                            con.send_message(&bytes, SendFlags::RELIABLE);
                         }
                     } else {
                         sent.0.remove(&id);
@@ -331,6 +332,10 @@ pub fn apply_sync(
                     }
                 }
             }
+            Packet::Connected => {
+                let con = peers.list.get_mut(&sender).unwrap();
+                con.connected = true;
+            }
         }
     }
 }
@@ -362,6 +367,7 @@ pub fn callbacks(
     while let Some(event) = listen.try_receive_event() {
         match event {
             ListenSocketEvent::Connecting(event) => {
+                info!("connecting to someone");
                 event.accept().unwrap();
             }
             ListenSocketEvent::Connected(event) => {
@@ -375,6 +381,11 @@ pub fn callbacks(
                         .send_message(&encode(&Packet::SetUser(peers.count)), SendFlags::RELIABLE)
                         .unwrap();
                 }
+                let connection = Connection {
+                    con: connection,
+                    connected: true,
+                };
+                connection.send_message(&encode(&Packet::Connected), SendFlags::RELIABLE);
                 peers.list.insert(id, connection);
             }
             ListenSocketEvent::Disconnected(event) => {
@@ -448,7 +459,7 @@ pub fn on_join_lobby(
         let my_id = peers.my_id;
         for id in client.matchmaking().lobby_members(event) {
             if id != my_id {
-                connect(&client, &poll_group, id);
+                connect(&mut peers, &client, &poll_group, id);
             }
         }
         peers.lobby_id = event;
@@ -462,13 +473,20 @@ pub fn on_create_lobby(mut create: ResMut<LobbyCreateChannel>, mut peers: ResMut
         peers.lobby_id = event;
     }
 }
-fn connect(client: &Client, poll_group: &PollGroup, peer: SteamId) {
+fn connect(peers: &mut Peers, client: &Client, poll_group: &PollGroup, peer: SteamId) {
     let peer_identity = NetworkingIdentity::new_steam_id(peer);
     let connection = client
         .networking_sockets()
         .connect_p2p(peer_identity, 0, None)
         .unwrap();
     connection.set_poll_group(&poll_group.poll);
+    peers.list.insert(
+        peer,
+        Connection {
+            con: connection,
+            connected: false,
+        },
+    );
 }
 #[derive(Resource)]
 pub struct LobbyJoinChannel {
@@ -503,6 +521,7 @@ pub enum Packet {
     Reorder(SyncObjectMe, Vec<String>),
     Draw(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize),
     SetUser(usize),
+    Connected,
 }
 #[derive(Encode, Decode, Debug)]
 pub struct Phys {
@@ -565,7 +584,7 @@ impl SyncObjectMe {
 pub struct SyncCount(pub usize);
 #[derive(Resource)]
 pub struct Peers {
-    pub list: HashMap<SteamId, NetConnection>,
+    pub list: HashMap<SteamId, Connection>,
     pub me: usize,
     pub count: usize,
     pub lobby_id: LobbyId,
@@ -576,7 +595,7 @@ pub struct Peers {
 impl Peers {
     fn flush(&mut self) {
         self.list.values_mut().for_each(|c| {
-            c.flush_messages().unwrap();
+            c.flush_messages();
         })
     }
 }
@@ -590,6 +609,22 @@ impl Default for Peers {
             host_id: SteamId::from_raw(0),
             my_id: SteamId::from_raw(0),
             is_host: false,
+        }
+    }
+}
+pub struct Connection {
+    pub con: NetConnection,
+    pub connected: bool,
+}
+impl Connection {
+    pub fn send_message(&self, data: &[u8], send: SendFlags) {
+        if self.connected {
+            self.con.send_message(data, send).unwrap();
+        }
+    }
+    pub fn flush_messages(&mut self) {
+        if self.connected {
+            self.con.flush_messages().unwrap();
         }
     }
 }
