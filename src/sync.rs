@@ -3,7 +3,10 @@ use crate::misc::{get_mut_card, new_pile_at, repaint_face};
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH, spawn_cube, spawn_ico};
 use crate::*;
 use bevy_steamworks::networking_sockets::{ListenSocket, NetConnection, NetPollGroup};
-use bevy_steamworks::networking_types::{ListenSocketEvent, NetworkingIdentity, SendFlags};
+use bevy_steamworks::networking_types::{
+    ListenSocketEvent, NetConnectionStatusChanged, NetworkingConnectionState, NetworkingIdentity,
+    SendFlags,
+};
 use bevy_steamworks::{
     CallbackResult, Client, GameLobbyJoinRequested, LobbyId, LobbyType, Matchmaking, SteamId,
     SteamworksEvent,
@@ -332,10 +335,6 @@ pub fn apply_sync(
                     }
                 }
             }
-            Packet::Connected => {
-                let con = peers.list.get_mut(&sender).unwrap();
-                con.connected = true;
-            }
         }
     }
 }
@@ -349,18 +348,38 @@ pub fn callbacks(
 ) {
     for event in callback.read() {
         let SteamworksEvent::CallbackResult(event) = event;
-        if let CallbackResult::GameLobbyJoinRequested(GameLobbyJoinRequested {
-            lobby_steam_id,
-            ..
-        }) = event
-        {
-            let send = join.sender.clone();
-            join_lobby(
-                *lobby_steam_id,
-                down.runtime.0.handle().clone(),
-                client.matchmaking(),
-                send,
-            )
+        println!("{event:?}");
+        match event {
+            CallbackResult::GameLobbyJoinRequested(GameLobbyJoinRequested {
+                lobby_steam_id,
+                ..
+            }) => {
+                let send = join.sender.clone();
+                join_lobby(
+                    *lobby_steam_id,
+                    down.runtime.0.handle().clone(),
+                    client.matchmaking(),
+                    send,
+                )
+            }
+            CallbackResult::NetConnectionStatusChanged(NetConnectionStatusChanged {
+                connection_info,
+                ..
+            }) => {
+                if matches!(
+                    connection_info.state(),
+                    Ok(NetworkingConnectionState::Connected)
+                ) {
+                    let peer = connection_info
+                        .identity_remote()
+                        .unwrap()
+                        .steam_id()
+                        .unwrap();
+                    let con = peers.list.get_mut(&peer).unwrap();
+                    con.connected = true
+                }
+            }
+            _ => {}
         }
     }
     let listen = poll_group.listen.lock().unwrap();
@@ -385,7 +404,6 @@ pub fn callbacks(
                     con: connection,
                     connected: true,
                 };
-                connection.send_message(&encode(&Packet::Connected), SendFlags::RELIABLE);
                 peers.list.insert(id, connection);
             }
             ListenSocketEvent::Disconnected(event) => {
@@ -521,7 +539,6 @@ pub enum Packet {
     Reorder(SyncObjectMe, Vec<String>),
     Draw(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize),
     SetUser(usize),
-    Connected,
 }
 #[derive(Encode, Decode, Debug)]
 pub struct Phys {

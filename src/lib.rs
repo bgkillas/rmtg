@@ -108,7 +108,6 @@ pub fn start() {
     .add_systems(
         Update,
         (
-            callbacks,
             listen_for_deck,
             register_deck,
             cam_translation,
@@ -119,7 +118,7 @@ pub fn start() {
             (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
         ),
     )
-    .add_systems(PostUpdate, get_sync)
+    .add_systems(PostUpdate, (callbacks, get_sync).chain())
     .add_systems(PreUpdate, apply_sync);
     app.run();
 }
