@@ -24,16 +24,15 @@ pub fn get_sync(
         &AngularVelocity,
         Option<&InHand>,
     )>,
-    count: Res<SyncCount>,
+    mut count: ResMut<SyncCount>,
     mut peers: ResMut<Peers>,
     mut sync_actions: ResMut<SyncActions>,
     mut sent: ResMut<Sent>,
+    query_take: Query<(Entity, &SyncObject)>,
+    mut commands: Commands,
 ) {
     let mut v = Vec::with_capacity(count.0);
     for (id, transform, vel, ang, in_hand) in query {
-        if sync_actions.take_owner.iter().any(|(_, b)| b == id) {
-            continue;
-        }
         v.push((
             *id,
             Trans::from(transform),
@@ -58,6 +57,10 @@ pub fn get_sync(
         }
     }
     for (from, to) in sync_actions.take_owner.drain(..) {
+        if let Some((entity, _)) = query_take.iter().find(|(_, b)| **b == from) {
+            commands.entity(entity).remove::<SyncObject>().insert(to);
+            count.0 += 1;
+        }
         sent.0.insert(from);
         let packet = Packet::Take(from, to);
         let bytes = encode(&packet);
@@ -105,6 +108,7 @@ pub fn apply_sync(
     mut poll: ResMut<PollGroup>,
     mut meshes: ResMut<Assets<Mesh>>,
     card_base: Res<CardBase>,
+    mut count: ResMut<SyncCount>,
 ) {
     for packet in poll.poll.receive_messages(1024) {
         let sender = packet.identity_peer().steam_id().unwrap();
@@ -180,6 +184,7 @@ pub fn apply_sync(
                     if let Some((_, _, _, _, e)) =
                         queryme.iter().find(|(id, _, _, _, _)| id.0 == from.id)
                     {
+                        count.0 -= 1;
                         commands
                             .entity(e)
                             .remove::<SyncObjectMe>()

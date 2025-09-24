@@ -291,8 +291,6 @@ pub fn listen_for_mouse(
                     if let Ok(id) = others_ids.get(entity) {
                         let myid = SyncObjectMe::new(&mut rand, &mut count);
                         sync_actions.take_owner.push((*id, myid));
-                        commands.entity(entity).insert(myid);
-                        commands.entity(entity).remove::<SyncObject>();
                     }
                     grav.get_mut(entity).unwrap().0 = 0.0;
                     commands
@@ -494,8 +492,6 @@ pub fn listen_for_mouse(
                 if let Ok(id) = others_ids.get(entity) {
                     let myid = SyncObjectMe::new(&mut rand, &mut count);
                     sync_actions.take_owner.push((*id, myid));
-                    commands.entity(entity).insert(myid);
-                    commands.entity(entity).remove::<SyncObject>();
                 }
                 grav.0 = 0.0;
                 commands.entity(entity).insert(FollowMouse);
