@@ -85,35 +85,19 @@ impl SteamClient {
             }
         })
     }
-    pub(crate) fn send_message(
-        &self,
-        dest: PeerId,
-        data: &[u8],
-        reliability: Reliability,
-    ) -> eyre::Result<()> {
-        if let Some(con) = self.connections.get(&dest)
-            && con.connected
-        {
-            con.net.send_message(data, reliability.into())?;
+    pub(crate) fn recv<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&dyn ClientTrait, Message),
+    {
+        for m in self.poll_group.receive_messages(1024) {
+            f(
+                self,
+                Message {
+                    src: m.identity_peer().steam_id().unwrap().into(),
+                    data: m.data().into(),
+                },
+            )
         }
-        Ok(())
-    }
-    pub(crate) fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
-        for con in self.connections.values() {
-            if con.connected {
-                con.net.send_message(data, reliability.into())?;
-            }
-        }
-        Ok(())
-    }
-    pub(crate) fn recv(&mut self) -> impl Iterator<Item = Message> + use<> {
-        self.poll_group
-            .receive_messages(1024)
-            .into_iter()
-            .map(|m| Message {
-                src: m.identity_peer().steam_id().unwrap().into(),
-                data: m.data().into(),
-            })
     }
     fn connect(&mut self, id: SteamId) {
         let peer_identity = NetworkingIdentity::new_steam_id(id);
@@ -290,11 +274,6 @@ impl Client {
                     c.net.flush_messages().unwrap();
                 }
             })
-        }
-    }
-    pub fn update(&mut self) {
-        if let ClientType::Steam(client) = &mut self.client {
-            client.update()
         }
     }
     pub fn init_steam(&mut self) -> eyre::Result<()> {

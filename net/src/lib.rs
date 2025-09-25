@@ -90,16 +90,25 @@ impl Client {
         }
         Ok(())
     }
-    pub fn recv<F>(&mut self, mut f: F)
+    pub fn recv<F>(&mut self, f: F)
     where
         F: FnMut(&dyn ClientTrait, Message),
     {
         match &mut self.client {
             ClientType::None => {}
             #[cfg(feature = "steam")]
-            ClientType::Steam(client) => client.recv().for_each(|m| f(client, m)),
+            ClientType::Steam(client) => client.recv(f),
             #[cfg(feature = "tangled")]
-            ClientType::Ip(client) => client.clone().recv().for_each(|m| f(client, m)),
+            ClientType::Ip(client) => client.recv(f),
+        }
+    }
+    pub fn update(&mut self) {
+        match &mut self.client {
+            ClientType::None => {}
+            #[cfg(feature = "steam")]
+            ClientType::Steam(client) => client.update(),
+            #[cfg(feature = "tangled")]
+            ClientType::Ip(client) => client.update(),
         }
     }
 }
@@ -126,7 +135,7 @@ impl Plugin for Client {
         app.add_systems(bevy_app::First, update);
     }
 }
-#[cfg(all(feature = "bevy", feature = "steam"))]
+#[cfg(feature = "bevy")]
 pub fn update(mut client: bevy_ecs::system::ResMut<Client>) {
     client.update()
 }
@@ -141,6 +150,8 @@ async fn test_ip() {
     let mut peer2 = Client::new(0);
     peer2.join_ip("127.0.0.1".parse().unwrap()).unwrap();
     tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    peer1.update();
+    peer2.update();
     peer2
         .broadcast(&[0, 1, 5, 3], Reliability::Reliable)
         .unwrap();

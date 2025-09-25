@@ -5,42 +5,43 @@ pub const DEFAULT_PORT: u16 = 5143;
 #[derive(Clone)]
 pub(crate) struct IpClient {
     pub(crate) peer: Peer,
+    connected: bool,
 }
 impl IpClient {
     pub(crate) fn host(socket_addr: SocketAddr) -> eyre::Result<Self> {
         Ok(Self {
             peer: Peer::host(socket_addr, None)?,
+            connected: true,
         })
     }
     pub(crate) fn join(socket_addr: SocketAddr) -> eyre::Result<Self> {
         Ok(Self {
             peer: Peer::connect(socket_addr, None)?,
+            connected: false,
         })
     }
-    pub(crate) fn send_message(
-        &self,
-        dest: PeerId,
-        data: &[u8],
-        reliability: Reliability,
-    ) -> eyre::Result<()> {
-        self.peer.send(dest.into(), data, reliability.into())?;
-        Ok(())
+    pub(crate) fn recv<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&dyn ClientTrait, Message),
+    {
+        if self.connected {
+            self.peer.recv().for_each(|n| {
+                if let NetworkEvent::Message(m) = n {
+                    f(
+                        self,
+                        Message {
+                            src: m.src.into(),
+                            data: m.data,
+                        },
+                    )
+                }
+            });
+        }
     }
-    pub(crate) fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
-        self.peer.broadcast(data, reliability.into())?;
-        Ok(())
-    }
-    pub(crate) fn recv(&mut self) -> impl Iterator<Item = Message> + use<'_> {
-        self.peer.recv().filter_map(|n| {
-            if let NetworkEvent::Message(m) = n {
-                Some(Message {
-                    src: m.src.into(),
-                    data: m.data,
-                })
-            } else {
-                None
-            }
-        })
+    pub(crate) fn update(&mut self) {
+        if !self.connected && self.peer.my_id().is_some() {
+            self.connected = true
+        }
     }
 }
 impl ClientTrait for IpClient {
@@ -50,11 +51,15 @@ impl ClientTrait for IpClient {
         data: &[u8],
         reliability: Reliability,
     ) -> eyre::Result<()> {
-        self.peer.send(dest.into(), data, reliability.into())?;
+        if self.connected {
+            self.peer.send(dest.into(), data, reliability.into())?;
+        }
         Ok(())
     }
     fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
-        self.peer.broadcast(data, reliability.into())?;
+        if self.connected {
+            self.peer.broadcast(data, reliability.into())?;
+        }
         Ok(())
     }
     fn my_id(&self) -> PeerId {
