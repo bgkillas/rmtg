@@ -39,6 +39,10 @@ use wasm_bindgen_futures::JsFuture;
 const APPID: u32 = 480; // 4046880
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 pub fn start() {
+    #[cfg(feature = "wasm")]
+    console_error_panic_hook::set_once();
+    #[cfg(feature = "wasm")]
+    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
     #[cfg(not(feature = "wasm"))]
     let runtime = Runtime(tokio::runtime::Runtime::new().unwrap());
     let client = ReqClient(
@@ -79,7 +83,7 @@ pub fn start() {
         Text3dPlugin::default(),
     ))
     .insert_resource(LoadFonts {
-        font_embedded: vec![include_bytes!("../noto.ttf")],
+        font_embedded: vec![include_bytes!("../assets/noto.ttf")],
         ..default()
     })
     .insert_resource(clipboard)

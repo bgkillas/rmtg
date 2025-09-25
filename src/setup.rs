@@ -1,3 +1,4 @@
+use crate::download::get_from_img;
 #[cfg(feature = "steam")]
 use crate::sync::Packet;
 use crate::sync::{Shape, SyncObjectMe, spawn_hand};
@@ -8,6 +9,7 @@ use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 #[cfg(feature = "steam")]
 use bitcode::encode;
+use bytes::Bytes;
 #[cfg(feature = "steam")]
 use net::{Client, ClientTrait, Reliability};
 #[cfg(feature = "steam")]
@@ -71,7 +73,8 @@ pub fn setup(
     let _ = fs::create_dir("./cache");
     framepace.limiter = Limiter::from_framerate(60.0);
     let card_stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
-    let card_back = asset_server.load("back.jpg");
+    let bytes = include_bytes!("../assets/back.jpg");
+    let card_back = get_from_img(Bytes::from(bytes.as_slice()), &asset_server).unwrap();
     let material_handle = materials.add(StandardMaterial {
         base_color_texture: Some(card_back),
         alpha_mode: AlphaMode::Opaque,
@@ -88,7 +91,8 @@ pub fn setup(
         back: material_handle,
         side: card_side,
     });
-    let mat = asset_server.load("mat.png");
+    let bytes = include_bytes!("../assets/mat.png");
+    let mat = get_from_img(Bytes::from(bytes.as_slice()), &asset_server).unwrap();
     let playmat = materials.add(StandardMaterial {
         base_color_texture: Some(mat),
         alpha_mode: AlphaMode::Opaque,
