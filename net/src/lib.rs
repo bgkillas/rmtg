@@ -60,13 +60,13 @@ impl From<tangled::PeerId> for PeerId {
 #[cfg(feature = "steam")]
 impl From<PeerId> for SteamId {
     fn from(value: PeerId) -> Self {
-        Self::from_raw(value.0)
+        Self::from_raw(value.raw())
     }
 }
 #[cfg(feature = "tangled")]
 impl From<PeerId> for tangled::PeerId {
     fn from(value: PeerId) -> Self {
-        Self(value.0 as u16)
+        Self(value.raw() as u16)
     }
 }
 pub(crate) enum ClientType {
@@ -95,7 +95,7 @@ impl Client {
             #[cfg(feature = "steam")]
             ClientType::Steam(client) => client.my_num,
             #[cfg(feature = "tangled")]
-            ClientType::Ip(client) => client.peer.my_id().unwrap_or(tangled::PeerId(0)).0,
+            ClientType::Ip(client) => client.my_id().raw() as u16,
             ClientType::None => 0,
         }
     }
@@ -104,7 +104,7 @@ impl Client {
             #[cfg(feature = "steam")]
             ClientType::Steam(client) => client.my_id,
             #[cfg(feature = "tangled")]
-            ClientType::Ip(client) => client.peer.my_id().unwrap().into(),
+            ClientType::Ip(client) => client.my_id(),
             ClientType::None => PeerId(0),
         }
     }
@@ -140,6 +140,21 @@ impl Client {
         self.client = ClientType::Ip(IpClient::join(socket)?);
         Ok(())
     }
+    pub fn args(&self) -> String {
+        if let ClientType::Steam(client) = &self.client {
+            client.steam_client.apps().launch_command_line()
+        } else {
+            String::new()
+        }
+    }
+    pub fn session_request_callback(&self, f: impl FnMut(SessionRequest) + Send + 'static) {
+        if let ClientType::Steam(client) = &self.client {
+            client
+                .steam_client
+                .networking_messages()
+                .session_request_callback(f);
+        }
+    }
     pub fn send_message(
         &self,
         dest: PeerId,
@@ -161,31 +176,23 @@ impl Client {
         }
         Ok(())
     }
-    pub fn args(&self) -> String {
-        if let ClientType::Steam(client) = &self.client {
-            client.steam_client.apps().launch_command_line()
-        } else {
-            String::new()
-        }
-    }
-    pub fn session_request_callback(&self, f: impl FnMut(SessionRequest) + Send + 'static) {
-        if let ClientType::Steam(client) = &self.client {
-            client
-                .steam_client
-                .networking_messages()
-                .session_request_callback(f);
-        }
-    }
     pub fn update(&mut self) {
         if let ClientType::Steam(client) = &mut self.client {
             client.update()
         }
     }
-    pub fn recv(&mut self) -> Box<dyn Iterator<Item = Message> + '_> {
+    pub fn recv<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&dyn ClientTrait, Message),
+    {
         match &mut self.client {
-            ClientType::None => Box::new(std::iter::empty()),
-            ClientType::Steam(client) => Box::new(client.recv()),
-            ClientType::Ip(client) => Box::new(client.recv()),
+            ClientType::None => {}
+            ClientType::Steam(client) => client.recv().for_each(|m| f(client, m)),
+            ClientType::Ip(client) => client
+                .recv()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .for_each(|m| f(client, m)),
         }
     }
     pub fn flush(&mut self) {
@@ -197,6 +204,12 @@ impl Client {
             })
         }
     }
+}
+pub trait ClientTrait {
+    fn send_message(&self, dest: PeerId, data: &[u8], reliability: Reliability)
+    -> eyre::Result<()>;
+    fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()>;
+    fn my_id(&self) -> PeerId;
 }
 #[cfg(feature = "bevy")]
 impl Plugin for Client {

@@ -93,7 +93,7 @@ pub fn apply_sync(
     mut client: ResMut<Client>,
 ) {
     //todo needless collect
-    for packet in client.recv().collect::<Vec<_>>() {
+    client.recv(|client, packet| {
         let sender = packet.src;
         let data = packet.data;
         let event = decode(&data).unwrap();
@@ -327,7 +327,7 @@ pub fn apply_sync(
                 }
             }
         }
-    }
+    });
 }
 pub fn spawn_hand(me: usize, commands: &mut Commands) {
     let mut transform = match me {

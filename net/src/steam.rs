@@ -1,4 +1,4 @@
-use crate::{Message, PeerId, Reliability};
+use crate::{ClientTrait, Message, PeerId, Reliability};
 use std::collections::HashMap;
 use std::mem::MaybeUninit;
 use std::sync::mpsc::{Receiver, Sender, channel};
@@ -104,7 +104,7 @@ impl SteamClient {
         }
         Ok(())
     }
-    pub(crate) fn recv(&mut self) -> impl Iterator<Item = Message> {
+    pub(crate) fn recv(&mut self) -> impl Iterator<Item = Message> + use<> {
         self.poll_group
             .receive_messages(1024)
             .into_iter()
@@ -205,5 +205,31 @@ impl SteamClient {
                 }
             }
         }
+    }
+}
+impl ClientTrait for SteamClient {
+    fn send_message(
+        &self,
+        dest: PeerId,
+        data: &[u8],
+        reliability: Reliability,
+    ) -> eyre::Result<()> {
+        if let Some(con) = self.connections.get(&dest)
+            && con.connected
+        {
+            con.net.send_message(data, reliability.into())?;
+        }
+        Ok(())
+    }
+    fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
+        for con in self.connections.values() {
+            if con.connected {
+                con.net.send_message(data, reliability.into())?;
+            }
+        }
+        Ok(())
+    }
+    fn my_id(&self) -> PeerId {
+        self.my_id
     }
 }

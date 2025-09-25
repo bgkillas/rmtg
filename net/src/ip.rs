@@ -1,4 +1,4 @@
-use crate::{Message, PeerId, Reliability};
+use crate::{ClientTrait, Message, PeerId, Reliability};
 use std::net::SocketAddr;
 use tangled::{NetworkEvent, Peer};
 pub(crate) struct IpClient {
@@ -28,7 +28,7 @@ impl IpClient {
         self.peer.broadcast(data, reliability.into())?;
         Ok(())
     }
-    pub(crate) fn recv(&mut self) -> impl Iterator<Item = Message> {
+    pub(crate) fn recv(&mut self) -> impl Iterator<Item = Message> + use<'_> {
         self.peer.recv().filter_map(|n| {
             if let NetworkEvent::Message(m) = n {
                 Some(Message {
@@ -39,5 +39,23 @@ impl IpClient {
                 None
             }
         })
+    }
+}
+impl ClientTrait for IpClient {
+    fn send_message(
+        &self,
+        dest: PeerId,
+        data: &[u8],
+        reliability: Reliability,
+    ) -> eyre::Result<()> {
+        self.peer.send(dest.into(), data, reliability.into())?;
+        Ok(())
+    }
+    fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
+        self.peer.broadcast(data, reliability.into())?;
+        Ok(())
+    }
+    fn my_id(&self) -> PeerId {
+        self.peer.my_id().unwrap().into()
     }
 }
