@@ -693,6 +693,7 @@ dependencies = [
  "eyre",
  "steamworks",
  "tangled",
+ "tokio",
 ]
 
 [[package]]

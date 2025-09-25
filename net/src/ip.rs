@@ -1,5 +1,5 @@
 use crate::{Client, ClientTrait, ClientType, Message, PeerId, Reliability};
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use tangled::{NetworkEvent, Peer};
 pub const DEFAULT_PORT: u16 = 5143;
 #[derive(Clone)]
@@ -85,8 +85,8 @@ impl Client {
         self.client = ClientType::Ip(IpClient::host(socket)?);
         Ok(())
     }
-    pub fn join_ip(&mut self, addr: &str) -> eyre::Result<()> {
-        let socket = SocketAddr::new(addr.parse()?, DEFAULT_PORT);
+    pub fn join_ip(&mut self, addr: IpAddr) -> eyre::Result<()> {
+        let socket = SocketAddr::new(addr, DEFAULT_PORT);
         self.client = ClientType::Ip(IpClient::join(socket)?);
         Ok(())
     }

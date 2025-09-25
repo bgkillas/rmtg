@@ -130,3 +130,25 @@ impl Plugin for Client {
 pub fn update(mut client: bevy_ecs::system::ResMut<Client>) {
     client.update()
 }
+#[cfg(feature = "tangled")]
+#[cfg(test)]
+#[tokio::test]
+async fn test_ip() {
+    let mut host = Client::new(0);
+    host.host_ip().unwrap();
+    let mut peer1 = Client::new(0);
+    peer1.join_ip("127.0.0.1".parse().unwrap()).unwrap();
+    let mut peer2 = Client::new(0);
+    peer2.join_ip("127.0.0.1".parse().unwrap()).unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    peer2
+        .broadcast(&[0, 1, 5, 3], Reliability::Reliable)
+        .unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    let mut has = false;
+    peer1.recv(|_, m| has = *m.data == [0, 1, 5, 3]);
+    assert!(has);
+    let mut has = false;
+    host.recv(|_, m| has = *m.data == [0, 1, 5, 3]);
+    assert!(has)
+}
