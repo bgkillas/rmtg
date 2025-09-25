@@ -1,13 +1,14 @@
-use crate::sync::{PollGroup, Shape, SyncObjectMe, spawn_hand};
+use crate::sync::{Shape, SyncObjectMe, spawn_hand};
 use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::render::mesh::{Indices, PrimitiveTopology};
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
-use bevy_steamworks::{Client, LobbyId};
+use net::Client;
 use std::env::args;
 use std::f32::consts::PI;
 use std::fs;
+use steamworks::LobbyId;
 const MAT_SCALE: f32 = 10.0;
 pub const MAT_WIDTH: f32 = 872.0 * MAT_SCALE;
 pub const MAT_HEIGHT: f32 = 525.0 * MAT_SCALE;
@@ -20,7 +21,6 @@ pub fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut framepace: ResMut<FramepaceSettings>,
     client: Res<Client>,
-    mut peers: ResMut<Peers>,
     mut rand: GlobalEntropy<WyRand>,
     mut count: ResMut<SyncCount>,
 ) {
@@ -36,24 +36,10 @@ pub fn setup(
     for arg in args() {
         f(&arg)
     }
-    for arg in client.apps().launch_command_line().split(" ") {
+    for arg in client.args().split(' ') {
         f(arg)
     }
     let _ = fs::create_dir("./cache");
-    peers.my_id = client.user().steam_id();
-    client.networking_utils().init_relay_network_access();
-    client.networking_messages().session_request_callback(|r| {
-        r.accept();
-    });
-    let networking_sockets = client.networking_sockets();
-    let poll_group = networking_sockets.create_poll_group();
-    commands.insert_resource(PollGroup {
-        poll: poll_group,
-        listen: networking_sockets
-            .create_listen_socket_p2p(0, None)
-            .expect("handle to be valid")
-            .into(),
-    });
     framepace.limiter = Limiter::from_framerate(60.0);
     let card_stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
     let card_back = asset_server.load("back.jpg");

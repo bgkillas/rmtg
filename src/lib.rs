@@ -12,9 +12,9 @@ use bevy_rand::global::GlobalEntropy;
 use bevy_rand::prelude::EntropyPlugin;
 use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
 use bitcode::{Decode, Encode};
+use net::Client;
 use rand::RngCore;
 use std::mem::MaybeUninit;
-use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = 488.0;
@@ -28,10 +28,7 @@ mod misc;
 mod setup;
 pub mod sync;
 mod update;
-use crate::sync::{
-    LobbyCreateChannel, LobbyJoinChannel, Peers, Sent, SyncActions, SyncCount, SyncObject,
-    apply_sync, callbacks, get_sync, new_lobby, on_create_lobby, on_join_lobby,
-};
+use crate::sync::{Sent, SyncActions, SyncCount, SyncObject, apply_sync, get_sync, new_lobby};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
@@ -60,10 +57,8 @@ pub fn start() {
     let get_deck = GetDeck::default();
     let game_clipboard = GameClipboard(None);
     let mut app = App::new();
-    let (tx, rx) = channel();
-    let (tx2, rx2) = channel();
     #[cfg(feature = "steam")]
-    app.add_plugins(bevy_steamworks::SteamworksPlugin::init_app(APPID).unwrap());
+    app.add_plugins(Client::new(APPID));
     app.add_plugins((
         DefaultPlugins
             .set(WindowPlugin {
@@ -80,14 +75,6 @@ pub fn start() {
         EntropyPlugin::<WyRand>::default(),
         Text3dPlugin::default(),
     ))
-    .insert_resource(LobbyJoinChannel {
-        sender: Arc::new(tx2.into()),
-        receiver: Arc::new(rx2.into()),
-    })
-    .insert_resource(LobbyCreateChannel {
-        sender: Arc::new(tx.into()),
-        receiver: Arc::new(rx.into()),
-    })
     .insert_resource(LoadFonts {
         font_paths: vec!["assets/fonts/noto.ttf".to_owned()],
         ..default()
@@ -95,7 +82,6 @@ pub fn start() {
     .insert_resource(clipboard)
     .insert_resource(SyncCount::default())
     .insert_resource(Sent::default())
-    .insert_resource(Peers::default())
     .insert_resource(SyncActions::default())
     .insert_resource(game_clipboard)
     .insert_resource(Download {
@@ -113,12 +99,10 @@ pub fn start() {
             cam_translation,
             cam_rotation,
             new_lobby,
-            on_join_lobby,
-            on_create_lobby,
             (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
         ),
     )
-    .add_systems(PostUpdate, (callbacks, get_sync, apply_sync).chain());
+    .add_systems(PostUpdate, (get_sync, apply_sync).chain());
     app.run();
 }
 #[test]

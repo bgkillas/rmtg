@@ -11,8 +11,8 @@ use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
 use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalEntropy;
-use bevy_steamworks::{Client, SendType, SteamId};
 use bitcode::encode;
+use net::{PeerId, Reliability};
 use rand::Rng;
 use rand::seq::SliceRandom;
 use std::f32::consts::PI;
@@ -693,11 +693,13 @@ pub fn register_deck(
         );
         if let Some(id) = id {
             sent.0.remove(&id);
-            client.networking().send_p2p_packet(
-                SteamId::from_raw(id.user),
-                SendType::Reliable,
-                &encode(&Packet::Received(SyncObjectMe(id.id))),
-            );
+            client
+                .send_message(
+                    PeerId(id.user),
+                    &encode(&Packet::Received(SyncObjectMe(id.id))),
+                    Reliability::Reliable,
+                )
+                .unwrap();
         }
     }
 }

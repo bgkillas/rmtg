@@ -1,0 +1,17 @@
+[package]
+name = "net"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default=["steam", "tangled", "bevy"]
+steam=["dep:steamworks"]
+tangled=["dep:tangled"]
+bevy=["dep:bevy_app", "dep:bevy_ecs"]
+
+[dependencies]
+steamworks = {version="0.12.2", optional = true}
+tangled = {git="https://github.com/intquant/tangled", optional = true}
+bevy_app = { version = "0.16.1", default-features = false, optional = true }
+bevy_ecs = { version = "0.16.1", default-features = false, optional = true }
+eyre = "0.6.12"
