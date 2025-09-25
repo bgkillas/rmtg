@@ -28,7 +28,9 @@ mod misc;
 mod setup;
 pub mod sync;
 mod update;
-use crate::sync::{Sent, SyncActions, SyncCount, SyncObject, apply_sync, get_sync, new_lobby};
+#[cfg(all(feature = "steam", feature = "ip"))]
+use crate::sync::new_lobby;
+use crate::sync::{Sent, SyncActions, SyncCount, SyncObject, apply_sync, get_sync};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
@@ -99,6 +101,7 @@ pub fn start() {
             register_deck,
             cam_translation,
             cam_rotation,
+            #[cfg(all(feature = "steam", feature = "ip"))]
             new_lobby,
             (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
         ),

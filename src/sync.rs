@@ -54,6 +54,7 @@ pub fn get_sync(
         client.broadcast(&bytes, Reliability::Reliable).unwrap();
     }
     client.broadcast(&bytes, Reliability::Reliable).unwrap();
+    #[cfg(feature = "steam")]
     client.flush();
 }
 pub fn apply_sync(
@@ -219,9 +220,13 @@ pub fn apply_sync(
                 let deck = down.get_deck.clone();
                 let client = down.client.0.clone();
                 let asset_server = asset_server.clone();
-                down.runtime.0.spawn(async move {
-                    add_images(pile, trans.into(), id, deck, client, asset_server).await
-                });
+                let f = async move {
+                    add_images(pile, trans.into(), id, deck, client, asset_server).await;
+                };
+                #[cfg(feature = "wasm")]
+                wasm_bindgen_futures::spawn_local(f);
+                #[cfg(not(feature = "wasm"))]
+                down.runtime.0.spawn(f);
             }
             Packet::NewShape(lid, shape, trans) => {
                 let user = sender.raw();
@@ -340,11 +345,15 @@ pub fn spawn_hand(me: usize, commands: &mut Commands) {
     }
     commands.spawn((transform, Hand::default(), Owned));
 }
+#[cfg(all(feature = "steam", feature = "ip"))]
 pub fn new_lobby(input: Res<ButtonInput<KeyCode>>, mut client: ResMut<Client>) {
     if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft])
         && input.just_pressed(KeyCode::KeyN)
     {
+        #[cfg(feature = "steam")]
         client.host_steam().unwrap();
+        #[cfg(feature = "ip")]
+        client.host_ip(None, None).unwrap();
     }
 }
 #[derive(Resource, Default)]
