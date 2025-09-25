@@ -1,4 +1,4 @@
-use crate::{Client, ClientTrait, ClientType, Message, PeerId, Reliability};
+use crate::{Client, ClientCallback, ClientTrait, ClientType, Message, PeerId, Reliability};
 use std::collections::HashMap;
 use std::mem::MaybeUninit;
 use std::sync::mpsc::{Receiver, Sender, channel};
@@ -24,6 +24,8 @@ pub(crate) struct SteamClient {
     pub(crate) is_host: bool,
     pub(crate) listen_socket: MaybeUninit<Mutex<ListenSocket>>,
     pub(crate) my_num: u16,
+    pub(crate) peer_connected: ClientCallback,
+    pub(crate) peer_disconnected: ClientCallback,
     rx: Arc<Mutex<Receiver<LobbyId>>>,
     tx: Arc<Mutex<Sender<LobbyId>>>,
 }
@@ -36,7 +38,11 @@ impl SteamClient {
         self.my_num = 0;
         self.listen_socket = MaybeUninit::uninit();
     }
-    pub(crate) fn new(app_id: u32) -> eyre::Result<Self> {
+    pub(crate) fn new(
+        app_id: u32,
+        peer_connected: ClientCallback,
+        peer_disconnected: ClientCallback,
+    ) -> eyre::Result<Self> {
         let steam_client = steamworks::Client::init_app(app_id)?;
         steam_client.networking_utils().init_relay_network_access();
         let poll_group = steam_client.networking_sockets().create_poll_group();
@@ -51,6 +57,8 @@ impl SteamClient {
             poll_group,
             my_num: 0,
             is_host: false,
+            peer_connected,
+            peer_disconnected,
             listen_socket: MaybeUninit::uninit(),
             rx: Arc::new(rx.into()),
             tx: Arc::new(tx.into()),
@@ -141,11 +149,8 @@ impl SteamClient {
                 CallbackResult::NetConnectionStatusChanged(NetConnectionStatusChanged {
                     connection_info,
                     ..
-                }) => {
-                    if matches!(
-                        connection_info.state(),
-                        Ok(NetworkingConnectionState::Connected)
-                    ) {
+                }) => match connection_info.state() {
+                    Ok(NetworkingConnectionState::Connected) => {
                         let peer = connection_info
                             .identity_remote()
                             .unwrap()
@@ -153,10 +158,28 @@ impl SteamClient {
                             .unwrap();
                         if let Some(con) = self.connections.get_mut(&peer.into()) {
                             println!("connected to {peer:?}");
-                            con.connected = true
+                            con.connected = true;
+                            if let Some(mut c) = self.peer_connected.take() {
+                                c(self, peer.into());
+                                self.peer_connected = Some(c);
+                            }
                         }
                     }
-                }
+                    Ok(NetworkingConnectionState::ClosedByPeer) => {
+                        let peer = connection_info
+                            .identity_remote()
+                            .unwrap()
+                            .steam_id()
+                            .unwrap();
+                        self.connections.remove(&peer.into());
+                        println!("disconnected from {peer:?}");
+                        if let Some(mut d) = self.peer_disconnected.take() {
+                            d(self, peer.into());
+                            self.peer_disconnected = Some(d);
+                        }
+                    }
+                    _ => {}
+                },
                 _ => {}
             });
         if self.is_host {
@@ -174,18 +197,23 @@ impl SteamClient {
                         println!("connected to {id:?}");
                         let connection = event.take_connection();
                         connection.set_poll_group(&self.poll_group);
-                        /*connection
-                        .send_message(&encode(&Packet::SetUser(peers.count)), SendFlags::RELIABLE)
-                        .unwrap();todo */
                         let connection = Connection {
                             net: connection,
                             connected: true,
                         };
                         self.connections.insert(id.into(), connection);
+                        if let Some(mut c) = self.peer_connected.take() {
+                            c(self, id.into());
+                            self.peer_connected = Some(c);
+                        }
                     }
                     ListenSocketEvent::Disconnected(event) => {
                         let id = event.remote().steam_id().unwrap();
                         self.connections.remove(&id.into());
+                        if let Some(mut d) = self.peer_disconnected.take() {
+                            d(self, id.into());
+                            self.peer_disconnected = Some(d);
+                        }
                         println!("disconnected from {id:?}");
                     }
                 }
@@ -218,6 +246,15 @@ impl ClientTrait for SteamClient {
     fn my_id(&self) -> PeerId {
         self.my_id
     }
+    fn host_id(&self) -> PeerId {
+        self.host_id
+    }
+    fn is_host(&self) -> bool {
+        self.is_host
+    }
+    fn peer_len(&self) -> usize {
+        self.connections.len()
+    }
 }
 impl From<Reliability> for SendFlags {
     fn from(value: Reliability) -> Self {
@@ -239,14 +276,12 @@ impl From<PeerId> for SteamId {
 }
 impl Client {
     pub fn host_steam(&mut self) -> eyre::Result<()> {
-        self.init_steam()?;
         if let ClientType::Steam(client) = &mut self.client {
             client.host()?;
         }
         Ok(())
     }
     pub fn join_steam(&mut self, lobby: LobbyId) -> eyre::Result<()> {
-        self.init_steam()?;
         if let ClientType::Steam(client) = &mut self.client {
             client.join(lobby);
         }
@@ -276,9 +311,17 @@ impl Client {
             })
         }
     }
-    pub fn init_steam(&mut self) -> eyre::Result<()> {
+    pub fn init_steam(
+        &mut self,
+        peer_connected: ClientCallback,
+        peer_disconnected: ClientCallback,
+    ) -> eyre::Result<()> {
         if !matches!(self.client, ClientType::Steam(_)) {
-            self.client = ClientType::Steam(SteamClient::new(self.app_id)?);
+            self.client = ClientType::Steam(SteamClient::new(
+                self.app_id,
+                peer_connected,
+                peer_disconnected,
+            )?);
         }
         Ok(())
     }

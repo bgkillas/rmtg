@@ -1,10 +1,11 @@
-use crate::sync::{Shape, SyncObjectMe, spawn_hand};
+use crate::sync::{Packet, Shape, SyncObjectMe, spawn_hand};
 use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::render::mesh::{Indices, PrimitiveTopology};
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
-use net::Client;
+use bitcode::encode;
+use net::{Client, ClientTrait, Reliability};
 use std::env::args;
 use std::f32::consts::PI;
 use std::fs;
@@ -20,10 +21,26 @@ pub fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut framepace: ResMut<FramepaceSettings>,
-    client: Res<Client>,
+    mut client: ResMut<Client>,
     mut rand: GlobalEntropy<WyRand>,
     mut count: ResMut<SyncCount>,
 ) {
+    client
+        .init_steam(
+            Some(Box::new(|client: &dyn ClientTrait, peer| {
+                if client.is_host() {
+                    client
+                        .send_message(
+                            peer,
+                            &encode(&Packet::SetUser(client.peer_len())),
+                            Reliability::Reliable,
+                        )
+                        .unwrap();
+                }
+            })),
+            None,
+        )
+        .unwrap();
     client.session_request_callback(|r| {
         r.accept();
     });

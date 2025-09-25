@@ -10,6 +10,7 @@ use crate::steam::SteamClient;
 use bevy_app::{App, Plugin};
 #[cfg(feature = "bevy")]
 use bevy_ecs::resource::Resource;
+type ClientCallback = Option<Box<dyn FnMut(&dyn ClientTrait, PeerId) + Send + Sync + 'static>>;
 pub struct Message {
     pub src: PeerId,
     pub data: Box<[u8]>,
@@ -117,6 +118,9 @@ pub trait ClientTrait {
     -> eyre::Result<()>;
     fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()>;
     fn my_id(&self) -> PeerId;
+    fn host_id(&self) -> PeerId;
+    fn is_host(&self) -> bool;
+    fn peer_len(&self) -> usize;
 }
 #[cfg(feature = "bevy")]
 impl Plugin for Client {
@@ -124,11 +128,6 @@ impl Plugin for Client {
         app.insert_resource(Self {
             #[cfg(feature = "steam")]
             app_id: self.app_id,
-            #[cfg(feature = "steam")]
-            client: SteamClient::new(self.app_id)
-                .map(ClientType::Steam)
-                .unwrap_or(ClientType::None),
-            #[cfg(not(feature = "steam"))]
             client: ClientType::None,
         });
         #[cfg(feature = "steam")]
@@ -144,11 +143,15 @@ pub fn update(mut client: bevy_ecs::system::ResMut<Client>) {
 #[tokio::test]
 async fn test_ip() {
     let mut host = Client::new(0);
-    host.host_ip().unwrap();
+    host.host_ip(None, None).unwrap();
     let mut peer1 = Client::new(0);
-    peer1.join_ip("127.0.0.1".parse().unwrap()).unwrap();
+    peer1
+        .join_ip("127.0.0.1".parse().unwrap(), None, None)
+        .unwrap();
     let mut peer2 = Client::new(0);
-    peer2.join_ip("127.0.0.1".parse().unwrap()).unwrap();
+    peer2
+        .join_ip("127.0.0.1".parse().unwrap(), None, None)
+        .unwrap();
     tokio::time::sleep(std::time::Duration::from_millis(20)).await;
     peer1.update();
     peer2.update();

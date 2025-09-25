@@ -84,7 +84,7 @@ pub fn apply_sync(
     asset_server: Res<AssetServer>,
     down: Res<Download>,
     mut commands: Commands,
-    //hand: Single<Entity, (With<Owned>, With<Hand>)>,
+    hand: Single<Entity, (With<Owned>, With<Hand>)>,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -92,7 +92,6 @@ pub fn apply_sync(
     mut count: ResMut<SyncCount>,
     mut client: ResMut<Client>,
 ) {
-    //todo needless collect
     client.recv(|client, packet| {
         let sender = packet.src;
         let data = packet.data;
@@ -250,11 +249,10 @@ pub fn apply_sync(
                     }
                 }
             }
-            Packet::SetUser(_id) => {
-                /*client. = id;
-                info!("joined as number {} user", peers.me);
+            Packet::SetUser(id) => {
+                info!("joined as number {} user", id);
                 commands.entity(*hand).despawn();
-                spawn_hand(peers.me, &mut commands);todo*/
+                spawn_hand(id, &mut commands);
             }
             Packet::Dead(lid) => {
                 let user = sender.raw();

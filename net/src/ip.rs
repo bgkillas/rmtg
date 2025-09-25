@@ -1,22 +1,35 @@
-use crate::{Client, ClientTrait, ClientType, Message, PeerId, Reliability};
+use crate::{Client, ClientCallback, ClientTrait, ClientType, Message, PeerId, Reliability};
 use std::net::{IpAddr, SocketAddr};
 use tangled::{NetworkEvent, Peer};
 pub const DEFAULT_PORT: u16 = 5143;
-#[derive(Clone)]
 pub(crate) struct IpClient {
     pub(crate) peer: Peer,
+    pub(crate) peer_connected: ClientCallback,
+    pub(crate) peer_disconnected: ClientCallback,
     connected: bool,
 }
 impl IpClient {
-    pub(crate) fn host(socket_addr: SocketAddr) -> eyre::Result<Self> {
+    pub(crate) fn host(
+        socket_addr: SocketAddr,
+        peer_connected: ClientCallback,
+        peer_disconnected: ClientCallback,
+    ) -> eyre::Result<Self> {
         Ok(Self {
             peer: Peer::host(socket_addr, None)?,
+            peer_connected,
+            peer_disconnected,
             connected: true,
         })
     }
-    pub(crate) fn join(socket_addr: SocketAddr) -> eyre::Result<Self> {
+    pub(crate) fn join(
+        socket_addr: SocketAddr,
+        peer_connected: ClientCallback,
+        peer_disconnected: ClientCallback,
+    ) -> eyre::Result<Self> {
         Ok(Self {
             peer: Peer::connect(socket_addr, None)?,
+            peer_connected,
+            peer_disconnected,
             connected: false,
         })
     }
@@ -25,17 +38,29 @@ impl IpClient {
         F: FnMut(&dyn ClientTrait, Message),
     {
         if self.connected {
-            self.peer.recv().for_each(|n| {
-                if let NetworkEvent::Message(m) = n {
-                    f(
+            for n in self.peer.recv() {
+                match n {
+                    NetworkEvent::Message(m) => f(
                         self,
                         Message {
                             src: m.src.into(),
                             data: m.data,
                         },
-                    )
+                    ),
+                    NetworkEvent::PeerConnected(peer) => {
+                        if let Some(mut c) = self.peer_connected.take() {
+                            c(self, peer.into());
+                            self.peer_connected = Some(c);
+                        }
+                    }
+                    NetworkEvent::PeerDisconnected(peer) => {
+                        if let Some(mut d) = self.peer_disconnected.take() {
+                            d(self, peer.into());
+                            self.peer_disconnected = Some(d);
+                        }
+                    }
                 }
-            });
+            }
         }
     }
     pub(crate) fn update(&mut self) {
@@ -65,6 +90,15 @@ impl ClientTrait for IpClient {
     fn my_id(&self) -> PeerId {
         self.peer.my_id().unwrap().into()
     }
+    fn host_id(&self) -> PeerId {
+        PeerId(0)
+    }
+    fn is_host(&self) -> bool {
+        self.peer.my_id().unwrap() == tangled::PeerId(0)
+    }
+    fn peer_len(&self) -> usize {
+        self.peer.iter_peer_ids().count()
+    }
 }
 impl From<Reliability> for tangled::Reliability {
     fn from(value: Reliability) -> Self {
@@ -85,14 +119,23 @@ impl From<PeerId> for tangled::PeerId {
     }
 }
 impl Client {
-    pub fn host_ip(&mut self) -> eyre::Result<()> {
+    pub fn host_ip(
+        &mut self,
+        peer_connected: ClientCallback,
+        peer_disconnected: ClientCallback,
+    ) -> eyre::Result<()> {
         let socket = SocketAddr::new("::".parse()?, DEFAULT_PORT);
-        self.client = ClientType::Ip(IpClient::host(socket)?);
+        self.client = ClientType::Ip(IpClient::host(socket, peer_connected, peer_disconnected)?);
         Ok(())
     }
-    pub fn join_ip(&mut self, addr: IpAddr) -> eyre::Result<()> {
+    pub fn join_ip(
+        &mut self,
+        addr: IpAddr,
+        peer_connected: ClientCallback,
+        peer_disconnected: ClientCallback,
+    ) -> eyre::Result<()> {
         let socket = SocketAddr::new(addr, DEFAULT_PORT);
-        self.client = ClientType::Ip(IpClient::join(socket)?);
+        self.client = ClientType::Ip(IpClient::join(socket, peer_connected, peer_disconnected)?);
         Ok(())
     }
 }
