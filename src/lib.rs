@@ -79,7 +79,7 @@ pub fn start() {
         Text3dPlugin::default(),
     ))
     .insert_resource(LoadFonts {
-        font_paths: vec!["assets/fonts/noto.ttf".to_owned()],
+        font_embedded: vec![include_bytes!("../noto.ttf")],
         ..default()
     })
     .insert_resource(clipboard)

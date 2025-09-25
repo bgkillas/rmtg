@@ -41,8 +41,7 @@ jobs:
         run: |
           mkdir dist
           cp -r www/* dist/
-          unlink dist/assets
-          cp -R assets/ dists/
+          cp -R assets/ dist/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
