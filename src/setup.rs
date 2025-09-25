@@ -61,7 +61,7 @@ pub fn setup(
                 lobby = Some(LobbyId::from_raw(arg.parse::<u64>().unwrap()));
             }
         };
-        for arg in args() {
+        for arg in args().skip(1) {
             f(&arg)
         }
         for arg in client.args().split(' ') {
