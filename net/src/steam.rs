@@ -1,11 +1,13 @@
-use crate::{ClientTrait, Message, PeerId, Reliability};
+use crate::{Client, ClientTrait, ClientType, Message, PeerId, Reliability};
 use std::collections::HashMap;
 use std::mem::MaybeUninit;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
+use steamworks::networking_messages::SessionRequest;
 use steamworks::networking_sockets::{ListenSocket, NetConnection, NetPollGroup};
 use steamworks::networking_types::{
     ListenSocketEvent, NetConnectionStatusChanged, NetworkingConnectionState, NetworkingIdentity,
+    SendFlags,
 };
 use steamworks::{CallbackResult, GameLobbyJoinRequested, LobbyId, LobbyType, SteamId};
 pub(crate) struct Connection {
@@ -231,5 +233,74 @@ impl ClientTrait for SteamClient {
     }
     fn my_id(&self) -> PeerId {
         self.my_id
+    }
+}
+impl From<Reliability> for SendFlags {
+    fn from(value: Reliability) -> Self {
+        match value {
+            Reliability::Reliable => SendFlags::RELIABLE,
+            Reliability::Unreliable => SendFlags::UNRELIABLE,
+        }
+    }
+}
+impl From<SteamId> for PeerId {
+    fn from(value: SteamId) -> Self {
+        Self(value.raw())
+    }
+}
+impl From<PeerId> for SteamId {
+    fn from(value: PeerId) -> Self {
+        Self::from_raw(value.raw())
+    }
+}
+impl Client {
+    pub fn host_steam(&mut self) -> eyre::Result<()> {
+        self.init_steam()?;
+        if let ClientType::Steam(client) = &mut self.client {
+            client.host()?;
+        }
+        Ok(())
+    }
+    pub fn join_steam(&mut self, lobby: LobbyId) -> eyre::Result<()> {
+        self.init_steam()?;
+        if let ClientType::Steam(client) = &mut self.client {
+            client.join(lobby);
+        }
+        Ok(())
+    }
+    pub fn args(&self) -> String {
+        if let ClientType::Steam(client) = &self.client {
+            client.steam_client.apps().launch_command_line()
+        } else {
+            String::new()
+        }
+    }
+    pub fn session_request_callback(&self, f: impl FnMut(SessionRequest) + Send + 'static) {
+        if let ClientType::Steam(client) = &self.client {
+            client
+                .steam_client
+                .networking_messages()
+                .session_request_callback(f);
+        }
+    }
+    pub fn flush(&mut self) {
+        if let ClientType::Steam(client) = &mut self.client {
+            client.connections.values_mut().for_each(|c| {
+                if c.connected {
+                    c.net.flush_messages().unwrap();
+                }
+            })
+        }
+    }
+    pub fn update(&mut self) {
+        if let ClientType::Steam(client) = &mut self.client {
+            client.update()
+        }
+    }
+    pub fn init_steam(&mut self) -> eyre::Result<()> {
+        if !matches!(self.client, ClientType::Steam(_)) {
+            self.client = ClientType::Steam(SteamClient::new(self.app_id)?);
+        }
+        Ok(())
     }
 }
