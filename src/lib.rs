@@ -33,8 +33,9 @@ use crate::sync::{Sent, SyncActions, SyncCount, SyncObject, apply_sync, get_sync
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
 use wasm_bindgen_futures::JsFuture;
-#[cfg_attr(feature = "wasm", wasm_bindgen(start))]
+#[cfg(feature = "steam")]
 const APPID: u32 = 480; // 4046880
+#[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 pub fn start() {
     #[cfg(not(feature = "wasm"))]
     let runtime = Runtime(tokio::runtime::Runtime::new().unwrap());

@@ -1,14 +1,20 @@
-use crate::sync::{Packet, Shape, SyncObjectMe, spawn_hand};
+#[cfg(feature = "steam")]
+use crate::sync::Packet;
+use crate::sync::{Shape, SyncObjectMe, spawn_hand};
 use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::render::mesh::{Indices, PrimitiveTopology};
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
+#[cfg(feature = "steam")]
 use bitcode::encode;
+#[cfg(feature = "steam")]
 use net::{Client, ClientTrait, Reliability};
+#[cfg(feature = "steam")]
 use std::env::args;
 use std::f32::consts::PI;
 use std::fs;
+#[cfg(feature = "steam")]
 use steamworks::LobbyId;
 const MAT_SCALE: f32 = 10.0;
 pub const MAT_WIDTH: f32 = 872.0 * MAT_SCALE;
@@ -21,43 +27,46 @@ pub fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut framepace: ResMut<FramepaceSettings>,
-    mut client: ResMut<Client>,
+    #[cfg(feature = "steam")] mut client: ResMut<Client>,
     mut rand: GlobalEntropy<WyRand>,
     mut count: ResMut<SyncCount>,
 ) {
-    client
-        .init_steam(
-            Some(Box::new(|client: &dyn ClientTrait, peer| {
-                if client.is_host() {
-                    client
-                        .send_message(
-                            peer,
-                            &encode(&Packet::SetUser(client.peer_len())),
-                            Reliability::Reliable,
-                        )
-                        .unwrap();
-                }
-            })),
-            None,
-        )
-        .unwrap();
-    client.session_request_callback(|r| {
-        r.accept();
-    });
-    let mut next = false;
-    let mut lobby = None;
-    let mut f = |arg: &str| {
-        if arg == "+connect_lobby" {
-            next = true;
-        } else if next {
-            lobby = Some(LobbyId::from_raw(arg.parse::<u64>().unwrap()));
+    #[cfg(feature = "steam")]
+    {
+        client
+            .init_steam(
+                Some(Box::new(|client: &dyn ClientTrait, peer| {
+                    if client.is_host() {
+                        client
+                            .send_message(
+                                peer,
+                                &encode(&Packet::SetUser(client.peer_len())),
+                                Reliability::Reliable,
+                            )
+                            .unwrap();
+                    }
+                })),
+                None,
+            )
+            .unwrap();
+        client.session_request_callback(|r| {
+            r.accept();
+        });
+        let mut next = false;
+        let mut lobby = None;
+        let mut f = |arg: &str| {
+            if arg == "+connect_lobby" {
+                next = true;
+            } else if next {
+                lobby = Some(LobbyId::from_raw(arg.parse::<u64>().unwrap()));
+            }
+        };
+        for arg in args() {
+            f(&arg)
         }
-    };
-    for arg in args() {
-        f(&arg)
-    }
-    for arg in client.args().split(' ') {
-        f(arg)
+        for arg in client.args().split(' ') {
+            f(arg)
+        }
     }
     let _ = fs::create_dir("./cache");
     framepace.limiter = Limiter::from_framerate(60.0);
