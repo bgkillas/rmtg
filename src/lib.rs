@@ -64,8 +64,10 @@ pub fn start() {
     let get_deck = GetDeck::default();
     let game_clipboard = GameClipboard(None);
     let mut app = App::new();
-    #[cfg(feature = "steam")]
-    app.add_plugins(Client::new(APPID));
+    app.add_plugins(Client::new(
+        #[cfg(feature = "steam")]
+        APPID,
+    ));
     app.add_plugins((
         DefaultPlugins
             .set(WindowPlugin {

@@ -24,7 +24,6 @@ jobs:
         mkdir -p rmtg
         cp target/release/rmtg rmtg
         cp libsteam_api.so rmtg
-        cp -R assets rmtg
     - uses: actions/upload-artifact@v4
       with:
         name: rmtg-linux
@@ -41,7 +40,6 @@ jobs:
         cp target/release/rmtg rmtg.app/Contents/MacOS/
         cp libsteam_api.dylib rmtg.app/Contents/MacOS/
         cp .github/workflows/Info.plist rmtg.app/Contents/
-        cp -R assets rmtg.app/Contents
     - uses: actions/upload-artifact@v4
       with:
         name: rmtg-macos
@@ -64,7 +62,6 @@ jobs:
         mkdir rmtg
         cp target/release/rmtg.exe rmtg
         cp steam_api64.dll rmtg
-        cp -R assets rmtg
     - uses: actions/upload-artifact@v4
       with:
         name: rmtg-win
