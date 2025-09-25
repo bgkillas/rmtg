@@ -1,6 +1,7 @@
 use crate::{ClientTrait, Message, PeerId, Reliability};
 use std::net::SocketAddr;
 use tangled::{NetworkEvent, Peer};
+#[derive(Clone)]
 pub(crate) struct IpClient {
     pub(crate) peer: Peer,
 }

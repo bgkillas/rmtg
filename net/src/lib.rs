@@ -188,11 +188,7 @@ impl Client {
         match &mut self.client {
             ClientType::None => {}
             ClientType::Steam(client) => client.recv().for_each(|m| f(client, m)),
-            ClientType::Ip(client) => client
-                .recv()
-                .collect::<Vec<_>>()
-                .into_iter()
-                .for_each(|m| f(client, m)),
+            ClientType::Ip(client) => client.clone().recv().for_each(|m| f(client, m)),
         }
     }
     pub fn flush(&mut self) {
