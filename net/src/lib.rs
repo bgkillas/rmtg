@@ -1,13 +1,22 @@
+#[cfg(feature = "tangled")]
 mod ip;
+#[cfg(feature = "steam")]
 mod steam;
+#[cfg(feature = "tangled")]
 use crate::ip::IpClient;
+#[cfg(feature = "steam")]
 use crate::steam::SteamClient;
-use bevy_app::{App, First, Plugin};
+#[cfg(feature = "bevy")]
+use bevy_app::{App, Plugin};
+#[cfg(feature = "bevy")]
 use bevy_ecs::resource::Resource;
-use bevy_ecs::system::ResMut;
+#[cfg(feature = "tangled")]
 use std::net::SocketAddr;
+#[cfg(feature = "steam")]
 use steamworks::networking_messages::SessionRequest;
+#[cfg(feature = "steam")]
 use steamworks::networking_types::SendFlags;
+#[cfg(feature = "steam")]
 use steamworks::{LobbyId, SteamId};
 #[cfg(feature = "tangled")]
 pub const DEFAULT_PORT: u16 = 5143;
@@ -140,6 +149,7 @@ impl Client {
         self.client = ClientType::Ip(IpClient::join(socket)?);
         Ok(())
     }
+    #[cfg(feature = "steam")]
     pub fn args(&self) -> String {
         if let ClientType::Steam(client) = &self.client {
             client.steam_client.apps().launch_command_line()
@@ -147,6 +157,7 @@ impl Client {
             String::new()
         }
     }
+    #[cfg(feature = "steam")]
     pub fn session_request_callback(&self, f: impl FnMut(SessionRequest) + Send + 'static) {
         if let ClientType::Steam(client) = &self.client {
             client
@@ -163,7 +174,9 @@ impl Client {
     ) -> eyre::Result<()> {
         match &self.client {
             ClientType::None => {}
+            #[cfg(feature = "steam")]
             ClientType::Steam(client) => client.send_message(dest, data, reliability)?,
+            #[cfg(feature = "tangled")]
             ClientType::Ip(client) => client.send_message(dest, data, reliability)?,
         }
         Ok(())
@@ -171,11 +184,14 @@ impl Client {
     pub fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
         match &self.client {
             ClientType::None => {}
+            #[cfg(feature = "steam")]
             ClientType::Steam(client) => client.broadcast(data, reliability)?,
+            #[cfg(feature = "tangled")]
             ClientType::Ip(client) => client.broadcast(data, reliability)?,
         }
         Ok(())
     }
+    #[cfg(feature = "steam")]
     pub fn update(&mut self) {
         if let ClientType::Steam(client) = &mut self.client {
             client.update()
@@ -187,10 +203,13 @@ impl Client {
     {
         match &mut self.client {
             ClientType::None => {}
+            #[cfg(feature = "steam")]
             ClientType::Steam(client) => client.recv().for_each(|m| f(client, m)),
+            #[cfg(feature = "tangled")]
             ClientType::Ip(client) => client.clone().recv().for_each(|m| f(client, m)),
         }
     }
+    #[cfg(feature = "steam")]
     pub fn flush(&mut self) {
         if let ClientType::Steam(client) = &mut self.client {
             client.connections.values_mut().for_each(|c| {
@@ -219,10 +238,12 @@ impl Plugin for Client {
                 .unwrap_or(ClientType::None),
             #[cfg(not(feature = "steam"))]
             client: ClientType::None,
-        })
-        .add_systems(First, update);
+        });
+        #[cfg(feature = "steam")]
+        app.add_systems(bevy_app::First, update);
     }
 }
-pub fn update(mut client: ResMut<Client>) {
+#[cfg(all(feature = "bevy", feature = "steam"))]
+pub fn update(mut client: bevy_ecs::system::ResMut<Client>) {
     client.update()
 }

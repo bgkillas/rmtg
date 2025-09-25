@@ -24,6 +24,9 @@ pub fn setup(
     mut rand: GlobalEntropy<WyRand>,
     mut count: ResMut<SyncCount>,
 ) {
+    client.session_request_callback(|r| {
+        r.accept();
+    });
     let mut next = false;
     let mut lobby = None;
     let mut f = |arg: &str| {
