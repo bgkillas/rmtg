@@ -692,7 +692,7 @@ pub fn register_deck(
             id,
         );
         if let Some(id) = id {
-            sent.0.remove(&id);
+            sent.del(id);
             client
                 .send_message(
                     PeerId(id.user),

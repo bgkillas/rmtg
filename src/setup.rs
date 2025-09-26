@@ -16,8 +16,6 @@ use net::{Client, ClientTrait, Reliability};
 use std::env::args;
 use std::f32::consts::PI;
 use std::fs;
-#[cfg(feature = "steam")]
-use steamworks::LobbyId;
 const MAT_SCALE: f32 = 10.0;
 pub const MAT_WIDTH: f32 = 872.0 * MAT_SCALE;
 pub const MAT_HEIGHT: f32 = 525.0 * MAT_SCALE;
@@ -60,7 +58,7 @@ pub fn setup(
             if arg == "+connect_lobby" {
                 next = true;
             } else if next {
-                lobby = Some(LobbyId::from_raw(arg.parse::<u64>().unwrap()));
+                lobby = Some(arg.parse::<u64>().unwrap());
             }
         };
         for arg in args().skip(1) {
@@ -68,6 +66,9 @@ pub fn setup(
         }
         for arg in client.args().split(' ') {
             f(arg)
+        }
+        if let Some(lobby) = lobby {
+            client.join_steam(lobby).unwrap();
         }
     }
     let _ = fs::create_dir("./cache");

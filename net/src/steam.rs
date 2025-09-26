@@ -10,6 +10,7 @@ use steamworks::networking_types::{
     SendFlags,
 };
 use steamworks::{CallbackResult, GameLobbyJoinRequested, LobbyId, LobbyType, SteamId};
+use log::info;
 pub(crate) struct Connection {
     pub(crate) net: NetConnection,
     pub(crate) connected: bool,
@@ -157,7 +158,7 @@ impl SteamClient {
                             .steam_id()
                             .unwrap();
                         if let Some(con) = self.connections.get_mut(&peer.into()) {
-                            println!("connected to {peer:?}");
+                            info!("connected to {peer:?}");
                             con.connected = true;
                             if let Some(mut c) = self.peer_connected.take() {
                                 c(self, peer.into());
@@ -172,7 +173,7 @@ impl SteamClient {
                             .steam_id()
                             .unwrap();
                         self.connections.remove(&peer.into());
-                        println!("disconnected from {peer:?}");
+                        info!("disconnected from {peer:?}");
                         if let Some(mut d) = self.peer_disconnected.take() {
                             d(self, peer.into());
                             self.peer_disconnected = Some(d);
@@ -189,12 +190,12 @@ impl SteamClient {
             while let Some(event) = listen.try_receive_event() {
                 match event {
                     ListenSocketEvent::Connecting(event) => {
-                        println!("connecting to someone");
+                        info!("connecting to someone");
                         event.accept().unwrap();
                     }
                     ListenSocketEvent::Connected(event) => {
                         let id = event.remote().steam_id().unwrap();
-                        println!("connected to {id:?}");
+                        info!("connected to {id:?}");
                         let connection = event.take_connection();
                         connection.set_poll_group(&self.poll_group);
                         let connection = Connection {
@@ -214,7 +215,7 @@ impl SteamClient {
                             d(self, id.into());
                             self.peer_disconnected = Some(d);
                         }
-                        println!("disconnected from {id:?}");
+                        info!("disconnected from {id:?}");
                     }
                 }
             }
@@ -281,9 +282,9 @@ impl Client {
         }
         Ok(())
     }
-    pub fn join_steam(&mut self, lobby: LobbyId) -> eyre::Result<()> {
+    pub fn join_steam(&mut self, lobby: u64) -> eyre::Result<()> {
         if let ClientType::Steam(client) = &mut self.client {
-            client.join(lobby);
+            client.join(LobbyId::from_raw(lobby));
         }
         Ok(())
     }

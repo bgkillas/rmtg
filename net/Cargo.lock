@@ -691,6 +691,7 @@ dependencies = [
  "bevy_app",
  "bevy_ecs",
  "eyre",
+ "log",
  "steamworks",
  "tangled",
  "tokio",

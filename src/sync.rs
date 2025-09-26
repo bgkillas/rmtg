@@ -4,7 +4,7 @@ use crate::setup::{MAT_HEIGHT, MAT_WIDTH, spawn_cube, spawn_ico};
 use crate::*;
 use bitcode::{Decode, Encode, decode, encode};
 use net::Reliability;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::f32::consts::PI;
 use std::mem;
 pub fn get_sync(
@@ -48,7 +48,7 @@ pub fn get_sync(
             commands.entity(entity).remove::<SyncObject>().insert(to);
             count.0 += 1;
         }
-        sent.0.insert(from);
+        sent.add(from);
         let packet = Packet::Take(from, to);
         let bytes = encode(&packet);
         client.broadcast(&bytes, Reliability::Reliable).unwrap();
@@ -93,6 +93,7 @@ pub fn apply_sync(
     mut count: ResMut<SyncCount>,
     mut client: ResMut<Client>,
 ) {
+    let mut ignore = HashSet::new();
     client.recv(|client, packet| {
         let sender = packet.src;
         let data = packet.data;
@@ -102,7 +103,7 @@ pub fn apply_sync(
                 let user = sender.raw();
                 for (lid, trans, phys, in_hand) in data {
                     let id = SyncObject { user, id: lid.0 };
-                    if sent.0.contains(&id) {
+                    if sent.has(&id) || ignore.contains(&id) {
                         continue;
                     }
                     if let Some((
@@ -149,7 +150,7 @@ pub fn apply_sync(
                                 gravity.0 = GRAVITY;
                             }
                         }
-                    } else if sent.0.insert(id) {
+                    } else if sent.add(id) {
                         let bytes = encode(&Packet::Request(lid));
                         client
                             .send_message(sender, &bytes, Reliability::Reliable)
@@ -162,11 +163,10 @@ pub fn apply_sync(
                     user: sender.raw(),
                     id: to.0,
                 };
+                ignore.insert(new);
                 if from.user == client.my_id().raw() {
                     let bytes = encode(&Packet::Received(SyncObjectMe(from.id)));
-                    client
-                        .send_message(sender, &bytes, Reliability::Reliable)
-                        .unwrap();
+                    client.broadcast(&bytes, Reliability::Reliable).unwrap();
                     if let Some((_, _, _, _, e)) =
                         queryme.iter().find(|(id, _, _, _, _)| id.0 == from.id)
                     {
@@ -181,14 +181,14 @@ pub fn apply_sync(
                     .iter_mut()
                     .find(|(id, _, _, _, _, _, _, _, _, _, _)| *id.as_ref() == from)
                 {
-                    sent.0.insert(*id); //TODO never removed
+                    sent.add(*id);
                     *id = new
                 }
             }
             Packet::Request(lid) => {
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
-                if sent.0.insert(id) {
+                if sent.add(id) {
                     if let Some((b, c, s)) = queryme.iter_mut().find_map(|(a, b, c, s, _)| {
                         if a.0 == lid.0 { Some((b, c, s)) } else { None }
                     }) {
@@ -205,14 +205,14 @@ pub fn apply_sync(
                                 .unwrap();
                         }
                     } else {
-                        sent.0.remove(&id);
+                        sent.rem(&id);
                     }
                 }
             }
             Packet::Received(lid) => {
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
-                sent.0.remove(&id);
+                sent.del(id);
             }
             Packet::New(lid, pile, trans) => {
                 let user = sender.raw();
@@ -229,8 +229,13 @@ pub fn apply_sync(
                 down.runtime.0.spawn(f);
             }
             Packet::NewShape(lid, shape, trans) => {
+                let bytes = encode(&Packet::Received(lid));
+                client
+                    .send_message(sender, &bytes, Reliability::Reliable)
+                    .unwrap();
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
+                sent.del(id);
                 match shape {
                     Shape::Cube => {
                         spawn_cube(
@@ -243,14 +248,14 @@ pub fn apply_sync(
                         .insert(id);
                     }
                     Shape::Icosahedron => {
-                        spawn_ico(
+                        let mut e = spawn_ico(
                             64.0,
                             trans.into(),
                             &mut commands,
                             &mut meshes,
                             &mut materials,
-                        )
-                        .insert(id);
+                        );
+                        e.insert(id);
                     }
                 }
             }
@@ -353,12 +358,15 @@ pub fn new_lobby(
 ) {
     if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft]) {
         if input.just_pressed(KeyCode::KeyN) {
+            info!("hosting steam");
             #[cfg(feature = "steam")]
             client.host_steam().unwrap();
         } else if input.just_pressed(KeyCode::KeyM) {
+            info!("hosting ip");
             #[cfg(feature = "ip")]
             client.host_ip_runtime(None, None, &down.runtime.0).unwrap();
         } else if input.just_pressed(KeyCode::KeyK) {
+            info!("joining ip");
             #[cfg(feature = "ip")]
             client
                 .join_ip_runtime("127.0.0.1".parse().unwrap(), None, None, &down.runtime.0)
@@ -367,7 +375,35 @@ pub fn new_lobby(
     }
 }
 #[derive(Resource, Default)]
-pub struct Sent(pub HashSet<SyncObject>);
+pub struct Sent(pub HashMap<SyncObject, bool>);
+impl Sent {
+    pub fn add(&mut self, key: SyncObject) -> bool {
+        if let Some(b) = self.0.insert(key, true) {
+            if b {
+                false
+            } else {
+                self.0.remove(&key);
+                true
+            }
+        } else {
+            true
+        }
+    }
+    pub fn del(&mut self, key: SyncObject) -> bool {
+        if self.0.remove(&key).is_some() {
+            true
+        } else {
+            self.0.insert(key, false);
+            false
+        }
+    }
+    pub fn rem(&mut self, key: &SyncObject) {
+        self.0.remove(key);
+    }
+    pub fn has(&self, key: &SyncObject) -> bool {
+        self.0.get(key) == Some(&true)
+    }
+}
 #[derive(Resource, Default)]
 pub struct SyncActions {
     pub killed: Vec<SyncObjectMe>,
@@ -411,7 +447,7 @@ pub enum Shape {
     Cube,
     Icosahedron,
 }
-#[derive(Encode, Decode, Debug)]
+#[derive(Encode, Decode, Debug, Copy, Clone)]
 pub struct Trans {
     pub translation: (u32, u32, u32),
     pub rotation: u128,
