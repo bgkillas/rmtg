@@ -12,6 +12,8 @@ use bitcode::encode;
 use bytes::Bytes;
 #[cfg(feature = "steam")]
 use net::{Client, ClientTrait, Reliability};
+use std::collections::HashMap;
+use std::collections::hash_map::Entry::Vacant;
 #[cfg(feature = "steam")]
 use std::env::args;
 use std::f32::consts::PI;
@@ -33,20 +35,34 @@ pub fn setup(
 ) {
     #[cfg(feature = "steam")]
     {
+        let who = Arc::new(Mutex::new(HashMap::new()));
+        let who2 = who.clone();
         client
             .init_steam(
-                Some(Box::new(|client: &dyn ClientTrait, peer| {
+                Some(Box::new(move |client: &dyn ClientTrait, peer| {
                     if client.is_host() {
+                        let mut k = 1;
+                        {
+                            let mut who = who.lock().unwrap();
+                            loop {
+                                if let Vacant(e) = who.entry(k) {
+                                    e.insert(peer);
+                                    break;
+                                }
+                                k += 1;
+                            }
+                        }
                         client
-                            .send_message(
-                                peer,
-                                &encode(&Packet::SetUser(client.peer_len())),
-                                Reliability::Reliable,
-                            )
+                            .send_message(peer, &encode(&Packet::SetUser(k)), Reliability::Reliable)
                             .unwrap();
                     }
                 })),
-                None,
+                Some(Box::new(move |client: &dyn ClientTrait, peer| {
+                    if client.is_host() {
+                        let mut who = who2.lock().unwrap();
+                        who.retain(|_, p| *p != peer)
+                    }
+                })),
             )
             .unwrap();
         client.session_request_callback(|r| {

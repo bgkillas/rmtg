@@ -348,12 +348,12 @@ pub fn apply_sync(
 pub fn spawn_hand(me: usize, commands: &mut Commands) {
     let mut transform = match me {
         0 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
-        1 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
-        2 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0),
+        1 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0),
+        2 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
         3 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0),
         _ => Transform::from_xyz(0.0, 64.0, 0.0),
     };
-    if me == 2 || me == 3 {
+    if me == 1 || me == 3 {
         transform.rotate_y(PI);
     }
     commands.spawn((transform, Hand::default(), Owned));
@@ -372,7 +372,21 @@ pub fn new_lobby(
         } else if input.just_pressed(KeyCode::KeyM) {
             info!("hosting ip");
             #[cfg(feature = "ip")]
-            client.host_ip_runtime(None, None, &down.runtime.0).unwrap();
+            client
+                .host_ip_runtime(
+                    Some(Box::new(|client, peer| {
+                        client
+                            .send_message(
+                                peer,
+                                &encode(&Packet::SetUser(peer.0 as usize)),
+                                Reliability::Reliable,
+                            )
+                            .unwrap();
+                    })),
+                    None,
+                    &down.runtime.0,
+                )
+                .unwrap();
         } else if input.just_pressed(KeyCode::KeyK) {
             info!("joining ip");
             #[cfg(feature = "ip")]
