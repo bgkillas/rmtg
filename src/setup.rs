@@ -215,6 +215,14 @@ pub fn setup(
         &mut materials,
     );
     ico.insert(SyncObjectMe::new(&mut rand, &mut count));
+    let mut ico = spawn_ico(
+        64.0,
+        Transform::from_xyz(512.0, 128.0, 0.0),
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+    );
+    ico.insert(SyncObjectMe::new(&mut rand, &mut count));
 }
 pub fn spawn_cube<'a>(
     m: f32,
@@ -278,7 +286,7 @@ pub fn spawn_ico<'a>(
 ) -> EntityCommands<'a> {
     let mesh = mesh_ico(m);
     commands.spawn((
-        ColliderConstructor::ConvexHullFromMesh,
+        Collider::convex_hull_from_mesh(&mesh).unwrap(),
         transform,
         Shape::Icosahedron,
         RigidBody::Dynamic,

@@ -67,7 +67,7 @@ pub fn apply_sync(
         &mut AngularVelocity,
         Entity,
         Option<&InOtherHand>,
-        &Children,
+        Option<&Children>,
         Option<&mut Pile>,
         &mut GravityScale,
     )>,
@@ -135,6 +135,7 @@ pub fn apply_sync(
                         *r = t.rotation.into();
                         if let Some(pile) = pile
                             && in_hand != hand.is_some()
+                            && let Some(children) = children
                         {
                             if in_hand {
                                 commands.entity(entity).insert(InOtherHand);
@@ -236,16 +237,17 @@ pub fn apply_sync(
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
                 sent.del(id);
+                ignore.insert(id);
                 match shape {
                     Shape::Cube => {
-                        spawn_cube(
+                        let mut e = spawn_cube(
                             256.0,
                             trans.into(),
                             &mut commands,
                             &mut meshes,
                             &mut materials,
-                        )
-                        .insert(id);
+                        );
+                        e.insert(id);
                     }
                     Shape::Icosahedron => {
                         let mut e = spawn_ico(
@@ -283,7 +285,9 @@ pub fn apply_sync(
                 ) && let Some(pile) = &mut pile
                 {
                     let card = get_mut_card(pile, &transform);
-                    if let Some(alt) = &mut card.alt {
+                    if let Some(alt) = &mut card.alt
+                        && let Some(children) = children
+                    {
                         mem::swap(&mut card.normal, alt);
                         repaint_face(&mut mats, &mut materials, card, children);
                         card.is_alt = !card.is_alt;
