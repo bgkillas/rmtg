@@ -58,27 +58,29 @@ pub fn gather_hand(
     }
 }
 pub fn update_hand(
-    mut hand: Single<(&Transform, &mut Hand, &Children), With<Owned>>,
+    mut hand: Single<(&Transform, &mut Hand, Option<&Children>), With<Owned>>,
     mut card: Query<(&mut InHand, &mut Transform), (With<InHand>, Without<Hand>)>,
 ) {
-    for child in hand.2.into_iter() {
-        let (mut entry, mut transform) = card.get_mut(*child).unwrap();
-        if let Some((i, n)) = hand
-            .1
-            .removed
-            .iter()
-            .enumerate()
-            .min_by(|a, b| a.1.cmp(b.1))
-            .map(|(a, b)| (a, *b))
-            && entry.0 > n
-        {
-            hand.1.removed.remove(i);
-            hand.1.removed.push(entry.0);
-            entry.0 = n;
+    if let Some(children) = hand.2 {
+        for child in children.into_iter() {
+            let (mut entry, mut transform) = card.get_mut(*child).unwrap();
+            if let Some((i, n)) = hand
+                .1
+                .removed
+                .iter()
+                .enumerate()
+                .min_by(|a, b| a.1.cmp(b.1))
+                .map(|(a, b)| (a, *b))
+                && entry.0 > n
+            {
+                hand.1.removed.remove(i);
+                hand.1.removed.push(entry.0);
+                entry.0 = n;
+            }
+            let idx = entry.0 as f32 - hand.1.count as f32 / 2.0;
+            transform.translation = Vec3::new((idx + 0.5) * CARD_WIDTH / 2.0, idx * 2.0, 0.0);
+            transform.rotation = Quat::from_rotation_x(-PI / 2.0);
         }
-        let idx = entry.0 as f32 - hand.1.count as f32 / 2.0;
-        transform.translation = Vec3::new((idx + 0.5) * CARD_WIDTH / 2.0, idx * 2.0, 0.0);
-        transform.rotation = Quat::from_rotation_x(-PI / 2.0);
     }
     hand.1.removed.clear();
 }

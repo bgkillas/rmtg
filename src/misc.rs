@@ -136,7 +136,6 @@ pub fn new_pile_at<'a>(
     if let Some(parent) = parent {
         ent.insert(ChildOf(parent));
     }
-    ent.log_components();
     Some(ent)
 }
 pub fn is_reversed(transform: &Transform) -> bool {
