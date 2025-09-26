@@ -357,11 +357,11 @@ pub fn new_lobby(
             client.host_steam().unwrap();
         } else if input.just_pressed(KeyCode::KeyM) {
             #[cfg(feature = "ip")]
-            client.host_ip(None, None, &down.runtime.0).unwrap();
+            client.host_ip_runtime(None, None, &down.runtime.0).unwrap();
         } else if input.just_pressed(KeyCode::KeyK) {
             #[cfg(feature = "ip")]
             client
-                .join_ip("127.0.0.1".parse().unwrap(), None, None, &down.runtime.0)
+                .join_ip_runtime("127.0.0.1".parse().unwrap(), None, None, &down.runtime.0)
                 .unwrap();
         }
     }

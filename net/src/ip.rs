@@ -1,7 +1,7 @@
 use crate::{Client, ClientCallback, ClientTrait, ClientType, Message, PeerId, Reliability};
+use eyre::eyre;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::mpsc::channel;
-use eyre::eyre;
 use tangled::{NetworkEvent, Peer};
 use tokio::runtime::Runtime;
 pub const DEFAULT_PORT: u16 = 5143;
@@ -126,11 +126,32 @@ impl Client {
         &mut self,
         peer_connected: ClientCallback,
         peer_disconnected: ClientCallback,
+    ) -> eyre::Result<()> {
+        let socket = SocketAddr::new("::".parse()?, DEFAULT_PORT);
+        self.client = ClientType::Ip(IpClient::host(socket, peer_connected, peer_disconnected)?);
+        Ok(())
+    }
+    pub fn join_ip(
+        &mut self,
+        addr: IpAddr,
+        peer_connected: ClientCallback,
+        peer_disconnected: ClientCallback,
+    ) -> eyre::Result<()> {
+        let socket = SocketAddr::new(addr, DEFAULT_PORT);
+        self.client = ClientType::Ip(IpClient::join(socket, peer_connected, peer_disconnected)?);
+        Ok(())
+    }
+    pub fn host_ip_runtime(
+        &mut self,
+        peer_connected: ClientCallback,
+        peer_disconnected: ClientCallback,
         runtime: &Runtime,
     ) -> eyre::Result<()> {
         let socket = SocketAddr::new("::".parse()?, DEFAULT_PORT);
         let (tx, rx) = channel();
-        runtime.spawn(async move {tx.send(IpClient::host(socket, peer_connected, peer_disconnected))});
+        runtime.spawn(
+            async move { tx.send(IpClient::host(socket, peer_connected, peer_disconnected)) },
+        );
         if let Ok(client) = rx.recv() {
             self.client = ClientType::Ip(client?);
             Ok(())
@@ -138,7 +159,7 @@ impl Client {
             Err(eyre!("not found"))
         }
     }
-    pub fn join_ip(
+    pub fn join_ip_runtime(
         &mut self,
         addr: IpAddr,
         peer_connected: ClientCallback,
@@ -147,7 +168,9 @@ impl Client {
     ) -> eyre::Result<()> {
         let socket = SocketAddr::new(addr, DEFAULT_PORT);
         let (tx, rx) = channel();
-        runtime.spawn(async move {tx.send(IpClient::join(socket, peer_connected, peer_disconnected))});
+        runtime.spawn(
+            async move { tx.send(IpClient::join(socket, peer_connected, peer_disconnected)) },
+        );
         if let Ok(client) = rx.recv() {
             self.client = ClientType::Ip(client?);
             Ok(())
