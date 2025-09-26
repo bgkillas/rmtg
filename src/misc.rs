@@ -41,7 +41,11 @@ pub fn new_pile(
         false,
         None,
         id,
-        Some(SyncObjectMe::new(rand, count)),
+        if id.is_none() {
+            Some(SyncObjectMe::new(rand, count))
+        } else {
+            None
+        },
     );
 }
 fn side(size: f32, meshes: &mut Assets<Mesh>) -> (Handle<Mesh>, Transform, Transform) {
@@ -132,6 +136,7 @@ pub fn new_pile_at<'a>(
     if let Some(parent) = parent {
         ent.insert(ChildOf(parent));
     }
+    ent.log_components();
     Some(ent)
 }
 pub fn is_reversed(transform: &Transform) -> bool {

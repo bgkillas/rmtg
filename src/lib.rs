@@ -112,7 +112,7 @@ pub fn start() {
             (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
         ),
     )
-    .add_systems(PostUpdate, (get_sync, apply_sync).chain());
+    .add_systems(PreUpdate, (get_sync, apply_sync).chain());
     app.run();
 }
 #[test]

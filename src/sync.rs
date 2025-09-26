@@ -61,8 +61,8 @@ pub fn apply_sync(
     mut query: Query<(
         &mut SyncObject,
         &mut Transform,
-        &mut Position,
-        &mut Rotation,
+        Option<&mut Position>,
+        Option<&mut Rotation>,
         &mut LinearVelocity,
         &mut AngularVelocity,
         Entity,
@@ -108,8 +108,8 @@ pub fn apply_sync(
                     }
                     if let Some((
                         mut t,
-                        mut p,
-                        mut r,
+                        p,
+                        r,
                         hand,
                         children,
                         entity,
@@ -131,8 +131,12 @@ pub fn apply_sync(
                         *lv = lvt;
                         *av = avt;
                         *t = trans.into();
-                        *p = t.translation.into();
-                        *r = t.rotation.into();
+                        if let Some(mut p) = p {
+                            *p = t.translation.into();
+                        }
+                        if let Some(mut r) = r {
+                            *r = t.rotation.into();
+                        }
                         if let Some(pile) = pile
                             && in_hand != hand.is_some()
                             && let Some(children) = children
@@ -349,7 +353,7 @@ pub fn spawn_hand(me: usize, commands: &mut Commands) {
         3 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0),
         _ => Transform::from_xyz(0.0, 64.0, 0.0),
     };
-    if me == 1 || me == 3 {
+    if me == 2 || me == 3 {
         transform.rotate_y(PI);
     }
     commands.spawn((transform, Hand::default(), Owned));
