@@ -1171,8 +1171,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 [[package]]
 name = "steamworks"
 version = "0.12.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "722f54c70818b8debdc25b18618b77a0a69fa280012c29e7904d32f9136299fc"
+source = "git+https://github.com/bgkillas/steamworks-rs#46362cf9b579d7bb9e8953f4eabc63d193d1f2a2"
 dependencies = [
  "bitflags",
  "paste",
@@ -1182,9 +1181,8 @@ dependencies = [
 
 [[package]]
 name = "steamworks-sys"
-version = "0.12.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42862065c9e685d08cc3d9f6c609d4b46bd9684ec7e9420688eb979213469582"
+version = "0.12.0"
+source = "git+https://github.com/bgkillas/steamworks-rs#46362cf9b579d7bb9e8953f4eabc63d193d1f2a2"
 
 [[package]]
 name = "subtle"

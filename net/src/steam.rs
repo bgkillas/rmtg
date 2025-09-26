@@ -1,4 +1,5 @@
 use crate::{Client, ClientCallback, ClientTrait, ClientType, Message, PeerId, Reliability};
+use log::info;
 use std::collections::HashMap;
 use std::mem::MaybeUninit;
 use std::sync::mpsc::{Receiver, Sender, channel};
@@ -7,10 +8,9 @@ use steamworks::networking_messages::SessionRequest;
 use steamworks::networking_sockets::{ListenSocket, NetConnection, NetPollGroup};
 use steamworks::networking_types::{
     ListenSocketEvent, NetConnectionStatusChanged, NetworkingConnectionState, NetworkingIdentity,
-    SendFlags,
+    NetworkingMessage, SendFlags,
 };
 use steamworks::{CallbackResult, GameLobbyJoinRequested, LobbyId, LobbyType, SteamId};
-use log::info;
 pub(crate) struct Connection {
     pub(crate) net: NetConnection,
     pub(crate) connected: bool,
@@ -27,9 +27,12 @@ pub(crate) struct SteamClient {
     pub(crate) my_num: u16,
     pub(crate) peer_connected: ClientCallback,
     pub(crate) peer_disconnected: ClientCallback,
+    pub(crate) buffer: Vec<NetworkingMessage>,
     rx: Arc<Mutex<Receiver<LobbyId>>>,
     tx: Arc<Mutex<Sender<LobbyId>>>,
 }
+unsafe impl Send for SteamClient {}
+unsafe impl Sync for SteamClient {}
 impl SteamClient {
     fn reset(&mut self) {
         self.host_id = PeerId(0);
@@ -60,6 +63,7 @@ impl SteamClient {
             is_host: false,
             peer_connected,
             peer_disconnected,
+            buffer: Vec::with_capacity(1024),
             listen_socket: MaybeUninit::uninit(),
             rx: Arc::new(rx.into()),
             tx: Arc::new(tx.into()),
@@ -98,7 +102,8 @@ impl SteamClient {
     where
         F: FnMut(&dyn ClientTrait, Message),
     {
-        for m in self.poll_group.receive_messages(1024) {
+        self.poll_group.receive_messages_to_buffer(&mut self.buffer);
+        for m in &self.buffer {
             f(
                 self,
                 Message {

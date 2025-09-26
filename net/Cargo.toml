@@ -10,7 +10,7 @@ tangled=["dep:tangled"]
 bevy=["dep:bevy_app", "dep:bevy_ecs"]
 
 [dependencies]
-steamworks = {version="0.12.2", optional = true}
+steamworks = {git="https://github.com/bgkillas/steamworks-rs", optional = true}
 tangled = {git="https://github.com/intquant/tangled", optional = true}
 bevy_app = { version = "0.16.1", default-features = false, optional = true }
 bevy_ecs = { version = "0.16.1", default-features = false, optional = true }
