@@ -1,6 +1,9 @@
 use crate::{Client, ClientCallback, ClientTrait, ClientType, Message, PeerId, Reliability};
 use std::net::{IpAddr, SocketAddr};
+use std::sync::mpsc::channel;
+use eyre::eyre;
 use tangled::{NetworkEvent, Peer};
+use tokio::runtime::Runtime;
 pub const DEFAULT_PORT: u16 = 5143;
 pub(crate) struct IpClient {
     pub(crate) peer: Peer,
@@ -123,19 +126,33 @@ impl Client {
         &mut self,
         peer_connected: ClientCallback,
         peer_disconnected: ClientCallback,
+        runtime: &Runtime,
     ) -> eyre::Result<()> {
         let socket = SocketAddr::new("::".parse()?, DEFAULT_PORT);
-        self.client = ClientType::Ip(IpClient::host(socket, peer_connected, peer_disconnected)?);
-        Ok(())
+        let (tx, rx) = channel();
+        runtime.spawn(async move {tx.send(IpClient::host(socket, peer_connected, peer_disconnected))});
+        if let Ok(client) = rx.recv() {
+            self.client = ClientType::Ip(client?);
+            Ok(())
+        } else {
+            Err(eyre!("not found"))
+        }
     }
     pub fn join_ip(
         &mut self,
         addr: IpAddr,
         peer_connected: ClientCallback,
         peer_disconnected: ClientCallback,
+        runtime: &Runtime,
     ) -> eyre::Result<()> {
         let socket = SocketAddr::new(addr, DEFAULT_PORT);
-        self.client = ClientType::Ip(IpClient::join(socket, peer_connected, peer_disconnected)?);
-        Ok(())
+        let (tx, rx) = channel();
+        runtime.spawn(async move {tx.send(IpClient::join(socket, peer_connected, peer_disconnected))});
+        if let Ok(client) = rx.recv() {
+            self.client = ClientType::Ip(client?);
+            Ok(())
+        } else {
+            Err(eyre!("not found"))
+        }
     }
 }

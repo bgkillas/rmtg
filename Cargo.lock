@@ -3864,6 +3864,7 @@ dependencies = [
  "eyre",
  "steamworks",
  "tangled 0.4.0 (git+https://github.com/intquant/tangled)",
+ "tokio",
 ]
 
 [[package]]

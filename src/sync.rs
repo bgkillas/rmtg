@@ -346,14 +346,24 @@ pub fn spawn_hand(me: usize, commands: &mut Commands) {
     commands.spawn((transform, Hand::default(), Owned));
 }
 #[cfg(all(feature = "steam", feature = "ip"))]
-pub fn new_lobby(input: Res<ButtonInput<KeyCode>>, mut client: ResMut<Client>) {
-    if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft])
-        && input.just_pressed(KeyCode::KeyN)
-    {
-        #[cfg(feature = "steam")]
-        client.host_steam().unwrap();
-        #[cfg(feature = "ip")]
-        client.host_ip(None, None).unwrap();
+pub fn new_lobby(
+    input: Res<ButtonInput<KeyCode>>,
+    mut client: ResMut<Client>,
+    down: Res<Download>,
+) {
+    if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft]) {
+        if input.just_pressed(KeyCode::KeyN) {
+            #[cfg(feature = "steam")]
+            client.host_steam().unwrap();
+        } else if input.just_pressed(KeyCode::KeyM) {
+            #[cfg(feature = "ip")]
+            client.host_ip(None, None, &down.runtime.0).unwrap();
+        } else if input.just_pressed(KeyCode::KeyK) {
+            #[cfg(feature = "ip")]
+            client
+                .join_ip("127.0.0.1".parse().unwrap(), None, None, &down.runtime.0)
+                .unwrap();
+        }
     }
 }
 #[derive(Resource, Default)]
