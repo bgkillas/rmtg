@@ -275,7 +275,8 @@ pub fn spawn_cube<'a>(
             parent.spawn((
                 Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
                 Text3d::new(i.to_string()),
-                Mesh3d(meshes.add(Rectangle::new(m, m))),
+                Side(i),
+                Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                     alpha_mode: AlphaMode::Premultiplied,
@@ -300,22 +301,6 @@ pub fn spawn_ico<'a>(
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
 ) -> EntityCommands<'a> {
-    let mesh = mesh_ico(m);
-    commands.spawn((
-        Collider::convex_hull_from_mesh(&mesh).unwrap(),
-        transform,
-        Shape::Icosahedron,
-        RigidBody::Dynamic,
-        GravityScale(GRAVITY),
-        Mesh3d(meshes.add(mesh)),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::WHITE,
-            unlit: true,
-            ..default()
-        })),
-    ))
-}
-pub fn mesh_ico(m: f32) -> Mesh {
     let phi = ((0.5 + 5.0f64.sqrt() / 2.0) * m as f64) as f32;
     let mut verticies: Vec<[f32; 3]> = Vec::with_capacity(12);
     for y in [-m, m] {
@@ -348,6 +333,7 @@ pub fn mesh_ico(m: f32) -> Mesh {
         }
     }
     let mut indecies = Vec::with_capacity(60);
+    let mut faces = Vec::with_capacity(20);
     for a in &f {
         for b in &f {
             for c in &f {
@@ -369,17 +355,76 @@ pub fn mesh_ico(m: f32) -> Mesh {
                         indecies.push(c[0]);
                         indecies.push(b[0]);
                     }
+                    faces.push([
+                        (ox + u[0] + v[0]) / 3.0,
+                        (oy + u[1] + v[1]) / 3.0,
+                        (oz + u[2] + v[2]) / 3.0,
+                    ])
                 }
             }
         }
     }
-    Mesh::new(
+    let mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
         RenderAssetUsages::RENDER_WORLD,
     )
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, verticies)
-    .with_inserted_indices(Indices::U16(indecies))
+    .with_inserted_indices(Indices::U16(indecies));
+    let mut ent = commands.spawn((
+        Collider::convex_hull_from_mesh(&mesh).unwrap(),
+        transform,
+        Shape::Icosahedron,
+        RigidBody::Dynamic,
+        GravityScale(GRAVITY),
+        Mesh3d(meshes.add(mesh)),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: bevy::prelude::Color::WHITE,
+            unlit: true,
+            ..default()
+        })),
+    ));
+    ent.with_children(|parent| {
+        for (i, [mut x, mut y, mut z]) in faces.into_iter().enumerate() {
+            if x < 0.0 {
+                x -= 1.0;
+            } else {
+                x += 1.0;
+            }
+            if y < 0.0 {
+                y -= 1.0;
+            } else {
+                y += 1.0;
+            }
+            if z < 0.0 {
+                z -= 1.0;
+            } else {
+                z += 1.0;
+            }
+            parent.spawn((
+                Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
+                Text3d::new((i + 1).to_string()),
+                Side(i + 1),
+                Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
+                MeshMaterial3d(materials.add(StandardMaterial {
+                    base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
+                    alpha_mode: AlphaMode::Premultiplied,
+                    base_color: bevy::prelude::Color::BLACK,
+                    unlit: true,
+                    ..default()
+                })),
+                Text3dStyling {
+                    size: m / 2.0,
+                    anchor: TextAnchor::CENTER,
+                    ..default()
+                },
+            ));
+        }
+    });
+    ent
 }
+#[allow(dead_code)]
+#[derive(Component)]
+pub struct Side(pub usize);
 #[allow(dead_code)]
 fn mesh_dodec() -> Mesh {
     let phi = 0.5 + 5.0f32.sqrt() / 2.0;
