@@ -63,7 +63,7 @@ impl SteamClient {
             is_host: false,
             peer_connected,
             peer_disconnected,
-            buffer: Vec::with_capacity(1024),
+            buffer: Vec::with_capacity(64),
             listen_socket: MaybeUninit::uninit(),
             rx: Arc::new(rx.into()),
             tx: Arc::new(tx.into()),
@@ -103,16 +103,19 @@ impl SteamClient {
         F: FnMut(&dyn ClientTrait, Message),
     {
         self.poll_group.receive_messages_to_buffer(&mut self.buffer);
-        for m in &self.buffer {
-            f(
-                self,
-                Message {
-                    src: m.identity_peer().steam_id().unwrap().into(),
-                    data: m.data().into(),
-                },
-            )
+        while !self.buffer.is_empty() {
+            for m in &self.buffer {
+                f(
+                    self,
+                    Message {
+                        src: m.identity_peer().steam_id().unwrap().into(),
+                        data: m.data().into(),
+                    },
+                )
+            }
+            self.buffer.clear();
+            self.poll_group.receive_messages_to_buffer(&mut self.buffer);
         }
-        self.buffer.clear();
     }
     fn connect(&mut self, id: SteamId) {
         let peer_identity = NetworkingIdentity::new_steam_id(id);
