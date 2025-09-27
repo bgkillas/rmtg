@@ -112,6 +112,7 @@ pub fn follow_mouse(
         return;
     };
     if mouse_input.pressed(MouseButton::Left) {
+        card.3.y = 0.0;
         if let Some(max) = spatial
             .shape_intersections(
                 card.4,
