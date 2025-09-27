@@ -13,7 +13,7 @@ use bevy_ecs::resource::Resource;
 type ClientCallback = Option<Box<dyn FnMut(&dyn ClientTrait, PeerId) + Send + Sync + 'static>>;
 pub struct Message {
     pub src: PeerId,
-    pub data: Box<[u8]>,
+    pub data: Vec<u8>,
 }
 #[derive(Copy, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
 pub enum Reliability {

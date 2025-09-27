@@ -85,9 +85,7 @@ console_error_panic_hook = { version = "0.1.7", optional = true }
 avian3d={version="0.3.1", features = ["enhanced-determinism"]}
 bevy_rich_text3d = "0.4.2"
 net = {path = "net", default-features = false, features = ["bevy"]}
-#serde = { version = "1.0.219", features = ["derive"] }
 bitcode = {git="https://github.com/SoftbearStudios/bitcode.git", branch = "large_c_style_enums"}
-#lz4_flex = {version="0.11.5", default-features = false}
 
 [lints.clippy]
 too_many_arguments = "allow"

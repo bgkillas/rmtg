@@ -1,5 +1,6 @@
 use crate::{Client, ClientCallback, ClientTrait, ClientType, Message, PeerId, Reliability};
 use eyre::eyre;
+use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::mpsc::channel;
 use tangled::{NetworkEvent, Peer};
@@ -47,7 +48,7 @@ impl IpClient {
                         self,
                         Message {
                             src: m.src.into(),
-                            data: m.data,
+                            data: decompress_size_prepended(&m.data).unwrap(),
                         },
                     ),
                     NetworkEvent::PeerConnected(peer) => {
@@ -80,13 +81,15 @@ impl ClientTrait for IpClient {
         reliability: Reliability,
     ) -> eyre::Result<()> {
         if self.connected {
-            self.peer.send(dest.into(), data, reliability.into())?;
+            let data = compress_prepend_size(data);
+            self.peer.send(dest.into(), &data, reliability.into())?;
         }
         Ok(())
     }
     fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
         if self.connected {
-            self.peer.broadcast(data, reliability.into())?;
+            let data = compress_prepend_size(data);
+            self.peer.broadcast(&data, reliability.into())?;
         }
         Ok(())
     }

@@ -1,5 +1,6 @@
 use crate::{Client, ClientCallback, ClientTrait, ClientType, Message, PeerId, Reliability};
 use log::info;
+use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::collections::HashMap;
 use std::mem::MaybeUninit;
 use std::sync::mpsc::{Receiver, Sender, channel};
@@ -109,7 +110,7 @@ impl SteamClient {
                     self,
                     Message {
                         src: m.identity_peer().steam_id().unwrap().into(),
-                        data: m.data().into(),
+                        data: decompress_size_prepended(m.data()).unwrap(),
                     },
                 )
             }
@@ -241,14 +242,16 @@ impl ClientTrait for SteamClient {
         if let Some(con) = self.connections.get(&dest)
             && con.connected
         {
-            con.net.send_message(data, reliability.into())?;
+            let data = compress_prepend_size(data);
+            con.net.send_message(&data, reliability.into())?;
         }
         Ok(())
     }
     fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
+        let data = compress_prepend_size(data);
         for con in self.connections.values() {
             if con.connected {
-                con.net.send_message(data, reliability.into())?;
+                con.net.send_message(&data, reliability.into())?;
             }
         }
         Ok(())
