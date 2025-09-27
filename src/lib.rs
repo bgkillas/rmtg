@@ -147,12 +147,6 @@ fn test_parse() {
     app.update();
 }
 #[test]
-fn test_mesh() {
-    let tmr = std::time::Instant::now();
-    std::hint::black_box(setup::mesh_ico(1.0));
-    println!("{}", tmr.elapsed().as_nanos())
-}
-#[test]
 #[cfg(not(feature = "wasm"))]
 fn test_get_deck() {
     use reqwest::header::USER_AGENT;

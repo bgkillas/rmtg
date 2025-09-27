@@ -344,6 +344,8 @@ pub fn apply_sync(
             }
         }
     });
+    #[cfg(feature = "steam")]
+    client.flush();
 }
 pub fn spawn_hand(me: usize, commands: &mut Commands) {
     let mut transform = match me {
