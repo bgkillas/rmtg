@@ -112,6 +112,7 @@ impl SteamClient {
                 },
             )
         }
+        self.buffer.clear();
     }
     fn connect(&mut self, id: SteamId) {
         let peer_identity = NetworkingIdentity::new_steam_id(id);
