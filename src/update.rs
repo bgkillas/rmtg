@@ -191,6 +191,7 @@ pub fn listen_for_mouse(
         mut query_meshes,
         follow,
         mut grav,
+        shape,
     ): (
         ResMut<Download>,
         Res<AssetServer>,
@@ -202,6 +203,7 @@ pub fn listen_for_mouse(
         Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
         Option<Single<Entity, With<FollowMouse>>>,
         Query<&mut GravityScale>,
+        Query<&Shape>,
     ),
 ) {
     let Some(cursor_position) = window.cursor_position() else {
@@ -240,7 +242,7 @@ pub fn listen_for_mouse(
             } else if input.just_pressed(KeyCode::KeyC)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
             {
-                game_clipboard.0 = Some(pile.clone());
+                *game_clipboard = GameClipboard::Pile(pile.clone());
             } else if mouse_input.just_pressed(MouseButton::Left) {
                 if let Some(parent) = parent
                     && let Some(inhand) = inhand
@@ -498,6 +500,11 @@ pub fn listen_for_mouse(
                 }
                 grav.0 = 0.0;
                 commands.entity(entity).insert(FollowMouse);
+            } else if input.just_pressed(KeyCode::KeyC)
+                && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
+                && let Ok(shape) = shape.get(entity)
+            {
+                *game_clipboard = GameClipboard::Shape(*shape);
             } else if input.just_pressed(KeyCode::KeyR)
                 && let Ok((mut lv, mut av)) = vels.get_mut(entity)
             {
@@ -650,20 +657,35 @@ pub fn listen_for_deck(
             down.runtime.0.spawn(f);
             #[cfg(feature = "wasm")]
             wasm_bindgen_futures::spawn_local(f);
-        } else if let Some(pile) = &game_clipboard.0 {
-            new_pile(
-                pile.clone(),
-                card_base.stock.clone_weak(),
-                &mut materials,
-                &mut commands,
-                &mut meshes,
-                card_base.back.clone_weak(),
-                card_base.side.clone_weak(),
-                &mut rand,
-                v,
-                &mut count,
-                None,
-            );
+        } else {
+            match game_clipboard.clone() {
+                GameClipboard::Pile(pile) => {
+                    new_pile(
+                        pile,
+                        card_base.stock.clone_weak(),
+                        &mut materials,
+                        &mut commands,
+                        &mut meshes,
+                        card_base.back.clone_weak(),
+                        card_base.side.clone_weak(),
+                        &mut rand,
+                        v,
+                        &mut count,
+                        None,
+                    );
+                }
+                GameClipboard::Shape(shape) => {
+                    shape
+                        .create(
+                            Transform::from_xyz(v.x, 256.0, v.y),
+                            &mut commands,
+                            &mut materials,
+                            &mut meshes,
+                        )
+                        .insert(SyncObjectMe::new(&mut rand, &mut count));
+                }
+                GameClipboard::None => {}
+            }
         }
     }
 }

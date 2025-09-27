@@ -30,7 +30,7 @@ pub mod sync;
 mod update;
 #[cfg(all(feature = "steam", feature = "ip"))]
 use crate::sync::new_lobby;
-use crate::sync::{Sent, SyncActions, SyncCount, SyncObject, apply_sync, get_sync};
+use crate::sync::{Sent, Shape, SyncActions, SyncCount, SyncObject, apply_sync, get_sync};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
@@ -62,7 +62,7 @@ pub fn start() {
         ..default()
     });
     let get_deck = GetDeck::default();
-    let game_clipboard = GameClipboard(None);
+    let game_clipboard = GameClipboard::None;
     let mut app = App::new();
     app.add_plugins(Client::new(
         #[cfg(feature = "steam")]
@@ -448,8 +448,12 @@ pub struct Download {
     #[cfg(not(feature = "wasm"))]
     runtime: Runtime,
 }
-#[derive(Resource)]
-pub struct GameClipboard(pub Option<Pile>);
+#[derive(Resource, Clone)]
+pub enum GameClipboard {
+    Pile(Pile),
+    Shape(Shape),
+    None,
+}
 #[derive(Component, Default, Debug)]
 pub struct FollowMouse;
 #[derive(Component, Default, Debug)]

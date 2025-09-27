@@ -242,28 +242,9 @@ pub fn apply_sync(
                 let id = SyncObject { user, id: lid.0 };
                 sent.del(id);
                 ignore.insert(id);
-                match shape {
-                    Shape::Cube => {
-                        let mut e = spawn_cube(
-                            256.0,
-                            trans.into(),
-                            &mut commands,
-                            &mut meshes,
-                            &mut materials,
-                        );
-                        e.insert(id);
-                    }
-                    Shape::Icosahedron => {
-                        let mut e = spawn_ico(
-                            64.0,
-                            trans.into(),
-                            &mut commands,
-                            &mut meshes,
-                            &mut materials,
-                        );
-                        e.insert(id);
-                    }
-                }
+                shape
+                    .create(trans.into(), &mut commands, &mut materials, &mut meshes)
+                    .insert(id);
             }
             Packet::SetUser(id) => {
                 info!("joined as number {} user", id);
@@ -470,6 +451,20 @@ impl Phys {
 pub enum Shape {
     Cube,
     Icosahedron,
+}
+impl Shape {
+    pub fn create<'a>(
+        &self,
+        transform: Transform,
+        commands: &'a mut Commands,
+        materials: &mut Assets<StandardMaterial>,
+        meshes: &mut Assets<Mesh>,
+    ) -> EntityCommands<'a> {
+        match self {
+            Shape::Cube => spawn_cube(256.0, transform, commands, meshes, materials),
+            Shape::Icosahedron => spawn_ico(64.0, transform, commands, meshes, materials),
+        }
+    }
 }
 #[derive(Encode, Decode, Debug, Copy, Clone)]
 pub struct Trans {
