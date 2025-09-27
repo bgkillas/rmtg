@@ -14,6 +14,7 @@ use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
 use bitcode::{Decode, Encode};
 use net::Client;
 use rand::RngCore;
+use reqwest::header::HeaderMap;
 use std::mem::MaybeUninit;
 use std::sync::{Arc, Mutex};
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
@@ -45,8 +46,12 @@ pub fn start() {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
     #[cfg(not(feature = "wasm"))]
     let runtime = Runtime(tokio::runtime::Runtime::new().unwrap());
+    let mut headers = HeaderMap::new();
+    headers.insert("Accept", "*/*".parse().unwrap());
     let client = ReqClient(
         reqwest::Client::builder()
+            .default_headers(headers)
+            .http1_only()
             .user_agent(USER_AGENT)
             .build()
             .unwrap(),
