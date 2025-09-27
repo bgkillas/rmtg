@@ -68,7 +68,7 @@ bevy={version="0.16.1",default-features = false, features = ["bevy_dev_tools", "
   "x11",
 ]}
 arboard={version="3.6.1", features = ["wayland-data-control"], optional = true}
-reqwest="0.12.23"
+reqwest={version="0.12.23", features = ["rustls-tls"]}
 json="0.12.4"
 image="0.25.8"
 futures="0.3.31"
