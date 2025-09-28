@@ -1,68 +1,71 @@
 name: release
-
-on: [push, pull_request]
-
+'on':
+  - push
+  - pull_request
 jobs:
   build-linux:
     runs-on: ubuntu-latest
     container:
-      image: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest
+      image: 'registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest'
     steps:
-    - name: Install Rust
-      run: |
-        curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-    - uses: actions/checkout@v4
-    - name: Install system dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y libwayland-dev libudev-dev libasound2-dev pkg-config
-    - name: Build
-      run: cargo build --release
-    - name: make
-      run: |
-        mkdir -p rmtg
-        cp target/release/rmtg rmtg
-        cp libsteam_api.so rmtg
-    - uses: actions/upload-artifact@v4
-      with:
-        name: rmtg-linux
-        path: rmtg
+      - name: Install Rust
+        run: >
+          curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain
+          stable
+
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - uses: actions/checkout@v5
+      - name: Install system dependencies
+        run: >
+          sudo apt update
+
+          sudo apt install -y libwayland-dev libudev-dev libasound2-dev
+          pkg-config
+      - name: Build
+        run: cargo build --release
+      - name: make
+        run: |
+          mkdir -p rmtg
+          cp target/release/rmtg rmtg
+          cp libsteam_api.so rmtg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rmtg-linux
+          path: rmtg
   build-macos:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --release
-    - name: make .app
-      run: |
-        mkdir -p rmtg.app/Contents/MacOS
-        cp target/release/rmtg rmtg.app/Contents/MacOS/
-        cp libsteam_api.dylib rmtg.app/Contents/MacOS/
-        cp .github/workflows/Info.plist rmtg.app/Contents/
-    - uses: actions/upload-artifact@v4
-      with:
-        name: rmtg-macos
-        path: rmtg.app
+      - uses: actions/checkout@v5
+      - name: Build
+        run: cargo build --release
+      - name: make .app
+        run: |
+          mkdir -p rmtg.app/Contents/MacOS
+          cp target/release/rmtg rmtg.app/Contents/MacOS/
+          cp libsteam_api.dylib rmtg.app/Contents/MacOS/
+          cp .github/workflows/Info.plist rmtg.app/Contents/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rmtg-macos
+          path: rmtg.app
   build-windows:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-       toolchain: stable
-       target: x86_64-pc-windows-msvc
-       profile: minimal
-       override: true
-    - name: Build
-      run: cargo build --release
-    - name: make
-      run: |
-        mkdir rmtg
-        cp target/release/rmtg.exe rmtg
-        cp steam_api64.dll rmtg
-    - uses: actions/upload-artifact@v4
-      with:
-        name: rmtg-win
-        path: rmtg
+      - uses: actions/checkout@v5
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-msvc
+          override: true
+      - name: Build
+        run: cargo build --release
+      - name: make
+        run: |
+          mkdir rmtg
+          cp target/release/rmtg.exe rmtg
+          cp steam_api64.dll rmtg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rmtg-win
+          path: rmtg
