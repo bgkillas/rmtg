@@ -295,7 +295,9 @@ pub async fn get_deck(
             v,
         );
         let tokens = get_pile(
-            json["tokens"].members(),
+            json["tokens"]
+                .members()
+                .filter(|json| json["isToken"].as_bool().unwrap_or(false)),
             client.clone(),
             asset_server.clone(),
             decks.clone(),
