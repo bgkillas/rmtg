@@ -279,7 +279,7 @@ pub async fn get_deck(
         let commanders = get_pile(
             board["commanders"]["cards"]
                 .entries()
-                .map(|(_, c)| &c["card"]),
+                .flat_map(|(_, c)| vec![&c["card"]; c["quantity"].as_usize().unwrap()]),
             client.clone(),
             asset_server.clone(),
             decks.clone(),
@@ -288,16 +288,19 @@ pub async fn get_deck(
         let main = get_pile(
             board["mainboard"]["cards"]
                 .entries()
-                .map(|(_, c)| &c["card"]),
+                .flat_map(|(_, c)| vec![&c["card"]; c["quantity"].as_usize().unwrap()]),
             client.clone(),
             asset_server.clone(),
             decks.clone(),
             v,
         );
         let tokens = get_pile(
-            json["tokens"]
-                .members()
-                .filter(|json| json["isToken"].as_bool().unwrap_or(false)),
+            json["tokens"].members().filter(|json| {
+                matches!(
+                    json["layout"].as_str().unwrap_or(""),
+                    "double_faced_token" | "token" | "emblem"
+                )
+            }),
             client.clone(),
             asset_server.clone(),
             decks.clone(),
@@ -306,7 +309,7 @@ pub async fn get_deck(
         let side = get_pile(
             board["sideboard"]["cards"]
                 .entries()
-                .map(|(_, c)| &c["card"]),
+                .flat_map(|(_, c)| vec![&c["card"]; c["quantity"].as_usize().unwrap()]),
             client.clone(),
             asset_server.clone(),
             decks.clone(),
