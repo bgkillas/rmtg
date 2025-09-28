@@ -1,4 +1,4 @@
-use crate::download::{get_alts, get_deck, spawn_singleton};
+use crate::download::{Exact, get_alts, get_deck, get_deck_export, spawn_singleton};
 use crate::misc::{
     adjust_meshes, get_card, get_mut_card, is_reversed, make_material, new_pile, new_pile_at,
     repaint_face, take_card,
@@ -663,6 +663,28 @@ pub fn listen_for_deck(
                     let cn = cn.to_string();
                     info!("{set} {cn} request received");
                     spawn_singleton(client, asset_server, decks, v, set, cn).await;
+                } else {
+                    let mut list = Vec::new();
+                    for l in paste.lines() {
+                        if !l.starts_with(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']) {
+                            return;
+                        }
+                        let mut split = l.split(' ');
+                        if let Some(num) = split.next()
+                            && let Some(cn) = split.next_back()
+                            && let Some(set) = split.next_back()
+                            && let Ok(count) = num.parse()
+                        {
+                            list.push(Exact {
+                                count,
+                                cn: cn.to_string(),
+                                set: set[1..set.len() - 1].to_string(),
+                            });
+                        } else {
+                            return;
+                        }
+                    }
+                    get_deck_export(list, client, asset_server, decks, v).await;
                 }
             };
             #[cfg(not(feature = "wasm"))]

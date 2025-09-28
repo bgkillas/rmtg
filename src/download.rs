@@ -45,7 +45,7 @@ pub async fn spawn_singleton(
     let res = client.get(url).send().await.ok()?;
     let res = res.text().await.ok()?;
     let json = json::parse(&res).ok()?;
-    if let Some(card) = parse(&json, client, asset_server).await {
+    if let Some(card) = parse(&json, &client, &asset_server).await {
         get_deck.0.lock().unwrap().push((Pile(vec![card]), v, None));
     }
     None
@@ -55,7 +55,7 @@ pub async fn process_data(
     client: reqwest::Client,
     asset_server: AssetServer,
 ) -> Vec<Card> {
-    json.map(async |a| parse(a, client.clone(), asset_server.clone()))
+    json.map(async |a| parse(a, &client, &asset_server))
         .collect::<FuturesUnordered<_>>()
         .filter_map(async |a| a.await)
         .collect::<Vec<Card>>()
@@ -179,16 +179,16 @@ where
 }
 pub async fn parse(
     value: &JsonValue,
-    client: reqwest::Client,
-    asset_server: AssetServer,
+    client: &reqwest::Client,
+    asset_server: &AssetServer,
 ) -> Option<Card> {
     let double = value["card_faces"].members().next().is_some();
     let id = value["scryfall_id"]
         .as_str()
         .or_else(|| value["id"].as_str())?;
-    let bytes = get_bytes(id, &client, true);
+    let bytes = get_bytes(id, client, true);
     let alt_bytes = if double {
-        get_bytes(id, &client, false).await
+        get_bytes(id, client, false).await
     } else {
         None
     };
@@ -206,8 +206,8 @@ pub async fn parse(
         .and_then(|a| a["name"].as_str())
         .unwrap_or_else(|| value["name"].as_str().unwrap())
         .to_string();
-    let image = get_from_img(bytes, &asset_server)?;
-    let alt_image = alt_bytes.and_then(|bytes| get_from_img(bytes, &asset_server));
+    let image = get_from_img(bytes, asset_server)?;
+    let alt_image = alt_bytes.and_then(|bytes| get_from_img(bytes, asset_server));
     let (mana_cost, alt_mana_cost) = get(value, "mana_cost", |a| {
         a.as_str().unwrap_or_default().into()
     });
@@ -255,7 +255,47 @@ pub async fn get_pile(
     v: Vec2,
 ) {
     let pile = iter
-        .map(|p| parse(p, client.clone(), asset_server.clone()))
+        .map(|p| parse(p, &client, &asset_server))
+        .collect::<FuturesUnordered<_>>()
+        .filter_map(async |a| a)
+        .collect::<Vec<Card>>()
+        .await;
+    let mut decks = decks.0.lock().unwrap();
+    decks.push((Pile(pile), v, None));
+}
+pub struct Exact {
+    pub count: usize,
+    pub cn: String,
+    pub set: String,
+}
+pub async fn get_exact(input: Exact, client: &reqwest::Client) -> Vec<JsonValue> {
+    let url = format!("https://api.scryfall.com/cards/{}/{}", input.set, input.cn);
+    let t = client.get(url).send().await;
+    if let Ok(res) = t
+        && let Ok(text) = res.text().await
+        && let Ok(json) = json::parse(&text)
+    {
+        vec![json; input.count]
+    } else {
+        Vec::new()
+    }
+}
+pub async fn get_deck_export(
+    export: Vec<Exact>,
+    client: reqwest::Client,
+    asset_server: AssetServer,
+    decks: GetDeck,
+    v: Vec2,
+) {
+    let pile = export
+        .into_iter()
+        .map(|a| get_exact(a, &client))
+        .collect::<FuturesUnordered<_>>()
+        .collect::<Vec<Vec<JsonValue>>>()
+        .await
+        .iter()
+        .flatten()
+        .map(|p| parse(p, &client, &asset_server))
         .collect::<FuturesUnordered<_>>()
         .filter_map(async |a| a)
         .collect::<Vec<Card>>()

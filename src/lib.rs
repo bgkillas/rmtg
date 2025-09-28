@@ -131,11 +131,11 @@ fn test_parse() {
                 let mut json = json::object!(scryfall_id: "64b0acfa-1a8d-4a94-8972-c9bb235e4897", name: "kilo");
                 download::parse(
                     &mut json,
-                    reqwest::Client::builder()
+                    &reqwest::Client::builder()
                         .user_agent(USER_AGENT)
                         .build()
                         .unwrap(),
-                    asset_server,
+                    &asset_server,
                 )
                 .await
             }))
