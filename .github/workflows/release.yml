@@ -52,11 +52,11 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
        toolchain: stable
-       target: x86_64-pc-windows-gnu
+       target: x86_64-pc-windows-msvc
        profile: minimal
        override: true
     - name: Build
-      run: cargo build --release --features "native"
+      run: cargo build --release
     - name: make
       run: |
         mkdir rmtg
