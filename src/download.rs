@@ -272,8 +272,14 @@ pub async fn get_deck(
 ) {
     let t = client.get(url).send().await;
     if let Ok(res) = t
-        && let Ok(text) = res.text().await
-        && let Ok(json) = json::parse(&text)
+        && let Ok(text) = {
+            println!("{}", res.status());
+            res.text().await
+        }
+        && let Ok(json) = {
+            println!("{}", text);
+            json::parse(&text)
+        }
     {
         let board = &json["boards"];
         let commanders = get_pile(
