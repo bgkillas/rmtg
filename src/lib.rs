@@ -475,7 +475,7 @@ impl Clipboard {
         self.0.set_text(string).unwrap_or_default()
     }
     #[cfg(feature = "wasm")]
-    pub async fn get_text(&mut self) -> String {
+    pub async fn get_text(&self) -> String {
         let window = web_sys::window().unwrap();
         let navigator = window.navigator();
         let clipboard = navigator.clipboard();
@@ -486,7 +486,7 @@ impl Clipboard {
             .unwrap_or_default()
     }
     #[cfg(feature = "wasm")]
-    pub async fn set_text(&mut self, text: &str) {
+    pub async fn set_text(&self, text: &str) {
         let window = web_sys::window().unwrap();
         let navigator = window.navigator();
         let clipboard = navigator.clipboard();
