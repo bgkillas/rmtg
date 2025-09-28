@@ -470,9 +470,13 @@ impl Clipboard {
     pub fn get_text(&mut self) -> String {
         self.0.get_text().unwrap_or_default()
     }
+    #[cfg(not(feature = "wasm"))]
+    pub fn set_text(&mut self, string: &str) {
+        self.0.set_text(string).unwrap_or_default()
+    }
     #[cfg(feature = "wasm")]
-    pub async fn get_text(&self) -> String {
-        let window = web_sys::window().expect("window");
+    pub async fn get_text(&mut self) -> String {
+        let window = web_sys::window().unwrap();
         let navigator = window.navigator();
         let clipboard = navigator.clipboard();
         JsFuture::from(clipboard.read_text())
@@ -480,6 +484,13 @@ impl Clipboard {
             .unwrap()
             .as_string()
             .unwrap_or_default()
+    }
+    #[cfg(feature = "wasm")]
+    pub async fn set_text(&mut self, text: &str) {
+        let window = web_sys::window().unwrap();
+        let navigator = window.navigator();
+        let clipboard = navigator.clipboard();
+        let _ = JsFuture::from(clipboard.write_text(text)).await;
     }
 }
 #[derive(Resource)]

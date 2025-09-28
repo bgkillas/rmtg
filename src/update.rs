@@ -192,6 +192,7 @@ pub fn listen_for_mouse(
         follow,
         mut grav,
         shape,
+        mut clipboard,
     ): (
         ResMut<Download>,
         Res<AssetServer>,
@@ -204,6 +205,7 @@ pub fn listen_for_mouse(
         Option<Single<Entity, With<FollowMouse>>>,
         Query<&mut GravityScale>,
         Query<&Shape>,
+        ResMut<Clipboard>,
     ),
 ) {
     let Some(cursor_position) = window.cursor_position() else {
@@ -239,10 +241,21 @@ pub fn listen_for_mouse(
                 }
                 sync_actions.killed.push(*ids.get(entity).unwrap());
                 commands.entity(entity).despawn();
-            } else if input.just_pressed(KeyCode::KeyC)
-                && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
-            {
-                *game_clipboard = GameClipboard::Pile(pile.clone());
+            } else if input.just_pressed(KeyCode::KeyC) && input.pressed(KeyCode::ControlLeft) {
+                if input.pressed(KeyCode::ShiftLeft) {
+                    *game_clipboard = GameClipboard::Pile(pile.clone());
+                } else if !is_reversed(&transform) {
+                    let card = get_card(&pile, &transform);
+                    let text = format!("https://scryfall.com/card/{}", card.id);
+                    #[cfg(feature = "wasm")]
+                    let clipboard = *clipboard;
+                    #[cfg(feature = "wasm")]
+                    wasm_bindgen_futures::spawn_local(async move {
+                        clipboard.set_text(&text);
+                    });
+                    #[cfg(not(feature = "wasm"))]
+                    clipboard.set_text(&text);
+                }
             } else if mouse_input.just_pressed(MouseButton::Left) {
                 if let Some(parent) = parent
                     && let Some(inhand) = inhand
@@ -591,8 +604,7 @@ pub fn cam_rotation(
 }
 pub fn listen_for_deck(
     input: Res<ButtonInput<KeyCode>>,
-    #[cfg(feature = "wasm")] clipboard: Res<Clipboard>,
-    #[cfg(not(feature = "wasm"))] mut clipboard: ResMut<Clipboard>,
+    mut clipboard: ResMut<Clipboard>,
     down: ResMut<Download>,
     asset_server: Res<AssetServer>,
     camera: Single<(&Camera, &GlobalTransform)>,
