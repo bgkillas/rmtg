@@ -45,8 +45,12 @@ pub async fn spawn_singleton(
     let res = client.get(url).send().await.ok()?;
     let res = res.text().await.ok()?;
     let json = json::parse(&res).ok()?;
-    if let Some(card) = parse(&json, &client, &asset_server).await {
-        get_deck.0.lock().unwrap().push((Pile(vec![card]), v, None));
+    if let Some(card) = parse(&json, &client, &asset_server, 1).await {
+        get_deck
+            .0
+            .lock()
+            .unwrap()
+            .push((Pile(vec![card.0]), v, None));
     }
     None
 }
@@ -55,11 +59,15 @@ pub async fn process_data(
     client: reqwest::Client,
     asset_server: AssetServer,
 ) -> Vec<Card> {
-    json.map(async |a| parse(a, &client, &asset_server))
+    json.map(async |a| parse(a, &client, &asset_server, 1))
         .collect::<FuturesUnordered<_>>()
         .filter_map(async |a| a.await)
-        .collect::<Vec<Card>>()
+        .map(|(a, b)| vec![a; b])
+        .collect::<Vec<Vec<Card>>>()
         .await
+        .into_iter()
+        .flatten()
+        .collect()
 }
 pub async fn get_alts(
     id: &str,
@@ -181,7 +189,8 @@ pub async fn parse(
     value: &JsonValue,
     client: &reqwest::Client,
     asset_server: &AssetServer,
-) -> Option<Card> {
+    n: usize,
+) -> Option<(Card, usize)> {
     let double = value["card_faces"].members().next().is_some();
     let id = value["scryfall_id"]
         .as_str()
@@ -222,44 +231,51 @@ pub async fn parse(
     });
     let (power, alt_power) = get(value, "power", |a| a.as_u16().unwrap_or_default());
     let (toughness, alt_toughness) = get(value, "toughness", |a| a.as_u16().unwrap_or_default());
-    Some(Card {
-        normal: CardInfo {
-            name,
-            mana_cost,
-            card_type,
-            text,
-            color,
-            power,
-            toughness,
-            image: image.into(),
+    Some((
+        Card {
+            normal: CardInfo {
+                name,
+                mana_cost,
+                card_type,
+                text,
+                color,
+                power,
+                toughness,
+                image: image.into(),
+            },
+            alt: alt_image.map(|image| CardInfo {
+                name: alt_name.unwrap(),
+                mana_cost: alt_mana_cost,
+                card_type: alt_card_type,
+                text: alt_text,
+                color: alt_color,
+                power: alt_power,
+                toughness: alt_toughness,
+                image: image.into(),
+            }),
+            id: id.to_string(),
+            is_alt: false,
         },
-        alt: alt_image.map(|image| CardInfo {
-            name: alt_name.unwrap(),
-            mana_cost: alt_mana_cost,
-            card_type: alt_card_type,
-            text: alt_text,
-            color: alt_color,
-            power: alt_power,
-            toughness: alt_toughness,
-            image: image.into(),
-        }),
-        id: id.to_string(),
-        is_alt: false,
-    })
+        n,
+    ))
 }
 pub async fn get_pile(
-    iter: impl Iterator<Item = &JsonValue>,
+    iter: impl Iterator<Item = (&JsonValue, usize)>,
     client: reqwest::Client,
     asset_server: AssetServer,
     decks: GetDeck,
     v: Vec2,
 ) {
     let pile = iter
-        .map(|p| parse(p, &client, &asset_server))
+        .map(|(p, n)| parse(p, &client, &asset_server, n))
         .collect::<FuturesUnordered<_>>()
         .filter_map(async |a| a)
-        .collect::<Vec<Card>>()
-        .await;
+        .map(|(a, b)| vec![a; b])
+        .collect::<Vec<Vec<Card>>>()
+        .await
+        .into_iter()
+        .flatten()
+        .collect();
     let mut decks = decks.0.lock().unwrap();
     decks.push((Pile(pile), v, None));
 }
@@ -295,11 +311,15 @@ pub async fn get_deck_export(
         .await
         .iter()
         .flatten()
-        .map(|p| parse(p, &client, &asset_server))
+        .map(|p| parse(p, &client, &asset_server, 1))
         .collect::<FuturesUnordered<_>>()
         .filter_map(async |a| a)
-        .collect::<Vec<Card>>()
-        .await;
+        .map(|(a, b)| vec![a; b])
+        .collect::<Vec<Vec<Card>>>()
+        .await
+        .into_iter()
+        .flatten()
+        .collect();
     let mut decks = decks.0.lock().unwrap();
     decks.push((Pile(pile), v, None));
 }
@@ -319,7 +339,7 @@ pub async fn get_deck(
         let commanders = get_pile(
             board["commanders"]["cards"]
                 .entries()
-                .flat_map(|(_, c)| vec![&c["card"]; c["quantity"].as_usize().unwrap()]),
+                .map(|(_, c)| (&c["card"], c["quantity"].as_usize().unwrap())),
             client.clone(),
             asset_server.clone(),
             decks.clone(),
@@ -328,19 +348,22 @@ pub async fn get_deck(
         let main = get_pile(
             board["mainboard"]["cards"]
                 .entries()
-                .flat_map(|(_, c)| vec![&c["card"]; c["quantity"].as_usize().unwrap()]),
+                .map(|(_, c)| (&c["card"], c["quantity"].as_usize().unwrap())),
             client.clone(),
             asset_server.clone(),
             decks.clone(),
             v,
         );
         let tokens = get_pile(
-            json["tokens"].members().filter(|json| {
-                matches!(
-                    json["layout"].as_str().unwrap_or(""),
-                    "double_faced_token" | "token" | "emblem"
-                )
-            }),
+            json["tokens"]
+                .members()
+                .filter(|json| {
+                    matches!(
+                        json["layout"].as_str().unwrap_or(""),
+                        "double_faced_token" | "token" | "emblem"
+                    )
+                })
+                .map(|a| (a, 1)),
             client.clone(),
             asset_server.clone(),
             decks.clone(),
@@ -349,7 +372,7 @@ pub async fn get_deck(
         let side = get_pile(
             board["sideboard"]["cards"]
                 .entries()
-                .flat_map(|(_, c)| vec![&c["card"]; c["quantity"].as_usize().unwrap()]),
+                .map(|(_, c)| (&c["card"], c["quantity"].as_usize().unwrap())),
             client.clone(),
             asset_server.clone(),
             decks.clone(),
