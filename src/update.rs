@@ -112,6 +112,7 @@ pub fn follow_mouse(
     };
     if mouse_input.pressed(MouseButton::Left) {
         card.3.y = 0.0;
+        let aabb = card.4.aabb(card.1.translation, card.1.rotation);
         if let Some(max) = spatial
             .shape_intersections(
                 card.4,
@@ -135,15 +136,21 @@ pub fn follow_mouse(
             })
             .reduce(f32::max)
         {
-            let max = max.max(card.4.aabb(card.1.translation, card.1.rotation).max.y);
-            card.1.translation.y = max + 4.0;
+            let max = max.max(aabb.max.y);
+            card.1.translation.y = max + 8.0;
         }
         if let Some(time) =
             ray.intersect_plane(card.1.translation, InfinitePlane3d { normal: Dir3::Y })
         {
             let mut point = ray.get_point(time);
-            point.x = point.x.clamp(T - W, W - T);
-            point.z = point.z.clamp(T - W, W - T);
+            point.x = point.x.clamp(
+                T - W + (aabb.min.x - card.1.translation.x).abs(),
+                W - T - (aabb.max.x - card.1.translation.x).abs(),
+            );
+            point.z = point.z.clamp(
+                T - W + (aabb.min.z - card.1.translation.z).abs(),
+                W - T - (aabb.max.z - card.1.translation.z).abs(),
+            );
             card.1.translation = point;
         }
     } else {
@@ -333,6 +340,40 @@ pub fn listen_for_mouse(
                 if rev {
                     transform.rotate_z(PI);
                 }
+            } else if input.just_pressed(KeyCode::KeyS)
+                && input.pressed(KeyCode::ControlLeft)
+                && pile.0.len() > 1
+            {
+                let mut start = *transform;
+                start.translation.y -= pile.0.len() as f32;
+                let mut transform = start;
+                for c in pile.0.drain(..) {
+                    let id = SyncObjectMe::new(&mut rand, &mut count);
+                    new_pile_at(
+                        Pile(vec![c]),
+                        card_base.stock.clone_weak(),
+                        &mut materials,
+                        &mut commands,
+                        &mut meshes,
+                        card_base.back.clone_weak(),
+                        card_base.side.clone_weak(),
+                        transform,
+                        false,
+                        None,
+                        None,
+                        Some(id),
+                    );
+                    transform.translation.x += CARD_WIDTH;
+                    if transform.translation.x >= W - T - CARD_WIDTH {
+                        transform.translation.x = start.translation.x;
+                        transform.translation.z += CARD_HEIGHT;
+                    }
+                }
+                if ids.contains(entity) {
+                    count.rem(1);
+                }
+                sync_actions.killed.push(*ids.get(entity).unwrap());
+                commands.entity(entity).despawn();
             } else if input.just_pressed(KeyCode::KeyQ) {
                 let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
                 let n = (2.0 * rot / PI).round() as isize;
@@ -546,30 +587,32 @@ pub fn cam_translation(
     } else {
         32.0
     };
-    let apply = |translate: Vec3, cam: &mut Transform| {
-        let mut norm = translate.normalize();
-        norm.y = 0.0;
-        let abs = norm.length();
-        if abs != 0.0 {
-            let translate = norm * translate.length() / abs;
-            cam.translation += translate;
+    if !input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
+        let apply = |translate: Vec3, cam: &mut Transform| {
+            let mut norm = translate.normalize();
+            norm.y = 0.0;
+            let abs = norm.length();
+            if abs != 0.0 {
+                let translate = norm * translate.length() / abs;
+                cam.translation += translate;
+            }
+        };
+        if input.pressed(KeyCode::KeyW) {
+            let translate = cam.forward().as_vec3() * scale;
+            apply(translate, &mut cam)
         }
-    };
-    if input.pressed(KeyCode::KeyW) {
-        let translate = cam.forward().as_vec3() * scale;
-        apply(translate, &mut cam)
-    }
-    if input.pressed(KeyCode::KeyA) {
-        let translate = cam.left().as_vec3() * scale;
-        apply(translate, &mut cam)
-    }
-    if input.pressed(KeyCode::KeyD) {
-        let translate = cam.right().as_vec3() * scale;
-        apply(translate, &mut cam)
-    }
-    if input.pressed(KeyCode::KeyS) {
-        let translate = cam.back().as_vec3() * scale;
-        apply(translate, &mut cam)
+        if input.pressed(KeyCode::KeyA) {
+            let translate = cam.left().as_vec3() * scale;
+            apply(translate, &mut cam)
+        }
+        if input.pressed(KeyCode::KeyD) {
+            let translate = cam.right().as_vec3() * scale;
+            apply(translate, &mut cam)
+        }
+        if input.pressed(KeyCode::KeyS) {
+            let translate = cam.back().as_vec3() * scale;
+            apply(translate, &mut cam)
+        }
     }
     if mouse_motion.delta.y != 0.0 {
         let translate = cam.forward().as_vec3() * scale * mouse_motion.delta.y * 16.0;
