@@ -1,12 +1,11 @@
 use crate::download::{Exact, get_alts, get_deck, get_deck_export, spawn_singleton};
 use crate::misc::{
-    adjust_meshes, get_card, get_mut_card, is_reversed, make_material, new_pile, new_pile_at,
-    repaint_face, take_card,
+    adjust_meshes, get_card, get_mut_card, is_reversed, make_material, move_up, new_pile,
+    new_pile_at, repaint_face, take_card,
 };
 use crate::setup::{T, W, Wall};
 use crate::sync::{Packet, SyncObjectMe};
 use crate::*;
-use bevy::ecs::relationship::RelationshipSourceCollection;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
 use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
@@ -120,7 +119,7 @@ pub fn follow_mouse(
                 card.1.rotation,
                 &SpatialQueryFilter::DEFAULT,
             )
-            .iter()
+            .into_iter()
             .filter_map(|a| {
                 if !walls.contains(a)
                     && let Ok((collider, transform)) = cards.get(a)
@@ -618,6 +617,7 @@ pub fn listen_for_deck(
     mut commands: Commands,
     mut rand: GlobalEntropy<WyRand>,
     mut count: ResMut<SyncCount>,
+    mut to_move: ResMut<ToMoveUp>,
 ) {
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
         && input.just_pressed(KeyCode::KeyV)
@@ -693,35 +693,34 @@ pub fn listen_for_deck(
             down.runtime.0.spawn(f);
             #[cfg(feature = "wasm")]
             wasm_bindgen_futures::spawn_local(f);
-        } else {
-            match game_clipboard.clone() {
-                GameClipboard::Pile(pile) => {
-                    new_pile(
-                        pile,
-                        card_base.stock.clone_weak(),
-                        &mut materials,
+        } else if let Some(ent) = match game_clipboard.clone() {
+            GameClipboard::Pile(pile) => new_pile(
+                pile,
+                card_base.stock.clone_weak(),
+                &mut materials,
+                &mut commands,
+                &mut meshes,
+                card_base.back.clone_weak(),
+                card_base.side.clone_weak(),
+                &mut rand,
+                v,
+                &mut count,
+                None,
+            ),
+            GameClipboard::Shape(shape) => Some(
+                shape
+                    .create(
+                        Transform::from_xyz(v.x, 256.0, v.y),
                         &mut commands,
+                        &mut materials,
                         &mut meshes,
-                        card_base.back.clone_weak(),
-                        card_base.side.clone_weak(),
-                        &mut rand,
-                        v,
-                        &mut count,
-                        None,
-                    );
-                }
-                GameClipboard::Shape(shape) => {
-                    shape
-                        .create(
-                            Transform::from_xyz(v.x, 256.0, v.y),
-                            &mut commands,
-                            &mut materials,
-                            &mut meshes,
-                        )
-                        .insert(SyncObjectMe::new(&mut rand, &mut count));
-                }
-                GameClipboard::None => {}
-            }
+                    )
+                    .insert(SyncObjectMe::new(&mut rand, &mut count))
+                    .id(),
+            ),
+            GameClipboard::None => None,
+        } {
+            to_move.0.push(ent)
         }
     }
 }
@@ -735,11 +734,12 @@ pub fn register_deck(
     mut count: ResMut<SyncCount>,
     client: Res<Client>,
     mut sent: ResMut<Sent>,
+    mut to_move: ResMut<ToMoveUp>,
 ) {
     let mut decks = decks.get_deck.0.lock().unwrap();
     for (deck, v, id) in decks.drain(..) {
         info!("deck found of size {} at {} {}", deck.0.len(), v.x, v.y);
-        new_pile(
+        if let Some(ent) = new_pile(
             deck,
             card_base.stock.clone_weak(),
             &mut materials,
@@ -751,7 +751,9 @@ pub fn register_deck(
             v,
             &mut count,
             id,
-        );
+        ) {
+            to_move.0.push(ent);
+        }
         if let Some(id) = id {
             sent.del(id);
             client
@@ -764,3 +766,15 @@ pub fn register_deck(
         }
     }
 }
+pub fn to_move_up(
+    mut to_do: ResMut<ToMoveUp>,
+    mut cards: Query<(&Collider, &mut Transform)>,
+    walls: Query<(), With<Wall>>,
+    spatial: SpatialQuery,
+) {
+    for ent in to_do.0.drain(..) {
+        move_up(ent, &spatial, &mut cards, &walls);
+    }
+}
+#[derive(Resource)]
+pub struct ToMoveUp(pub Vec<Entity>);

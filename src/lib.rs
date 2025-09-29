@@ -1,7 +1,7 @@
 use crate::setup::setup;
 use crate::update::{
-    cam_rotation, cam_translation, follow_mouse, gather_hand, listen_for_deck, listen_for_mouse,
-    register_deck, update_hand,
+    ToMoveUp, cam_rotation, cam_translation, follow_mouse, gather_hand, listen_for_deck,
+    listen_for_mouse, register_deck, to_move_up, update_hand,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -89,6 +89,7 @@ pub fn start() {
         ..default()
     })
     .insert_resource(clipboard)
+    .insert_resource(ToMoveUp(Vec::new()))
     .insert_resource(SyncCount::default())
     .insert_resource(Sent::default())
     .insert_resource(SyncActions::default())
@@ -103,14 +104,18 @@ pub fn start() {
     .add_systems(
         Update,
         (
-            listen_for_deck,
-            register_deck,
-            cam_translation,
-            cam_rotation,
-            #[cfg(all(feature = "steam", feature = "ip"))]
-            new_lobby,
-            (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
-        ),
+            (
+                listen_for_deck,
+                register_deck,
+                cam_translation,
+                cam_rotation,
+                #[cfg(all(feature = "steam", feature = "ip"))]
+                new_lobby,
+                (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
+            ),
+            to_move_up,
+        )
+            .chain(),
     )
     .add_systems(PreUpdate, (get_sync, apply_sync).chain());
     app.run();

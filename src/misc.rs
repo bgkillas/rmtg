@@ -1,3 +1,4 @@
+use crate::setup::Wall;
 use crate::sync::SyncObjectMe;
 use crate::*;
 use bevy_prng::WyRand;
@@ -25,7 +26,7 @@ pub fn new_pile(
     v: Vec2,
     count: &mut SyncCount,
     id: Option<SyncObject>,
-) {
+) -> Option<Entity> {
     let size = pile.0.len() as f32;
     let mut transform = Transform::from_xyz(v.x, size, v.y);
     transform.rotate_x(-PI / 2.0);
@@ -46,7 +47,54 @@ pub fn new_pile(
         } else {
             None
         },
-    );
+    )
+    .map(|a| a.id())
+}
+pub fn move_up(
+    entity: Entity,
+    spatial: &SpatialQuery,
+    cards: &mut Query<(&Collider, &mut Transform)>,
+    walls: &Query<(), With<Wall>>,
+) {
+    let (collider, transform) = cards.get(entity).unwrap();
+    let rotation = transform.rotation;
+    let mut translation = transform.translation;
+    let mut some = false;
+    let mut excluded = vec![entity];
+    while let Some(m) = spatial
+        .shape_intersections(
+            collider,
+            translation,
+            rotation,
+            &SpatialQueryFilter::DEFAULT.with_excluded_entities(excluded.clone()),
+        )
+        .into_iter()
+        .filter_map(|a| {
+            excluded.push(a);
+            if !walls.contains(a)
+                && let Ok((collider, transform)) = cards.get(a)
+            {
+                let y = collider
+                    .aabb(transform.translation, transform.rotation)
+                    .max
+                    .y;
+                Some(y)
+            } else {
+                None
+            }
+        })
+        .reduce(f32::max)
+    {
+        translation.y = m;
+        some = true;
+    }
+    if some {
+        let (collider, mut transform) = cards.get_mut(entity).unwrap();
+        let aabb = collider.aabb(transform.translation, transform.rotation);
+        let max = translation.y + (aabb.max.y - aabb.min.y) / 2.0 + 4.0;
+        let max = max.max(aabb.max.y);
+        transform.translation.y = max;
+    }
 }
 fn side(size: f32, meshes: &mut Assets<Mesh>) -> (Handle<Mesh>, Transform, Transform) {
     let mesh = meshes.add(Rectangle::new(2.0 * size, CARD_HEIGHT));
