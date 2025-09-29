@@ -315,9 +315,9 @@ impl Client {
                 .session_request_callback(f);
         }
     }
-    pub fn flush(&mut self) {
-        if let ClientType::Steam(client) = &mut self.client {
-            client.connections.values_mut().for_each(|c| {
+    pub fn flush(&self) {
+        if let ClientType::Steam(client) = &self.client {
+            client.connections.values().for_each(|c| {
                 if c.connected {
                     c.net.flush_messages().unwrap();
                 }

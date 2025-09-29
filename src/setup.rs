@@ -12,7 +12,9 @@ use bitcode::encode;
 use bytes::Bytes;
 #[cfg(feature = "steam")]
 use net::{Client, ClientTrait, Reliability};
+#[cfg(feature = "steam")]
 use std::collections::HashMap;
+#[cfg(feature = "steam")]
 use std::collections::hash_map::Entry::Vacant;
 #[cfg(feature = "steam")]
 use std::env::args;

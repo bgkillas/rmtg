@@ -20,7 +20,7 @@ pub fn get_sync(
     mut sent: ResMut<Sent>,
     query_take: Query<(Entity, &SyncObject)>,
     mut commands: Commands,
-    mut client: ResMut<Client>,
+    client: Res<Client>,
 ) {
     let mut v = Vec::with_capacity(count.0);
     for (id, transform, vel, ang, in_hand) in query {

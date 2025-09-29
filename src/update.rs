@@ -179,8 +179,10 @@ pub fn listen_for_mouse(
     card_base: Res<CardBase>,
     input: Res<ButtonInput<KeyCode>>,
     mut rand: GlobalEntropy<WyRand>,
-    zoom: Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
+    #[cfg(not(feature = "wasm"))] mut clipboard: ResMut<Clipboard>,
+    #[cfg(feature = "wasm")] clipboard: Res<Clipboard>,
     (
+        zoom,
         down,
         asset_server,
         mut game_clipboard,
@@ -192,8 +194,8 @@ pub fn listen_for_mouse(
         follow,
         mut grav,
         shape,
-        mut clipboard,
     ): (
+        Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
         ResMut<Download>,
         Res<AssetServer>,
         ResMut<GameClipboard>,
@@ -205,7 +207,6 @@ pub fn listen_for_mouse(
         Option<Single<Entity, With<FollowMouse>>>,
         Query<&mut GravityScale>,
         Query<&Shape>,
-        ResMut<Clipboard>,
     ),
 ) {
     let Some(cursor_position) = window.cursor_position() else {
@@ -251,7 +252,7 @@ pub fn listen_for_mouse(
                     let clipboard = *clipboard;
                     #[cfg(feature = "wasm")]
                     wasm_bindgen_futures::spawn_local(async move {
-                        clipboard.set_text(&text);
+                        clipboard.set_text(&text).await;
                     });
                     #[cfg(not(feature = "wasm"))]
                     clipboard.set_text(&text);
@@ -604,7 +605,8 @@ pub fn cam_rotation(
 }
 pub fn listen_for_deck(
     input: Res<ButtonInput<KeyCode>>,
-    mut clipboard: ResMut<Clipboard>,
+    #[cfg(not(feature = "wasm"))] mut clipboard: ResMut<Clipboard>,
+    #[cfg(feature = "wasm")] clipboard: Res<Clipboard>,
     down: ResMut<Download>,
     asset_server: Res<AssetServer>,
     camera: Single<(&Camera, &GlobalTransform)>,

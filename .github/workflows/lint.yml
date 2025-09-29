@@ -16,7 +16,6 @@ jobs:
       - name: Install system dependencies
         run: >
           sudo apt update
-
           sudo apt install -y libwayland-dev libudev-dev libasound2-dev
           pkg-config
       - name: fmt

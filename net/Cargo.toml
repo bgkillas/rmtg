@@ -14,7 +14,6 @@ steamworks = {git="https://github.com/bgkillas/steamworks-rs", optional = true}
 tangled = {git="https://github.com/intquant/tangled", optional = true}
 bevy_app = { version = "0.16.1", default-features = false, optional = true }
 bevy_ecs = { version = "0.16.1", default-features = false, optional = true }
-bitcode = {git="https://github.com/SoftbearStudios/bitcode.git", branch = "large_c_style_enums"}
 lz4_flex = {version="0.11.5", default-features = false}
 eyre = "0.6.12"
 tokio = "1.47.1"

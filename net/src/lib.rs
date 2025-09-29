@@ -10,6 +10,7 @@ use crate::steam::SteamClient;
 use bevy_app::{App, Plugin};
 #[cfg(feature = "bevy")]
 use bevy_ecs::resource::Resource;
+#[allow(dead_code)]
 type ClientCallback = Option<Box<dyn FnMut(&dyn ClientTrait, PeerId) + Send + Sync + 'static>>;
 pub struct Message {
     pub src: PeerId,
@@ -66,6 +67,7 @@ impl Client {
             ClientType::None => PeerId(0),
         }
     }
+    #[allow(unused_variables)]
     pub fn send_message(
         &self,
         dest: PeerId,
@@ -81,6 +83,7 @@ impl Client {
         }
         Ok(())
     }
+    #[allow(unused_variables)]
     pub fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
         match &self.client {
             ClientType::None => {}
@@ -91,6 +94,7 @@ impl Client {
         }
         Ok(())
     }
+    #[allow(unused_variables)]
     pub fn recv<F>(&mut self, f: F)
     where
         F: FnMut(&dyn ClientTrait, Message),
