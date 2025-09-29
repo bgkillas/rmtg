@@ -22,16 +22,17 @@ pub fn get_sync(
     mut commands: Commands,
     client: Res<Client>,
 ) {
-    let mut v = Vec::with_capacity(count.0);
+    let mut v = 0;
+    let mut vec = count.take();
     for (id, transform, vel, ang, in_hand) in query {
-        v.push((
+        vec.push((
             *id,
             Trans::from(transform),
             Phys::from(vel, ang),
             in_hand.is_some(),
         ))
     }
-    let packet = Packet::Pos(v);
+    let packet = Packet::Pos(vec);
     let bytes = encode(&packet);
     for dead in sync_actions.killed.drain(..) {
         let packet = Packet::Dead(dead);
@@ -46,7 +47,7 @@ pub fn get_sync(
     for (from, to) in sync_actions.take_owner.drain(..) {
         if let Some((entity, _)) = query_take.iter().find(|(_, b)| **b == from) {
             commands.entity(entity).remove::<SyncObject>().insert(to);
-            count.0 += 1;
+            v += 1;
         }
         sent.add(from);
         let packet = Packet::Take(from, to);
@@ -54,6 +55,12 @@ pub fn get_sync(
         client.broadcast(&bytes, Reliability::Reliable).unwrap();
     }
     client.broadcast(&bytes, Reliability::Reliable).unwrap();
+    let Packet::Pos(mut vec) = packet else {
+        unreachable!()
+    };
+    vec.clear();
+    count.give(vec);
+    count.add(v);
     #[cfg(feature = "steam")]
     client.flush();
 }
@@ -175,7 +182,7 @@ pub fn apply_sync(
                     if let Some((_, _, _, _, e)) =
                         queryme.iter().find(|(id, _, _, _, _)| id.0 == from.id)
                     {
-                        count.0 -= 1;
+                        count.rem(1);
                         commands
                             .entity(e)
                             .remove::<SyncObjectMe>()
@@ -498,11 +505,29 @@ pub struct SyncObject {
 pub struct SyncObjectMe(pub u64);
 impl SyncObjectMe {
     pub fn new(rand: &mut GlobalEntropy<WyRand>, count: &mut SyncCount) -> Self {
-        count.0 += 1;
+        count.add(1);
         Self(rand.next_u64())
     }
 }
 #[derive(Resource, Default)]
-pub struct SyncCount(pub usize);
+pub struct SyncCount {
+    vec: Vec<(SyncObjectMe, Trans, Phys, bool)>,
+    count: usize,
+}
+impl SyncCount {
+    pub fn add(&mut self, n: usize) {
+        self.count += n;
+        self.vec.reserve(self.count);
+    }
+    pub fn rem(&mut self, n: usize) {
+        self.count -= n;
+    }
+    pub fn take(&mut self) -> Vec<(SyncObjectMe, Trans, Phys, bool)> {
+        mem::take(&mut self.vec)
+    }
+    pub fn give(&mut self, vec: Vec<(SyncObjectMe, Trans, Phys, bool)>) {
+        self.vec = vec;
+    }
+}
 #[derive(Component)]
 pub struct InOtherHand;

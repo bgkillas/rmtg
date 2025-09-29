@@ -237,7 +237,7 @@ pub fn listen_for_mouse(
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::AltLeft])
             {
                 if ids.contains(entity) {
-                    count.0 -= 1;
+                    count.rem(1);
                 }
                 sync_actions.killed.push(*ids.get(entity).unwrap());
                 commands.entity(entity).despawn();
@@ -456,7 +456,7 @@ pub fn listen_for_mouse(
                         );
                     } else {
                         if ids.contains(entity) {
-                            count.0 -= 1;
+                            count.rem(1);
                         }
                         sync_actions.killed.push(*ids.get(entity).unwrap());
                         commands.entity(entity).despawn();

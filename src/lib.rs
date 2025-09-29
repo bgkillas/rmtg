@@ -141,6 +141,7 @@ fn test_parse() {
                         .build()
                         .unwrap(),
                     &asset_server,
+                    1
                 )
                 .await
             }))
