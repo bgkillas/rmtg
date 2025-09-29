@@ -14,10 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install system dependencies
-        run: >
+        run: |
           sudo apt update
-          sudo apt install -y libwayland-dev libudev-dev libasound2-dev
-          pkg-config
+          sudo apt install -y libwayland-dev libudev-dev libasound2-dev pkg-config
       - name: fmt
         run: cargo fmt --check
       - name: lint

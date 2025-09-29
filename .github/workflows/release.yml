@@ -9,12 +9,12 @@ jobs:
       image: 'registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest'
     steps:
       - name: Install Rust
-        run: >
+        run: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - uses: actions/checkout@v5
       - name: Install system dependencies
-        run: >
+        run: |
           sudo apt update
           sudo apt install -y libwayland-dev libudev-dev libasound2-dev
           pkg-config
