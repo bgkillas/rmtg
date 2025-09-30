@@ -36,12 +36,14 @@ pub(crate) enum ClientType {
     #[cfg(feature = "tangled")]
     Ip(IpClient),
 }
-pub enum ClientTypeRef<#[cfg(any(feature = "steam", feature = "tangled"))] 'a> {
+pub enum ClientTypeRef<'a> {
     None,
     #[cfg(feature = "steam")]
     Steam(&'a SteamClient),
     #[cfg(feature = "tangled")]
     Ip(&'a IpClient),
+    #[cfg(not(any(feature = "steam", feature = "tangled")))]
+    Phantom(&'a u8),
 }
 #[cfg_attr(feature = "bevy", derive(Resource))]
 pub struct Client {
