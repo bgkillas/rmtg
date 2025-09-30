@@ -1,8 +1,7 @@
 use crate::{
     Client, ClientCallback, ClientTrait, ClientType, ClientTypeRef, Message, PeerId, Reliability,
-    decode,
 };
-use bitcode::{Decode, Encode, encode};
+use bitcode::{DecodeOwned, Encode, decode, encode};
 use eyre::eyre;
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::net::{IpAddr, SocketAddr};
@@ -44,7 +43,7 @@ impl IpClient {
     pub(crate) fn recv<T, F>(&mut self, mut f: F)
     where
         F: FnMut(ClientTypeRef, Message<T>),
-        T: Decode<'static>,
+        T: DecodeOwned,
     {
         if self.connected {
             for n in self.peer.recv() {
@@ -55,7 +54,7 @@ impl IpClient {
                             ClientTypeRef::Ip(self),
                             Message {
                                 src: m.src.into(),
-                                data: decode::<T>(data),
+                                data: decode(&data).unwrap(),
                             },
                         )
                     }

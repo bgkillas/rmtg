@@ -10,8 +10,7 @@ use crate::steam::SteamClient;
 use bevy_app::{App, Plugin};
 #[cfg(feature = "bevy")]
 use bevy_ecs::resource::Resource;
-use bitcode::{Decode, Encode};
-use std::mem;
+use bitcode::{DecodeOwned, Encode};
 #[allow(dead_code)]
 type ClientCallback = Option<Box<dyn FnMut(ClientTypeRef, PeerId) + Send + Sync + 'static>>;
 pub struct Message<T> {
@@ -50,9 +49,6 @@ pub struct Client {
     #[cfg(feature = "steam")]
     app_id: u32,
 }
-pub fn decode<T: Decode<'static>>(data: Vec<u8>) -> T {
-    bitcode::decode(unsafe { mem::transmute::<&[u8], &'static [u8]>(&data) }).unwrap()
-}
 impl Client {
     pub fn new(#[cfg(feature = "steam")] app_id: u32) -> Self {
         Self {
@@ -65,7 +61,7 @@ impl Client {
     pub fn recv<T, F>(&mut self, f: F)
     where
         F: FnMut(ClientTypeRef, Message<T>),
-        T: Decode<'static>,
+        T: DecodeOwned,
     {
         match &mut self.client {
             ClientType::None => {}
@@ -298,13 +294,13 @@ async fn test_ip() {
     peer1.update();
     peer2.update();
     peer2
-        .broadcast(&[0, 1, 5, 3], Reliability::Reliable)
+        .broadcast(&[0u8, 1, 5, 3], Reliability::Reliable)
         .unwrap();
     tokio::time::sleep(std::time::Duration::from_millis(20)).await;
     let mut has = false;
-    peer1.recv(|_, m| has = *m.data == [0, 1, 5, 3]);
+    peer1.recv::<[u8; 4], _>(|_, m| has = m.data == [0, 1, 5, 3]);
     assert!(has);
     let mut has = false;
-    host.recv(|_, m| has = *m.data == [0, 1, 5, 3]);
+    host.recv::<[u8; 4], _>(|_, m| has = m.data == [0, 1, 5, 3]);
     assert!(has)
 }

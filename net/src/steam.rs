@@ -1,8 +1,7 @@
 use crate::{
     Client, ClientCallback, ClientTrait, ClientType, ClientTypeRef, Message, PeerId, Reliability,
-    decode,
 };
-use bitcode::{Decode, Encode, encode};
+use bitcode::{DecodeOwned, Encode, decode, encode};
 use log::info;
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::collections::HashMap;
@@ -106,7 +105,7 @@ impl SteamClient {
     pub(crate) fn recv<T, F>(&mut self, mut f: F)
     where
         F: FnMut(ClientTypeRef, Message<T>),
-        T: Decode<'static>,
+        T: DecodeOwned,
     {
         self.poll_group.receive_messages_to_buffer(&mut self.buffer);
         while !self.buffer.is_empty() {
@@ -116,7 +115,7 @@ impl SteamClient {
                     ClientTypeRef::Steam(self),
                     Message {
                         src: m.identity_peer().steam_id().unwrap().into(),
-                        data: decode::<T>(data),
+                        data: decode(&data).unwrap(),
                     },
                 )
             }
