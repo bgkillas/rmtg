@@ -17,12 +17,12 @@ pub struct Message<T> {
     pub src: PeerId,
     pub data: T,
 }
-#[derive(Copy, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Copy, Debug, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
 pub enum Reliability {
     Reliable,
     Unreliable,
 }
-#[derive(Copy, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Copy, Debug, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
 pub struct PeerId(pub u64);
 impl PeerId {
     pub fn raw(&self) -> u64 {

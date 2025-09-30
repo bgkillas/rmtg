@@ -474,7 +474,7 @@ impl Shape {
     ) -> EntityCommands<'a> {
         match self {
             Shape::Cube => spawn_cube(256.0, transform, commands, meshes, materials),
-            Shape::Icosahedron => spawn_ico(64.0, transform, commands, meshes, materials),
+            Shape::Icosahedron => spawn_ico(96.0, transform, commands, meshes, materials),
         }
     }
 }
