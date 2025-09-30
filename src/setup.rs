@@ -7,8 +7,6 @@ use bevy::asset::RenderAssetUsages;
 use bevy::render::mesh::{Indices, PrimitiveTopology};
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
-#[cfg(feature = "steam")]
-use bitcode::encode;
 use bytes::Bytes;
 #[cfg(feature = "steam")]
 use net::{Client, ClientTrait, Reliability};
@@ -55,7 +53,7 @@ pub fn setup(
                             }
                         }
                         client
-                            .send_message(peer, &encode(&Packet::SetUser(k)), Reliability::Reliable)
+                            .send_message(peer, &Packet::SetUser(k), Reliability::Reliable)
                             .unwrap();
                     }
                 })),
