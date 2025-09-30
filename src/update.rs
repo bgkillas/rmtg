@@ -272,7 +272,7 @@ pub fn listen_for_mouse(
                     hand.removed.push(inhand.0);
                     transform.translation.y += 128.0;
                 } else {
-                    transform.translation.y += 4.0;
+                    transform.translation.y += 8.0;
                 }
                 if input.pressed(KeyCode::ControlLeft) && pile.0.len() > 1 {
                     let len = pile.0.len() as f32;
@@ -290,7 +290,7 @@ pub fn listen_for_mouse(
                         );
                     }
                     let mut transform = *transform;
-                    transform.translation.y += len + 4.0;
+                    transform.translation.y += len + 8.0;
                     if let Some(e) = follow {
                         commands.entity(*e).remove::<FollowMouse>();
                     }

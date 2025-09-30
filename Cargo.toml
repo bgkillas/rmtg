@@ -85,6 +85,8 @@ avian3d={version="0.3.1", features = ["enhanced-determinism"]}
 bevy_rich_text3d = "0.4.2"
 net = {path = "net", default-features = false, features = ["bevy"]}
 bitcode = {git="https://github.com/SoftbearStudios/bitcode.git", branch = "large_c_style_enums"}
+#bevy_console = "0.14.1"
+#rune = "0.14.1"
 
 [lints.clippy]
 too_many_arguments = "allow"

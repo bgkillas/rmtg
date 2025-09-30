@@ -204,10 +204,12 @@ pub async fn parse(
     let bytes = bytes.await?;
     let alt_name = value["meld_result"]["name"]
         .as_str()
-        .or(value["card_faces"]
-            .members()
-            .nth(1)
-            .and_then(|a| a["name"].as_str()))
+        .or_else(|| {
+            value["card_faces"]
+                .members()
+                .nth(1)
+                .and_then(|a| a["name"].as_str())
+        })
         .map(|a| a.to_string());
     let name = value["card_faces"]
         .members()
