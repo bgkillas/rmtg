@@ -226,7 +226,7 @@ impl ClientTrait for ClientTypeRef<'_> {
     fn host_id(&self) -> PeerId {
         match &self {
             #[cfg(not(any(feature = "steam", feature = "tangled")))]
-            Self::None => PeerId(0),
+            Self::None(_) => PeerId(0),
             #[cfg(feature = "steam")]
             Self::Steam(client) => client.host_id(),
             #[cfg(feature = "tangled")]
