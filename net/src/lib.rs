@@ -37,13 +37,12 @@ pub(crate) enum ClientType {
     Ip(IpClient),
 }
 pub enum ClientTypeRef<'a> {
-    None,
     #[cfg(feature = "steam")]
     Steam(&'a SteamClient),
     #[cfg(feature = "tangled")]
     Ip(&'a IpClient),
     #[cfg(not(any(feature = "steam", feature = "tangled")))]
-    Phantom(&'a u8),
+    None(&'a u8),
 }
 #[cfg_attr(feature = "bevy", derive(Resource))]
 pub struct Client {
@@ -193,7 +192,8 @@ impl ClientTrait for ClientTypeRef<'_> {
         reliability: Reliability,
     ) -> eyre::Result<()> {
         match &self {
-            Self::None => {}
+            #[cfg(not(any(feature = "steam", feature = "tangled")))]
+            Self::None(_) => {}
             #[cfg(feature = "steam")]
             Self::Steam(client) => client.send_message(dest, data, reliability)?,
             #[cfg(feature = "tangled")]
@@ -204,7 +204,8 @@ impl ClientTrait for ClientTypeRef<'_> {
     #[allow(unused_variables)]
     fn broadcast<T: Encode>(&self, data: &T, reliability: Reliability) -> eyre::Result<()> {
         match &self {
-            Self::None => {}
+            #[cfg(not(any(feature = "steam", feature = "tangled")))]
+            Self::None(_) => {}
             #[cfg(feature = "steam")]
             Self::Steam(client) => client.broadcast(data, reliability)?,
             #[cfg(feature = "tangled")]
@@ -218,11 +219,13 @@ impl ClientTrait for ClientTypeRef<'_> {
             Self::Steam(client) => client.my_id,
             #[cfg(feature = "tangled")]
             Self::Ip(client) => client.my_id(),
-            Self::None => PeerId(0),
+            #[cfg(not(any(feature = "steam", feature = "tangled")))]
+            Self::None(_) => PeerId(0),
         }
     }
     fn host_id(&self) -> PeerId {
         match &self {
+            #[cfg(not(any(feature = "steam", feature = "tangled")))]
             Self::None => PeerId(0),
             #[cfg(feature = "steam")]
             Self::Steam(client) => client.host_id(),
@@ -232,7 +235,8 @@ impl ClientTrait for ClientTypeRef<'_> {
     }
     fn is_host(&self) -> bool {
         match &self {
-            Self::None => true,
+            #[cfg(not(any(feature = "steam", feature = "tangled")))]
+            Self::None(_) => true,
             #[cfg(feature = "steam")]
             Self::Steam(client) => client.is_host(),
             #[cfg(feature = "tangled")]
@@ -241,7 +245,8 @@ impl ClientTrait for ClientTypeRef<'_> {
     }
     fn peer_len(&self) -> usize {
         match &self {
-            Self::None => 0,
+            #[cfg(not(any(feature = "steam", feature = "tangled")))]
+            Self::None(_) => 0,
             #[cfg(feature = "steam")]
             Self::Steam(client) => client.peer_len(),
             #[cfg(feature = "tangled")]
