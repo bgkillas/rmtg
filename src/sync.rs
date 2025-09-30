@@ -2,8 +2,8 @@ use crate::download::add_images;
 use crate::misc::{get_mut_card, new_pile_at, repaint_face};
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH, spawn_cube, spawn_ico};
 use crate::*;
-use bitcode::{Decode, Encode, decode, encode};
-use net::Reliability;
+use bitcode::{Decode, Encode};
+use net::{ClientTrait, Reliability};
 use std::collections::{HashMap, HashSet};
 use std::f32::consts::PI;
 use std::mem;
@@ -32,17 +32,15 @@ pub fn get_sync(
             in_hand.is_some(),
         ))
     }
-    let packet = Packet::Pos(vec);
-    let bytes = encode(&packet);
     for dead in sync_actions.killed.drain(..) {
-        let packet = Packet::Dead(dead);
-        let bytes = encode(&packet);
-        client.broadcast(&bytes, Reliability::Reliable).unwrap();
+        client
+            .broadcast(&Packet::Dead(dead), Reliability::Reliable)
+            .unwrap();
     }
     for flip in sync_actions.flip.drain(..) {
-        let packet = Packet::Flip(flip);
-        let bytes = encode(&packet);
-        client.broadcast(&bytes, Reliability::Reliable).unwrap();
+        client
+            .broadcast(&Packet::Flip(flip), Reliability::Reliable)
+            .unwrap();
     }
     for (from, to) in sync_actions.take_owner.drain(..) {
         if let Some((entity, _)) = query_take.iter().find(|(_, b)| **b == from) {
@@ -50,11 +48,12 @@ pub fn get_sync(
             v += 1;
         }
         sent.add(from);
-        let packet = Packet::Take(from, to);
-        let bytes = encode(&packet);
-        client.broadcast(&bytes, Reliability::Reliable).unwrap();
+        client
+            .broadcast(&Packet::Take(from, to), Reliability::Reliable)
+            .unwrap();
     }
-    client.broadcast(&bytes, Reliability::Reliable).unwrap();
+    let packet = Packet::Pos(vec);
+    client.broadcast(&packet, Reliability::Reliable).unwrap();
     let Packet::Pos(mut vec) = packet else {
         unreachable!()
     };
@@ -104,8 +103,7 @@ pub fn apply_sync(
     client.recv(|client, packet| {
         let sender = packet.src;
         let data = packet.data;
-        let event = decode(&data).unwrap();
-        match event {
+        match data {
             Packet::Pos(data) => {
                 let user = sender.raw();
                 for (lid, trans, phys, in_hand) in data {
@@ -163,9 +161,8 @@ pub fn apply_sync(
                             }
                         }
                     } else if sent.add(id) {
-                        let bytes = encode(&Packet::Request(lid));
                         client
-                            .send_message(sender, &bytes, Reliability::Reliable)
+                            .send_message(sender, &Packet::Request(lid), Reliability::Reliable)
                             .unwrap();
                     }
                 }
@@ -177,8 +174,12 @@ pub fn apply_sync(
                 };
                 ignore.insert(new);
                 if from.user == client.my_id().raw() {
-                    let bytes = encode(&Packet::Received(SyncObjectMe(from.id)));
-                    client.broadcast(&bytes, Reliability::Reliable).unwrap();
+                    client
+                        .broadcast(
+                            &Packet::Received(SyncObjectMe(from.id)),
+                            Reliability::Reliable,
+                        )
+                        .unwrap();
                     if let Some((_, _, _, _, e)) =
                         queryme.iter().find(|(id, _, _, _, _)| id.0 == from.id)
                     {
@@ -205,15 +206,20 @@ pub fn apply_sync(
                         if a.0 == lid.0 { Some((b, c, s)) } else { None }
                     }) {
                         if let Some(c) = c {
-                            let bytes =
-                                encode(&Packet::New(lid, c.clone_no_image(), Trans::from(b)));
                             client
-                                .send_message(sender, &bytes, Reliability::Reliable)
+                                .send_message(
+                                    sender,
+                                    &Packet::New(lid, c.clone_no_image(), Trans::from(b)),
+                                    Reliability::Reliable,
+                                )
                                 .unwrap();
                         } else if let Some(s) = s {
-                            let bytes = encode(&Packet::NewShape(lid, *s, Trans::from(b)));
                             client
-                                .send_message(sender, &bytes, Reliability::Reliable)
+                                .send_message(
+                                    sender,
+                                    &Packet::NewShape(lid, *s, Trans::from(b)),
+                                    Reliability::Reliable,
+                                )
                                 .unwrap();
                         }
                     } else {
@@ -241,9 +247,8 @@ pub fn apply_sync(
                 down.runtime.0.spawn(f);
             }
             Packet::NewShape(lid, shape, trans) => {
-                let bytes = encode(&Packet::Received(lid));
                 client
-                    .send_message(sender, &bytes, Reliability::Reliable)
+                    .send_message(sender, &Packet::Received(lid), Reliability::Reliable)
                     .unwrap();
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
@@ -368,7 +373,7 @@ pub fn new_lobby(
                         client
                             .send_message(
                                 peer,
-                                &encode(&Packet::SetUser(peer.0 as usize)),
+                                &Packet::SetUser(peer.0 as usize),
                                 Reliability::Reliable,
                             )
                             .unwrap();

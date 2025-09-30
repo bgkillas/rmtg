@@ -10,8 +10,7 @@ use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
 use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalEntropy;
-use bitcode::encode;
-use net::{PeerId, Reliability};
+use net::{ClientTrait, PeerId, Reliability};
 use rand::Rng;
 use rand::seq::SliceRandom;
 use std::f32::consts::PI;
@@ -802,7 +801,7 @@ pub fn register_deck(
             client
                 .send_message(
                     PeerId(id.user),
-                    &encode(&Packet::Received(SyncObjectMe(id.id))),
+                    &Packet::Received(SyncObjectMe(id.id)),
                     Reliability::Reliable,
                 )
                 .unwrap();

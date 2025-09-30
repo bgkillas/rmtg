@@ -41,7 +41,7 @@ pub fn setup(
         let who2 = who.clone();
         client
             .init_steam(
-                Some(Box::new(move |client: &dyn ClientTrait, peer| {
+                Some(Box::new(move |client, peer| {
                     if client.is_host() {
                         let mut k = 1;
                         {
@@ -59,7 +59,7 @@ pub fn setup(
                             .unwrap();
                     }
                 })),
-                Some(Box::new(move |client: &dyn ClientTrait, peer| {
+                Some(Box::new(move |client, peer| {
                     if client.is_host() {
                         let mut who = who2.lock().unwrap();
                         who.retain(|_, p| *p != peer)

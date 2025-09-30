@@ -200,7 +200,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "648bd963d2e5d465377acecfb4b827f9f553b6bc97a8f61715779e9ed9e52b74"
 dependencies = [
  "arrayvec",
- "bitcode_derive",
+ "bitcode_derive 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bytemuck",
+ "glam",
+ "serde",
+]
+
+[[package]]
+name = "bitcode"
+version = "0.6.7"
+source = "git+https://github.com/SoftbearStudios/bitcode.git?branch=large_c_style_enums#a4603205a08239965198e10b86ac5e55a67338b9"
+dependencies = [
+ "arrayvec",
+ "bitcode_derive 0.6.7 (git+https://github.com/SoftbearStudios/bitcode.git?branch=large_c_style_enums)",
  "bytemuck",
  "glam",
  "serde",
@@ -211,6 +223,16 @@ name = "bitcode_derive"
 version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ffebfc2d28a12b262c303cb3860ee77b91bd83b1f20f0bd2a9693008e2f55a9e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "bitcode_derive"
+version = "0.6.7"
+source = "git+https://github.com/SoftbearStudios/bitcode.git?branch=large_c_style_enums#a4603205a08239965198e10b86ac5e55a67338b9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -696,6 +718,7 @@ version = "0.1.0"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
+ "bitcode 0.6.7 (git+https://github.com/SoftbearStudios/bitcode.git?branch=large_c_style_enums)",
  "eyre",
  "log",
  "lz4_flex",
@@ -1213,7 +1236,7 @@ name = "tangled"
 version = "0.4.0"
 source = "git+https://github.com/intquant/tangled#d31b612ac8194cf2cb963dffbdf9a974ac3241ed"
 dependencies = [
- "bitcode",
+ "bitcode 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "crossbeam",
  "dashmap",
  "quinn",

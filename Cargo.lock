@@ -1606,7 +1606,7 @@ dependencies = [
  "arrayvec",
  "bitcode_derive 0.6.7 (git+https://github.com/SoftbearStudios/bitcode.git?branch=large_c_style_enums)",
  "bytemuck",
- "glam 0.30.8",
+ "glam 0.29.3",
  "serde",
 ]
 
@@ -3783,6 +3783,7 @@ version = "0.1.0"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
+ "bitcode 0.6.7 (git+https://github.com/SoftbearStudios/bitcode.git?branch=large_c_style_enums)",
  "eyre",
  "log",
  "lz4_flex",

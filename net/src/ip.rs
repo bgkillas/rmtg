@@ -1,4 +1,8 @@
-use crate::{Client, ClientCallback, ClientTrait, ClientType, Message, PeerId, Reliability};
+use crate::{
+    Client, ClientCallback, ClientTrait, ClientType, ClientTypeRef, Message, PeerId, Reliability,
+    decode,
+};
+use bitcode::{Decode, Encode, encode};
 use eyre::eyre;
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::net::{IpAddr, SocketAddr};
@@ -6,7 +10,7 @@ use std::sync::mpsc::channel;
 use tangled::{NetworkEvent, Peer};
 use tokio::runtime::Runtime;
 pub const DEFAULT_PORT: u16 = 5143;
-pub(crate) struct IpClient {
+pub struct IpClient {
     pub(crate) peer: Peer,
     pub(crate) peer_connected: ClientCallback,
     pub(crate) peer_disconnected: ClientCallback,
@@ -37,29 +41,33 @@ impl IpClient {
             connected: false,
         })
     }
-    pub(crate) fn recv<F>(&mut self, mut f: F)
+    pub(crate) fn recv<T, F>(&mut self, mut f: F)
     where
-        F: FnMut(&dyn ClientTrait, Message),
+        F: FnMut(ClientTypeRef, Message<T>),
+        T: Decode<'static>,
     {
         if self.connected {
             for n in self.peer.recv() {
                 match n {
-                    NetworkEvent::Message(m) => f(
-                        self,
-                        Message {
-                            src: m.src.into(),
-                            data: decompress_size_prepended(&m.data).unwrap(),
-                        },
-                    ),
+                    NetworkEvent::Message(m) => {
+                        let data = decompress_size_prepended(&m.data).unwrap();
+                        f(
+                            ClientTypeRef::Ip(self),
+                            Message {
+                                src: m.src.into(),
+                                data: decode::<T>(data),
+                            },
+                        )
+                    }
                     NetworkEvent::PeerConnected(peer) => {
                         if let Some(mut c) = self.peer_connected.take() {
-                            c(self, peer.into());
+                            c(ClientTypeRef::Ip(self), peer.into());
                             self.peer_connected = Some(c);
                         }
                     }
                     NetworkEvent::PeerDisconnected(peer) => {
                         if let Some(mut d) = self.peer_disconnected.take() {
-                            d(self, peer.into());
+                            d(ClientTypeRef::Ip(self), peer.into());
                             self.peer_disconnected = Some(d);
                         }
                     }
@@ -74,21 +82,23 @@ impl IpClient {
     }
 }
 impl ClientTrait for IpClient {
-    fn send_message(
+    fn send_message<T: Encode>(
         &self,
         dest: PeerId,
-        data: &[u8],
+        data: &T,
         reliability: Reliability,
     ) -> eyre::Result<()> {
         if self.connected {
-            let data = compress_prepend_size(data);
+            let data = encode(data);
+            let data = compress_prepend_size(&data);
             self.peer.send(dest.into(), &data, reliability.into())?;
         }
         Ok(())
     }
-    fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
+    fn broadcast<T: Encode>(&self, data: &T, reliability: Reliability) -> eyre::Result<()> {
         if self.connected {
-            let data = compress_prepend_size(data);
+            let data = encode(data);
+            let data = compress_prepend_size(&data);
             self.peer.broadcast(&data, reliability.into())?;
         }
         Ok(())

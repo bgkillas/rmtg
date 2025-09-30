@@ -1,4 +1,8 @@
-use crate::{Client, ClientCallback, ClientTrait, ClientType, Message, PeerId, Reliability};
+use crate::{
+    Client, ClientCallback, ClientTrait, ClientType, ClientTypeRef, Message, PeerId, Reliability,
+    decode,
+};
+use bitcode::{Decode, Encode, encode};
 use log::info;
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::collections::HashMap;
@@ -16,7 +20,7 @@ pub(crate) struct Connection {
     pub(crate) net: NetConnection,
     pub(crate) connected: bool,
 }
-pub(crate) struct SteamClient {
+pub struct SteamClient {
     pub(crate) steam_client: steamworks::Client,
     pub(crate) my_id: PeerId,
     pub(crate) host_id: PeerId,
@@ -99,18 +103,20 @@ impl SteamClient {
             }
         })
     }
-    pub(crate) fn recv<F>(&mut self, mut f: F)
+    pub(crate) fn recv<T, F>(&mut self, mut f: F)
     where
-        F: FnMut(&dyn ClientTrait, Message),
+        F: FnMut(ClientTypeRef, Message<T>),
+        T: Decode<'static>,
     {
         self.poll_group.receive_messages_to_buffer(&mut self.buffer);
         while !self.buffer.is_empty() {
             for m in &self.buffer {
+                let data = decompress_size_prepended(m.data()).unwrap();
                 f(
-                    self,
+                    ClientTypeRef::Steam(self),
                     Message {
                         src: m.identity_peer().steam_id().unwrap().into(),
-                        data: decompress_size_prepended(m.data()).unwrap(),
+                        data: decode::<T>(data),
                     },
                 )
             }
@@ -171,7 +177,7 @@ impl SteamClient {
                             info!("connected to {peer:?}");
                             con.connected = true;
                             if let Some(mut c) = self.peer_connected.take() {
-                                c(self, peer.into());
+                                c(ClientTypeRef::Steam(self), peer.into());
                                 self.peer_connected = Some(c);
                             }
                         }
@@ -185,7 +191,7 @@ impl SteamClient {
                         self.connections.remove(&peer.into());
                         info!("disconnected from {peer:?}");
                         if let Some(mut d) = self.peer_disconnected.take() {
-                            d(self, peer.into());
+                            d(ClientTypeRef::Steam(self), peer.into());
                             self.peer_disconnected = Some(d);
                         }
                     }
@@ -214,7 +220,7 @@ impl SteamClient {
                         };
                         self.connections.insert(id.into(), connection);
                         if let Some(mut c) = self.peer_connected.take() {
-                            c(self, id.into());
+                            c(ClientTypeRef::Steam(self), id.into());
                             self.peer_connected = Some(c);
                         }
                     }
@@ -222,7 +228,7 @@ impl SteamClient {
                         let id = event.remote().steam_id().unwrap();
                         self.connections.remove(&id.into());
                         if let Some(mut d) = self.peer_disconnected.take() {
-                            d(self, id.into());
+                            d(ClientTypeRef::Steam(self), id.into());
                             self.peer_disconnected = Some(d);
                         }
                         info!("disconnected from {id:?}");
@@ -233,22 +239,24 @@ impl SteamClient {
     }
 }
 impl ClientTrait for SteamClient {
-    fn send_message(
+    fn send_message<T: Encode>(
         &self,
         dest: PeerId,
-        data: &[u8],
+        data: &T,
         reliability: Reliability,
     ) -> eyre::Result<()> {
         if let Some(con) = self.connections.get(&dest)
             && con.connected
         {
-            let data = compress_prepend_size(data);
+            let data = encode(data);
+            let data = compress_prepend_size(&data);
             con.net.send_message(&data, reliability.into())?;
         }
         Ok(())
     }
-    fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
-        let data = compress_prepend_size(data);
+    fn broadcast<T: Encode>(&self, data: &T, reliability: Reliability) -> eyre::Result<()> {
+        let data = encode(data);
+        let data = compress_prepend_size(&data);
         for con in self.connections.values() {
             if con.connected {
                 con.net.send_message(&data, reliability.into())?;

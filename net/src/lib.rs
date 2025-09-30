@@ -10,11 +10,13 @@ use crate::steam::SteamClient;
 use bevy_app::{App, Plugin};
 #[cfg(feature = "bevy")]
 use bevy_ecs::resource::Resource;
+use bitcode::{Decode, Encode};
+use std::mem;
 #[allow(dead_code)]
-type ClientCallback = Option<Box<dyn FnMut(&dyn ClientTrait, PeerId) + Send + Sync + 'static>>;
-pub struct Message {
+type ClientCallback = Option<Box<dyn FnMut(ClientTypeRef, PeerId) + Send + Sync + 'static>>;
+pub struct Message<T> {
     pub src: PeerId,
-    pub data: Vec<u8>,
+    pub data: T,
 }
 #[derive(Copy, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
 pub enum Reliability {
@@ -35,11 +37,21 @@ pub(crate) enum ClientType {
     #[cfg(feature = "tangled")]
     Ip(IpClient),
 }
+pub enum ClientTypeRef<'a> {
+    None,
+    #[cfg(feature = "steam")]
+    Steam(&'a SteamClient),
+    #[cfg(feature = "tangled")]
+    Ip(&'a IpClient),
+}
 #[cfg_attr(feature = "bevy", derive(Resource))]
 pub struct Client {
     client: ClientType,
     #[cfg(feature = "steam")]
     app_id: u32,
+}
+pub fn decode<T: Decode<'static>>(data: Vec<u8>) -> T {
+    bitcode::decode(unsafe { mem::transmute::<&[u8], &'static [u8]>(&data) }).unwrap()
 }
 impl Client {
     pub fn new(#[cfg(feature = "steam")] app_id: u32) -> Self {
@@ -49,55 +61,11 @@ impl Client {
             client: ClientType::None,
         }
     }
-    pub fn my_num(&self) -> u16 {
-        match &self.client {
-            #[cfg(feature = "steam")]
-            ClientType::Steam(client) => client.my_num,
-            #[cfg(feature = "tangled")]
-            ClientType::Ip(client) => client.my_id().raw() as u16,
-            ClientType::None => 0,
-        }
-    }
-    pub fn my_id(&self) -> PeerId {
-        match &self.client {
-            #[cfg(feature = "steam")]
-            ClientType::Steam(client) => client.my_id,
-            #[cfg(feature = "tangled")]
-            ClientType::Ip(client) => client.my_id(),
-            ClientType::None => PeerId(0),
-        }
-    }
     #[allow(unused_variables)]
-    pub fn send_message(
-        &self,
-        dest: PeerId,
-        data: &[u8],
-        reliability: Reliability,
-    ) -> eyre::Result<()> {
-        match &self.client {
-            ClientType::None => {}
-            #[cfg(feature = "steam")]
-            ClientType::Steam(client) => client.send_message(dest, data, reliability)?,
-            #[cfg(feature = "tangled")]
-            ClientType::Ip(client) => client.send_message(dest, data, reliability)?,
-        }
-        Ok(())
-    }
-    #[allow(unused_variables)]
-    pub fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
-        match &self.client {
-            ClientType::None => {}
-            #[cfg(feature = "steam")]
-            ClientType::Steam(client) => client.broadcast(data, reliability)?,
-            #[cfg(feature = "tangled")]
-            ClientType::Ip(client) => client.broadcast(data, reliability)?,
-        }
-        Ok(())
-    }
-    #[allow(unused_variables)]
-    pub fn recv<F>(&mut self, f: F)
+    pub fn recv<T, F>(&mut self, f: F)
     where
-        F: FnMut(&dyn ClientTrait, Message),
+        F: FnMut(ClientTypeRef, Message<T>),
+        T: Decode<'static>,
     {
         match &mut self.client {
             ClientType::None => {}
@@ -116,11 +84,181 @@ impl Client {
             ClientType::Ip(client) => client.update(),
         }
     }
+    pub fn my_num(&self) -> u16 {
+        match &self.client {
+            #[cfg(feature = "steam")]
+            ClientType::Steam(client) => client.my_num,
+            #[cfg(feature = "tangled")]
+            ClientType::Ip(client) => client.my_id().raw() as u16,
+            ClientType::None => 0,
+        }
+    }
+}
+impl ClientTrait for Client {
+    #[allow(unused_variables)]
+    fn send_message<T: Encode>(
+        &self,
+        dest: PeerId,
+        data: &T,
+        reliability: Reliability,
+    ) -> eyre::Result<()> {
+        self.client.send_message(dest, data, reliability)
+    }
+    #[allow(unused_variables)]
+    fn broadcast<T: Encode>(&self, data: &T, reliability: Reliability) -> eyre::Result<()> {
+        self.client.broadcast(data, reliability)
+    }
+    fn my_id(&self) -> PeerId {
+        self.client.my_id()
+    }
+    fn host_id(&self) -> PeerId {
+        self.client.host_id()
+    }
+    fn is_host(&self) -> bool {
+        self.client.is_host()
+    }
+    fn peer_len(&self) -> usize {
+        self.client.peer_len()
+    }
+}
+impl ClientTrait for ClientType {
+    #[allow(unused_variables)]
+    fn send_message<T: Encode>(
+        &self,
+        dest: PeerId,
+        data: &T,
+        reliability: Reliability,
+    ) -> eyre::Result<()> {
+        match &self {
+            Self::None => {}
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.send_message(dest, data, reliability)?,
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.send_message(dest, data, reliability)?,
+        }
+        Ok(())
+    }
+    #[allow(unused_variables)]
+    fn broadcast<T: Encode>(&self, data: &T, reliability: Reliability) -> eyre::Result<()> {
+        match &self {
+            Self::None => {}
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.broadcast(data, reliability)?,
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.broadcast(data, reliability)?,
+        }
+        Ok(())
+    }
+    fn my_id(&self) -> PeerId {
+        match &self {
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.my_id,
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.my_id(),
+            Self::None => PeerId(0),
+        }
+    }
+    fn host_id(&self) -> PeerId {
+        match &self {
+            Self::None => PeerId(0),
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.host_id(),
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.host_id(),
+        }
+    }
+    fn is_host(&self) -> bool {
+        match &self {
+            Self::None => true,
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.is_host(),
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.is_host(),
+        }
+    }
+    fn peer_len(&self) -> usize {
+        match &self {
+            Self::None => 0,
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.peer_len(),
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.peer_len(),
+        }
+    }
+}
+impl ClientTrait for ClientTypeRef<'_> {
+    #[allow(unused_variables)]
+    fn send_message<T: Encode>(
+        &self,
+        dest: PeerId,
+        data: &T,
+        reliability: Reliability,
+    ) -> eyre::Result<()> {
+        match &self {
+            Self::None => {}
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.send_message(dest, data, reliability)?,
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.send_message(dest, data, reliability)?,
+        }
+        Ok(())
+    }
+    #[allow(unused_variables)]
+    fn broadcast<T: Encode>(&self, data: &T, reliability: Reliability) -> eyre::Result<()> {
+        match &self {
+            Self::None => {}
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.broadcast(data, reliability)?,
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.broadcast(data, reliability)?,
+        }
+        Ok(())
+    }
+    fn my_id(&self) -> PeerId {
+        match &self {
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.my_id,
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.my_id(),
+            Self::None => PeerId(0),
+        }
+    }
+    fn host_id(&self) -> PeerId {
+        match &self {
+            Self::None => PeerId(0),
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.host_id(),
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.host_id(),
+        }
+    }
+    fn is_host(&self) -> bool {
+        match &self {
+            Self::None => true,
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.is_host(),
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.is_host(),
+        }
+    }
+    fn peer_len(&self) -> usize {
+        match &self {
+            Self::None => 0,
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.peer_len(),
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.peer_len(),
+        }
+    }
 }
 pub trait ClientTrait {
-    fn send_message(&self, dest: PeerId, data: &[u8], reliability: Reliability)
-    -> eyre::Result<()>;
-    fn broadcast(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()>;
+    fn send_message<T: Encode>(
+        &self,
+        dest: PeerId,
+        data: &T,
+        reliability: Reliability,
+    ) -> eyre::Result<()>;
+    fn broadcast<T: Encode>(&self, data: &T, reliability: Reliability) -> eyre::Result<()>;
     fn my_id(&self) -> PeerId;
     fn host_id(&self) -> PeerId;
     fn is_host(&self) -> bool;
