@@ -14,7 +14,7 @@ use steamworks::networking_types::{
     ListenSocketEvent, NetConnectionStatusChanged, NetworkingConnectionState, NetworkingIdentity,
     NetworkingMessage, SendFlags,
 };
-use steamworks::{CallbackResult, GameLobbyJoinRequested, LobbyId, LobbyType, SteamId};
+use steamworks::{CallbackResult, GameLobbyJoinRequested, LobbyId, LobbyType, SteamError, SteamId};
 pub(crate) struct Connection {
     pub(crate) net: NetConnection,
     pub(crate) connected: bool,
@@ -249,7 +249,15 @@ impl ClientTrait for SteamClient {
         {
             let data = encode(data);
             let data = compress_prepend_size(&data);
-            con.net.send_message(&data, reliability.into())?;
+            match con.net.send_message(&data, reliability.into()) {
+                Err(SteamError::LimitExceeded) => {
+                    con.net.flush_messages()?;
+                    con.net.send_message(&data, reliability.into())?;
+                }
+                e => {
+                    e?;
+                }
+            }
         }
         Ok(())
     }
@@ -258,7 +266,15 @@ impl ClientTrait for SteamClient {
         let data = compress_prepend_size(&data);
         for con in self.connections.values() {
             if con.connected {
-                con.net.send_message(&data, reliability.into())?;
+                match con.net.send_message(&data, reliability.into()) {
+                    Err(SteamError::LimitExceeded) => {
+                        con.net.flush_messages()?;
+                        con.net.send_message(&data, reliability.into())?;
+                    }
+                    e => {
+                        e?;
+                    }
+                }
             }
         }
         Ok(())
