@@ -5,14 +5,12 @@ use bitcode::{DecodeOwned, Encode, decode, encode};
 use log::info;
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::collections::HashMap;
-use std::mem::MaybeUninit;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
-use steamworks::networking_messages::SessionRequest;
 use steamworks::networking_sockets::{ListenSocket, NetConnection, NetPollGroup};
 use steamworks::networking_types::{
-    ListenSocketEvent, NetConnectionStatusChanged, NetworkingConnectionState, NetworkingIdentity,
-    NetworkingMessage, SendFlags,
+    ListenSocketEvent, NetConnectionStatusChanged, NetworkingConfigEntry, NetworkingConfigValue,
+    NetworkingConnectionState, NetworkingIdentity, NetworkingMessage, SendFlags,
 };
 use steamworks::{CallbackResult, GameLobbyJoinRequested, LobbyId, LobbyType, SteamId};
 pub(crate) struct Connection {
@@ -26,8 +24,7 @@ pub struct SteamClient {
     pub(crate) lobby_id: LobbyId,
     pub(crate) connections: HashMap<PeerId, Connection>,
     pub(crate) poll_group: NetPollGroup,
-    pub(crate) is_host: bool,
-    pub(crate) listen_socket: MaybeUninit<Mutex<ListenSocket>>,
+    pub(crate) listen_socket: Option<Mutex<ListenSocket>>,
     pub(crate) peer_connected: ClientCallback,
     pub(crate) peer_disconnected: ClientCallback,
     pub(crate) buffer: Vec<NetworkingMessage>,
@@ -41,8 +38,7 @@ impl SteamClient {
         self.host_id = PeerId(0);
         self.lobby_id = LobbyId::from_raw(0);
         self.connections = Default::default();
-        self.is_host = false;
-        self.listen_socket = MaybeUninit::uninit();
+        self.listen_socket = None;
     }
     pub(crate) fn new(
         app_id: u32,
@@ -61,11 +57,10 @@ impl SteamClient {
             lobby_id: LobbyId::from_raw(0),
             connections: Default::default(),
             poll_group,
-            is_host: false,
             peer_connected,
             peer_disconnected,
             buffer: Vec::with_capacity(64),
-            listen_socket: MaybeUninit::uninit(),
+            listen_socket: None,
             rx: Arc::new(rx.into()),
             tx: Arc::new(tx.into()),
         })
@@ -73,11 +68,16 @@ impl SteamClient {
     pub(crate) fn host(&mut self) -> eyre::Result<()> {
         self.reset();
         self.host_id = self.my_id;
-        self.is_host = true;
-        self.listen_socket = MaybeUninit::new(
+        self.listen_socket = Some(
             self.steam_client
                 .networking_sockets()
-                .create_listen_socket_p2p(0, None)?
+                .create_listen_socket_p2p(
+                    0,
+                    [NetworkingConfigEntry::new_int32(
+                        NetworkingConfigValue::SendBufferSize,
+                        16777216,
+                    )],
+                )?
                 .into(),
         );
         let tx = self.tx.clone();
@@ -141,7 +141,7 @@ impl SteamClient {
         let recv = recv.lock().unwrap();
         while let Ok(event) = recv.try_recv() {
             self.lobby_id = event;
-            if !self.is_host {
+            if !self.is_host() {
                 let matchmaking = self.steam_client.matchmaking();
                 let owner = matchmaking.lobby_owner(event);
                 self.host_id = owner.into();
@@ -195,10 +195,8 @@ impl SteamClient {
                 },
                 _ => {}
             });
-        if self.is_host {
-            let listen = unsafe { self.listen_socket.assume_init_ref() }
-                .lock()
-                .unwrap();
+        if let Some(listen) = &self.listen_socket {
+            let listen = listen.lock().unwrap();
             while let Some(event) = listen.try_receive_event() {
                 match event {
                     ListenSocketEvent::Connecting(event) => {
@@ -267,7 +265,7 @@ impl ClientTrait for SteamClient {
         self.host_id
     }
     fn is_host(&self) -> bool {
-        self.is_host
+        self.listen_socket.is_some()
     }
     fn peer_len(&self) -> usize {
         self.connections.len()
@@ -309,14 +307,6 @@ impl Client {
             client.steam_client.apps().launch_command_line()
         } else {
             String::new()
-        }
-    }
-    pub fn session_request_callback(&self, f: impl FnMut(SessionRequest) + Send + 'static) {
-        if let ClientType::Steam(client) = &self.client {
-            client
-                .steam_client
-                .networking_messages()
-                .session_request_callback(f);
         }
     }
     pub fn flush(&self) {

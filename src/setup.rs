@@ -65,9 +65,6 @@ pub fn setup(
                 })),
             )
             .unwrap();
-        client.session_request_callback(|r| {
-            r.accept();
-        });
         let mut next = false;
         let mut lobby = None;
         let mut f = |arg: &str| {
