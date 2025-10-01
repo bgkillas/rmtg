@@ -30,7 +30,9 @@ pub mod sync;
 mod update;
 #[cfg(all(feature = "steam", feature = "ip"))]
 use crate::sync::new_lobby;
-use crate::sync::{Sent, Shape, SyncActions, SyncCount, SyncObject, apply_sync, get_sync};
+use crate::sync::{
+    Sent, Shape, SyncActions, SyncCount, SyncObject, apply_sync, display_steam_info, get_sync,
+};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
@@ -105,6 +107,7 @@ pub fn start() {
         Update,
         (
             (
+                display_steam_info,
                 listen_for_deck,
                 register_deck,
                 cam_translation,

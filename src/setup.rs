@@ -5,6 +5,7 @@ use crate::sync::{Shape, SyncObjectMe, spawn_hand};
 use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::render::mesh::{Indices, PrimitiveTopology};
+use bevy::render::view::RenderLayers;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 use bytes::Bytes;
@@ -84,6 +85,9 @@ pub fn setup(
             client.join_steam(lobby).unwrap();
         }
     }
+    let font = include_bytes!("../assets/noto.ttf");
+    let font = asset_server.add(Font::try_from_bytes(font.to_vec()).unwrap());
+    commands.insert_resource(FontRes(font.clone()));
     let _ = fs::create_dir("./cache");
     framepace.limiter = Limiter::from_framerate(60.0);
     let card_stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
@@ -236,7 +240,39 @@ pub fn setup(
         &mut materials,
     );
     ico.insert(SyncObjectMe::new(&mut rand, &mut count));
+    commands.spawn((
+        Camera2d,
+        Camera {
+            order: 1,
+            clear_color: ClearColorConfig::None,
+            ..default()
+        },
+        RenderLayers::layer(1),
+    ));
+    commands.spawn((
+        Node {
+            width: Val::Px(512.0),
+            height: Val::Px(256.0),
+            ..default()
+        },
+        BackgroundColor(bevy::color::Color::srgba_u8(128, 128, 128, 128)),
+        RenderLayers::layer(1),
+        children![(
+            Text(String::new()),
+            SteamInfo,
+            TextFont {
+                font: font.clone_weak(),
+                font_size: 16.0,
+                ..default()
+            }
+        )],
+    ));
 }
+#[derive(Component)]
+pub struct SteamInfo;
+#[derive(Resource)]
+#[allow(dead_code)]
+pub struct FontRes(Handle<Font>);
 pub fn spawn_cube<'a>(
     m: f32,
     transform: Transform,

@@ -1,5 +1,6 @@
 use crate::{
-    Client, ClientCallback, ClientTrait, ClientType, ClientTypeRef, Message, PeerId, Reliability,
+    Client, ClientCallback, ClientTrait, ClientType, ClientTypeRef, Message, NetworkingInfo,
+    PeerId, Reliability,
 };
 use bitcode::{DecodeOwned, Encode, decode, encode};
 use log::info;
@@ -34,6 +35,20 @@ pub struct SteamClient {
 unsafe impl Send for SteamClient {}
 unsafe impl Sync for SteamClient {}
 impl SteamClient {
+    pub fn info(&self) -> NetworkingInfo {
+        let mut v = Vec::new();
+        let sockets = self.steam_client.networking_sockets();
+        for (peer, con) in &self.connections {
+            v.push((
+                *peer,
+                sockets
+                    .get_realtime_connection_status(&con.net, 0)
+                    .unwrap()
+                    .0,
+            ));
+        }
+        NetworkingInfo(v)
+    }
     fn reset(&mut self) {
         self.host_id = PeerId(0);
         self.lobby_id = LobbyId::from_raw(0);

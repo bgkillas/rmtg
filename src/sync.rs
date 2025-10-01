@@ -1,7 +1,8 @@
 use crate::download::add_images;
 use crate::misc::{get_mut_card, new_pile_at, repaint_face};
-use crate::setup::{MAT_HEIGHT, MAT_WIDTH, spawn_cube, spawn_ico};
+use crate::setup::{MAT_HEIGHT, MAT_WIDTH, SteamInfo, spawn_cube, spawn_ico};
 use crate::*;
+use bevy::diagnostic::FrameCount;
 use bitcode::{Decode, Encode};
 use net::{ClientTrait, Reliability};
 use std::collections::{HashMap, HashSet};
@@ -62,6 +63,32 @@ pub fn get_sync(
     count.add(v);
     #[cfg(feature = "steam")]
     client.flush();
+}
+pub fn display_steam_info(
+    frame: Res<FrameCount>,
+    mut text: Single<&mut Text2d, With<SteamInfo>>,
+    client: Res<Client>,
+) {
+    if !frame.0.is_multiple_of(10) {
+        return;
+    }
+    let Some(info) = client.info() else { return };
+    text.0 = info
+        .0
+        .into_iter()
+        .map(|(p, a)| {
+            format!(
+                "{}, in: {} out: {} pending: {} ping: {} queued: {}",
+                p.0,
+                a.in_bytes_per_sec(),
+                a.out_bytes_per_sec(),
+                a.pending_reliable() + a.pending_unreliable(),
+                a.ping(),
+                a.queued_send_bytes()
+            )
+        })
+        .collect::<Vec<String>>()
+        .join("\n");
 }
 pub fn apply_sync(
     mut query: Query<(

@@ -11,6 +11,7 @@ use bevy_app::{App, Plugin};
 #[cfg(feature = "bevy")]
 use bevy_ecs::resource::Resource;
 use bitcode::{DecodeOwned, Encode};
+use steamworks::networking_types::NetConnectionRealTimeInfo;
 #[allow(dead_code)]
 type ClientCallback = Option<Box<dyn FnMut(ClientTypeRef, PeerId) + Send + Sync + 'static>>;
 pub struct Message<T> {
@@ -81,7 +82,17 @@ impl Client {
             ClientType::Ip(client) => client.update(),
         }
     }
+    pub fn info(&self) -> Option<NetworkingInfo> {
+        match &self.client {
+            ClientType::None => None,
+            #[cfg(feature = "steam")]
+            ClientType::Steam(client) => Some(client.info()),
+            #[cfg(feature = "tangled")]
+            ClientType::Ip(_) => None,
+        }
+    }
 }
+pub struct NetworkingInfo(pub Vec<(PeerId, NetConnectionRealTimeInfo)>);
 impl ClientTrait for Client {
     #[allow(unused_variables)]
     fn send_message<T: Encode>(

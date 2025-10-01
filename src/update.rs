@@ -84,7 +84,7 @@ pub fn update_hand(
 }
 pub fn follow_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
-    camera: Single<(&Camera, &GlobalTransform)>,
+    camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
     window: Single<&Window, With<PrimaryWindow>>,
     cards: Query<(&Collider, &Transform), Without<FollowMouse>>,
     mut commands: Commands,
@@ -165,7 +165,7 @@ pub fn follow_mouse(
 }
 pub fn listen_for_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
-    camera: Single<(&Camera, &GlobalTransform, Entity)>,
+    camera: Single<(&Camera, &GlobalTransform, Entity), With<Camera3d>>,
     window: Single<&Window, With<PrimaryWindow>>,
     mut pset: ParamSet<(SpatialQuery, Query<&mut Collider>)>,
     mut cards: Query<(
@@ -650,7 +650,7 @@ pub fn listen_for_deck(
     #[cfg(feature = "wasm")] clipboard: Res<Clipboard>,
     down: ResMut<Download>,
     asset_server: Res<AssetServer>,
-    camera: Single<(&Camera, &GlobalTransform)>,
+    camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
     window: Single<&Window, With<PrimaryWindow>>,
     game_clipboard: Res<GameClipboard>,
     mut materials: ResMut<Assets<StandardMaterial>>,
