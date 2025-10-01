@@ -81,15 +81,6 @@ impl Client {
             ClientType::Ip(client) => client.update(),
         }
     }
-    pub fn my_num(&self) -> u16 {
-        match &self.client {
-            #[cfg(feature = "steam")]
-            ClientType::Steam(client) => client.my_num,
-            #[cfg(feature = "tangled")]
-            ClientType::Ip(client) => client.my_id().raw() as u16,
-            ClientType::None => 0,
-        }
-    }
 }
 impl ClientTrait for Client {
     #[allow(unused_variables)]

@@ -14,7 +14,7 @@ use steamworks::networking_types::{
     ListenSocketEvent, NetConnectionStatusChanged, NetworkingConnectionState, NetworkingIdentity,
     NetworkingMessage, SendFlags,
 };
-use steamworks::{CallbackResult, GameLobbyJoinRequested, LobbyId, LobbyType, SteamError, SteamId};
+use steamworks::{CallbackResult, GameLobbyJoinRequested, LobbyId, LobbyType, SteamId};
 pub(crate) struct Connection {
     pub(crate) net: NetConnection,
     pub(crate) connected: bool,
@@ -28,7 +28,6 @@ pub struct SteamClient {
     pub(crate) poll_group: NetPollGroup,
     pub(crate) is_host: bool,
     pub(crate) listen_socket: MaybeUninit<Mutex<ListenSocket>>,
-    pub(crate) my_num: u16,
     pub(crate) peer_connected: ClientCallback,
     pub(crate) peer_disconnected: ClientCallback,
     pub(crate) buffer: Vec<NetworkingMessage>,
@@ -43,7 +42,6 @@ impl SteamClient {
         self.lobby_id = LobbyId::from_raw(0);
         self.connections = Default::default();
         self.is_host = false;
-        self.my_num = 0;
         self.listen_socket = MaybeUninit::uninit();
     }
     pub(crate) fn new(
@@ -63,7 +61,6 @@ impl SteamClient {
             lobby_id: LobbyId::from_raw(0),
             connections: Default::default(),
             poll_group,
-            my_num: 0,
             is_host: false,
             peer_connected,
             peer_disconnected,
@@ -249,15 +246,7 @@ impl ClientTrait for SteamClient {
         {
             let data = encode(data);
             let data = compress_prepend_size(&data);
-            match con.net.send_message(&data, reliability.into()) {
-                Err(SteamError::LimitExceeded) => {
-                    con.net.flush_messages()?;
-                    con.net.send_message(&data, reliability.into())?;
-                }
-                e => {
-                    e?;
-                }
-            }
+            con.net.send_message(&data, reliability.into())?;
         }
         Ok(())
     }
@@ -266,15 +255,7 @@ impl ClientTrait for SteamClient {
         let data = compress_prepend_size(&data);
         for con in self.connections.values() {
             if con.connected {
-                match con.net.send_message(&data, reliability.into()) {
-                    Err(SteamError::LimitExceeded) => {
-                        con.net.flush_messages()?;
-                        con.net.send_message(&data, reliability.into())?;
-                    }
-                    e => {
-                        e?;
-                    }
-                }
+                con.net.send_message(&data, reliability.into())?;
             }
         }
         Ok(())
