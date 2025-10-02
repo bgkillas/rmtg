@@ -34,6 +34,7 @@ pub fn setup(
     mut rand: GlobalEntropy<WyRand>,
     mut count: ResMut<SyncCount>,
     mut sleeping_threshold: ResMut<SleepingThreshold>,
+    #[cfg(feature = "steam")]
     send_sleep: Res<SendSleeping>,
 ) {
     sleeping_threshold.linear = 8.0;
