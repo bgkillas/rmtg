@@ -107,6 +107,7 @@ pub fn start() {
         Update,
         (
             (
+                #[cfg(feature = "steam")]
                 display_steam_info,
                 listen_for_deck,
                 register_deck,

@@ -92,7 +92,7 @@ impl Client {
         }
     }
 }
-pub struct NetworkingInfo(pub Vec<(PeerId, NetConnectionRealTimeInfo)>);
+pub struct NetworkingInfo(#[cfg(feature = "steam")] pub Vec<(PeerId, NetConnectionRealTimeInfo)>);
 impl ClientTrait for Client {
     #[allow(unused_variables)]
     fn send_message<T: Encode>(

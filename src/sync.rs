@@ -64,6 +64,7 @@ pub fn get_sync(
     #[cfg(feature = "steam")]
     client.flush();
 }
+#[cfg(feature = "steam")]
 pub fn display_steam_info(
     frame: Res<FrameCount>,
     mut text: Single<&mut Text, With<SteamInfo>>,
