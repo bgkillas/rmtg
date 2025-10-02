@@ -52,16 +52,15 @@ pub fn new_pile(
 }
 pub fn move_up(
     entity: Entity,
-    spatial: &SpatialQuery,
-    cards: &mut Query<(&Collider, &mut Transform)>,
-    walls: &Query<(), With<Wall>>,
+    ents: &Query<(&Collider, &mut Transform), Without<Wall>>,
+    pset: &mut ParamSet<(Query<&mut Position>, SpatialQuery)>,
 ) {
-    let (collider, transform) = cards.get(entity).unwrap();
+    let mut excluded = vec![entity];
+    let (collider, transform) = ents.get(entity).unwrap();
     let rotation = transform.rotation;
     let mut translation = transform.translation;
-    let mut some = false;
-    let mut excluded = vec![entity];
-    while let Some(m) = spatial
+    while let Some(m) = pset
+        .p1()
         .shape_intersections(
             collider,
             translation,
@@ -71,9 +70,7 @@ pub fn move_up(
         .into_iter()
         .filter_map(|a| {
             excluded.push(a);
-            if !walls.contains(a)
-                && let Ok((collider, transform)) = cards.get(a)
-            {
+            if let Ok((collider, transform)) = ents.get(a) {
                 let y = collider
                     .aabb(transform.translation, transform.rotation)
                     .max
@@ -86,14 +83,13 @@ pub fn move_up(
         .reduce(f32::max)
     {
         translation.y = m;
-        some = true;
-    }
-    if some {
-        let (collider, mut transform) = cards.get_mut(entity).unwrap();
+        let (collider, transform) = ents.get(entity).unwrap();
         let aabb = collider.aabb(transform.translation, transform.rotation);
-        let max = translation.y + (aabb.max.y - aabb.min.y) / 2.0 + 4.0;
+        let max = m + (aabb.max.y - aabb.min.y) / 2.0 + 4.0;
         let max = max.max(aabb.max.y);
-        transform.translation.y = max;
+        let mut pos = pset.p0();
+        let mut position = pos.get_mut(entity).unwrap();
+        position.y = max;
     }
 }
 fn side(size: f32, meshes: &mut Assets<Mesh>) -> (Handle<Mesh>, Transform, Transform) {

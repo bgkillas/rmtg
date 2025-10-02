@@ -810,12 +810,11 @@ pub fn register_deck(
 }
 pub fn to_move_up(
     mut to_do: ResMut<ToMoveUp>,
-    mut cards: Query<(&Collider, &mut Transform)>,
-    walls: Query<(), With<Wall>>,
-    spatial: SpatialQuery,
+    ents: Query<(&Collider, &mut Transform), Without<Wall>>,
+    mut pset: ParamSet<(Query<&mut Position>, SpatialQuery)>,
 ) {
     for ent in to_do.0.drain(..) {
-        move_up(ent, &spatial, &mut cards, &walls);
+        move_up(ent, &ents, &mut pset);
     }
 }
 #[derive(Resource)]

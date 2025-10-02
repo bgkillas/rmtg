@@ -65,7 +65,8 @@ bevy={version= "0.17.1",default-features = false, features = ["bevy_dev_tools", 
   "tonemapping_luts",
   "webgl2",
   "x11",
-  "zstd_rust"
+  "zstd_rust",
+  "debug"
 ]}
 arboard={version="3.6.1", features = ["wayland-data-control"], optional = true}
 reqwest={version="0.12.23", features = ["rustls-tls"], default-features = false}
