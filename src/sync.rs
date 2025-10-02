@@ -66,7 +66,7 @@ pub fn get_sync(
 }
 pub fn display_steam_info(
     frame: Res<FrameCount>,
-    mut text: Single<&mut Text2d, With<SteamInfo>>,
+    mut text: Single<&mut Text, With<SteamInfo>>,
     client: Res<Client>,
 ) {
     if !frame.0.is_multiple_of(10) {
