@@ -5,6 +5,7 @@ use crate::setup::SteamInfo;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH, spawn_cube, spawn_ico};
 use crate::*;
 use bevy::diagnostic::FrameCount;
+use bevy_rand::global::GlobalRng;
 use bitcode::{Decode, Encode};
 use net::{ClientTrait, Reliability};
 use std::collections::{HashMap, HashSet};
@@ -190,11 +191,8 @@ pub fn apply_sync(
                         {
                             if in_hand {
                                 commands.entity(entity).insert(InOtherHand);
-                                mats.get_mut(*children.first().unwrap()).unwrap().0 = mats
-                                    .get_mut(*children.get(1).unwrap())
-                                    .unwrap()
-                                    .0
-                                    .clone_weak();
+                                mats.get_mut(*children.first().unwrap()).unwrap().0 =
+                                    mats.get_mut(*children.get(1).unwrap()).unwrap().0.clone();
                                 gravity.0 = 0.0
                             } else {
                                 commands.entity(entity).remove::<InOtherHand>();
@@ -362,12 +360,12 @@ pub fn apply_sync(
                     {
                         new_pile_at(
                             Pile(vec![card]),
-                            card_base.stock.clone_weak(),
+                            card_base.stock.clone(),
                             &mut materials,
                             &mut commands,
                             &mut meshes,
-                            card_base.back.clone_weak(),
-                            card_base.side.clone_weak(),
+                            card_base.back.clone(),
+                            card_base.side.clone(),
                             trans.into(),
                             false,
                             None,
@@ -564,7 +562,7 @@ pub struct SyncObject {
 #[allow(dead_code)]
 pub struct SyncObjectMe(pub u64);
 impl SyncObjectMe {
-    pub fn new(rand: &mut GlobalEntropy<WyRand>, count: &mut SyncCount) -> Self {
+    pub fn new(rand: &mut Single<&mut WyRand, With<GlobalRng>>, count: &mut SyncCount) -> Self {
         count.add(1);
         Self(rand.next_u64())
     }

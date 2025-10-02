@@ -2,7 +2,7 @@ use crate::setup::Wall;
 use crate::sync::SyncObjectMe;
 use crate::*;
 use bevy_prng::WyRand;
-use bevy_rand::global::GlobalEntropy;
+use bevy_rand::global::GlobalRng;
 use std::f32::consts::PI;
 pub fn make_material(
     materials: &mut Assets<StandardMaterial>,
@@ -22,7 +22,7 @@ pub fn new_pile(
     meshes: &mut Assets<Mesh>,
     card_back: Handle<StandardMaterial>,
     card_side: Handle<StandardMaterial>,
-    rand: &mut GlobalEntropy<WyRand>,
+    rand: &mut Single<&mut WyRand, With<GlobalRng>>,
     v: Vec2,
     count: &mut SyncCount,
     id: Option<SyncObject>,
@@ -130,7 +130,7 @@ pub fn new_pile_at<'a>(
         return None;
     }
     let card = pile.0.last().unwrap();
-    let top = card.normal.image().clone_weak();
+    let top = card.normal.image().clone();
     let material_handle = make_material(materials, top);
     let size = pile.0.len() as f32;
     let mut transform1 = Transform::from_rotation(Quat::from_rotation_y(PI));
@@ -142,6 +142,7 @@ pub fn new_pile_at<'a>(
         transform,
         Visibility::default(),
         RigidBody::Dynamic,
+        SLEEP,
         Collider::cuboid(CARD_WIDTH, CARD_HEIGHT, 2.0 * size),
         GravityScale(if follow_mouse || parent.is_some() {
             0.0
@@ -150,24 +151,20 @@ pub fn new_pile_at<'a>(
         }),
         children![
             (
-                Mesh3d(card_stock.clone_weak()),
+                Mesh3d(card_stock.clone()),
                 MeshMaterial3d(material_handle),
                 Transform::from_xyz(0.0, 0.0, size),
             ),
             (Mesh3d(card_stock), MeshMaterial3d(card_back), transform1),
             (
-                Mesh3d(mesh.clone_weak()),
-                MeshMaterial3d(card_side.clone_weak()),
+                Mesh3d(mesh.clone()),
+                MeshMaterial3d(card_side.clone()),
                 transform2,
             ),
+            (Mesh3d(mesh), MeshMaterial3d(card_side.clone()), transform3,),
             (
-                Mesh3d(mesh),
-                MeshMaterial3d(card_side.clone_weak()),
-                transform3,
-            ),
-            (
-                Mesh3d(mesh2.clone_weak()),
-                MeshMaterial3d(card_side.clone_weak()),
+                Mesh3d(mesh2.clone()),
+                MeshMaterial3d(card_side.clone()),
                 transform4,
             ),
             (Mesh3d(mesh2), MeshMaterial3d(card_side), transform5)
@@ -221,7 +218,7 @@ pub fn repaint_face(
     children: &Children,
 ) {
     mats.get_mut(*children.first().unwrap()).unwrap().0 =
-        make_material(materials, card.normal.image().clone_weak());
+        make_material(materials, card.normal.image().clone());
 }
 pub fn adjust_meshes(
     pile: &Pile,
@@ -242,14 +239,14 @@ pub fn adjust_meshes(
     transform.translation.y -= delta / 2.0;
     let (mesh, t1, t2) = side(size, meshes);
     let (mut leftmesh, mut leftt) = query.get_mut(children.next().unwrap()).unwrap();
-    leftmesh.0 = mesh.clone_weak();
+    leftmesh.0 = mesh.clone();
     *leftt = t1;
     let (mut rightmesh, mut rightt) = query.get_mut(children.next().unwrap()).unwrap();
     rightmesh.0 = mesh;
     *rightt = t2;
     let (mesh2, t1, t2) = topbottom(size, meshes);
     let (mut topmesh, mut topt) = query.get_mut(children.next().unwrap()).unwrap();
-    topmesh.0 = mesh2.clone_weak();
+    topmesh.0 = mesh2.clone();
     *topt = t1;
     let (mut bottommesh, mut bottomt) = query.get_mut(children.next().unwrap()).unwrap();
     bottommesh.0 = mesh2;

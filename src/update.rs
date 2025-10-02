@@ -9,7 +9,7 @@ use crate::*;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
 use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
-use bevy_rand::global::GlobalEntropy;
+use bevy_rand::global::GlobalRng;
 use net::{ClientTrait, PeerId, Reliability};
 use rand::Rng;
 use rand::seq::SliceRandom;
@@ -183,7 +183,7 @@ pub fn listen_for_mouse(
     mut materials: ResMut<Assets<StandardMaterial>>,
     card_base: Res<CardBase>,
     input: Res<ButtonInput<KeyCode>>,
-    mut rand: GlobalEntropy<WyRand>,
+    mut rand: Single<&mut WyRand, With<GlobalRng>>,
     #[cfg(not(feature = "wasm"))] mut clipboard: ResMut<Clipboard>,
     #[cfg(feature = "wasm")] clipboard: Res<Clipboard>,
     (
@@ -296,12 +296,12 @@ pub fn listen_for_mouse(
                     let id = SyncObjectMe::new(&mut rand, &mut count);
                     new_pile_at(
                         Pile(vec![new]),
-                        card_base.stock.clone_weak(),
+                        card_base.stock.clone(),
                         &mut materials,
                         &mut commands,
                         &mut meshes,
-                        card_base.back.clone_weak(),
-                        card_base.side.clone_weak(),
+                        card_base.back.clone(),
+                        card_base.side.clone(),
                         transform,
                         true,
                         None,
@@ -350,12 +350,12 @@ pub fn listen_for_mouse(
                     let id = SyncObjectMe::new(&mut rand, &mut count);
                     new_pile_at(
                         Pile(vec![c]),
-                        card_base.stock.clone_weak(),
+                        card_base.stock.clone(),
                         &mut materials,
                         &mut commands,
                         &mut meshes,
-                        card_base.back.clone_weak(),
-                        card_base.side.clone_weak(),
+                        card_base.back.clone(),
+                        card_base.side.clone(),
                         transform,
                         false,
                         None,
@@ -465,12 +465,12 @@ pub fn listen_for_mouse(
                             let new = take_card(&mut pile, &transform);
                             let mut ent = new_pile_at(
                                 Pile(vec![new]),
-                                card_base.stock.clone_weak(),
+                                card_base.stock.clone(),
                                 &mut materials,
                                 &mut commands,
                                 &mut meshes,
-                                card_base.back.clone_weak(),
-                                card_base.side.clone_weak(),
+                                card_base.back.clone(),
+                                card_base.side.clone(),
                                 Transform::default(),
                                 false,
                                 Some(hand.2),
@@ -520,18 +520,15 @@ pub fn listen_for_mouse(
                                 alt
                             }
                             .image()
-                            .clone_weak(),
+                            .clone(),
                         );
                         single.1.1 = !single.1.1;
                     }
                 } else if !is_reversed(&transform) {
                     let card = get_card(&pile, &transform);
                     commands.entity(cament).with_child((
-                        Mesh3d(card_base.stock.clone_weak()),
-                        MeshMaterial3d(make_material(
-                            &mut materials,
-                            card.normal.image().clone_weak(),
-                        )),
+                        Mesh3d(card_base.stock.clone()),
+                        MeshMaterial3d(make_material(&mut materials, card.normal.image().clone())),
                         Transform::from_xyz(0.0, 0.0, -1024.0),
                         ZoomHold(entity.to_bits(), false),
                     ));
@@ -657,7 +654,7 @@ pub fn listen_for_deck(
     card_base: Res<CardBase>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut commands: Commands,
-    mut rand: GlobalEntropy<WyRand>,
+    mut rand: Single<&mut WyRand, With<GlobalRng>>,
     mut count: ResMut<SyncCount>,
     mut to_move: ResMut<ToMoveUp>,
 ) {
@@ -741,12 +738,12 @@ pub fn listen_for_deck(
         } else if let Some(ent) = match game_clipboard.clone() {
             GameClipboard::Pile(pile) => new_pile(
                 pile,
-                card_base.stock.clone_weak(),
+                card_base.stock.clone(),
                 &mut materials,
                 &mut commands,
                 &mut meshes,
-                card_base.back.clone_weak(),
-                card_base.side.clone_weak(),
+                card_base.back.clone(),
+                card_base.side.clone(),
                 &mut rand,
                 v,
                 &mut count,
@@ -775,7 +772,7 @@ pub fn register_deck(
     mut materials: ResMut<Assets<StandardMaterial>>,
     card_base: Res<CardBase>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut rand: GlobalEntropy<WyRand>,
+    mut rand: Single<&mut WyRand, With<GlobalRng>>,
     mut count: ResMut<SyncCount>,
     client: Res<Client>,
     mut sent: ResMut<Sent>,
@@ -786,12 +783,12 @@ pub fn register_deck(
         info!("deck found of size {} at {} {}", deck.0.len(), v.x, v.y);
         if let Some(ent) = new_pile(
             deck,
-            card_base.stock.clone_weak(),
+            card_base.stock.clone(),
             &mut materials,
             &mut commands,
             &mut meshes,
-            card_base.back.clone_weak(),
-            card_base.side.clone_weak(),
+            card_base.back.clone(),
+            card_base.side.clone(),
             &mut rand,
             v,
             &mut count,

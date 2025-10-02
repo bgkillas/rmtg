@@ -4,9 +4,10 @@ use crate::sync::Packet;
 use crate::sync::{SendSleeping, Shape, SyncObjectMe, spawn_hand};
 use crate::*;
 use bevy::asset::RenderAssetUsages;
-use bevy::render::mesh::{Indices, PrimitiveTopology};
-use bevy::render::view::RenderLayers;
+use bevy::camera::visibility::RenderLayers;
+use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy_framepace::{FramepaceSettings, Limiter};
+use bevy_rand::global::GlobalRng;
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 use bytes::Bytes;
 #[cfg(feature = "steam")]
@@ -31,14 +32,10 @@ pub fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut framepace: ResMut<FramepaceSettings>,
     #[cfg(feature = "steam")] mut client: ResMut<Client>,
-    mut rand: GlobalEntropy<WyRand>,
+    mut rand: Single<&mut WyRand, With<GlobalRng>>,
     mut count: ResMut<SyncCount>,
-    mut sleeping_threshold: ResMut<SleepingThreshold>,
-    #[cfg(feature = "steam")]
-    send_sleep: Res<SendSleeping>,
+    #[cfg(feature = "steam")] send_sleep: Res<SendSleeping>,
 ) {
-    sleeping_threshold.linear = 8.0;
-    sleeping_threshold.angular = 0.25;
     #[cfg(feature = "steam")]
     {
         let who = Arc::new(Mutex::new(HashMap::new()));
@@ -128,23 +125,23 @@ pub fn setup(
     let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
     transform.rotate_x(-PI / 2.0);
     commands.spawn((
-        Mesh3d(mat_mesh.clone_weak()),
-        MeshMaterial3d(playmat.clone_weak()),
+        Mesh3d(mat_mesh.clone()),
+        MeshMaterial3d(playmat.clone()),
         transform,
     ));
     let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
     transform.rotate_x(-PI / 2.0);
     commands.spawn((
-        Mesh3d(mat_mesh.clone_weak()),
-        MeshMaterial3d(playmat.clone_weak()),
+        Mesh3d(mat_mesh.clone()),
+        MeshMaterial3d(playmat.clone()),
         transform,
     ));
     let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
     transform.rotate_x(-PI / 2.0);
     transform.rotate_y(PI);
     commands.spawn((
-        Mesh3d(mat_mesh.clone_weak()),
-        MeshMaterial3d(playmat.clone_weak()),
+        Mesh3d(mat_mesh.clone()),
+        MeshMaterial3d(playmat.clone()),
         transform,
     ));
     let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
@@ -269,7 +266,7 @@ pub fn setup(
             Text(String::new()),
             SteamInfo,
             TextFont {
-                font: font.clone_weak(),
+                font: font.clone(),
                 font_size: 16.0,
                 ..default()
             }
@@ -294,6 +291,7 @@ pub fn spawn_cube<'a>(
         Collider::cuboid(m, m, m),
         transform,
         RigidBody::Dynamic,
+        SLEEP,
         GravityScale(GRAVITY),
         Shape::Cube,
         Mesh3d(meshes.add(Cuboid::from_length(m))),
@@ -417,6 +415,7 @@ pub fn spawn_ico<'a>(
         transform,
         Shape::Icosahedron,
         RigidBody::Dynamic,
+        SLEEP,
         GravityScale(GRAVITY),
         Mesh3d(meshes.add(mesh)),
         MeshMaterial3d(materials.add(StandardMaterial {

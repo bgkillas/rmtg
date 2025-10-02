@@ -8,7 +8,6 @@ use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
 use bevy_framepace::FramepacePlugin;
 use bevy_prng::WyRand;
-use bevy_rand::global::GlobalEntropy;
 use bevy_rand::prelude::EntropyPlugin;
 use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
 use bitcode::{Decode, Encode};
@@ -83,7 +82,7 @@ pub fn start() {
                 ..default()
             }),
         PhysicsPlugins::default(),
-        PhysicsDebugPlugin::default(),
+        PhysicsDebugPlugin,
         FramepacePlugin,
         EntropyPlugin::<WyRand>::default(),
         Text3dPlugin::default(),
@@ -127,6 +126,10 @@ pub fn start() {
     .add_systems(PreUpdate, (get_sync, apply_sync).chain());
     app.run();
 }
+pub const SLEEP: SleepThreshold = SleepThreshold {
+    linear: 8.0,
+    angular: 0.25,
+};
 #[test]
 #[cfg(not(feature = "wasm"))]
 fn test_parse() {
