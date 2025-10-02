@@ -10,8 +10,8 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 use steamworks::networking_sockets::{ListenSocket, NetConnection, NetPollGroup};
 use steamworks::networking_types::{
-    ListenSocketEvent, NetConnectionStatusChanged, NetworkingConfigEntry, NetworkingConfigValue,
-    NetworkingConnectionState, NetworkingIdentity, NetworkingMessage, SendFlags,
+    ListenSocketEvent, NetConnectionStatusChanged, NetworkingConnectionState, NetworkingIdentity,
+    NetworkingMessage, SendFlags,
 };
 use steamworks::{CallbackResult, GameLobbyJoinRequested, LobbyId, LobbyType, SteamId};
 pub(crate) struct Connection {
@@ -86,13 +86,7 @@ impl SteamClient {
         self.listen_socket = Some(
             self.steam_client
                 .networking_sockets()
-                .create_listen_socket_p2p(
-                    0,
-                    [NetworkingConfigEntry::new_int32(
-                        NetworkingConfigValue::SendBufferSize,
-                        16777216,
-                    )],
-                )?
+                .create_listen_socket_p2p(0, None)?
                 .into(),
         );
         let tx = self.tx.clone();

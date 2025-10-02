@@ -11,6 +11,7 @@ use bevy_app::{App, Plugin};
 #[cfg(feature = "bevy")]
 use bevy_ecs::resource::Resource;
 use bitcode::{DecodeOwned, Encode};
+#[cfg(feature = "steam")]
 use steamworks::networking_types::NetConnectionRealTimeInfo;
 #[allow(dead_code)]
 type ClientCallback = Option<Box<dyn FnMut(ClientTypeRef, PeerId) + Send + Sync + 'static>>;

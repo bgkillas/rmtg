@@ -1,7 +1,10 @@
 use crate::download::add_images;
 use crate::misc::{get_mut_card, new_pile_at, repaint_face};
-use crate::setup::{MAT_HEIGHT, MAT_WIDTH, SteamInfo, spawn_cube, spawn_ico};
+#[cfg(feature = "steam")]
+use crate::setup::SteamInfo;
+use crate::setup::{MAT_HEIGHT, MAT_WIDTH, spawn_cube, spawn_ico};
 use crate::*;
+#[cfg(feature = "steam")]
 use bevy::diagnostic::FrameCount;
 use bitcode::{Decode, Encode};
 use net::{ClientTrait, Reliability};

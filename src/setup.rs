@@ -249,6 +249,7 @@ pub fn setup(
         },
         RenderLayers::layer(1),
     ));
+    #[cfg(feature = "steam")]
     commands.spawn((
         Node {
             width: Val::Px(512.0),
@@ -268,6 +269,7 @@ pub fn setup(
         )],
     ));
 }
+#[cfg(feature = "steam")]
 #[derive(Component)]
 pub struct SteamInfo;
 #[derive(Resource)]

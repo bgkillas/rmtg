@@ -28,11 +28,11 @@ mod misc;
 mod setup;
 pub mod sync;
 mod update;
+#[cfg(feature = "steam")]
+use crate::sync::display_steam_info;
 #[cfg(all(feature = "steam", feature = "ip"))]
 use crate::sync::new_lobby;
-use crate::sync::{
-    Sent, Shape, SyncActions, SyncCount, SyncObject, apply_sync, display_steam_info, get_sync,
-};
+use crate::sync::{Sent, Shape, SyncActions, SyncCount, SyncObject, apply_sync, get_sync};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
