@@ -1,7 +1,9 @@
 use crate::download::get_from_img;
 #[cfg(feature = "steam")]
 use crate::sync::Packet;
-use crate::sync::{SendSleeping, Shape, SyncObjectMe, spawn_hand};
+#[cfg(feature = "steam")]
+use crate::sync::SendSleeping;
+use crate::sync::{Shape, SyncObjectMe, spawn_hand};
 use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::camera::visibility::RenderLayers;
@@ -244,7 +246,7 @@ pub fn setup(
         &mut materials,
     );
     ico.insert(SyncObjectMe::new(&mut rand, &mut count));
-    commands.spawn((
+    /*commands.spawn((
         Camera2d,
         Camera {
             order: 1,
@@ -252,7 +254,7 @@ pub fn setup(
             ..default()
         },
         RenderLayers::layer(1),
-    ));
+    ));todo
     #[cfg(feature = "steam")]
     commands.spawn((
         Node {
@@ -262,16 +264,14 @@ pub fn setup(
         },
         BackgroundColor(bevy::color::Color::srgba_u8(128, 128, 128, 128)),
         RenderLayers::layer(1),
-        children![(
-            Text(String::new()),
-            SteamInfo,
-            TextFont {
-                font: font.clone(),
-                font_size: 16.0,
-                ..default()
-            }
-        )],
-    ));
+        Text(String::new()),
+        SteamInfo,
+        TextFont {
+            font,
+            font_size: 16.0,
+            ..default()
+        },
+    ));*/
 }
 #[cfg(feature = "steam")]
 #[derive(Component)]
