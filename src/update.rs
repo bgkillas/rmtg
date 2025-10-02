@@ -362,10 +362,10 @@ pub fn listen_for_mouse(
                         None,
                         Some(id),
                     );
-                    transform.translation.x += CARD_WIDTH;
-                    if transform.translation.x >= W - T - CARD_WIDTH {
+                    transform.translation.x += CARD_WIDTH + 4.0;
+                    if transform.translation.x >= W - T - CARD_WIDTH - 4.0 {
                         transform.translation.x = start.translation.x;
-                        transform.translation.z += CARD_HEIGHT;
+                        transform.translation.z += CARD_HEIGHT + 4.0;
                     }
                 }
                 if ids.contains(entity) {

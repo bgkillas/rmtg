@@ -345,7 +345,7 @@ pub async fn get_deck(
             client.clone(),
             asset_server.clone(),
             decks.clone(),
-            v + Vec2::new(CARD_WIDTH + 1.0, 0.0),
+            v + Vec2::new(CARD_WIDTH + 4.0, 0.0),
         );
         let main = get_pile(
             board["mainboard"]["cards"]
@@ -369,7 +369,7 @@ pub async fn get_deck(
             client.clone(),
             asset_server.clone(),
             decks.clone(),
-            v - Vec2::new(CARD_WIDTH + 1.0, 0.0),
+            v - Vec2::new(CARD_WIDTH + 4.0, 0.0),
         );
         let side = get_pile(
             board["sideboard"]["cards"]
@@ -378,7 +378,7 @@ pub async fn get_deck(
             client.clone(),
             asset_server.clone(),
             decks.clone(),
-            v - Vec2::new(2.0 * CARD_WIDTH + 2.0, 0.0),
+            v - Vec2::new(2.0 * CARD_WIDTH + 8.0, 0.0),
         );
         commanders.await;
         main.await;
