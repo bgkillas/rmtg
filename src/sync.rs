@@ -22,6 +22,7 @@ pub fn get_sync(
         &AngularVelocity,
         Option<&InHand>,
         Option<&Sleeping>,
+        Option<&FollowMouse>,
     )>,
     mut count: ResMut<SyncCount>,
     mut sync_actions: ResMut<SyncActions>,
@@ -30,14 +31,15 @@ pub fn get_sync(
     mut commands: Commands,
     client: Res<Client>,
     send_sleep: Res<SendSleeping>,
+    frame: Res<FrameCount>,
 ) {
     let send_sleep = send_sleep
         .0
         .swap(false, std::sync::atomic::Ordering::Relaxed);
     let mut v = 0;
     let mut vec = count.take();
-    for (id, transform, vel, ang, in_hand, is_sleep) in query {
-        if send_sleep || is_sleep.is_none() {
+    for (id, transform, vel, ang, in_hand, is_sleep, follow) in query {
+        if send_sleep || (is_sleep.is_none() && frame.0.is_multiple_of(8)) || follow.is_some() {
             vec.push((
                 *id,
                 Trans::from(transform),

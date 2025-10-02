@@ -662,7 +662,10 @@ pub fn listen_for_deck(
     mut to_move: ResMut<ToMoveUp>,
 ) {
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-        && input.just_pressed(KeyCode::KeyV)
+        && (input.just_pressed(KeyCode::KeyV)
+            || (input.pressed(KeyCode::ShiftLeft)
+                && input.pressed(KeyCode::AltLeft)
+                && input.pressed(KeyCode::KeyV)))
     {
         let Some(cursor_position) = window.cursor_position() else {
             return;
