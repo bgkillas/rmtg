@@ -32,7 +32,9 @@ mod update;
 use crate::sync::display_steam_info;
 #[cfg(all(feature = "steam", feature = "ip"))]
 use crate::sync::new_lobby;
-use crate::sync::{Sent, Shape, SyncActions, SyncCount, SyncObject, apply_sync, get_sync};
+use crate::sync::{
+    SendSleeping, Sent, Shape, SyncActions, SyncCount, SyncObject, apply_sync, get_sync,
+};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
@@ -94,6 +96,7 @@ pub fn start() {
     .insert_resource(ToMoveUp(Vec::new()))
     .insert_resource(SyncCount::default())
     .insert_resource(Sent::default())
+    .insert_resource(SendSleeping::default())
     .insert_resource(SyncActions::default())
     .insert_resource(game_clipboard)
     .insert_resource(Download {

@@ -11,6 +11,9 @@ use net::{ClientTrait, Reliability};
 use std::collections::{HashMap, HashSet};
 use std::f32::consts::PI;
 use std::mem;
+use std::sync::atomic::AtomicBool;
+#[derive(Resource, Default)]
+pub struct SendSleeping(pub Arc<AtomicBool>);
 pub fn get_sync(
     query: Query<(
         &SyncObjectMe,
@@ -18,6 +21,7 @@ pub fn get_sync(
         &LinearVelocity,
         &AngularVelocity,
         Option<&InHand>,
+        Option<&Sleeping>,
     )>,
     mut count: ResMut<SyncCount>,
     mut sync_actions: ResMut<SyncActions>,
@@ -25,16 +29,22 @@ pub fn get_sync(
     query_take: Query<(Entity, &SyncObject)>,
     mut commands: Commands,
     client: Res<Client>,
+    send_sleep: Res<SendSleeping>,
 ) {
+    let send_sleep = send_sleep
+        .0
+        .swap(false, std::sync::atomic::Ordering::Relaxed);
     let mut v = 0;
     let mut vec = count.take();
-    for (id, transform, vel, ang, in_hand) in query {
-        vec.push((
-            *id,
-            Trans::from(transform),
-            Phys::from(vel, ang),
-            in_hand.is_some(),
-        ))
+    for (id, transform, vel, ang, in_hand, is_sleep) in query {
+        if send_sleep || is_sleep.is_none() {
+            vec.push((
+                *id,
+                Trans::from(transform),
+                Phys::from(vel, ang),
+                in_hand.is_some(),
+            ))
+        }
     }
     for dead in sync_actions.killed.drain(..) {
         client
@@ -389,6 +399,7 @@ pub fn new_lobby(
     input: Res<ButtonInput<KeyCode>>,
     mut client: ResMut<Client>,
     down: Res<Download>,
+    #[cfg(feature = "ip")] send_sleep: Res<SendSleeping>,
 ) {
     if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft]) {
         if input.just_pressed(KeyCode::KeyN) {
@@ -398,9 +409,11 @@ pub fn new_lobby(
         } else if input.just_pressed(KeyCode::KeyM) {
             info!("hosting ip");
             #[cfg(feature = "ip")]
+            let send = send_sleep.0.clone();
+            #[cfg(feature = "ip")]
             client
                 .host_ip_runtime(
-                    Some(Box::new(|client, peer| {
+                    Some(Box::new(move |client, peer| {
                         client
                             .send_message(
                                 peer,
@@ -408,6 +421,7 @@ pub fn new_lobby(
                                 Reliability::Reliable,
                             )
                             .unwrap();
+                        send.store(true, std::sync::atomic::Ordering::Relaxed);
                     })),
                     None,
                     &down.runtime.0,
@@ -416,8 +430,17 @@ pub fn new_lobby(
         } else if input.just_pressed(KeyCode::KeyK) {
             info!("joining ip");
             #[cfg(feature = "ip")]
+            let send = send_sleep.0.clone();
+            #[cfg(feature = "ip")]
             client
-                .join_ip_runtime("127.0.0.1".parse().unwrap(), None, None, &down.runtime.0)
+                .join_ip_runtime(
+                    "127.0.0.1".parse().unwrap(),
+                    Some(Box::new(move |_, _| {
+                        send.store(true, std::sync::atomic::Ordering::Relaxed);
+                    })),
+                    None,
+                    &down.runtime.0,
+                )
                 .unwrap();
         }
     }

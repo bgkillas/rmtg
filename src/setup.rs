@@ -1,7 +1,7 @@
 use crate::download::get_from_img;
 #[cfg(feature = "steam")]
 use crate::sync::Packet;
-use crate::sync::{Shape, SyncObjectMe, spawn_hand};
+use crate::sync::{SendSleeping, Shape, SyncObjectMe, spawn_hand};
 use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::render::mesh::{Indices, PrimitiveTopology};
@@ -33,11 +33,16 @@ pub fn setup(
     #[cfg(feature = "steam")] mut client: ResMut<Client>,
     mut rand: GlobalEntropy<WyRand>,
     mut count: ResMut<SyncCount>,
+    mut sleeping_threshold: ResMut<SleepingThreshold>,
+    send_sleep: Res<SendSleeping>,
 ) {
+    sleeping_threshold.linear = 8.0;
+    sleeping_threshold.angular = 0.25;
     #[cfg(feature = "steam")]
     {
         let who = Arc::new(Mutex::new(HashMap::new()));
         let who2 = who.clone();
+        let send = send_sleep.0.clone();
         client
             .init_steam(
                 Some(Box::new(move |client, peer| {
@@ -57,6 +62,7 @@ pub fn setup(
                             .send_message(peer, &Packet::SetUser(k), Reliability::Reliable)
                             .unwrap();
                     }
+                    send.store(true, std::sync::atomic::Ordering::Relaxed);
                 })),
                 Some(Box::new(move |client, peer| {
                     if client.is_host() {
