@@ -245,6 +245,22 @@ pub fn setup(
         &mut materials,
     );
     ico.insert(SyncObjectMe::new(&mut rand, &mut count));
+    let mut dodec = spawn_dodec(
+        96.0,
+        Transform::from_xyz(896.0, 128.0, 0.0),
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+    );
+    dodec.insert(SyncObjectMe::new(&mut rand, &mut count));
+    let mut coin = spawn_coin(
+        96.0,
+        Transform::from_xyz(0.0, 128.0, 256.0),
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+    );
+    coin.insert(SyncObjectMe::new(&mut rand, &mut count));
     commands.spawn((
         Node {
             width: Val::Percent(100.0),
@@ -293,6 +309,8 @@ pub fn spawn_cube<'a>(
         Collider::cuboid(m, m, m),
         transform,
         RigidBody::Dynamic,
+        LinearDamping(LIN_DAMPING),
+        AngularDamping(ANG_DAMPING),
         SLEEP,
         GravityScale(GRAVITY),
         Shape::Cube,
@@ -369,7 +387,7 @@ pub fn spawn_ico<'a>(
             let bn = bx * bx + by * by + bz * bz;
             let t = (ax * bx + ay * by + az * bz) / (an * bn).sqrt();
             let t = t.acos();
-            if (t - 1.1071488).abs() < 0.25 {
+            if (t - 1.1071488).abs() < 0.125 {
                 f.push([i as u16, j as u16]);
             }
         }
@@ -417,6 +435,8 @@ pub fn spawn_ico<'a>(
         transform,
         Shape::Icosahedron,
         RigidBody::Dynamic,
+        LinearDamping(LIN_DAMPING),
+        AngularDamping(ANG_DAMPING),
         SLEEP,
         GravityScale(GRAVITY),
         Mesh3d(meshes.add(mesh)),
@@ -465,44 +485,222 @@ pub fn spawn_ico<'a>(
     });
     ent
 }
+pub fn spawn_coin<'a>(
+    m: f32,
+    transform: Transform,
+    commands: &'a mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+) -> EntityCommands<'a> {
+    let ratio = 8.0;
+    let mut ent = commands.spawn((
+        Collider::cylinder(m, m / ratio),
+        transform,
+        Shape::Disc,
+        ColliderDensity(1.0 / 32.0),
+        RigidBody::Dynamic,
+        LinearDamping(LIN_DAMPING),
+        AngularDamping(ANG_DAMPING),
+        SLEEP,
+        GravityScale(GRAVITY),
+        Mesh3d(meshes.add(Cylinder::new(m, m / ratio))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: bevy::prelude::Color::WHITE,
+            unlit: true,
+            ..default()
+        })),
+    ));
+    ent.with_children(|parent| {
+        for (i, [mut y]) in [[m / ratio], [-m / ratio]].into_iter().enumerate() {
+            if y < 0.0 {
+                y -= 1.0;
+            } else {
+                y += 1.0;
+            }
+            parent.spawn((
+                Transform::from_xyz(0.0, y, 0.0).looking_at(Vec3::default(), Dir3::Z),
+                Text3d::new(i.to_string()),
+                Side(i),
+                Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
+                MeshMaterial3d(materials.add(StandardMaterial {
+                    base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
+                    alpha_mode: AlphaMode::Premultiplied,
+                    base_color: bevy::prelude::Color::BLACK,
+                    unlit: true,
+                    ..default()
+                })),
+                Text3dStyling {
+                    size: m / 2.0,
+                    anchor: TextAnchor::CENTER,
+                    ..default()
+                },
+            ));
+        }
+    });
+    ent
+}
 #[allow(dead_code)]
 #[derive(Component)]
 pub struct Side(pub usize);
-#[allow(dead_code)]
-fn mesh_dodec() -> Mesh {
-    let phi = 0.5 + 5.0f32.sqrt() / 2.0;
-    let phir = phi.recip();
-    let mut vertexes: Vec<[f32; 3]> = Vec::with_capacity(20);
-    for x in [-1.0, 1.0] {
-        for y in [-1.0, 1.0] {
-            for z in [-1.0, 1.0] {
-                vertexes.push([x, y, z])
+pub fn spawn_dodec<'a>(
+    m: f32,
+    transform: Transform,
+    commands: &'a mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+) -> EntityCommands<'a> {
+    let phi = (0.5 + 5.0f64.sqrt() / 2.0) * m as f64;
+    let phir = phi.recip() as f32;
+    let phi = phi as f32;
+    let mut verticies: Vec<[f32; 3]> = Vec::with_capacity(20);
+    for x in [-m, m] {
+        for y in [-m, m] {
+            for z in [-m, m] {
+                verticies.push([x, y, z])
             }
         }
     }
     for y in [-phir, phir] {
         for z in [-phi, phi] {
-            vertexes.push([0.0, y, z])
+            verticies.push([0.0, y, z])
         }
     }
     for x in [-phir, phir] {
         for y in [-phi, phi] {
-            vertexes.push([x, y, 0.0])
+            verticies.push([x, y, 0.0])
         }
     }
     for x in [-phi, phi] {
         for z in [-phir, phir] {
-            vertexes.push([x, 0.0, z])
+            verticies.push([x, 0.0, z])
         }
     }
-    Mesh::new(
+    let mut f = Vec::with_capacity(60);
+    for (i, a) in verticies.iter().enumerate() {
+        let [ax, ay, az] = a;
+        let an = ax * ax + ay * ay + az * az;
+        for (j, b) in verticies.iter().enumerate() {
+            let [bx, by, bz] = b;
+            let bn = bx * bx + by * by + bz * bz;
+            let t = (ax * bx + ay * by + az * bz) / (an * bn).sqrt();
+            let t = t.acos();
+            if (t - 0.72972).abs() < 0.125 {
+                f.push([i as u16, j as u16]);
+            }
+        }
+    }
+    let mut indecies = Vec::with_capacity(60);
+    let mut faces = Vec::with_capacity(12);
+    for a in &f {
+        for b in &f {
+            for c in &f {
+                for d in &f {
+                    for e in &f {
+                        if a[1] == b[0]
+                            && b[1] == c[0]
+                            && c[1] == d[0]
+                            && d[1] == e[0]
+                            && e[1] == a[0]
+                            && a[0] < b[0]
+                            && b[0] < c[0]
+                            && c[0] < d[0]
+                            && d[0] < e[0]
+                        {
+                            let [ox, oy, oz] = verticies[a[0] as usize];
+                            let u = verticies[b[0] as usize];
+                            let v = verticies[c[0] as usize];
+                            let x = verticies[d[0] as usize];
+                            let y = verticies[e[0] as usize];
+                            let n = [
+                                u[1] * v[2] - u[2] * v[1],
+                                u[2] * v[0] - u[0] * v[2],
+                                u[0] * v[1] - u[1] * v[0],
+                            ];
+                            let dot = n[0] * ox + n[1] * oy + n[2] * oz;
+                            indecies.push(a[0]);
+                            if dot > 0.0 {
+                                indecies.push(b[0]);
+                                indecies.push(c[0]);
+                                indecies.push(d[0]);
+                                indecies.push(e[0]);
+                            } else {
+                                indecies.push(e[0]);
+                                indecies.push(d[0]);
+                                indecies.push(c[0]);
+                                indecies.push(b[0]);
+                            }
+                            faces.push([
+                                (ox + u[0] + v[0] + x[0] + y[0]) / 5.0,
+                                (oy + u[1] + v[1] + x[1] + y[1]) / 5.0,
+                                (oz + u[2] + v[2] + x[2] + y[2]) / 5.0,
+                            ])
+                        }
+                    }
+                }
+            }
+        }
+    }
+    println!("{} {}", faces.len(), f.len());
+    let mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
         RenderAssetUsages::RENDER_WORLD,
     )
-    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertexes)
-    .with_inserted_indices(Indices::U16(vec![
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 0,
-    ]))
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, verticies)
+    .with_inserted_indices(Indices::U16(indecies));
+    let mut ent = commands.spawn((
+        Collider::convex_hull_from_mesh(&mesh).unwrap(),
+        transform,
+        Shape::Dodecahedron,
+        RigidBody::Dynamic,
+        LinearDamping(LIN_DAMPING),
+        AngularDamping(ANG_DAMPING),
+        SLEEP,
+        GravityScale(GRAVITY),
+        Mesh3d(meshes.add(mesh)),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: bevy::prelude::Color::WHITE,
+            unlit: true,
+            ..default()
+        })),
+    ));
+    ent.with_children(|parent| {
+        for (i, [mut x, mut y, mut z]) in faces.into_iter().enumerate() {
+            if x < 0.0 {
+                x -= 1.0;
+            } else {
+                x += 1.0;
+            }
+            if y < 0.0 {
+                y -= 1.0;
+            } else {
+                y += 1.0;
+            }
+            if z < 0.0 {
+                z -= 1.0;
+            } else {
+                z += 1.0;
+            }
+            parent.spawn((
+                Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
+                Text3d::new((i + 1).to_string()),
+                Side(i + 1),
+                Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
+                MeshMaterial3d(materials.add(StandardMaterial {
+                    base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
+                    alpha_mode: AlphaMode::Premultiplied,
+                    base_color: bevy::prelude::Color::BLACK,
+                    unlit: true,
+                    ..default()
+                })),
+                Text3dStyling {
+                    size: m / 2.0,
+                    anchor: TextAnchor::CENTER,
+                    ..default()
+                },
+            ));
+        }
+    });
+    ent
 }
 #[derive(Component)]
 pub struct Wall;

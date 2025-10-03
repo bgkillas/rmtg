@@ -138,6 +138,8 @@ pub fn new_pile_at<'a>(
         transform,
         Visibility::default(),
         RigidBody::Dynamic,
+        LinearDamping(LIN_DAMPING),
+        AngularDamping(ANG_DAMPING),
         SLEEP,
         Collider::cuboid(CARD_WIDTH, CARD_HEIGHT, 2.0 * size),
         GravityScale(if follow_mouse || parent.is_some() {
