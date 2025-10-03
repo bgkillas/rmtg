@@ -84,25 +84,16 @@ pub fn display_steam_info(
     frame: Res<FrameCount>,
     mut text: Single<(&mut Node, &mut Text), With<SteamInfo>>,
     client: Res<Client>,
+    menu: Res<Menu>,
 ) {
-    if !frame.0.is_multiple_of(10) {
+    if !menu.0 || !frame.0.is_multiple_of(20) {
         return;
     }
     let Some(info) = client.info() else { return };
     let info = info
         .0
         .into_iter()
-        .map(|(p, a)| {
-            format!(
-                "{}, in: {} out: {} pending: {} ping: {} queued: {}",
-                p.0,
-                a.in_bytes_per_sec(),
-                a.out_bytes_per_sec(),
-                a.pending_reliable() + a.pending_unreliable(),
-                a.ping(),
-                a.queued_send_bytes()
-            )
-        })
+        .map(|(p, a)| format!("{p}: {a:?}",))
         .collect::<Vec<String>>();
     let Val::Px(width) = text.0.width else {
         unreachable!()

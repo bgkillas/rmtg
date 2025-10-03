@@ -245,6 +245,16 @@ pub fn setup(
         &mut materials,
     );
     ico.insert(SyncObjectMe::new(&mut rand, &mut count));
+    commands.spawn((
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            ..default()
+        },
+        EscMenu,
+        Visibility::Hidden,
+        BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
+    ));
     #[cfg(feature = "steam")]
     commands.spawn((
         Node {
@@ -252,9 +262,10 @@ pub fn setup(
             height: Val::Px(0.0),
             ..default()
         },
-        BackgroundColor(bevy::color::Color::srgba_u8(128, 128, 128, 128)),
         Text(String::new()),
         SteamInfo,
+        EscMenu,
+        Visibility::Hidden,
         TextFont {
             font,
             font_size: FONT_SIZE,
@@ -262,6 +273,8 @@ pub fn setup(
         },
     ));
 }
+#[derive(Component)]
+pub struct EscMenu;
 #[cfg(feature = "steam")]
 #[derive(Component)]
 pub struct SteamInfo;

@@ -3,7 +3,7 @@ use crate::misc::{
     adjust_meshes, get_card, get_mut_card, is_reversed, make_material, move_up, new_pile,
     new_pile_at, repaint_face, take_card,
 };
-use crate::setup::{T, W, Wall};
+use crate::setup::{EscMenu, T, W, Wall};
 use crate::sync::{Packet, SyncObjectMe};
 use crate::*;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
@@ -101,6 +101,7 @@ pub fn follow_mouse(
         ),
         With<FollowMouse>,
     >,
+    menu: Res<Menu>,
 ) {
     let Some(cursor_position) = window.cursor_position() else {
         return;
@@ -109,7 +110,7 @@ pub fn follow_mouse(
     let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
         return;
     };
-    if mouse_input.pressed(MouseButton::Left) {
+    if !menu.0 && mouse_input.pressed(MouseButton::Left) {
         card.3.y = 0.0;
         let aabb = card.4.aabb(card.1.translation, card.1.rotation);
         if let Some(max) = spatial
@@ -199,6 +200,7 @@ pub fn listen_for_mouse(
         follow,
         mut grav,
         shape,
+        menu,
     ): (
         Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
         ResMut<Download>,
@@ -212,8 +214,12 @@ pub fn listen_for_mouse(
         Option<Single<Entity, With<FollowMouse>>>,
         Query<&mut GravityScale>,
         Query<&Shape>,
+        Res<Menu>,
     ),
 ) {
+    if menu.0 {
+        return;
+    }
     let Some(cursor_position) = window.cursor_position() else {
         return;
     };
@@ -573,11 +579,32 @@ pub fn listen_for_mouse(
         commands.entity(single.0).despawn();
     }
 }
+pub fn esc_menu(
+    input: Res<ButtonInput<KeyCode>>,
+    ents: Query<&mut Visibility, With<EscMenu>>,
+    mut menu: ResMut<Menu>,
+) {
+    if input.just_pressed(KeyCode::Escape) {
+        menu.0 = !menu.0;
+        let new = if menu.0 {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+        for mut visibility in ents {
+            *visibility = new;
+        }
+    }
+}
 pub fn cam_translation(
     input: Res<ButtonInput<KeyCode>>,
     mouse_motion: Res<AccumulatedMouseScroll>,
     mut cam: Single<&mut Transform, With<Camera3d>>,
+    menu: Res<Menu>,
 ) {
+    if menu.0 {
+        return;
+    }
     let scale = if input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
         128.0
     } else {
@@ -631,7 +658,11 @@ pub fn cam_rotation(
     mouse_button: Res<ButtonInput<MouseButton>>,
     mouse_motion: Res<AccumulatedMouseMotion>,
     mut cam: Single<&mut Transform, With<Camera3d>>,
+    menu: Res<Menu>,
 ) {
+    if menu.0 {
+        return;
+    }
     if mouse_button.pressed(MouseButton::Right) && mouse_motion.delta != Vec2::ZERO {
         let delta_yaw = -mouse_motion.delta.x * 0.001;
         let delta_pitch = -mouse_motion.delta.y * 0.001;
@@ -657,7 +688,11 @@ pub fn listen_for_deck(
     mut rand: Single<&mut WyRand, With<GlobalRng>>,
     mut count: ResMut<SyncCount>,
     mut to_move: ResMut<ToMoveUp>,
+    menu: Res<Menu>,
 ) {
+    if menu.0 {
+        return;
+    }
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
         && (input.just_pressed(KeyCode::KeyV)
             || (input.pressed(KeyCode::ShiftLeft)

@@ -1,6 +1,6 @@
 use crate::setup::setup;
 use crate::update::{
-    ToMoveUp, cam_rotation, cam_translation, follow_mouse, gather_hand, listen_for_deck,
+    ToMoveUp, cam_rotation, cam_translation, esc_menu, follow_mouse, gather_hand, listen_for_deck,
     listen_for_mouse, register_deck, to_move_up, update_hand,
 };
 use avian3d::prelude::*;
@@ -98,6 +98,7 @@ pub fn start() {
     .insert_resource(ToMoveUp(Vec::new()))
     .insert_resource(SyncCount::default())
     .insert_resource(Sent::default())
+    .insert_resource(Menu::default())
     .insert_resource(SendSleeping::default())
     .insert_resource(SyncActions::default())
     .insert_resource(game_clipboard)
@@ -118,6 +119,7 @@ pub fn start() {
                 register_deck,
                 cam_translation,
                 cam_rotation,
+                esc_menu,
                 #[cfg(all(feature = "steam", feature = "ip"))]
                 new_lobby,
                 (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
@@ -129,6 +131,8 @@ pub fn start() {
     .add_systems(PreUpdate, (get_sync, apply_sync).chain());
     app.run();
 }
+#[derive(Resource, Default)]
+pub struct Menu(pub bool);
 pub const SLEEP: SleepThreshold = SleepThreshold {
     linear: 8.0,
     angular: 0.25,

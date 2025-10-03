@@ -2,6 +2,7 @@
 mod ip;
 #[cfg(feature = "steam")]
 mod steam;
+use std::fmt::{Display, Formatter};
 #[cfg(feature = "tangled")]
 use crate::ip::IpClient;
 #[cfg(feature = "steam")]
@@ -26,6 +27,11 @@ pub enum Reliability {
 }
 #[derive(Copy, Debug, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
 pub struct PeerId(pub u64);
+impl Display for PeerId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 impl PeerId {
     pub fn raw(&self) -> u64 {
         self.0
