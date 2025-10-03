@@ -561,7 +561,8 @@ pub fn listen_for_mouse(
                 && let Ok(shape) = shape.get(entity)
             {
                 *game_clipboard = GameClipboard::Shape(*shape);
-            } else if input.just_pressed(KeyCode::KeyR)
+            } else if (input.just_pressed(KeyCode::KeyR)
+                || input.all_pressed([KeyCode::KeyR, KeyCode::AltLeft]))
                 && let Ok((mut lv, mut av)) = vels.get_mut(entity)
             {
                 lv.y = 4096.0;

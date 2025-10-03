@@ -584,7 +584,7 @@ pub fn spawn_dodec<'a>(
             let bn = bx * bx + by * by + bz * bz;
             let t = (ax * bx + ay * by + az * bz) / (an * bn).sqrt();
             let t = t.acos();
-            if (t - 0.72972).abs() < 0.125 {
+            if (t - 0.9552873).abs() < 0.125 {
                 f.push([i as u16, j as u16]);
             }
         }
@@ -601,10 +601,10 @@ pub fn spawn_dodec<'a>(
                             && c[1] == d[0]
                             && d[1] == e[0]
                             && e[1] == a[0]
-                            && a[0] < b[0]
-                            && b[0] < c[0]
-                            && c[0] < d[0]
-                            && d[0] < e[0]
+                            //&& a[0] < b[0]
+                            //&& b[0] < c[0]
+                            //&& c[0] < d[0]
+                            //&& d[0] < e[0]
                         {
                             let [ox, oy, oz] = verticies[a[0] as usize];
                             let u = verticies[b[0] as usize];
@@ -620,20 +620,36 @@ pub fn spawn_dodec<'a>(
                             indecies.push(a[0]);
                             if dot > 0.0 {
                                 indecies.push(b[0]);
+                                indecies.push(verticies.len() as u16);
+                                indecies.push(b[0]);
+                                indecies.push(c[0]);
+                                indecies.push(verticies.len() as u16);
                                 indecies.push(c[0]);
                                 indecies.push(d[0]);
+                                indecies.push(verticies.len() as u16);
+                                indecies.push(d[0]);
                                 indecies.push(e[0]);
+                                indecies.push(verticies.len() as u16);
                             } else {
                                 indecies.push(e[0]);
+                                indecies.push(verticies.len() as u16);
+                                indecies.push(e[0]);
+                                indecies.push(d[0]);
+                                indecies.push(verticies.len() as u16);
                                 indecies.push(d[0]);
                                 indecies.push(c[0]);
+                                indecies.push(verticies.len() as u16);
+                                indecies.push(c[0]);
                                 indecies.push(b[0]);
+                                indecies.push(verticies.len() as u16);
                             }
-                            faces.push([
+                            let a = [
                                 (ox + u[0] + v[0] + x[0] + y[0]) / 5.0,
                                 (oy + u[1] + v[1] + x[1] + y[1]) / 5.0,
                                 (oz + u[2] + v[2] + x[2] + y[2]) / 5.0,
-                            ])
+                            ];
+                            verticies.push(a);
+                            faces.push(a)
                         }
                     }
                 }
