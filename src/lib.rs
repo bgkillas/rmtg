@@ -40,6 +40,9 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen_futures::JsFuture;
 #[cfg(feature = "steam")]
 const APPID: u32 = 480; // 4046880
+const FONT_SIZE: f32 = 16.0;
+const FONT_HEIGHT: f32 = FONT_SIZE;
+const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 pub fn start() {
     #[cfg(feature = "wasm")]

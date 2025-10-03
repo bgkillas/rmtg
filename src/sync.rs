@@ -82,14 +82,14 @@ pub fn get_sync(
 #[cfg(feature = "steam")]
 pub fn display_steam_info(
     frame: Res<FrameCount>,
-    mut text: Single<&mut Text, With<SteamInfo>>,
+    mut text: Single<(&mut Node, &mut Text), With<SteamInfo>>,
     client: Res<Client>,
 ) {
     if !frame.0.is_multiple_of(10) {
         return;
     }
     let Some(info) = client.info() else { return };
-    text.0 = info
+    let info = info
         .0
         .into_iter()
         .map(|(p, a)| {
@@ -103,8 +103,22 @@ pub fn display_steam_info(
                 a.queued_send_bytes()
             )
         })
-        .collect::<Vec<String>>()
-        .join("\n");
+        .collect::<Vec<String>>();
+    let Val::Px(width) = text.0.width else {
+        unreachable!()
+    };
+    let Val::Px(height) = text.0.height else {
+        unreachable!()
+    };
+    let max = info.iter().map(|a| a.len()).max().unwrap_or(0) as f32 * FONT_WIDTH;
+    if max > width {
+        text.0.width = Val::Px(max);
+    }
+    let max = info.len() as f32 * FONT_HEIGHT;
+    if max > height {
+        text.0.height = Val::Px(max);
+    }
+    text.1.0 = info.join("\n");
 }
 pub fn apply_sync(
     mut query: Query<(

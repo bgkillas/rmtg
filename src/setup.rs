@@ -248,15 +248,16 @@ pub fn setup(
     #[cfg(feature = "steam")]
     commands.spawn((
         Node {
-            width: Val::Px(512.0),
-            height: Val::Px(256.0),
+            width: Val::Px(0.0),
+            height: Val::Px(0.0),
             ..default()
         },
         BackgroundColor(bevy::color::Color::srgba_u8(128, 128, 128, 128)),
-        Text("rmtg".to_string()),
+        Text(String::new()),
+        SteamInfo,
         TextFont {
             font,
-            font_size: 16.0,
+            font_size: FONT_SIZE,
             ..default()
         },
     ));
