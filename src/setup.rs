@@ -245,15 +245,6 @@ pub fn setup(
         &mut materials,
     );
     ico.insert(SyncObjectMe::new(&mut rand, &mut count));
-    /*commands.spawn((
-        Camera2d,
-        Camera {
-            order: 1,
-            clear_color: ClearColorConfig::None,
-            ..default()
-        },
-        RenderLayers::layer(1),
-    ));todo
     #[cfg(feature = "steam")]
     commands.spawn((
         Node {
@@ -262,15 +253,13 @@ pub fn setup(
             ..default()
         },
         BackgroundColor(bevy::color::Color::srgba_u8(128, 128, 128, 128)),
-        RenderLayers::layer(1),
-        Text(String::new()),
-        SteamInfo,
+        Text("rmtg".to_string()),
         TextFont {
             font,
             font_size: 16.0,
             ..default()
         },
-    ));*/
+    ));
 }
 #[cfg(feature = "steam")]
 #[derive(Component)]
