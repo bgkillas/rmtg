@@ -549,9 +549,9 @@ pub fn spawn_dodec<'a>(
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
 ) -> EntityCommands<'a> {
-    let phi = (0.5 + 5.0f64.sqrt() / 2.0) * m as f64;
-    let phir = phi.recip() as f32;
-    let phi = phi as f32;
+    let phi = 0.5 + 5.0f64.sqrt() / 2.0;
+    let phir = (phi.recip() * m as f64) as f32;
+    let phi = (phi * m as f64) as f32;
     let mut verticies: Vec<[f32; 3]> = Vec::with_capacity(20);
     for x in [-m, m] {
         for y in [-m, m] {
@@ -584,7 +584,7 @@ pub fn spawn_dodec<'a>(
             let bn = bx * bx + by * by + bz * bz;
             let t = (ax * bx + ay * by + az * bz) / (an * bn).sqrt();
             let t = t.acos();
-            if (t - 0.9552873).abs() < 0.125 {
+            if (t - 0.72972).abs() < 0.125 {
                 f.push([i as u16, j as u16]);
             }
         }
@@ -601,10 +601,10 @@ pub fn spawn_dodec<'a>(
                             && c[1] == d[0]
                             && d[1] == e[0]
                             && e[1] == a[0]
-                            //&& a[0] < b[0]
-                            //&& b[0] < c[0]
-                            //&& c[0] < d[0]
-                            //&& d[0] < e[0]
+                            && a[0] < b[0]
+                            && b[0] < c[0]
+                            && c[0] < d[0]
+                            && d[0] < e[0]
                         {
                             let [ox, oy, oz] = verticies[a[0] as usize];
                             let u = verticies[b[0] as usize];
@@ -656,6 +656,7 @@ pub fn spawn_dodec<'a>(
             }
         }
     }
+    println!("{:?}", f);
     println!("{} {}", faces.len(), f.len());
     let mesh = Mesh::new(
         PrimitiveTopology::TriangleList,

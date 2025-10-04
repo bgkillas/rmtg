@@ -93,7 +93,14 @@ pub fn display_steam_info(
     let info = info
         .0
         .into_iter()
-        .map(|(p, a)| format!("{p}: {a:?}",))
+        .map(|(p, a)| {
+            format!(
+                "{p}: {} {} {}",
+                a.ping(),
+                a.in_bytes_per_sec(),
+                a.out_bytes_per_sec(),
+            )
+        })
         .collect::<Vec<String>>();
     let Val::Px(width) = text.0.width else {
         unreachable!()
