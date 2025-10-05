@@ -241,6 +241,10 @@ pub fn listen_for_mouse(
                 transform.rotate_local_y(PI);
             } else if input.just_pressed(KeyCode::KeyR) {
                 if pile.0.len() > 1 {
+                    if let Ok(id) = others_ids.get(entity) {
+                        let myid = SyncObjectMe::new(&mut rand, &mut count);
+                        sync_actions.take_owner.push((*id, myid));
+                    }
                     pile.0.shuffle(&mut rand);
                     let card = pile.0.last().unwrap();
                     repaint_face(&mut mats, &mut materials, card, children);
@@ -565,6 +569,10 @@ pub fn listen_for_mouse(
                 || input.all_pressed([KeyCode::KeyR, KeyCode::AltLeft]))
                 && let Ok((mut lv, mut av)) = vels.get_mut(entity)
             {
+                if let Ok(id) = others_ids.get(entity) {
+                    let myid = SyncObjectMe::new(&mut rand, &mut count);
+                    sync_actions.take_owner.push((*id, myid));
+                }
                 lv.y = 4096.0;
                 av.x = if rand.random() { 1.0 } else { -1.0 }
                     * (rand.random_range(32.0..64.0) + av.x.abs());

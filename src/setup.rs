@@ -593,70 +593,78 @@ pub fn spawn_dodec<'a>(
     let mut faces = Vec::with_capacity(12);
     for a in &f {
         for b in &f {
+            if a[1] != b[0] {
+                continue;
+            }
             for c in &f {
+                if b[1] != c[0] {
+                    continue;
+                }
                 for d in &f {
+                    if c[1] != d[0] {
+                        continue;
+                    }
                     for e in &f {
-                        if a[1] == b[0]
-                            && b[1] == c[0]
-                            && c[1] == d[0]
-                            && d[1] == e[0]
-                            && e[1] == a[0]
-                            && a[0] < b[0]
-                            && b[0] < c[0]
-                            && c[0] < d[0]
-                            && d[0] < e[0]
+                        if e[1] != a[0]
+                            || [a, b, c, d, e].iter().enumerate().any(|(i, x)| {
+                                [a, b, c, d, e].iter().enumerate().any(|(j, y)| {
+                                    (x == y && i != j) || (x[0] == y[1] && x[1] == y[0])
+                                })
+                            })
                         {
-                            let [ox, oy, oz] = verticies[a[0] as usize];
-                            let u = verticies[b[0] as usize];
-                            let v = verticies[c[0] as usize];
-                            let x = verticies[d[0] as usize];
-                            let y = verticies[e[0] as usize];
-                            let n = [
-                                u[1] * v[2] - u[2] * v[1],
-                                u[2] * v[0] - u[0] * v[2],
-                                u[0] * v[1] - u[1] * v[0],
-                            ];
-                            let dot = n[0] * ox + n[1] * oy + n[2] * oz;
-                            indecies.push(a[0]);
-                            if dot > 0.0 {
-                                indecies.push(b[0]);
-                                indecies.push(verticies.len() as u16);
-                                indecies.push(b[0]);
-                                indecies.push(c[0]);
-                                indecies.push(verticies.len() as u16);
-                                indecies.push(c[0]);
-                                indecies.push(d[0]);
-                                indecies.push(verticies.len() as u16);
-                                indecies.push(d[0]);
-                                indecies.push(e[0]);
-                                indecies.push(verticies.len() as u16);
-                            } else {
-                                indecies.push(e[0]);
-                                indecies.push(verticies.len() as u16);
-                                indecies.push(e[0]);
-                                indecies.push(d[0]);
-                                indecies.push(verticies.len() as u16);
-                                indecies.push(d[0]);
-                                indecies.push(c[0]);
-                                indecies.push(verticies.len() as u16);
-                                indecies.push(c[0]);
-                                indecies.push(b[0]);
-                                indecies.push(verticies.len() as u16);
-                            }
-                            let a = [
-                                (ox + u[0] + v[0] + x[0] + y[0]) / 5.0,
-                                (oy + u[1] + v[1] + x[1] + y[1]) / 5.0,
-                                (oz + u[2] + v[2] + x[2] + y[2]) / 5.0,
-                            ];
-                            verticies.push(a);
-                            faces.push(a)
+                            continue;
                         }
+                        let [ox, oy, oz] = verticies[a[0] as usize];
+                        let u = verticies[b[0] as usize];
+                        let v = verticies[c[0] as usize];
+                        let x = verticies[d[0] as usize];
+                        let y = verticies[e[0] as usize];
+                        let n = [
+                            u[1] * v[2] - u[2] * v[1],
+                            u[2] * v[0] - u[0] * v[2],
+                            u[0] * v[1] - u[1] * v[0],
+                        ];
+                        let dot = n[0] * ox + n[1] * oy + n[2] * oz;
+                        indecies.push(a[0]);
+                        if dot > 0.0 {
+                            indecies.push(b[0]);
+                            indecies.push(verticies.len() as u16);
+                            indecies.push(b[0]);
+                            indecies.push(c[0]);
+                            indecies.push(verticies.len() as u16);
+                            indecies.push(c[0]);
+                            indecies.push(d[0]);
+                            indecies.push(verticies.len() as u16);
+                            indecies.push(d[0]);
+                            indecies.push(e[0]);
+                            indecies.push(verticies.len() as u16);
+                        } else {
+                            indecies.push(e[0]);
+                            indecies.push(verticies.len() as u16);
+                            indecies.push(e[0]);
+                            indecies.push(d[0]);
+                            indecies.push(verticies.len() as u16);
+                            indecies.push(d[0]);
+                            indecies.push(c[0]);
+                            indecies.push(verticies.len() as u16);
+                            indecies.push(c[0]);
+                            indecies.push(b[0]);
+                            indecies.push(verticies.len() as u16);
+                        }
+                        let a = [
+                            (ox + u[0] + v[0] + x[0] + y[0]) / 5.0,
+                            (oy + u[1] + v[1] + x[1] + y[1]) / 5.0,
+                            (oz + u[2] + v[2] + x[2] + y[2]) / 5.0,
+                        ];
+                        verticies.push(a);
+                        faces.push(a)
                     }
                 }
             }
         }
     }
     println!("{:?}", f);
+    println!("{:?}", indecies);
     println!("{} {}", faces.len(), f.len());
     let mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
