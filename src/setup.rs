@@ -247,7 +247,7 @@ pub fn setup(
     ico.insert(SyncObjectMe::new(&mut rand, &mut count));
     let mut dodec = spawn_dodec(
         96.0,
-        Transform::from_xyz(896.0, 128.0, 0.0),
+        Transform::from_xyz(1024.0, 128.0, 0.0),
         &mut commands,
         &mut meshes,
         &mut materials,
@@ -591,21 +591,25 @@ pub fn spawn_dodec<'a>(
     }
     let mut indecies = Vec::with_capacity(60);
     let mut faces = Vec::with_capacity(12);
+    println!("{verticies:?}");
     for a in &f {
         for b in &f {
-            if a[1] != b[0] {
+            if a[1] != b[0] || a[0] > b[0] {
                 continue;
             }
             for c in &f {
-                if b[1] != c[0] {
+                if b[1] != c[0] || a[0] > c[0] {
                     continue;
                 }
                 for d in &f {
-                    if c[1] != d[0] {
+                    if c[1] != d[0] || a[0] > d[0] {
                         continue;
                     }
                     for e in &f {
-                        if e[1] != a[0]
+                        if d[1] != e[0]
+                            || e[1] != a[0]
+                            || a[0] > e[0]
+                            || b[0] > e[0]
                             || [a, b, c, d, e].iter().enumerate().any(|(i, x)| {
                                 [a, b, c, d, e].iter().enumerate().any(|(j, y)| {
                                     (x == y && i != j) || (x[0] == y[1] && x[1] == y[0])
@@ -614,6 +618,7 @@ pub fn spawn_dodec<'a>(
                         {
                             continue;
                         }
+                        println!("{{{},{},{},{},{},{}}},", a[0], b[0], c[0], d[0], e[0], a[0]);
                         let [ox, oy, oz] = verticies[a[0] as usize];
                         let u = verticies[b[0] as usize];
                         let v = verticies[c[0] as usize];
@@ -638,6 +643,9 @@ pub fn spawn_dodec<'a>(
                             indecies.push(d[0]);
                             indecies.push(e[0]);
                             indecies.push(verticies.len() as u16);
+                            indecies.push(e[0]);
+                            indecies.push(a[0]);
+                            indecies.push(verticies.len() as u16);
                         } else {
                             indecies.push(e[0]);
                             indecies.push(verticies.len() as u16);
@@ -649,6 +657,9 @@ pub fn spawn_dodec<'a>(
                             indecies.push(verticies.len() as u16);
                             indecies.push(c[0]);
                             indecies.push(b[0]);
+                            indecies.push(verticies.len() as u16);
+                            indecies.push(b[0]);
+                            indecies.push(a[0]);
                             indecies.push(verticies.len() as u16);
                         }
                         let a = [
