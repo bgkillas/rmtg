@@ -26,6 +26,7 @@ pub const ANG_DAMPING: f32 = 0.25;
 mod download;
 mod misc;
 mod setup;
+mod shapes;
 pub mod sync;
 mod update;
 #[cfg(feature = "steam")]

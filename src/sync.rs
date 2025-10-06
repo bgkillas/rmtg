@@ -2,7 +2,8 @@ use crate::download::add_images;
 use crate::misc::{get_mut_card, new_pile_at, repaint_face};
 #[cfg(feature = "steam")]
 use crate::setup::SteamInfo;
-use crate::setup::{MAT_HEIGHT, MAT_WIDTH, spawn_coin, spawn_cube, spawn_dodec, spawn_ico};
+use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
+use crate::shapes::{spawn_coin, spawn_cube, spawn_dodec, spawn_ico, spawn_oct, spawn_tetra};
 use crate::*;
 use bevy::diagnostic::FrameCount;
 use bevy_rand::global::GlobalRng;
@@ -545,12 +546,8 @@ impl Shape {
             Shape::Cube => spawn_cube(256.0, transform, commands, meshes, materials),
             Shape::Icosahedron => spawn_ico(96.0, transform, commands, meshes, materials),
             Shape::Dodecahedron => spawn_dodec(96.0, transform, commands, meshes, materials),
-            Shape::Octohedron => {
-                todo!()
-            }
-            Shape::Tetrahedron => {
-                todo!()
-            }
+            Shape::Octohedron => spawn_oct(192.0, transform, commands, meshes, materials),
+            Shape::Tetrahedron => spawn_tetra(128.0, transform, commands, meshes, materials),
             Shape::Disc => spawn_coin(96.0, transform, commands, meshes, materials),
         }
     }
