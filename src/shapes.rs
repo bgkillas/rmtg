@@ -1,9 +1,35 @@
-use crate::sync::Shape;
 use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 use std::f32::consts::FRAC_PI_2;
+#[derive(Encode, Decode, Component, Copy, Clone, Debug)]
+pub enum Shape {
+    Cube,
+    Icosahedron,
+    Dodecahedron,
+    Octohedron,
+    Tetrahedron,
+    Disc,
+}
+impl Shape {
+    pub fn create<'a>(
+        &self,
+        transform: Transform,
+        commands: &'a mut Commands,
+        materials: &mut Assets<StandardMaterial>,
+        meshes: &mut Assets<Mesh>,
+    ) -> EntityCommands<'a> {
+        match self {
+            Shape::Cube => spawn_cube(256.0, transform, commands, meshes, materials),
+            Shape::Icosahedron => spawn_ico(96.0, transform, commands, meshes, materials),
+            Shape::Dodecahedron => spawn_dodec(96.0, transform, commands, meshes, materials),
+            Shape::Octohedron => spawn_oct(192.0, transform, commands, meshes, materials),
+            Shape::Tetrahedron => spawn_tetra(128.0, transform, commands, meshes, materials),
+            Shape::Disc => spawn_coin(96.0, transform, commands, meshes, materials),
+        }
+    }
+}
 pub fn spawn_ico<'a>(
     m: f32,
     transform: Transform,
@@ -377,7 +403,7 @@ pub fn spawn_coin<'a>(
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
 ) -> EntityCommands<'a> {
-    let ratio = 8.0;
+    let ratio = 16.0;
     let mut ent = commands.spawn((
         Collider::cylinder(m, m / ratio),
         transform,

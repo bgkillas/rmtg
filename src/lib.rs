@@ -29,13 +29,12 @@ mod setup;
 mod shapes;
 pub mod sync;
 mod update;
+use crate::shapes::Shape;
 #[cfg(feature = "steam")]
 use crate::sync::display_steam_info;
 #[cfg(all(feature = "steam", feature = "ip"))]
 use crate::sync::new_lobby;
-use crate::sync::{
-    SendSleeping, Sent, Shape, SyncActions, SyncCount, SyncObject, apply_sync, get_sync,
-};
+use crate::sync::{SendSleeping, Sent, SyncActions, SyncCount, SyncObject, apply_sync, get_sync};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
