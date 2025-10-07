@@ -3,6 +3,7 @@ use crate::{
     PeerId, Reliability,
 };
 use bitcode::{DecodeOwned, Encode, decode, encode};
+use eyre::eyre;
 use log::info;
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::collections::HashMap;
@@ -300,15 +301,16 @@ impl From<PeerId> for SteamId {
 }
 impl Client {
     pub fn host_steam(&mut self) -> eyre::Result<()> {
-        if let ClientType::Steam(client) = &mut self.client {
-            client.host()?;
-        }
-        Ok(())
+        let ClientType::Steam(client) = &mut self.client else {
+            return Err(eyre!("steam not initialized"));
+        };
+        client.host()
     }
     pub fn join_steam(&mut self, lobby: u64) -> eyre::Result<()> {
-        if let ClientType::Steam(client) = &mut self.client {
-            client.join(LobbyId::from_raw(lobby));
-        }
+        let ClientType::Steam(client) = &mut self.client else {
+            return Err(eyre!("steam not initialized"));
+        };
+        client.join(LobbyId::from_raw(lobby));
         Ok(())
     }
     pub fn args(&self) -> String {

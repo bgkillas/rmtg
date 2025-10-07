@@ -59,6 +59,16 @@ pub fn get_sync(
             .broadcast(&Packet::Flip(flip), Reliability::Reliable)
             .unwrap();
     }
+    for (id, order) in sync_actions.reorder.drain(..) {
+        client
+            .broadcast(&Packet::Reorder(id, order), Reliability::Reliable)
+            .unwrap();
+    }
+    for (id, to, start) in sync_actions.draw.drain(..) {
+        client
+            .broadcast(&Packet::Draw(id, to, start), Reliability::Reliable)
+            .unwrap();
+    }
     for (from, to) in sync_actions.take_owner.drain(..) {
         if let Some((entity, _)) = query_take.iter().find(|(_, b)| **b == from) {
             commands.entity(entity).remove::<SyncObject>().insert(to);
@@ -347,26 +357,30 @@ pub fn apply_sync(
             Packet::Reorder(lid, order) => {
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
-                if let Some(mut pile) = query.iter_mut().find_map(
-                    |(a, _, _, _, _, _, _, _, _, d, _)| {
-                        if *a == id { Some(d) } else { None }
+                if let Some((mut pile, children)) = query.iter_mut().find_map(
+                    |(a, _, _, _, _, _, _, _, c, d, _)| {
+                        if *a == id { Some((d, c)) } else { None }
                     },
                 ) && let Some(pile) = &mut pile
+                    && let Some(children) = children
                 {
                     for (i, id) in order.into_iter().enumerate() {
                         let n = pile.0[i..].iter().position(|c| c.id == id).unwrap() + i;
                         pile.0.swap(i, n);
                     }
+                    let card = pile.0.last().unwrap();
+                    repaint_face(&mut mats, &mut materials, card, children);
                 }
             }
             Packet::Draw(lid, to, start) => {
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
-                if let Some(mut pile) = query.iter_mut().find_map(
-                    |(a, _, _, _, _, _, _, _, _, d, _)| {
-                        if *a == id { Some(d) } else { None }
+                if let Some((mut pile, children)) = query.iter_mut().find_map(
+                    |(a, _, _, _, _, _, _, _, c, d, _)| {
+                        if *a == id { Some((d, c)) } else { None }
                     },
                 ) && let Some(pile) = &mut pile
+                    && let Some(children) = children
                 {
                     let len = to.len();
                     for ((id, trans), card) in to.into_iter().zip(pile.0.drain(start - len..start))
@@ -386,6 +400,8 @@ pub fn apply_sync(
                             None,
                         );
                     }
+                    let card = pile.0.last().unwrap();
+                    repaint_face(&mut mats, &mut materials, card, children);
                 }
             }
         }
@@ -491,8 +507,8 @@ impl Sent {
 pub struct SyncActions {
     pub killed: Vec<SyncObjectMe>,
     pub take_owner: Vec<(SyncObject, SyncObjectMe)>,
-    pub reorder: Vec<(SyncObjectMe, Vec<String>)>, //TODO
-    pub draw: Vec<(SyncObjectMe, Pile, usize)>,
+    pub reorder: Vec<(SyncObjectMe, Vec<String>)>,
+    pub draw: Vec<(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize)>,
     pub flip: Vec<SyncObjectMe>,
 }
 #[derive(Encode, Decode, Debug)]

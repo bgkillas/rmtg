@@ -2,7 +2,6 @@
 mod ip;
 #[cfg(feature = "steam")]
 mod steam;
-use std::fmt::{Display, Formatter};
 #[cfg(feature = "tangled")]
 use crate::ip::IpClient;
 #[cfg(feature = "steam")]
@@ -12,6 +11,7 @@ use bevy_app::{App, Plugin};
 #[cfg(feature = "bevy")]
 use bevy_ecs::resource::Resource;
 use bitcode::{DecodeOwned, Encode};
+use std::fmt::{Display, Formatter};
 #[cfg(feature = "steam")]
 use steamworks::networking_types::NetConnectionRealTimeInfo;
 #[allow(dead_code)]

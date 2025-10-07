@@ -248,6 +248,11 @@ pub fn listen_for_mouse(
                     pile.0.shuffle(&mut rand);
                     let card = pile.0.last().unwrap();
                     repaint_face(&mut mats, &mut materials, card, children);
+                    if let Ok(id) = ids.get(entity) {
+                        sync_actions
+                            .reorder
+                            .push((*id, pile.0.iter().map(|a| a.id.clone()).collect()));
+                    }
                 }
             } else if input.just_pressed(KeyCode::Backspace)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::AltLeft])

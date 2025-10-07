@@ -40,35 +40,33 @@ pub fn setup(
         let who = Arc::new(Mutex::new(HashMap::new()));
         let who2 = who.clone();
         let send = send_sleep.0.clone();
-        client
-            .init_steam(
-                Some(Box::new(move |client, peer| {
-                    if client.is_host() {
-                        let mut k = 1;
-                        {
-                            let mut who = who.lock().unwrap();
-                            loop {
-                                if let Vacant(e) = who.entry(k) {
-                                    e.insert(peer);
-                                    break;
-                                }
-                                k += 1;
+        let _ = client.init_steam(
+            Some(Box::new(move |client, peer| {
+                if client.is_host() {
+                    let mut k = 1;
+                    {
+                        let mut who = who.lock().unwrap();
+                        loop {
+                            if let Vacant(e) = who.entry(k) {
+                                e.insert(peer);
+                                break;
                             }
+                            k += 1;
                         }
-                        client
-                            .send_message(peer, &Packet::SetUser(k), Reliability::Reliable)
-                            .unwrap();
                     }
-                    send.store(true, std::sync::atomic::Ordering::Relaxed);
-                })),
-                Some(Box::new(move |client, peer| {
-                    if client.is_host() {
-                        let mut who = who2.lock().unwrap();
-                        who.retain(|_, p| *p != peer)
-                    }
-                })),
-            )
-            .unwrap();
+                    client
+                        .send_message(peer, &Packet::SetUser(k), Reliability::Reliable)
+                        .unwrap();
+                }
+                send.store(true, std::sync::atomic::Ordering::Relaxed);
+            })),
+            Some(Box::new(move |client, peer| {
+                if client.is_host() {
+                    let mut who = who2.lock().unwrap();
+                    who.retain(|_, p| *p != peer)
+                }
+            })),
+        );
         let mut next = false;
         let mut lobby = None;
         let mut f = |arg: &str| {
