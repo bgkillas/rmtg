@@ -1,7 +1,7 @@
 use crate::setup::setup;
 use crate::update::{
     ToMoveUp, cam_rotation, cam_translation, esc_menu, follow_mouse, gather_hand, listen_for_deck,
-    listen_for_mouse, register_deck, to_move_up, update_hand,
+    listen_for_mouse, register_deck, to_move_up, update_hand, update_search_deck,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -10,6 +10,7 @@ use bevy_framepace::FramepacePlugin;
 use bevy_prng::WyRand;
 use bevy_rand::prelude::EntropyPlugin;
 use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
+use bevy_ui_text_input::TextInputPlugin;
 use bitcode::{Decode, Encode};
 use net::Client;
 use rand::RngCore;
@@ -90,6 +91,7 @@ pub fn start() {
         FramepacePlugin,
         EntropyPlugin::<WyRand>::default(),
         Text3dPlugin::default(),
+        TextInputPlugin,
     ))
     .insert_resource(LoadFonts {
         font_embedded: vec![include_bytes!("../assets/noto.ttf")],
@@ -123,6 +125,7 @@ pub fn start() {
                 esc_menu,
                 #[cfg(all(feature = "steam", feature = "ip"))]
                 new_lobby,
+                update_search_deck,
                 (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
             ),
             to_move_up,
@@ -133,7 +136,12 @@ pub fn start() {
     app.run();
 }
 #[derive(Resource, Default)]
-pub struct Menu(pub bool);
+pub enum Menu {
+    #[default]
+    World,
+    Esc,
+    Side,
+}
 pub const SLEEP: SleepThreshold = SleepThreshold {
     linear: 8.0,
     angular: 0.25,

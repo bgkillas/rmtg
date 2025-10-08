@@ -3,13 +3,15 @@ use crate::misc::{
     adjust_meshes, get_card, get_mut_card, is_reversed, make_material, move_up, new_pile,
     new_pile_at, repaint_face, take_card,
 };
-use crate::setup::{EscMenu, T, W, Wall};
+use crate::setup::{EscMenu, SideMenu, T, W, Wall};
 use crate::sync::{Packet, SyncObjectMe};
 use crate::*;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
+use bevy::input_focus::InputFocus;
 use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalRng;
+use bevy_ui_text_input::{TextInputContents, TextInputNode};
 use net::{ClientTrait, PeerId, Reliability};
 use rand::Rng;
 use rand::seq::SliceRandom;
@@ -110,7 +112,7 @@ pub fn follow_mouse(
     let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
         return;
     };
-    if !menu.0 && mouse_input.pressed(MouseButton::Left) {
+    if matches!(*menu, Menu::World | Menu::Side) && mouse_input.pressed(MouseButton::Left) {
         card.3.y = 0.0;
         let aabb = card.4.aabb(card.1.translation, card.1.rotation);
         if let Some(max) = spatial
@@ -200,7 +202,8 @@ pub fn listen_for_mouse(
         follow,
         mut grav,
         shape,
-        menu,
+        mut menu,
+        mut active_input,
     ): (
         Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
         ResMut<Download>,
@@ -214,10 +217,11 @@ pub fn listen_for_mouse(
         Option<Single<Entity, With<FollowMouse>>>,
         Query<&mut GravityScale>,
         Query<&Shape>,
-        Res<Menu>,
+        ResMut<Menu>,
+        ResMut<InputFocus>,
     ),
 ) {
-    if menu.0 {
+    if matches!(*menu, Menu::Esc) {
         return;
     }
     let Some(cursor_position) = window.cursor_position() else {
@@ -519,6 +523,43 @@ pub fn listen_for_mouse(
                 }
             } else if input.just_pressed(KeyCode::KeyZ) {
                 //TODO search
+                let mut search = Entity::from_bits(0);
+                let id = commands
+                    .spawn((
+                        Node {
+                            width: Val::Percent(100.0 / 3.0),
+                            height: Val::Percent(100.0),
+                            left: Val::Percent(200.0 / 3.0),
+                            ..default()
+                        },
+                        SideMenu,
+                        Visibility::Visible,
+                        BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
+                        children![(
+                            TextInputNode::default(),
+                            Node {
+                                width: Val::Percent(100.0),
+                                height: Val::Px(32.0),
+                                ..default()
+                            }
+                        )],
+                    ))
+                    .with_children(|p| {
+                        search = p
+                            .spawn((
+                                SearchDeck(entity),
+                                SideMenu,
+                                Node {
+                                    top: Val::Px(32.0),
+                                    ..default()
+                                },
+                            ))
+                            .id();
+                    })
+                    .id();
+                update_search(&mut commands, search, &pile, "");
+                active_input.set(id);
+                *menu = Menu::Side; //TODO remove
             }
             if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
                 if let Some(mut single) = zoom {
@@ -599,8 +640,12 @@ pub fn esc_menu(
     mut menu: ResMut<Menu>,
 ) {
     if input.just_pressed(KeyCode::Escape) {
-        menu.0 = !menu.0;
-        let new = if menu.0 {
+        if matches!(*menu, Menu::Esc) {
+            *menu = Menu::World;
+        } else {
+            *menu = Menu::Esc;
+        }
+        let new = if matches!(*menu, Menu::Esc) {
             Visibility::Visible
         } else {
             Visibility::Hidden
@@ -610,13 +655,40 @@ pub fn esc_menu(
         }
     }
 }
+pub fn update_search(commands: &mut Commands, search: Entity, pile: &Pile, text: &str) {
+    let mut search = commands.get_entity(search).unwrap();
+    search.clear_children();
+    search.with_children(|parent| {
+        for (i, c) in pile.0.iter().enumerate() {
+            parent.spawn(());
+        }
+    });
+}
+#[derive(Component)]
+pub struct SearchDeck(Entity);
+pub fn update_search_deck(
+    mut commands: Commands,
+    text: Query<&TextInputContents, Changed<TextInputContents>>,
+    single: Single<(Entity, &SearchDeck)>,
+    query: Query<&Pile>,
+) {
+    for text in text {
+        println!("a");
+        update_search(
+            &mut commands,
+            single.0,
+            query.get(single.1.0).unwrap(),
+            text.get(),
+        )
+    }
+}
 pub fn cam_translation(
     input: Res<ButtonInput<KeyCode>>,
     mouse_motion: Res<AccumulatedMouseScroll>,
     mut cam: Single<&mut Transform, With<Camera3d>>,
     menu: Res<Menu>,
 ) {
-    if menu.0 {
+    if !matches!(*menu, Menu::World) {
         return;
     }
     let scale = if input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
@@ -674,7 +746,7 @@ pub fn cam_rotation(
     mut cam: Single<&mut Transform, With<Camera3d>>,
     menu: Res<Menu>,
 ) {
-    if menu.0 {
+    if !matches!(*menu, Menu::World) {
         return;
     }
     if mouse_button.pressed(MouseButton::Right) && mouse_motion.delta != Vec2::ZERO {
@@ -704,7 +776,7 @@ pub fn listen_for_deck(
     mut to_move: ResMut<ToMoveUp>,
     menu: Res<Menu>,
 ) {
-    if menu.0 {
+    if !matches!(*menu, Menu::World) {
         return;
     }
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])

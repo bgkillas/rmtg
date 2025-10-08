@@ -295,6 +295,8 @@ pub fn setup(
 }
 #[derive(Component)]
 pub struct EscMenu;
+#[derive(Component)]
+pub struct SideMenu;
 #[cfg(feature = "steam")]
 #[derive(Component)]
 pub struct SteamInfo;

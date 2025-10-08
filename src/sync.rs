@@ -97,7 +97,7 @@ pub fn display_steam_info(
     client: Res<Client>,
     menu: Res<Menu>,
 ) {
-    if !menu.0 || !frame.0.is_multiple_of(20) {
+    if matches!(*menu, Menu::Esc) || !frame.0.is_multiple_of(20) {
         return;
     }
     let Some(info) = client.info() else { return };
