@@ -274,6 +274,14 @@ impl From<Handle<Image>> for UninitImage {
         Self(MaybeUninit::new(value))
     }
 }
+impl UninitImage {
+    fn clone_handle(&self) -> Handle<Image> {
+        self.handle().clone()
+    }
+    fn handle(&self) -> &Handle<Image> {
+        unsafe { self.0.assume_init_ref() }
+    }
+}
 impl Clone for UninitImage {
     fn clone(&self) -> Self {
         unsafe { self.0.assume_init_ref().clone().into() }
@@ -286,7 +294,7 @@ impl Default for UninitImage {
 }
 impl CardInfo {
     pub fn image(&self) -> &Handle<Image> {
-        unsafe { self.image.0.assume_init_ref() }
+        self.image.handle()
     }
 }
 #[allow(dead_code)]
@@ -471,6 +479,16 @@ impl Card {
             alt: self.alt.as_ref().map(|a| a.clone_no_image()),
             is_alt: self.is_alt,
         }
+    }
+    pub fn filter(&self, text: &str) -> bool {
+        self.normal.filter(text) || self.alt.as_ref().map(|a| a.filter(text)).unwrap_or(false)
+    }
+}
+impl CardInfo {
+    pub fn filter(&self, text: &str) -> bool {
+        self.name
+            .to_ascii_lowercase()
+            .contains(&text.to_ascii_lowercase()) //TODO
     }
 }
 #[derive(Resource)]

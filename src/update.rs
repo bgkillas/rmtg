@@ -11,7 +11,7 @@ use bevy::input_focus::InputFocus;
 use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalRng;
-use bevy_ui_text_input::{TextInputContents, TextInputNode};
+use bevy_ui_text_input::{TextInputContents, TextInputMode, TextInputNode};
 use net::{ClientTrait, PeerId, Reliability};
 use rand::Rng;
 use rand::seq::SliceRandom;
@@ -523,41 +523,57 @@ pub fn listen_for_mouse(
                 }
             } else if input.just_pressed(KeyCode::KeyZ) {
                 //TODO search
-                let mut search = Entity::from_bits(0);
-                let id = commands
-                    .spawn((
-                        Node {
-                            width: Val::Percent(100.0 / 3.0),
-                            height: Val::Percent(100.0),
-                            left: Val::Percent(200.0 / 3.0),
+                let mut search = None;
+                let mut ent = commands.spawn((
+                    Node {
+                        width: Val::Percent(100.0 / 3.0),
+                        height: Val::Percent(100.0),
+                        left: Val::Percent(200.0 / 3.0),
+                        ..default()
+                    },
+                    SideMenu,
+                    Visibility::Visible,
+                    BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
+                ));
+                ent.with_children(|p| {
+                    p.spawn((
+                        TextInputNode {
+                            mode: TextInputMode::SingleLine,
+                            clear_on_submit: false,
+                            unfocus_on_submit: false,
                             ..default()
                         },
-                        SideMenu,
-                        Visibility::Visible,
-                        BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
-                        children![(
-                            TextInputNode::default(),
+                        TextInputContents::default(),
+                        Node {
+                            position_type: PositionType::Absolute,
+                            width: Val::Percent(100.0),
+                            height: Val::Px(32.0),
+                            ..default()
+                        },
+                    ));
+                    search = Some(
+                        p.spawn((
+                            SearchDeck(entity),
                             Node {
+                                display: Display::Grid,
+                                position_type: PositionType::Absolute,
+                                top: Val::Px(32.0),
+                                left: Val::Px(0.0),
+                                height: Val::Percent(100.0),
                                 width: Val::Percent(100.0),
-                                height: Val::Px(32.0),
+                                grid_template_columns: vec![RepeatedGridTrack::percent(
+                                    3,
+                                    100.0 / 3.0,
+                                )],
+                                align_content: AlignContent::Start,
                                 ..default()
-                            }
-                        )],
-                    ))
-                    .with_children(|p| {
-                        search = p
-                            .spawn((
-                                SearchDeck(entity),
-                                SideMenu,
-                                Node {
-                                    top: Val::Px(32.0),
-                                    ..default()
-                                },
-                            ))
-                            .id();
-                    })
-                    .id();
-                update_search(&mut commands, search, &pile, "");
+                            },
+                        ))
+                        .id(),
+                    );
+                });
+                let id = ent.id();
+                update_search(&mut commands, search.unwrap(), &pile, "");
                 active_input.set(id);
                 *menu = Menu::Side; //TODO remove
             }
@@ -659,8 +675,17 @@ pub fn update_search(commands: &mut Commands, search: Entity, pile: &Pile, text:
     let mut search = commands.get_entity(search).unwrap();
     search.clear_children();
     search.with_children(|parent| {
-        for (i, c) in pile.0.iter().enumerate() {
-            parent.spawn(());
+        for c in pile.0.iter().filter(|c| c.filter(text)) {
+            parent.spawn((
+                ImageNode {
+                    image: c.normal.image.clone_handle(),
+                    ..default()
+                },
+                Node {
+                    aspect_ratio: Some(CARD_WIDTH / CARD_HEIGHT),
+                    ..default()
+                },
+            ));
         }
     });
 }
@@ -668,19 +693,16 @@ pub fn update_search(commands: &mut Commands, search: Entity, pile: &Pile, text:
 pub struct SearchDeck(Entity);
 pub fn update_search_deck(
     mut commands: Commands,
-    text: Query<&TextInputContents, Changed<TextInputContents>>,
+    text: Single<&TextInputContents, Changed<TextInputContents>>,
     single: Single<(Entity, &SearchDeck)>,
     query: Query<&Pile>,
 ) {
-    for text in text {
-        println!("a");
-        update_search(
-            &mut commands,
-            single.0,
-            query.get(single.1.0).unwrap(),
-            text.get(),
-        )
-    }
+    update_search(
+        &mut commands,
+        single.0,
+        query.get(single.1.0).unwrap(),
+        text.get(),
+    )
 }
 pub fn cam_translation(
     input: Res<ButtonInput<KeyCode>>,
@@ -812,6 +834,7 @@ pub fn listen_for_deck(
                 #[cfg(feature = "wasm")]
                 let paste = clipboard.get_text().await;
                 let paste = paste.trim();
+                let paste = paste.trim_end_matches('/');
                 if paste.starts_with("https://moxfield.com/decks/")
                     || paste.starts_with("https://www.moxfield.com/decks/")
                     || paste.len() == 22
