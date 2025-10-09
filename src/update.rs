@@ -204,6 +204,7 @@ pub fn listen_for_mouse(
         shape,
         mut menu,
         mut active_input,
+        side,
     ): (
         Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
         ResMut<Download>,
@@ -219,6 +220,7 @@ pub fn listen_for_mouse(
         Query<&Shape>,
         ResMut<Menu>,
         ResMut<InputFocus>,
+        Option<Single<Entity, With<SideMenu>>>,
     ),
 ) {
     if matches!(*menu, Menu::Esc) {
@@ -522,8 +524,10 @@ pub fn listen_for_mouse(
                     }
                 }
             } else if input.just_pressed(KeyCode::KeyZ) {
-                //TODO search
                 let mut search = None;
+                if let Some(e) = side {
+                    commands.entity(*e).despawn()
+                }
                 let mut ent = commands.spawn((
                     Node {
                         width: Val::Percent(100.0 / 3.0),
@@ -575,7 +579,7 @@ pub fn listen_for_mouse(
                 let id = ent.id();
                 update_search(&mut commands, search.unwrap(), &pile, "");
                 active_input.set(id);
-                *menu = Menu::Side; //TODO remove
+                *menu = Menu::Side;
             }
             if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
                 if let Some(mut single) = zoom {
@@ -651,20 +655,22 @@ pub fn listen_for_mouse(
     }
 }
 pub fn esc_menu(
+    mut commands: Commands,
     input: Res<ButtonInput<KeyCode>>,
     ents: Query<&mut Visibility, With<EscMenu>>,
     mut menu: ResMut<Menu>,
+    side: Option<Single<Entity, With<SideMenu>>>,
 ) {
     if input.just_pressed(KeyCode::Escape) {
-        if matches!(*menu, Menu::Esc) {
+        if let Some(e) = side {
+            commands.entity(*e).despawn()
+        }
+        let new = if matches!(*menu, Menu::Esc | Menu::Side) {
             *menu = Menu::World;
+            Visibility::Hidden
         } else {
             *menu = Menu::Esc;
-        }
-        let new = if matches!(*menu, Menu::Esc) {
             Visibility::Visible
-        } else {
-            Visibility::Hidden
         };
         for mut visibility in ents {
             *visibility = new;
@@ -675,12 +681,10 @@ pub fn update_search(commands: &mut Commands, search: Entity, pile: &Pile, text:
     let mut search = commands.get_entity(search).unwrap();
     search.clear_children();
     search.with_children(|parent| {
-        for c in pile.0.iter().filter(|c| c.filter(text)) {
+        for (i, c) in pile.0.iter().enumerate().filter(|(_, c)| c.filter(text)) {
             parent.spawn((
-                ImageNode {
-                    image: c.normal.image.clone_handle(),
-                    ..default()
-                },
+                TargetCard(i),
+                ImageNode::new(c.normal.image.clone_handle()),
                 Node {
                     aspect_ratio: Some(CARD_WIDTH / CARD_HEIGHT),
                     ..default()
@@ -689,6 +693,9 @@ pub fn update_search(commands: &mut Commands, search: Entity, pile: &Pile, text:
         }
     });
 }
+#[allow(dead_code)]
+#[derive(Component)]
+pub struct TargetCard(usize);
 #[derive(Component)]
 pub struct SearchDeck(Entity);
 pub fn update_search_deck(

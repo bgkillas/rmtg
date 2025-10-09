@@ -1,5 +1,5 @@
 use crate::download::add_images;
-use crate::misc::{get_mut_card, new_pile_at, repaint_face};
+use crate::misc::{adjust_meshes, get_mut_card, new_pile_at, repaint_face};
 #[cfg(feature = "steam")]
 use crate::setup::SteamInfo;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
@@ -130,19 +130,22 @@ pub fn display_steam_info(
     text.1.0 = info.join("\n");
 }
 pub fn apply_sync(
-    mut query: Query<(
-        &mut SyncObject,
-        &mut Transform,
-        Option<&mut Position>,
-        Option<&mut Rotation>,
-        &mut LinearVelocity,
-        &mut AngularVelocity,
-        Entity,
-        Option<&InOtherHand>,
-        Option<&Children>,
-        Option<&mut Pile>,
-        &mut GravityScale,
-    )>,
+    mut query: Query<
+        (
+            &mut SyncObject,
+            &mut Transform,
+            Option<&mut Position>,
+            Option<&mut Rotation>,
+            &mut LinearVelocity,
+            &mut AngularVelocity,
+            Entity,
+            Option<&InOtherHand>,
+            Option<&Children>,
+            Option<&mut Pile>,
+            &mut GravityScale,
+        ),
+        With<Children>,
+    >,
     mut queryme: Query<
         (
             &SyncObjectMe,
@@ -164,6 +167,8 @@ pub fn apply_sync(
     card_base: Res<CardBase>,
     mut count: ResMut<SyncCount>,
     mut client: ResMut<Client>,
+    mut colliders: Query<&mut Collider>,
+    mut query_meshes: Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
 ) {
     let mut ignore = HashSet::new();
     client.recv(|client, packet| {
@@ -375,16 +380,19 @@ pub fn apply_sync(
             Packet::Draw(lid, to, start) => {
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
-                if let Some((mut pile, children)) = query.iter_mut().find_map(
-                    |(a, _, _, _, _, _, _, _, c, d, _)| {
-                        if *a == id { Some((d, c)) } else { None }
-                    },
-                ) && let Some(pile) = &mut pile
+                if let Some((mut pile, children, mut transform, entity)) =
+                    query.iter_mut().find_map(
+                        |(a, t, _, _, _, _, e, _, c, d, _)| {
+                            if *a == id { Some((d, c, t, e)) } else { None }
+                        },
+                    )
+                    && let Some(pile) = &mut pile
                     && let Some(children) = children
                 {
                     let len = to.len();
                     for ((id, trans), card) in to.into_iter().zip(pile.0.drain(start - len..start))
                     {
+                        let syncobject = SyncObject { user, id: id.0 };
                         new_pile_at(
                             Pile(vec![card]),
                             card_base.stock.clone(),
@@ -396,12 +404,21 @@ pub fn apply_sync(
                             trans.into(),
                             false,
                             None,
-                            Some(SyncObject { user, id: id.0 }),
+                            Some(syncobject),
                             None,
                         );
+                        ignore.insert(syncobject);
                     }
                     let card = pile.0.last().unwrap();
                     repaint_face(&mut mats, &mut materials, card, children);
+                    adjust_meshes(
+                        pile,
+                        children,
+                        &mut meshes,
+                        &mut query_meshes,
+                        &mut transform,
+                        &mut colliders.get_mut(entity).unwrap(),
+                    );
                 }
             }
         }
