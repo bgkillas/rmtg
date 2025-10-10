@@ -564,10 +564,16 @@ pub struct Trans {
     pub rotation: u128,
 }
 impl Trans {
-    fn from(value: &GlobalTransform) -> Self {
+    pub fn from(value: &GlobalTransform) -> Self {
         Self {
             translation: unsafe { mem::transmute::<Vec3, (u32, u32, u32)>(value.translation()) },
             rotation: unsafe { mem::transmute::<Quat, u128>(value.rotation()) },
+        }
+    }
+    pub fn from_transform(value: &Transform) -> Self {
+        Self {
+            translation: unsafe { mem::transmute::<Vec3, (u32, u32, u32)>(value.translation) },
+            rotation: unsafe { mem::transmute::<Quat, u128>(value.rotation) },
         }
     }
 }

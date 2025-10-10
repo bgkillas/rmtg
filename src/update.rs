@@ -6,7 +6,7 @@ use crate::misc::{
     new_pile_at, repaint_face, take_card,
 };
 use crate::setup::{EscMenu, SideMenu, T, W, Wall};
-use crate::sync::{Packet, SyncObjectMe};
+use crate::sync::{Packet, SyncObjectMe, Trans};
 use crate::*;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
 use bevy::input_focus::InputFocus;
@@ -331,6 +331,17 @@ pub fn listen_for_mouse(
                         None,
                         Some(id),
                     );
+                    if let Ok(lid) = ids.get(entity) {
+                        sync_actions.draw.push((
+                            *lid,
+                            vec![(id, Trans::from_transform(&transform))],
+                            if is_reversed(&transform) {
+                                1
+                            } else {
+                                pile.0.len() + 1
+                            },
+                        ));
+                    }
                 } else {
                     if let Some(e) = follow {
                         commands.entity(*e).remove::<FollowMouse>();
@@ -370,6 +381,7 @@ pub fn listen_for_mouse(
                 start.translation.y -= pile.0.len() as f32;
                 let mut transform = start;
                 for c in pile.0.drain(..) {
+                    //TODO use sync draw
                     let id = SyncObjectMe::new(&mut rand, &mut count);
                     new_pile_at(
                         Pile(vec![c]),
@@ -486,6 +498,7 @@ pub fn listen_for_mouse(
                     for _ in 0..n {
                         if !pile.0.is_empty() {
                             let new = take_card(&mut pile, &transform);
+                            //TODO use sync draw
                             let mut ent = new_pile_at(
                                 Pile(vec![new]),
                                 card_base.stock.clone(),
@@ -518,10 +531,10 @@ pub fn listen_for_mouse(
                             &mut colliders.get_mut(entity).unwrap(),
                         );
                     } else {
-                        if ids.contains(entity) {
+                        if let Ok(id) = ids.get(entity) {
+                            sync_actions.killed.push(*id);
                             count.rem(1);
                         }
-                        sync_actions.killed.push(*ids.get(entity).unwrap());
                         commands.entity(entity).despawn();
                     }
                 }
