@@ -11,7 +11,6 @@ use bevy_prng::WyRand;
 use bevy_rand::prelude::EntropyPlugin;
 use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
 use bevy_ui_text_input::TextInputPlugin;
-use bitcode::{Decode, Encode};
 use net::Client;
 use rand::RngCore;
 use std::mem::MaybeUninit;
@@ -36,12 +35,13 @@ use crate::sync::display_steam_info;
 #[cfg(all(feature = "steam", feature = "ip"))]
 use crate::sync::new_lobby;
 use crate::sync::{SendSleeping, Sent, SyncActions, SyncCount, SyncObject, apply_sync, get_sync};
+use bitcode::{Decode, Encode};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
 use wasm_bindgen_futures::JsFuture;
 #[cfg(feature = "steam")]
-const APPID: u32 = 480; // 4046880
+const APPID: u32 = 4046880;
 const FONT_SIZE: f32 = 16.0;
 const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;

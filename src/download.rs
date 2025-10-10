@@ -33,6 +33,26 @@ pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<I
     );
     Some(asset_server.add(image))
 }
+pub async fn spawn_singleton_id(
+    client: reqwest::Client,
+    asset_server: AssetServer,
+    get_deck: GetDeck,
+    v: Vec2,
+    id: &str,
+) -> Option<()> {
+    let url = format!("https://api.scryfall.com/cards/{id}");
+    let res = client.get(url).send().await.ok()?;
+    let res = res.text().await.ok()?;
+    let json = json::parse(&res).ok()?;
+    if let Some(card) = parse(&json, &client, &asset_server, 1).await {
+        get_deck
+            .0
+            .lock()
+            .unwrap()
+            .push((Pile(vec![card.0]), v, None));
+    }
+    None
+}
 pub async fn spawn_singleton(
     client: reqwest::Client,
     asset_server: AssetServer,

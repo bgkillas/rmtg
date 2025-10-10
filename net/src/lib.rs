@@ -10,7 +10,8 @@ use crate::steam::SteamClient;
 use bevy_app::{App, Plugin};
 #[cfg(feature = "bevy")]
 use bevy_ecs::resource::Resource;
-use bitcode::{DecodeOwned, Encode};
+use bitcode::DecodeOwned;
+use bitcode::Encode;
 use std::fmt::{Display, Formatter};
 #[cfg(feature = "steam")]
 use steamworks::networking_types::NetConnectionRealTimeInfo;

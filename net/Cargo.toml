@@ -12,10 +12,10 @@ bevy=["dep:bevy_app", "dep:bevy_ecs"]
 [dependencies]
 steamworks = {git="https://github.com/bgkillas/steamworks-rs", optional = true}
 tangled = {git="https://github.com/intquant/tangled", optional = true}
-bevy_app = { version = "0.17.1", default-features = false, optional = true }
-bevy_ecs = { version = "0.17.1", default-features = false, optional = true }
+bevy_app = { version = "0.17.2", default-features = false, optional = true }
+bevy_ecs = { version = "0.17.2", default-features = false, optional = true }
 lz4_flex = {version="0.11.5", default-features = false}
-bitcode = {git="https://github.com/SoftbearStudios/bitcode.git", branch = "large_c_style_enums"}
+bitcode = {git="https://github.com/SoftbearStudios/bitcode.git", version="0.6.7", branch = "large_c_style_enums"}
 eyre = "0.6.12"
 tokio = "1.47.1"
 log = "0.4.28"

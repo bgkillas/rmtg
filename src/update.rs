@@ -1,4 +1,6 @@
-use crate::download::{Exact, get_alts, get_deck, get_deck_export, spawn_singleton};
+use crate::download::{
+    Exact, get_alts, get_deck, get_deck_export, spawn_singleton, spawn_singleton_id,
+};
 use crate::misc::{
     adjust_meshes, get_card, get_mut_card, is_reversed, make_material, move_up, new_pile,
     new_pile_at, repaint_face, take_card,
@@ -846,18 +848,24 @@ pub fn listen_for_deck(
                     || paste.starts_with("https://www.moxfield.com/decks/")
                     || paste.len() == 22
                 {
-                    let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap_or(paste);
+                    let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap();
                     info!("{id} request received");
                     let url = format!("https://api2.moxfield.com/v3/decks/all/{id}");
                     get_deck(url, client, asset_server, decks, v).await;
                 } else if paste.starts_with("https://scryfall.com/card/") {
-                    let mut split = paste.rsplitn(4, '/');
-                    let Some(cn) = split.nth(1) else { return };
-                    let Some(set) = split.next() else { return };
-                    let set = set.to_string();
-                    let cn = cn.to_string();
-                    info!("{set} {cn} request received");
-                    spawn_singleton(client, asset_server, decks, v, set, cn).await;
+                    if paste.chars().filter(|c| *c == '/').count() == 4 {
+                        let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap();
+                        info!("{id} request received");
+                        spawn_singleton_id(client, asset_server, decks, v, id).await;
+                    } else {
+                        let mut split = paste.rsplitn(4, '/');
+                        let Some(cn) = split.nth(1) else { return };
+                        let Some(set) = split.next() else { return };
+                        let set = set.to_string();
+                        let cn = cn.to_string();
+                        info!("{set} {cn} request received");
+                        spawn_singleton(client, asset_server, decks, v, set, cn).await;
+                    }
                 } else {
                     let mut list = Vec::new();
                     for l in paste.lines() {
