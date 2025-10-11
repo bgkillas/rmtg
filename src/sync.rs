@@ -193,7 +193,7 @@ pub fn apply_sync(
     mut query_meshes: Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
 ) {
     let mut ignore = HashSet::new();
-    client.recv(Compression::Compressed, |client, packet| {
+    client.recv(|client, packet| {
         let sender = packet.src;
         let data = packet.data;
         match data {
