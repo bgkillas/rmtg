@@ -14,7 +14,7 @@ use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalRng;
 use bevy_ui_text_input::{TextInputContents, TextInputMode, TextInputNode};
-use net::{ClientTrait, PeerId, Reliability};
+use net::{ClientTrait, Compression, PeerId, Reliability};
 use rand::Rng;
 use rand::seq::SliceRandom;
 use std::f32::consts::PI;
@@ -971,10 +971,11 @@ pub fn register_deck(
         if let Some(id) = id {
             sent.del(id);
             client
-                .send_message(
+                .send(
                     PeerId(id.user),
                     &Packet::Received(SyncObjectMe(id.id)),
                     Reliability::Reliable,
+                    Compression::Compressed,
                 )
                 .unwrap();
         }

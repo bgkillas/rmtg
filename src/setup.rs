@@ -9,6 +9,7 @@ use crate::*;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rand::global::GlobalRng;
 use bytes::Bytes;
+use net::Compression;
 #[cfg(feature = "steam")]
 use net::{Client, ClientTrait, Reliability};
 #[cfg(feature = "steam")]
@@ -55,7 +56,12 @@ pub fn setup(
                         }
                     }
                     client
-                        .send_message(peer, &Packet::SetUser(k), Reliability::Reliable)
+                        .send(
+                            peer,
+                            &Packet::SetUser(k),
+                            Reliability::Reliable,
+                            Compression::Compressed,
+                        )
                         .unwrap();
                 }
                 send.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -88,7 +94,6 @@ pub fn setup(
     }
     let font = include_bytes!("../assets/noto.ttf");
     let font = asset_server.add(Font::try_from_bytes(font.to_vec()).unwrap());
-    commands.insert_resource(FontRes(font.clone()));
     let _ = fs::create_dir("./cache");
     framepace.limiter = Limiter::from_framerate(60.0);
     let card_stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
@@ -300,9 +305,6 @@ pub struct SideMenu;
 #[cfg(feature = "steam")]
 #[derive(Component)]
 pub struct SteamInfo;
-#[derive(Resource)]
-#[allow(dead_code)]
-pub struct FontRes(Handle<Font>);
 #[derive(Component)]
 pub struct Wall;
 #[derive(Component)]

@@ -224,7 +224,6 @@ fn test_get_deck() {
 pub struct Owned;
 #[derive(Component, Default, Debug)]
 pub struct InHand(pub usize);
-#[allow(dead_code)]
 #[derive(Component, Default, Debug)]
 pub struct Hand {
     pub id: usize,

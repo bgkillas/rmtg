@@ -8,7 +8,7 @@ use crate::*;
 use bevy::diagnostic::FrameCount;
 use bevy_rand::global::GlobalRng;
 use bitcode::{Decode, Encode};
-use net::{ClientTrait, Reliability};
+use net::{ClientTrait, Compression, Reliability};
 use std::collections::{HashMap, HashSet};
 use std::f32::consts::PI;
 use std::mem;
@@ -51,22 +51,38 @@ pub fn get_sync(
     }
     for dead in sync_actions.killed.drain(..) {
         client
-            .broadcast(&Packet::Dead(dead), Reliability::Reliable)
+            .broadcast(
+                &Packet::Dead(dead),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
             .unwrap();
     }
     for flip in sync_actions.flip.drain(..) {
         client
-            .broadcast(&Packet::Flip(flip), Reliability::Reliable)
+            .broadcast(
+                &Packet::Flip(flip),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
             .unwrap();
     }
     for (id, order) in sync_actions.reorder.drain(..) {
         client
-            .broadcast(&Packet::Reorder(id, order), Reliability::Reliable)
+            .broadcast(
+                &Packet::Reorder(id, order),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
             .unwrap();
     }
     for (id, to, start) in sync_actions.draw.drain(..) {
         client
-            .broadcast(&Packet::Draw(id, to, start), Reliability::Reliable)
+            .broadcast(
+                &Packet::Draw(id, to, start),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
             .unwrap();
     }
     for (from, to) in sync_actions.take_owner.drain(..) {
@@ -76,11 +92,17 @@ pub fn get_sync(
         }
         sent.add(from);
         client
-            .broadcast(&Packet::Take(from, to), Reliability::Reliable)
+            .broadcast(
+                &Packet::Take(from, to),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
             .unwrap();
     }
     let packet = Packet::Pos(vec);
-    client.broadcast(&packet, Reliability::Reliable).unwrap();
+    client
+        .broadcast(&packet, Reliability::Reliable, Compression::Compressed)
+        .unwrap();
     let Packet::Pos(mut vec) = packet else {
         unreachable!()
     };
@@ -171,7 +193,7 @@ pub fn apply_sync(
     mut query_meshes: Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
 ) {
     let mut ignore = HashSet::new();
-    client.recv(|client, packet| {
+    client.recv(Compression::Compressed, |client, packet| {
         let sender = packet.src;
         let data = packet.data;
         match data {
@@ -230,7 +252,12 @@ pub fn apply_sync(
                         }
                     } else if sent.add(id) {
                         client
-                            .send_message(sender, &Packet::Request(lid), Reliability::Reliable)
+                            .send(
+                                sender,
+                                &Packet::Request(lid),
+                                Reliability::Reliable,
+                                Compression::Compressed,
+                            )
                             .unwrap();
                     }
                 }
@@ -246,6 +273,7 @@ pub fn apply_sync(
                         .broadcast(
                             &Packet::Received(SyncObjectMe(from.id)),
                             Reliability::Reliable,
+                            Compression::Compressed,
                         )
                         .unwrap();
                     if let Some((_, _, _, _, e)) =
@@ -275,18 +303,20 @@ pub fn apply_sync(
                     }) {
                         if let Some(c) = c {
                             client
-                                .send_message(
+                                .send(
                                     sender,
                                     &Packet::New(lid, c.clone_no_image(), Trans::from(b)),
                                     Reliability::Reliable,
+                                    Compression::Compressed,
                                 )
                                 .unwrap();
                         } else if let Some(s) = s {
                             client
-                                .send_message(
+                                .send(
                                     sender,
                                     &Packet::NewShape(lid, *s, Trans::from(b)),
                                     Reliability::Reliable,
+                                    Compression::Compressed,
                                 )
                                 .unwrap();
                         }
@@ -316,7 +346,12 @@ pub fn apply_sync(
             }
             Packet::NewShape(lid, shape, trans) => {
                 client
-                    .send_message(sender, &Packet::Received(lid), Reliability::Reliable)
+                    .send(
+                        sender,
+                        &Packet::Received(lid),
+                        Reliability::Reliable,
+                        Compression::Compressed,
+                    )
                     .unwrap();
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
@@ -460,10 +495,11 @@ pub fn new_lobby(
                 .host_ip_runtime(
                     Some(Box::new(move |client, peer| {
                         client
-                            .send_message(
+                            .send(
                                 peer,
                                 &Packet::SetUser(peer.0 as usize),
                                 Reliability::Reliable,
+                                Compression::Compressed,
                             )
                             .unwrap();
                         send.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -592,7 +628,6 @@ pub struct SyncObject {
     pub id: u64,
 }
 #[derive(Component, Default, Debug, Encode, Decode, Eq, PartialEq, Copy, Clone)]
-#[allow(dead_code)]
 pub struct SyncObjectMe(pub u64);
 impl SyncObjectMe {
     pub fn new(rand: &mut Single<&mut WyRand, With<GlobalRng>>, count: &mut SyncCount) -> Self {

@@ -1,11 +1,10 @@
 use crate::{
-    Client, ClientCallback, ClientTrait, ClientType, ClientTypeRef, Message, NetworkingInfo,
-    PeerId, Reliability,
+    Client, ClientCallback, ClientTrait, ClientType, ClientTypeRef, Compression, Message,
+    NetworkingInfo, PeerId, Reliability, pack, unpack,
 };
-use bitcode::{DecodeOwned, Encode, decode, encode};
+use bitcode::{DecodeOwned, Encode};
 use eyre::eyre;
 use log::info;
-use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::collections::HashMap;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
@@ -109,7 +108,7 @@ impl SteamClient {
             }
         })
     }
-    pub(crate) fn recv<T, F>(&mut self, mut f: F)
+    pub(crate) fn recv<T, F>(&mut self, mut f: F, compression: Compression)
     where
         F: FnMut(ClientTypeRef, Message<T>),
         T: DecodeOwned,
@@ -117,14 +116,24 @@ impl SteamClient {
         self.poll_group.receive_messages_to_buffer(&mut self.buffer);
         while !self.buffer.is_empty() {
             for m in &self.buffer {
-                let data = decompress_size_prepended(m.data()).unwrap();
-                f(
-                    ClientTypeRef::Steam(self),
-                    Message {
-                        src: m.identity_peer().steam_id().unwrap().into(),
-                        data: decode(&data).unwrap(),
-                    },
-                )
+                let src = m.identity_peer().steam_id().unwrap().into();
+                let data = unpack(m.data(), compression);
+                f(ClientTypeRef::Steam(self), Message { src, data })
+            }
+            self.buffer.clear();
+            self.poll_group.receive_messages_to_buffer(&mut self.buffer);
+        }
+    }
+    pub(crate) fn recv_raw<F>(&mut self, mut f: F)
+    where
+        F: FnMut(ClientTypeRef, Message<&[u8]>),
+    {
+        self.poll_group.receive_messages_to_buffer(&mut self.buffer);
+        while !self.buffer.is_empty() {
+            for m in &self.buffer {
+                let src = m.identity_peer().steam_id().unwrap().into();
+                let data = &m.data();
+                f(ClientTypeRef::Steam(self), Message { src, data })
             }
             self.buffer.clear();
             self.poll_group.receive_messages_to_buffer(&mut self.buffer);
@@ -243,27 +252,35 @@ impl SteamClient {
     }
 }
 impl ClientTrait for SteamClient {
-    fn send_message<T: Encode>(
+    fn send<T: Encode>(
         &self,
         dest: PeerId,
         data: &T,
         reliability: Reliability,
+        compression: Compression,
     ) -> eyre::Result<()> {
+        self.send_raw(dest, &pack(data, compression), reliability)
+    }
+    fn broadcast<T: Encode>(
+        &self,
+        data: &T,
+        reliability: Reliability,
+        compression: Compression,
+    ) -> eyre::Result<()> {
+        self.broadcast_raw(&pack(data, compression), reliability)
+    }
+    fn send_raw(&self, dest: PeerId, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
         if let Some(con) = self.connections.get(&dest)
             && con.connected
         {
-            let data = encode(data);
-            let data = compress_prepend_size(&data);
-            con.net.send_message(&data, reliability.into())?;
+            con.net.send_message(data, reliability.into())?;
         }
         Ok(())
     }
-    fn broadcast<T: Encode>(&self, data: &T, reliability: Reliability) -> eyre::Result<()> {
-        let data = encode(data);
-        let data = compress_prepend_size(&data);
+    fn broadcast_raw(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
         for con in self.connections.values() {
             if con.connected {
-                con.net.send_message(&data, reliability.into())?;
+                con.net.send_message(data, reliability.into())?;
             }
         }
         Ok(())

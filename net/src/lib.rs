@@ -10,12 +10,12 @@ use crate::steam::SteamClient;
 use bevy_app::{App, Plugin};
 #[cfg(feature = "bevy")]
 use bevy_ecs::resource::Resource;
-use bitcode::DecodeOwned;
 use bitcode::Encode;
+use bitcode::{DecodeOwned, decode, encode};
+use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::fmt::{Display, Formatter};
 #[cfg(feature = "steam")]
 use steamworks::networking_types::NetConnectionRealTimeInfo;
-#[allow(dead_code)]
 type ClientCallback = Option<Box<dyn FnMut(ClientTypeRef, PeerId) + Send + Sync + 'static>>;
 pub struct Message<T> {
     pub src: PeerId,
@@ -25,6 +25,11 @@ pub struct Message<T> {
 pub enum Reliability {
     Reliable,
     Unreliable,
+}
+#[derive(Copy, Debug, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
+pub enum Compression {
+    Compressed,
+    Uncompressed,
 }
 #[derive(Copy, Debug, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
 pub struct PeerId(pub u64);
@@ -37,6 +42,32 @@ impl PeerId {
     pub fn raw(&self) -> u64 {
         self.0
     }
+}
+#[allow(unused_variables)]
+pub(crate) fn pack<T: Encode>(data: &T, compression: Compression) -> Vec<u8> {
+    let data = encode(data);
+    #[cfg(feature = "compress")]
+    {
+        if compression == Compression::Compressed {
+            compress_prepend_size(&data)
+        } else {
+            data.to_vec()
+        }
+    }
+    #[cfg(not(feature = "compress"))]
+    {
+        data.to_vec()
+    }
+}
+#[allow(unused_variables)]
+pub(crate) fn unpack<T: DecodeOwned>(data: &[u8], compression: Compression) -> T {
+    #[cfg(feature = "compress")]
+    let data = if compression == Compression::Compressed {
+        &decompress_size_prepended(data).unwrap()
+    } else {
+        data
+    };
+    decode(data).unwrap()
 }
 pub(crate) enum ClientType {
     None,
@@ -67,8 +98,7 @@ impl Client {
             client: ClientType::None,
         }
     }
-    #[allow(unused_variables)]
-    pub fn recv<T, F>(&mut self, f: F)
+    pub fn recv<T, F>(&mut self, compression: Compression, f: F)
     where
         F: FnMut(ClientTypeRef, Message<T>),
         T: DecodeOwned,
@@ -76,9 +106,21 @@ impl Client {
         match &mut self.client {
             ClientType::None => {}
             #[cfg(feature = "steam")]
-            ClientType::Steam(client) => client.recv(f),
+            ClientType::Steam(client) => client.recv(f, compression),
             #[cfg(feature = "tangled")]
-            ClientType::Ip(client) => client.recv(f),
+            ClientType::Ip(client) => client.recv(f, compression),
+        }
+    }
+    pub fn recv_raw<F>(&mut self, f: F)
+    where
+        F: FnMut(ClientTypeRef, Message<&[u8]>),
+    {
+        match &mut self.client {
+            ClientType::None => {}
+            #[cfg(feature = "steam")]
+            ClientType::Steam(client) => client.recv_raw(f),
+            #[cfg(feature = "tangled")]
+            ClientType::Ip(client) => client.recv_raw(f),
         }
     }
     pub fn update(&mut self) {
@@ -102,18 +144,28 @@ impl Client {
 }
 pub struct NetworkingInfo(#[cfg(feature = "steam")] pub Vec<(PeerId, NetConnectionRealTimeInfo)>);
 impl ClientTrait for Client {
-    #[allow(unused_variables)]
-    fn send_message<T: Encode>(
+    fn send<T: Encode>(
         &self,
         dest: PeerId,
         data: &T,
         reliability: Reliability,
+        compression: Compression,
     ) -> eyre::Result<()> {
-        self.client.send_message(dest, data, reliability)
+        self.client.send(dest, data, reliability, compression)
     }
-    #[allow(unused_variables)]
-    fn broadcast<T: Encode>(&self, data: &T, reliability: Reliability) -> eyre::Result<()> {
-        self.client.broadcast(data, reliability)
+    fn broadcast<T: Encode>(
+        &self,
+        data: &T,
+        reliability: Reliability,
+        compression: Compression,
+    ) -> eyre::Result<()> {
+        self.client.broadcast(data, reliability, compression)
+    }
+    fn send_raw(&self, dest: PeerId, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
+        self.client.send_raw(dest, data, reliability)
+    }
+    fn broadcast_raw(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
+        self.client.broadcast_raw(data, reliability)
     }
     fn my_id(&self) -> PeerId {
         self.client.my_id()
@@ -129,30 +181,54 @@ impl ClientTrait for Client {
     }
 }
 impl ClientTrait for ClientType {
-    #[allow(unused_variables)]
-    fn send_message<T: Encode>(
+    fn send<T: Encode>(
         &self,
         dest: PeerId,
         data: &T,
         reliability: Reliability,
+        compression: Compression,
     ) -> eyre::Result<()> {
         match &self {
             Self::None => {}
             #[cfg(feature = "steam")]
-            Self::Steam(client) => client.send_message(dest, data, reliability)?,
+            Self::Steam(client) => client.send(dest, data, reliability, compression)?,
             #[cfg(feature = "tangled")]
-            Self::Ip(client) => client.send_message(dest, data, reliability)?,
+            Self::Ip(client) => client.send(dest, data, reliability, compression)?,
         }
         Ok(())
     }
-    #[allow(unused_variables)]
-    fn broadcast<T: Encode>(&self, data: &T, reliability: Reliability) -> eyre::Result<()> {
+    fn broadcast<T: Encode>(
+        &self,
+        data: &T,
+        reliability: Reliability,
+        compression: Compression,
+    ) -> eyre::Result<()> {
         match &self {
             Self::None => {}
             #[cfg(feature = "steam")]
-            Self::Steam(client) => client.broadcast(data, reliability)?,
+            Self::Steam(client) => client.broadcast(data, reliability, compression)?,
             #[cfg(feature = "tangled")]
-            Self::Ip(client) => client.broadcast(data, reliability)?,
+            Self::Ip(client) => client.broadcast(data, reliability, compression)?,
+        }
+        Ok(())
+    }
+    fn send_raw(&self, dest: PeerId, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
+        match &self {
+            Self::None => {}
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.send_raw(dest, data, reliability)?,
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.send_raw(dest, data, reliability)?,
+        }
+        Ok(())
+    }
+    fn broadcast_raw(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
+        match &self {
+            Self::None => {}
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.broadcast_raw(data, reliability)?,
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.broadcast_raw(data, reliability)?,
         }
         Ok(())
     }
@@ -194,32 +270,58 @@ impl ClientTrait for ClientType {
     }
 }
 impl ClientTrait for ClientTypeRef<'_> {
-    #[allow(unused_variables)]
-    fn send_message<T: Encode>(
+    fn send<T: Encode>(
         &self,
         dest: PeerId,
         data: &T,
         reliability: Reliability,
+        compression: Compression,
     ) -> eyre::Result<()> {
         match &self {
             #[cfg(not(any(feature = "steam", feature = "tangled")))]
             Self::None(_) => {}
             #[cfg(feature = "steam")]
-            Self::Steam(client) => client.send_message(dest, data, reliability)?,
+            Self::Steam(client) => client.send(dest, data, reliability, compression)?,
             #[cfg(feature = "tangled")]
-            Self::Ip(client) => client.send_message(dest, data, reliability)?,
+            Self::Ip(client) => client.send(dest, data, reliability, compression)?,
         }
         Ok(())
     }
-    #[allow(unused_variables)]
-    fn broadcast<T: Encode>(&self, data: &T, reliability: Reliability) -> eyre::Result<()> {
+    fn broadcast<T: Encode>(
+        &self,
+        data: &T,
+        reliability: Reliability,
+        compression: Compression,
+    ) -> eyre::Result<()> {
         match &self {
             #[cfg(not(any(feature = "steam", feature = "tangled")))]
             Self::None(_) => {}
             #[cfg(feature = "steam")]
-            Self::Steam(client) => client.broadcast(data, reliability)?,
+            Self::Steam(client) => client.broadcast(data, reliability, compression)?,
             #[cfg(feature = "tangled")]
-            Self::Ip(client) => client.broadcast(data, reliability)?,
+            Self::Ip(client) => client.broadcast(data, reliability, compression)?,
+        }
+        Ok(())
+    }
+    fn send_raw(&self, dest: PeerId, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
+        match &self {
+            #[cfg(not(any(feature = "steam", feature = "tangled")))]
+            Self::None(_) => {}
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.send_raw(dest, data, reliability)?,
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.send_raw(dest, data, reliability)?,
+        }
+        Ok(())
+    }
+    fn broadcast_raw(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()> {
+        match &self {
+            #[cfg(not(any(feature = "steam", feature = "tangled")))]
+            Self::None(_) => {}
+            #[cfg(feature = "steam")]
+            Self::Steam(client) => client.broadcast_raw(data, reliability)?,
+            #[cfg(feature = "tangled")]
+            Self::Ip(client) => client.broadcast_raw(data, reliability)?,
         }
         Ok(())
     }
@@ -265,13 +367,21 @@ impl ClientTrait for ClientTypeRef<'_> {
     }
 }
 pub trait ClientTrait {
-    fn send_message<T: Encode>(
+    fn send<T: Encode>(
         &self,
         dest: PeerId,
         data: &T,
         reliability: Reliability,
+        compression: Compression,
     ) -> eyre::Result<()>;
-    fn broadcast<T: Encode>(&self, data: &T, reliability: Reliability) -> eyre::Result<()>;
+    fn broadcast<T: Encode>(
+        &self,
+        data: &T,
+        reliability: Reliability,
+        compression: Compression,
+    ) -> eyre::Result<()>;
+    fn send_raw(&self, dest: PeerId, data: &[u8], reliability: Reliability) -> eyre::Result<()>;
+    fn broadcast_raw(&self, data: &[u8], reliability: Reliability) -> eyre::Result<()>;
     fn my_id(&self) -> PeerId;
     fn host_id(&self) -> PeerId;
     fn is_host(&self) -> bool;
@@ -311,13 +421,21 @@ async fn test_ip() {
     peer1.update();
     peer2.update();
     peer2
-        .broadcast(&[0u8, 1, 5, 3], Reliability::Reliable)
+        .broadcast(
+            &[0u8, 1, 5, 3],
+            Reliability::Reliable,
+            Compression::Uncompressed,
+        )
         .unwrap();
     tokio::time::sleep(std::time::Duration::from_millis(20)).await;
     let mut has = false;
-    peer1.recv::<[u8; 4], _>(|_, m| has = m.data == [0, 1, 5, 3]);
+    peer1.recv::<[u8; 4], _>(Compression::Uncompressed, |_, m| {
+        has = m.data == [0, 1, 5, 3]
+    });
     assert!(has);
     let mut has = false;
-    host.recv::<[u8; 4], _>(|_, m| has = m.data == [0, 1, 5, 3]);
+    host.recv::<[u8; 4], _>(Compression::Uncompressed, |_, m| {
+        has = m.data == [0, 1, 5, 3]
+    });
     assert!(has)
 }
