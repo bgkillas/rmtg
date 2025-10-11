@@ -29,8 +29,8 @@ wasm-opt = false
 default=["bin", "steam", "ip"]
 bin=["dep:arboard", "tokio/rt-multi-thread"]
 wasm=["bevy_rand/wasm_js", "dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:web-sys", "dep:console_error_panic_hook"]
-steam=["net/steam"]
-ip=["net/tangled"]
+steam=["bevy_tangled/steam"]
+ip=["bevy_tangled/tangled"]
 
 [dependencies]
 bevy="0.17.2"
@@ -49,10 +49,10 @@ wasm-bindgen = {version="0.2.104", optional = true}
 wasm-bindgen-futures = {version="0.4.54", optional = true}
 web-sys = { version = "0.3.81", optional = true, features = ["Clipboard", "Navigator", "Window"] }
 console_error_panic_hook = { version = "0.1.7", optional = true }
-avian3d={git="https://github.com/Jondolf/avian.git", features = ["simd"]}
-bevy_rich_text3d = {git="https://github.com/bgkillas/bevy_rich_text3d.git"}
-net = {path = "net", default-features = false, features = ["bevy", "compress"]}
-bitcode = {git="https://github.com/SoftbearStudios/bitcode.git", version = "0.6.7", branch = "large_c_style_enums"}
+avian3d={git="https://github.com/Jondolf/avian", features = ["simd"]}
+bevy_rich_text3d = {git="https://github.com/bgkillas/bevy_rich_text3d"}
+bevy_tangled = {git = "https://github.com/bgkillas/bevy_tangled", default-features = false, features = ["bevy", "compress"]}
+bitcode = {git="https://github.com/SoftbearStudios/bitcode", version = "0.6.7", branch = "large_c_style_enums"}
 bevy_ui_text_input = {git="https://github.com/ickshonpe/bevy_ui_text_input"}
 #bevy_console = "0.14.1"
 #rune = "0.14.1"

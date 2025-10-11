@@ -8,10 +8,10 @@ use crate::sync::{SyncObjectMe, spawn_hand};
 use crate::*;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rand::global::GlobalRng;
-use bytes::Bytes;
-use net::Compression;
+use bevy_tangled::Compression;
 #[cfg(feature = "steam")]
-use net::{Client, ClientTrait, Reliability};
+use bevy_tangled::{Client, ClientTrait, Reliability};
+use bytes::Bytes;
 #[cfg(feature = "steam")]
 use std::collections::HashMap;
 #[cfg(feature = "steam")]
@@ -89,7 +89,7 @@ pub fn setup(
             f(arg)
         }
         if let Some(lobby) = lobby {
-            client.join_steam(lobby).unwrap();
+            client.join_steam(lobby);
         }
     }
     let font = include_bytes!("../assets/noto.ttf");
