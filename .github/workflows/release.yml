@@ -9,16 +9,18 @@ jobs:
       image: 'registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest'
     steps:
       - name: Install Rust
-        run: |
-          curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: nightly
+          target: x86_64-unknown-linux-gnu
+          override: true
       - uses: actions/checkout@v5
       - name: Install system dependencies
         run: |
           sudo apt update
           sudo apt install -y libwayland-dev libudev-dev libasound2-dev pkg-config
       - name: Build
-        run: cargo build --release
+        run: cargo +nightly build --release
       - name: make
         run: |
           mkdir -p rmtg
@@ -32,8 +34,14 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: nightly
+          target: aarch64-apple-darwin
+          override: true
       - name: Build
-        run: cargo build --release
+        run: cargo +nightly build --release
       - name: make .app
         run: |
           mkdir -p rmtg.app/Contents/MacOS
@@ -51,11 +59,11 @@ jobs:
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           target: x86_64-pc-windows-msvc
           override: true
       - name: Build
-        run: cargo build --release
+        run: cargo +nightly build --release
       - name: make
         run: |
           mkdir rmtg
