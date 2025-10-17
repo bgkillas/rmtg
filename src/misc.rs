@@ -27,7 +27,7 @@ pub fn new_pile(
     count: &mut SyncCount,
     id: Option<SyncObject>,
 ) -> Option<Entity> {
-    let size = pile.0.len() as f32;
+    let size = pile.len() as f32;
     let mut transform = Transform::from_xyz(v.x, size, v.y);
     transform.rotate_x(-PI / 2.0);
     new_pile_at(
@@ -122,13 +122,13 @@ pub fn new_pile_at<'a>(
     id: Option<SyncObject>,
     sync_object: Option<SyncObjectMe>,
 ) -> Option<EntityCommands<'a>> {
-    if pile.0.is_empty() {
+    if pile.is_empty() {
         return None;
     }
     let card = pile.0.last().unwrap();
     let top = card.normal.image().clone();
     let material_handle = make_material(materials, top);
-    let size = pile.0.len() as f32;
+    let size = pile.len() as f32;
     let mut transform1 = Transform::from_rotation(Quat::from_rotation_y(PI));
     transform1.translation.z = -size;
     let (mesh, transform2, transform3) = side(size, meshes);
@@ -188,27 +188,6 @@ pub fn is_reversed(transform: &Transform) -> bool {
         .0
         .is_sign_positive()
 }
-pub fn get_card<'a>(pile: &'a Pile, transform: &Transform) -> &'a Card {
-    if is_reversed(transform) {
-        pile.0.first().unwrap()
-    } else {
-        pile.0.last().unwrap()
-    }
-}
-pub fn get_mut_card<'a>(pile: &'a mut Pile, transform: &Transform) -> &'a mut Card {
-    if is_reversed(transform) {
-        pile.0.first_mut().unwrap()
-    } else {
-        pile.0.last_mut().unwrap()
-    }
-}
-pub fn take_card(pile: &mut Pile, transform: &Transform) -> Card {
-    if is_reversed(transform) {
-        pile.0.remove(0)
-    } else {
-        pile.0.pop().unwrap()
-    }
-}
 pub fn repaint_face(
     mats: &mut Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
     materials: &mut Assets<StandardMaterial>,
@@ -226,7 +205,7 @@ pub fn adjust_meshes(
     transform: &mut Transform,
     collider: &mut Collider,
 ) {
-    let size = pile.0.len() as f32;
+    let size = pile.len() as f32;
     *collider = Collider::cuboid(CARD_WIDTH, CARD_HEIGHT, 2.0 * size);
     let mut children = children.iter();
     let (_, mut top) = query.get_mut(children.next().unwrap()).unwrap();

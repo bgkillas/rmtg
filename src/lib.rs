@@ -29,6 +29,7 @@ mod setup;
 mod shapes;
 pub mod sync;
 mod update;
+use crate::misc::is_reversed;
 use crate::shapes::Shape;
 #[cfg(feature = "steam")]
 use crate::sync::display_steam_info;
@@ -231,10 +232,37 @@ pub struct Hand {
     pub removed: Vec<usize>,
 }
 #[derive(Component, Default, Debug, Clone, Encode, Decode)]
-pub struct Pile(pub Vec<Card>);
+pub struct Pile(Vec<Card>);
 impl Pile {
-    fn clone_no_image(&self) -> Self {
+    pub fn clone_no_image(&self) -> Self {
         Pile(self.0.iter().map(|a| a.clone_no_image()).collect())
+    }
+    pub fn get_card(&self, transform: &Transform) -> &Card {
+        if is_reversed(transform) {
+            self.0.first().unwrap()
+        } else {
+            self.0.last().unwrap()
+        }
+    }
+    pub fn get_mut_card(&mut self, transform: &Transform) -> &mut Card {
+        if is_reversed(transform) {
+            self.0.first_mut().unwrap()
+        } else {
+            self.0.last_mut().unwrap()
+        }
+    }
+    pub fn take_card(&mut self, transform: &Transform) -> Card {
+        if is_reversed(transform) {
+            self.0.remove(0)
+        } else {
+            self.0.pop().unwrap()
+        }
+    }
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 #[derive(Resource, Debug, Default, Clone)]

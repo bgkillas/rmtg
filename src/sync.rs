@@ -1,5 +1,5 @@
 use crate::download::add_images;
-use crate::misc::{adjust_meshes, get_mut_card, new_pile_at, repaint_face};
+use crate::misc::{adjust_meshes, new_pile_at, repaint_face};
 #[cfg(feature = "steam")]
 use crate::setup::SteamInfo;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
@@ -384,7 +384,7 @@ pub fn apply_sync(
                     },
                 ) && let Some(pile) = &mut pile
                 {
-                    let card = get_mut_card(pile, &transform);
+                    let card = pile.get_mut_card(&transform);
                     if let Some(alt) = &mut card.alt
                         && let Some(children) = children
                     {

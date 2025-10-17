@@ -2,8 +2,7 @@ use crate::download::{
     Exact, get_alts, get_deck, get_deck_export, spawn_singleton, spawn_singleton_id,
 };
 use crate::misc::{
-    adjust_meshes, get_card, get_mut_card, is_reversed, make_material, move_up, new_pile,
-    new_pile_at, repaint_face, take_card,
+    adjust_meshes, is_reversed, make_material, move_up, new_pile, new_pile_at, repaint_face,
 };
 use crate::setup::{EscMenu, SideMenu, T, W, Wall};
 use crate::sync::{Packet, SyncObjectMe, Trans};
@@ -47,7 +46,7 @@ pub fn gather_hand(
     );
     for ent in intersections {
         if let Ok((entity, mut grav, mut linvel, mut angvel, pile)) = cards.get_mut(ent)
-            && pile.0.len() == 1
+            && pile.len() == 1
         {
             linvel.0 = default();
             angvel.0 = default();
@@ -248,7 +247,7 @@ pub fn listen_for_mouse(
             if input.just_pressed(KeyCode::KeyF) {
                 transform.rotate_local_y(PI);
             } else if input.just_pressed(KeyCode::KeyR) {
-                if pile.0.len() > 1 {
+                if pile.len() > 1 {
                     if let Ok(id) = others_ids.get(entity) {
                         let myid = SyncObjectMe::new(&mut rand, &mut count);
                         sync_actions.take_owner.push((*id, myid));
@@ -274,7 +273,7 @@ pub fn listen_for_mouse(
                 if input.pressed(KeyCode::ShiftLeft) {
                     *game_clipboard = GameClipboard::Pile(pile.clone());
                 } else if !is_reversed(&transform) {
-                    let card = get_card(&pile, &transform);
+                    let card = pile.get_card(&transform);
                     let text = format!("https://scryfall.com/card/{}", card.id);
                     #[cfg(feature = "wasm")]
                     let clipboard = *clipboard;
@@ -296,10 +295,10 @@ pub fn listen_for_mouse(
                 } else {
                     transform.translation.y += 8.0;
                 }
-                if input.pressed(KeyCode::ControlLeft) && pile.0.len() > 1 {
-                    let len = pile.0.len() as f32;
-                    let new = take_card(&mut pile, &transform);
-                    if !pile.0.is_empty() {
+                if input.pressed(KeyCode::ControlLeft) && pile.len() > 1 {
+                    let len = pile.len() as f32;
+                    let new = pile.take_card(&transform);
+                    if !pile.is_empty() {
                         let card = pile.0.last().unwrap();
                         repaint_face(&mut mats, &mut materials, card, children);
                         adjust_meshes(
@@ -338,7 +337,7 @@ pub fn listen_for_mouse(
                             if is_reversed(&transform) {
                                 1
                             } else {
-                                pile.0.len() + 1
+                                pile.len() + 1
                             },
                         ));
                     }
@@ -375,10 +374,10 @@ pub fn listen_for_mouse(
                 }
             } else if input.just_pressed(KeyCode::KeyS)
                 && input.pressed(KeyCode::ControlLeft)
-                && pile.0.len() > 1
+                && pile.len() > 1
             {
                 let mut start = *transform;
-                start.translation.y -= pile.0.len() as f32;
+                start.translation.y -= pile.len() as f32;
                 let mut transform = start;
                 for c in pile.0.drain(..) {
                     //TODO use sync draw
@@ -427,7 +426,7 @@ pub fn listen_for_mouse(
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
                 && !is_reversed(&transform)
             {
-                let top = get_card(&pile, &transform);
+                let top = pile.get_card(&transform);
                 let v = Vec2::new(
                     transform.translation.x,
                     transform.translation.z - CARD_HEIGHT - 1.0,
@@ -452,7 +451,7 @@ pub fn listen_for_mouse(
                     .map(|single| single.1.0 != entity.to_bits())
                     .unwrap_or(true)
             {
-                let card = get_mut_card(&mut pile, &transform);
+                let card = pile.get_mut_card(&transform);
                 if let Some(alt) = &mut card.alt {
                     mem::swap(&mut card.normal, alt);
                     repaint_face(&mut mats, &mut materials, card, children);
@@ -496,8 +495,8 @@ pub fn listen_for_mouse(
                     );
                     let mut hand = hands.iter_mut().find(|e| e.1.is_some()).unwrap();
                     for _ in 0..n {
-                        if !pile.0.is_empty() {
-                            let new = take_card(&mut pile, &transform);
+                        if !pile.is_empty() {
+                            let new = pile.take_card(&transform);
                             //TODO use sync draw
                             let mut ent = new_pile_at(
                                 Pile(vec![new]),
@@ -519,7 +518,7 @@ pub fn listen_for_mouse(
                             hand.0.count += 1;
                         }
                     }
-                    if !pile.0.is_empty() {
+                    if !pile.is_empty() {
                         let card = pile.0.last().unwrap();
                         repaint_face(&mut mats, &mut materials, card, children);
                         adjust_meshes(
@@ -601,12 +600,12 @@ pub fn listen_for_mouse(
                     if single.1.0 != entity.to_bits() {
                         commands.entity(single.0).despawn();
                     } else if input.just_pressed(KeyCode::KeyO)
-                        && let Some(alt) = &get_card(&pile, &transform).alt
+                        && let Some(alt) = &pile.get_card(&transform).alt
                     {
                         single.2.0 = make_material(
                             &mut materials,
                             if single.1.1 {
-                                &get_card(&pile, &transform).normal
+                                &pile.get_card(&transform).normal
                             } else {
                                 alt
                             }
@@ -616,7 +615,7 @@ pub fn listen_for_mouse(
                         single.1.1 = !single.1.1;
                     }
                 } else if !is_reversed(&transform) {
-                    let card = get_card(&pile, &transform);
+                    let card = pile.get_card(&transform);
                     commands.entity(cament).with_child((
                         Mesh3d(card_base.stock.clone()),
                         MeshMaterial3d(make_material(&mut materials, card.normal.image().clone())),
