@@ -300,6 +300,11 @@ pub fn listen_for_mouse(
                 }
                 if input.pressed(KeyCode::ControlLeft) && pile.len() > 1 {
                     let len = pile.len() as f32;
+                    let draw_len = if is_reversed(&transform) {
+                        1
+                    } else {
+                        pile.len()
+                    };
                     let new = pile.take_card(&transform);
                     if !pile.is_empty() {
                         let card = pile.0.last().unwrap();
@@ -337,11 +342,7 @@ pub fn listen_for_mouse(
                         sync_actions.draw.push((
                             *lid,
                             vec![(id, Trans::from_transform(&transform))],
-                            if is_reversed(&transform) {
-                                1
-                            } else {
-                                pile.len() + 1
-                            },
+                            draw_len,
                         ));
                     }
                 } else {
@@ -502,10 +503,16 @@ pub fn listen_for_mouse(
                         (KeyCode::Digit9, 9)
                     );
                     let mut hand = hands.iter_mut().find(|e| e.1.is_some()).unwrap();
+                    let mut vec = Vec::new();
+                    let len = if is_reversed(&transform) {
+                        n
+                    } else {
+                        pile.len()
+                    };
                     for _ in 0..n {
                         if !pile.is_empty() {
                             let new = pile.take_card(&transform);
-                            //TODO use sync draw
+                            let id = SyncObjectMe::new(&mut rand, &mut count);
                             let mut ent = new_pile_at(
                                 Pile(vec![new]),
                                 card_base.stock.clone(),
@@ -518,13 +525,20 @@ pub fn listen_for_mouse(
                                 false,
                                 Some(hand.2),
                                 None,
-                                Some(SyncObjectMe::new(&mut rand, &mut count)),
+                                Some(id),
                             )
                             .unwrap();
                             ent.insert(InHand(hand.0.count));
                             ent.insert(RigidBodyDisabled);
+                            vec.push((id, Trans::from_transform(&Transform::default())));
                             hand.0.count += 1;
                         }
+                    }
+                    if let Ok(lid) = ids.get(entity) {
+                        if !is_reversed(&transform) {
+                            vec.reverse();
+                        }
+                        sync_actions.draw.push((*lid, vec, len));
                     }
                     if !pile.is_empty() {
                         let card = pile.0.last().unwrap();
