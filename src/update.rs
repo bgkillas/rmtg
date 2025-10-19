@@ -7,8 +7,11 @@ use crate::misc::{
 use crate::setup::{EscMenu, SideMenu, T, W, Wall};
 use crate::sync::{Packet, SyncObjectMe, Trans};
 use crate::*;
-use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll};
+use bevy::input::mouse::{
+    AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit, MouseWheel,
+};
 use bevy::input_focus::InputFocus;
+use bevy::picking::hover::HoverMap;
 use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalRng;
@@ -584,6 +587,7 @@ pub fn listen_for_mouse(
                                     100.0 / 3.0,
                                 )],
                                 align_content: AlignContent::Start,
+                                overflow: Overflow::scroll_y(),
                                 ..default()
                             },
                         ))
@@ -706,6 +710,84 @@ pub fn update_search(commands: &mut Commands, search: Entity, pile: &Pile, text:
             ));
         }
     });
+}
+pub fn pick_from_list(
+    hover_map: Res<HoverMap>,
+    query: Query<(&TargetCard, &ChildOf)>,
+    search_deck: Query<&SearchDeck>,
+    mut decks: Query<(&mut Pile, &mut Transform, &Children)>,
+    menu: Res<Menu>,
+    mouse_input: Res<ButtonInput<MouseButton>>,
+    mut commands: Commands,
+    card_base: Res<CardBase>,
+    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut query_meshes: Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
+    (mut colliders, follow, mut rand, mut count, ids, mut sync_actions): (
+        Query<&mut Collider>,
+        Option<Single<Entity, With<FollowMouse>>>,
+        Single<&mut WyRand, With<GlobalRng>>,
+        ResMut<SyncCount>,
+        Query<&SyncObjectMe>,
+        ResMut<SyncActions>,
+    ),
+) {
+    if !matches!(*menu, Menu::Side) || !mouse_input.just_pressed(MouseButton::Left) {
+        return;
+    }
+    for pointer_event in hover_map.values() {
+        for entity in pointer_event.keys().copied() {
+            if let Ok((card, parent)) = query.get(entity)
+                && let Ok(deck) = search_deck.get(parent.0)
+                && let Ok((mut pile, mut transform, children)) = decks.get_mut(deck.0)
+            {
+                commands.entity(entity).despawn();
+                let entity = deck.0;
+                let len = pile.0.len() as f32;
+                let new = pile.remove(card.0);
+                if !pile.0.is_empty() {
+                    let card = pile.0.last().unwrap();
+                    repaint_face(&mut mats, &mut materials, card, children);
+                    adjust_meshes(
+                        &pile,
+                        children,
+                        &mut meshes,
+                        &mut query_meshes,
+                        &mut transform,
+                        &mut colliders.get_mut(entity).unwrap(),
+                    );
+                }
+                let mut transform = *transform;
+                transform.translation.y += len + 8.0;
+                if let Some(e) = &follow {
+                    commands.entity(**e).remove::<FollowMouse>();
+                }
+                let id = SyncObjectMe::new(&mut rand, &mut count);
+                new_pile_at(
+                    Pile(vec![new]),
+                    card_base.stock.clone(),
+                    &mut materials,
+                    &mut commands,
+                    &mut meshes,
+                    card_base.back.clone(),
+                    card_base.side.clone(),
+                    transform,
+                    true,
+                    None,
+                    None,
+                    Some(id),
+                );
+                if let Ok(lid) = ids.get(entity) {
+                    sync_actions.draw.push((
+                        *lid,
+                        vec![(id, Trans::from_transform(&transform))],
+                        card.0 + 1,
+                    ));
+                }
+            }
+        }
+    }
 }
 #[allow(dead_code)]
 #[derive(Component)]
@@ -991,3 +1073,65 @@ pub fn to_move_up(
 }
 #[derive(Resource)]
 pub struct ToMoveUp(pub Vec<Entity>);
+pub fn on_scroll_handler(
+    mut scroll: On<Scroll>,
+    mut query: Query<(&mut ScrollPosition, &Node, &ComputedNode)>,
+) {
+    let Ok((mut scroll_position, node, computed)) = query.get_mut(scroll.entity) else {
+        return;
+    };
+    let max_offset = (computed.content_size() - computed.size()) * computed.inverse_scale_factor();
+    let delta = &mut scroll.delta;
+    if node.overflow.x == OverflowAxis::Scroll && delta.x != 0. {
+        let max = if delta.x > 0. {
+            scroll_position.x >= max_offset.x
+        } else {
+            scroll_position.x <= 0.
+        };
+        if !max {
+            scroll_position.x += delta.x;
+            delta.x = 0.;
+        }
+    }
+    if node.overflow.y == OverflowAxis::Scroll && delta.y != 0. {
+        let max = if delta.y > 0. {
+            scroll_position.y >= max_offset.y
+        } else {
+            scroll_position.y <= 0.
+        };
+        if !max {
+            scroll_position.y += delta.y;
+            delta.y = 0.;
+        }
+    }
+    if *delta == Vec2::ZERO {
+        scroll.propagate(false);
+    }
+}
+pub fn send_scroll_events(
+    mut mouse_wheel_reader: MessageReader<MouseWheel>,
+    hover_map: Res<HoverMap>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut commands: Commands,
+) {
+    for mouse_wheel in mouse_wheel_reader.read() {
+        let mut delta = -Vec2::new(mouse_wheel.x, mouse_wheel.y);
+        if mouse_wheel.unit == MouseScrollUnit::Line {
+            delta *= 128.0;
+        }
+        if keyboard_input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
+            mem::swap(&mut delta.x, &mut delta.y);
+        }
+        for pointer_map in hover_map.values() {
+            for entity in pointer_map.keys().copied() {
+                commands.trigger(Scroll { entity, delta });
+            }
+        }
+    }
+}
+#[derive(EntityEvent, Debug)]
+#[entity_event(propagate, auto_propagate)]
+pub struct Scroll {
+    entity: Entity,
+    delta: Vec2,
+}

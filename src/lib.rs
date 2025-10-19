@@ -1,7 +1,8 @@
 use crate::setup::setup;
 use crate::update::{
     ToMoveUp, cam_rotation, cam_translation, esc_menu, follow_mouse, gather_hand, listen_for_deck,
-    listen_for_mouse, register_deck, to_move_up, update_hand, update_search_deck,
+    listen_for_mouse, on_scroll_handler, pick_from_list, register_deck, send_scroll_events,
+    to_move_up, update_hand, update_search_deck,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -117,6 +118,8 @@ pub fn start() {
         Update,
         (
             (
+                pick_from_list,
+                send_scroll_events,
                 #[cfg(feature = "steam")]
                 display_steam_info,
                 listen_for_deck,
@@ -133,6 +136,7 @@ pub fn start() {
         )
             .chain(),
     )
+    .add_observer(on_scroll_handler)
     .add_systems(PreUpdate, (get_sync, apply_sync).chain());
     app.run();
 }
@@ -263,6 +267,9 @@ impl Pile {
     }
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+    pub fn remove(&mut self, n: usize) -> Card {
+        self.0.remove(n)
     }
 }
 #[derive(Resource, Debug, Default, Clone)]
