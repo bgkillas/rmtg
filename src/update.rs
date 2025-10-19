@@ -382,8 +382,8 @@ pub fn listen_for_mouse(
                 let mut start = *transform;
                 start.translation.y -= pile.len() as f32;
                 let mut transform = start;
+                let mut vec = Vec::with_capacity(pile.len());
                 for c in pile.0.drain(..) {
-                    //TODO use sync draw
                     let id = SyncObjectMe::new(&mut rand, &mut count);
                     new_pile_at(
                         Pile(vec![c]),
@@ -404,6 +404,11 @@ pub fn listen_for_mouse(
                         transform.translation.x = start.translation.x;
                         transform.translation.z += CARD_HEIGHT + 4.0;
                     }
+                    vec.push((id, Trans::from_transform(&transform)));
+                }
+                if let Ok(lid) = ids.get(entity) {
+                    let len = vec.len();
+                    sync_actions.draw.push((*lid, vec, len));
                 }
                 if ids.contains(entity) {
                     count.rem(1);

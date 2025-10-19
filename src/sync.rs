@@ -444,16 +444,18 @@ pub fn apply_sync(
                         );
                         ignore.insert(syncobject);
                     }
-                    let card = pile.0.last().unwrap();
-                    repaint_face(&mut mats, &mut materials, card, children);
-                    adjust_meshes(
-                        pile,
-                        children,
-                        &mut meshes,
-                        &mut query_meshes,
-                        &mut transform,
-                        &mut colliders.get_mut(entity).unwrap(),
-                    );
+                    if !pile.0.is_empty() {
+                        let card = pile.0.last().unwrap();
+                        repaint_face(&mut mats, &mut materials, card, children);
+                        adjust_meshes(
+                            pile,
+                            children,
+                            &mut meshes,
+                            &mut query_meshes,
+                            &mut transform,
+                            &mut colliders.get_mut(entity).unwrap(),
+                        );
+                    }
                 }
             }
         }
