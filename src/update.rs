@@ -190,7 +190,6 @@ pub fn listen_for_mouse(
     mut materials: ResMut<Assets<StandardMaterial>>,
     card_base: Res<CardBase>,
     input: Res<ButtonInput<KeyCode>>,
-    mut rand: Single<&mut WyRand, With<GlobalRng>>,
     #[cfg(not(feature = "wasm"))] mut clipboard: ResMut<Clipboard>,
     #[cfg(feature = "wasm")] clipboard: Res<Clipboard>,
     (
@@ -209,6 +208,7 @@ pub fn listen_for_mouse(
         mut menu,
         mut active_input,
         side,
+        search_deck,
     ): (
         Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
         ResMut<Download>,
@@ -225,6 +225,11 @@ pub fn listen_for_mouse(
         ResMut<Menu>,
         ResMut<InputFocus>,
         Option<Single<Entity, With<SideMenu>>>,
+        Option<Single<(Entity, &SearchDeck)>>,
+    ),
+    (mut rand, text): (
+        Single<&mut WyRand, With<GlobalRng>>,
+        Option<Single<&TextInputContents>>,
     ),
 ) {
     if matches!(*menu, Menu::Esc) {
@@ -249,6 +254,17 @@ pub fn listen_for_mouse(
         if let Ok((mut pile, mut transform, children, parent, inhand)) = cards.get_mut(entity) {
             if input.just_pressed(KeyCode::KeyF) {
                 transform.rotate_local_y(PI);
+                if let Some(entity) =
+                    search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
+                {
+                    update_search(
+                        &mut commands,
+                        entity,
+                        &pile,
+                        &transform,
+                        text.as_ref().unwrap().get(),
+                    );
+                }
             } else if input.just_pressed(KeyCode::KeyR) {
                 if pile.len() > 1 {
                     if let Ok(id) = others_ids.get(entity) {
@@ -262,6 +278,17 @@ pub fn listen_for_mouse(
                         sync_actions
                             .reorder
                             .push((*id, pile.0.iter().map(|a| a.id.clone()).collect()));
+                    }
+                    if let Some(entity) =
+                        search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
+                    {
+                        update_search(
+                            &mut commands,
+                            entity,
+                            &pile,
+                            &transform,
+                            text.as_ref().unwrap().get(),
+                        );
                     }
                 }
             } else if input.just_pressed(KeyCode::Backspace)
@@ -345,6 +372,17 @@ pub fn listen_for_mouse(
                             draw_len,
                         ));
                     }
+                    if let Some(entity) =
+                        search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
+                    {
+                        update_search(
+                            &mut commands,
+                            entity,
+                            &pile,
+                            &transform,
+                            text.as_ref().unwrap().get(),
+                        );
+                    }
                 } else {
                     if let Some(e) = follow {
                         commands.entity(*e).remove::<FollowMouse>();
@@ -416,6 +454,17 @@ pub fn listen_for_mouse(
                 }
                 sync_actions.killed.push(*ids.get(entity).unwrap());
                 commands.entity(entity).despawn();
+                if let Some(entity) =
+                    search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
+                {
+                    update_search(
+                        &mut commands,
+                        entity,
+                        &pile,
+                        &transform,
+                        text.as_ref().unwrap().get(),
+                    );
+                }
             } else if input.just_pressed(KeyCode::KeyQ) {
                 let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
                 let n = (2.0 * rot / PI).round() as isize;
@@ -502,6 +551,7 @@ pub fn listen_for_mouse(
                         (KeyCode::Digit8, 8),
                         (KeyCode::Digit9, 9)
                     );
+                    let n = n.min(pile.len());
                     let mut hand = hands.iter_mut().find(|e| e.1.is_some()).unwrap();
                     let mut vec = Vec::new();
                     let len = if is_reversed(&transform) {
@@ -510,29 +560,38 @@ pub fn listen_for_mouse(
                         pile.len()
                     };
                     for _ in 0..n {
-                        if !pile.is_empty() {
-                            let new = pile.take_card(&transform);
-                            let id = SyncObjectMe::new(&mut rand, &mut count);
-                            let mut ent = new_pile_at(
-                                Pile(vec![new]),
-                                card_base.stock.clone(),
-                                &mut materials,
-                                &mut commands,
-                                &mut meshes,
-                                card_base.back.clone(),
-                                card_base.side.clone(),
-                                Transform::default(),
-                                false,
-                                Some(hand.2),
-                                None,
-                                Some(id),
-                            )
-                            .unwrap();
-                            ent.insert(InHand(hand.0.count));
-                            ent.insert(RigidBodyDisabled);
-                            vec.push((id, Trans::from_transform(&Transform::default())));
-                            hand.0.count += 1;
-                        }
+                        let new = pile.take_card(&transform);
+                        let id = SyncObjectMe::new(&mut rand, &mut count);
+                        let mut ent = new_pile_at(
+                            Pile(vec![new]),
+                            card_base.stock.clone(),
+                            &mut materials,
+                            &mut commands,
+                            &mut meshes,
+                            card_base.back.clone(),
+                            card_base.side.clone(),
+                            Transform::default(),
+                            false,
+                            Some(hand.2),
+                            None,
+                            Some(id),
+                        )
+                        .unwrap();
+                        ent.insert(InHand(hand.0.count));
+                        ent.insert(RigidBodyDisabled);
+                        vec.push((id, Trans::from_transform(&Transform::default())));
+                        hand.0.count += 1;
+                    }
+                    if let Some(entity) =
+                        search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
+                    {
+                        update_search(
+                            &mut commands,
+                            entity,
+                            &pile,
+                            &transform,
+                            text.as_ref().unwrap().get(),
+                        );
                     }
                     if let Ok(lid) = ids.get(entity) {
                         if !is_reversed(&transform) {
@@ -560,62 +619,14 @@ pub fn listen_for_mouse(
                     }
                 }
             } else if input.just_pressed(KeyCode::KeyZ) {
-                let mut search = None;
-                if let Some(e) = side {
-                    commands.entity(*e).despawn()
-                }
-                let mut ent = commands.spawn((
-                    Node {
-                        width: Val::Percent(100.0 / 3.0),
-                        height: Val::Percent(100.0),
-                        left: Val::Percent(200.0 / 3.0),
-                        ..default()
-                    },
-                    SideMenu,
-                    Visibility::Visible,
-                    BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
-                ));
-                ent.with_children(|p| {
-                    p.spawn((
-                        TextInputNode {
-                            mode: TextInputMode::SingleLine,
-                            clear_on_submit: false,
-                            unfocus_on_submit: false,
-                            ..default()
-                        },
-                        TextInputContents::default(),
-                        Node {
-                            position_type: PositionType::Absolute,
-                            width: Val::Percent(100.0),
-                            height: Val::Px(32.0),
-                            ..default()
-                        },
-                    ));
-                    search = Some(
-                        p.spawn((
-                            SearchDeck(entity),
-                            Node {
-                                display: Display::Grid,
-                                position_type: PositionType::Absolute,
-                                top: Val::Px(32.0),
-                                left: Val::Px(0.0),
-                                height: Val::Percent(100.0),
-                                width: Val::Percent(100.0),
-                                grid_template_columns: vec![RepeatedGridTrack::percent(
-                                    3,
-                                    100.0 / 3.0,
-                                )],
-                                align_content: AlignContent::Start,
-                                overflow: Overflow::scroll_y(),
-                                ..default()
-                            },
-                        ))
-                        .id(),
-                    );
-                });
-                let id = ent.id();
-                update_search(&mut commands, search.unwrap(), &pile, "");
-                active_input.set(id);
+                search(
+                    entity,
+                    &pile,
+                    &transform,
+                    &side,
+                    &mut commands,
+                    &mut active_input,
+                );
                 *menu = Menu::Side;
             }
             if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
@@ -714,11 +725,17 @@ pub fn esc_menu(
         }
     }
 }
-pub fn update_search(commands: &mut Commands, search: Entity, pile: &Pile, text: &str) {
+pub fn update_search(
+    commands: &mut Commands,
+    search: Entity,
+    pile: &Pile,
+    transform: &Transform,
+    text: &str,
+) {
     let mut search = commands.get_entity(search).unwrap();
     search.clear_children();
     search.with_children(|parent| {
-        for (i, c) in pile.0.iter().enumerate().filter(|(_, c)| c.filter(text)) {
+        let node = |(i, c): (usize, &Card)| {
             parent.spawn((
                 TargetCard(i),
                 ImageNode::new(c.normal.image.clone_handle()),
@@ -727,13 +744,27 @@ pub fn update_search(commands: &mut Commands, search: Entity, pile: &Pile, text:
                     ..default()
                 },
             ));
+        };
+        if is_reversed(transform) {
+            pile.0
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.filter(text))
+                .for_each(node);
+        } else {
+            pile.0
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.filter(text))
+                .rev()
+                .for_each(node);
         }
     });
 }
 pub fn pick_from_list(
     hover_map: Res<HoverMap>,
-    query: Query<(&TargetCard, &ChildOf)>,
-    search_deck: Query<&SearchDeck>,
+    query: Query<&TargetCard>,
+    search_deck: Single<(Entity, &SearchDeck)>,
     mut decks: Query<(&mut Pile, &mut Transform, &Children)>,
     menu: Res<Menu>,
     mouse_input: Res<ButtonInput<MouseButton>>,
@@ -743,13 +774,26 @@ pub fn pick_from_list(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut query_meshes: Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
-    (mut colliders, follow, mut rand, mut count, ids, mut sync_actions): (
+    (
+        mut colliders,
+        follow,
+        mut rand,
+        mut count,
+        ids,
+        mut sync_actions,
+        others_ids,
+        text,
+        mut active_input,
+    ): (
         Query<&mut Collider>,
         Option<Single<Entity, With<FollowMouse>>>,
         Single<&mut WyRand, With<GlobalRng>>,
         ResMut<SyncCount>,
         Query<&SyncObjectMe>,
         ResMut<SyncActions>,
+        Query<&SyncObject>,
+        Single<(Entity, &TextInputContents)>,
+        ResMut<InputFocus>,
     ),
 ) {
     if !matches!(*menu, Menu::Side) || !mouse_input.just_pressed(MouseButton::Left) {
@@ -757,12 +801,20 @@ pub fn pick_from_list(
     }
     for pointer_event in hover_map.values() {
         for entity in pointer_event.keys().copied() {
-            if let Ok((card, parent)) = query.get(entity)
-                && let Ok(deck) = search_deck.get(parent.0)
-                && let Ok((mut pile, mut transform, children)) = decks.get_mut(deck.0)
+            if text.0 == entity {
+                active_input.set(entity);
+            } else {
+                active_input.clear();
+            }
+            if let Ok(card) = query.get(entity)
+                && let Ok((mut pile, mut trans, children)) = decks.get_mut(search_deck.1.0)
             {
                 commands.entity(entity).despawn();
-                let entity = deck.0;
+                let entity = search_deck.1.0;
+                if let Ok(id) = others_ids.get(entity) {
+                    let myid = SyncObjectMe::new(&mut rand, &mut count);
+                    sync_actions.take_owner.push((*id, myid));
+                }
                 let len = pile.0.len() as f32;
                 let new = pile.remove(card.0);
                 if !pile.0.is_empty() {
@@ -773,11 +825,11 @@ pub fn pick_from_list(
                         children,
                         &mut meshes,
                         &mut query_meshes,
-                        &mut transform,
+                        &mut trans,
                         &mut colliders.get_mut(entity).unwrap(),
                     );
                 }
-                let mut transform = *transform;
+                let mut transform = *trans;
                 transform.translation.y += len + 8.0;
                 if let Some(e) = &follow {
                     commands.entity(**e).remove::<FollowMouse>();
@@ -804,27 +856,24 @@ pub fn pick_from_list(
                         card.0 + 1,
                     ));
                 }
+                update_search(&mut commands, search_deck.0, &pile, &trans, text.1.get());
             }
         }
     }
 }
 #[allow(dead_code)]
 #[derive(Component)]
-pub struct TargetCard(usize);
+pub struct TargetCard(pub usize);
 #[derive(Component)]
-pub struct SearchDeck(Entity);
+pub struct SearchDeck(pub Entity);
 pub fn update_search_deck(
     mut commands: Commands,
     text: Single<&TextInputContents, Changed<TextInputContents>>,
     single: Single<(Entity, &SearchDeck)>,
-    query: Query<&Pile>,
+    query: Query<(&Pile, &Transform)>,
 ) {
-    update_search(
-        &mut commands,
-        single.0,
-        query.get(single.1.0).unwrap(),
-        text.get(),
-    )
+    let (pile, transform) = query.get(single.1.0).unwrap();
+    update_search(&mut commands, single.0, pile, transform, text.get())
 }
 pub fn cam_translation(
     input: Res<ButtonInput<KeyCode>>,
@@ -1153,4 +1202,67 @@ pub fn send_scroll_events(
 pub struct Scroll {
     entity: Entity,
     delta: Vec2,
+}
+pub fn search(
+    entity: Entity,
+    pile: &Pile,
+    transform: &Transform,
+    side: &Option<Single<Entity, With<SideMenu>>>,
+    commands: &mut Commands,
+    active_input: &mut InputFocus,
+) {
+    let mut search = None;
+    if let Some(e) = &side {
+        commands.entity(**e).despawn()
+    }
+    let mut ent = commands.spawn((
+        Node {
+            width: Val::Percent(100.0 / 3.0),
+            height: Val::Percent(100.0),
+            left: Val::Percent(200.0 / 3.0),
+            ..default()
+        },
+        SideMenu,
+        Visibility::Visible,
+        BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
+    ));
+    ent.with_children(|p| {
+        let id = p
+            .spawn((
+                TextInputNode {
+                    mode: TextInputMode::SingleLine,
+                    clear_on_submit: false,
+                    unfocus_on_submit: false,
+                    ..default()
+                },
+                TextInputContents::default(),
+                Node {
+                    position_type: PositionType::Absolute,
+                    width: Val::Percent(100.0),
+                    height: Val::Px(32.0),
+                    ..default()
+                },
+            ))
+            .id();
+        active_input.set(id);
+        search = Some(
+            p.spawn((
+                SearchDeck(entity),
+                Node {
+                    display: Display::Grid,
+                    position_type: PositionType::Absolute,
+                    top: Val::Px(32.0),
+                    left: Val::Px(0.0),
+                    height: Val::Percent(100.0),
+                    width: Val::Percent(100.0),
+                    grid_template_columns: vec![RepeatedGridTrack::percent(3, 100.0 / 3.0)],
+                    align_content: AlignContent::Start,
+                    overflow: Overflow::scroll_y(),
+                    ..default()
+                },
+            ))
+            .id(),
+        );
+    });
+    update_search(commands, search.unwrap(), pile, transform, "");
 }

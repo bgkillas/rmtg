@@ -4,10 +4,12 @@ use crate::misc::{adjust_meshes, new_pile_at, repaint_face};
 use crate::setup::SteamInfo;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
 use crate::shapes::Shape;
+use crate::update::{SearchDeck, update_search};
 use crate::*;
 use bevy::diagnostic::FrameCount;
 use bevy_rand::global::GlobalRng;
 use bevy_tangled::{ClientTrait, Compression, Reliability};
+use bevy_ui_text_input::TextInputContents;
 use bitcode::{Decode, Encode};
 use std::collections::{HashMap, HashSet};
 use std::f32::consts::PI;
@@ -191,6 +193,10 @@ pub fn apply_sync(
     mut client: ResMut<Client>,
     mut colliders: Query<&mut Collider>,
     mut query_meshes: Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
+    (search, text): (
+        Option<Single<(Entity, &SearchDeck)>>,
+        Option<Single<&TextInputContents>>,
+    ),
 ) {
     let mut ignore = HashSet::new();
     client.recv(|client, packet| {
@@ -373,6 +379,11 @@ pub fn apply_sync(
                     |(a, _, _, _, _, _, b, _, _, _, _)| if *a == id { Some(b) } else { None },
                 ) {
                     commands.entity(e).despawn();
+                    if let Some(search) = &search
+                        && search.1.0 == e
+                    {
+                        commands.entity(search.0).despawn()
+                    }
                 }
             }
             Packet::Flip(lid) => {
@@ -397,9 +408,9 @@ pub fn apply_sync(
             Packet::Reorder(lid, order) => {
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
-                if let Some((mut pile, children)) = query.iter_mut().find_map(
-                    |(a, _, _, _, _, _, _, _, c, d, _)| {
-                        if *a == id { Some((d, c)) } else { None }
+                if let Some((mut pile, children, entity, transform)) = query.iter_mut().find_map(
+                    |(a, t, _, _, _, _, e, _, c, d, _)| {
+                        if *a == id { Some((d, c, e, t)) } else { None }
                     },
                 ) && let Some(pile) = &mut pile
                     && let Some(children) = children
@@ -407,6 +418,17 @@ pub fn apply_sync(
                     for (i, id) in order.into_iter().enumerate() {
                         let n = pile.0[i..].iter().position(|c| c.id == id).unwrap() + i;
                         pile.0.swap(i, n);
+                    }
+                    if let Some(search) = &search
+                        && search.1.0 == entity
+                    {
+                        update_search(
+                            &mut commands,
+                            search.0,
+                            pile,
+                            &transform,
+                            text.as_ref().unwrap().get(),
+                        );
                     }
                     let card = pile.0.last().unwrap();
                     repaint_face(&mut mats, &mut materials, card, children);
@@ -454,6 +476,17 @@ pub fn apply_sync(
                             &mut query_meshes,
                             &mut transform,
                             &mut colliders.get_mut(entity).unwrap(),
+                        );
+                    }
+                    if let Some(search) = &search
+                        && search.1.0 == entity
+                    {
+                        update_search(
+                            &mut commands,
+                            search.0,
+                            pile,
+                            &transform,
+                            text.as_ref().unwrap().get(),
                         );
                     }
                 }
