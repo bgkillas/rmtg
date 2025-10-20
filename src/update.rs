@@ -124,7 +124,7 @@ pub fn follow_mouse(
                 card.4,
                 card.1.translation,
                 card.1.rotation,
-                &SpatialQueryFilter::DEFAULT,
+                &SpatialQueryFilter::from_mask(u32::MAX - 0b100),
             )
             .into_iter()
             .filter_map(|a| {
@@ -174,7 +174,10 @@ pub fn listen_for_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
     camera: Single<(&Camera, &GlobalTransform, Entity), With<Camera3d>>,
     window: Single<&Window, With<PrimaryWindow>>,
-    mut pset: ParamSet<(SpatialQuery, Query<&mut Collider>)>,
+    mut pset: ParamSet<(
+        SpatialQuery,
+        Query<(&mut Collider, &mut GravityScale, &mut CollisionLayers)>,
+    )>,
     mut cards: Query<(
         &mut Pile,
         &mut Transform,
@@ -203,7 +206,6 @@ pub fn listen_for_mouse(
         others_ids,
         mut query_meshes,
         follow,
-        mut grav,
         shape,
         mut menu,
         mut active_input,
@@ -220,7 +222,6 @@ pub fn listen_for_mouse(
         Query<&SyncObject>,
         Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
         Option<Single<Entity, With<FollowMouse>>>,
-        Query<&mut GravityScale>,
         Query<&Shape>,
         ResMut<Menu>,
         ResMut<InputFocus>,
@@ -342,7 +343,7 @@ pub fn listen_for_mouse(
                             &mut meshes,
                             &mut query_meshes,
                             &mut transform,
-                            &mut colliders.get_mut(entity).unwrap(),
+                            &mut colliders.get_mut(entity).unwrap().0,
                         );
                     }
                     let mut transform = *transform;
@@ -391,7 +392,7 @@ pub fn listen_for_mouse(
                         let myid = SyncObjectMe::new(&mut rand, &mut count);
                         sync_actions.take_owner.push((*id, myid));
                     }
-                    grav.get_mut(entity).unwrap().0 = 0.0;
+                    colliders.get_mut(entity).unwrap().1.0 = 0.0;
                     commands
                         .entity(entity)
                         .insert(FollowMouse)
@@ -608,7 +609,7 @@ pub fn listen_for_mouse(
                             &mut meshes,
                             &mut query_meshes,
                             &mut transform,
-                            &mut colliders.get_mut(entity).unwrap(),
+                            &mut colliders.get_mut(entity).unwrap().0,
                         );
                     } else {
                         if let Ok(id) = ids.get(entity) {
@@ -660,7 +661,7 @@ pub fn listen_for_mouse(
             } else if let Some(single) = zoom {
                 commands.entity(single.0).despawn();
             }
-        } else if let Ok(mut grav) = grav.get_mut(entity) {
+        } else if let Ok((_, mut phys, mut layers)) = colliders.get_mut(entity) {
             if let Some(single) = zoom {
                 commands.entity(single.0).despawn();
             }
@@ -672,7 +673,7 @@ pub fn listen_for_mouse(
                     let myid = SyncObjectMe::new(&mut rand, &mut count);
                     sync_actions.take_owner.push((*id, myid));
                 }
-                grav.0 = 0.0;
+                phys.0 = 0.0;
                 commands.entity(entity).insert(FollowMouse);
             } else if input.just_pressed(KeyCode::KeyC)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
@@ -683,6 +684,10 @@ pub fn listen_for_mouse(
                 || input.all_pressed([KeyCode::KeyR, KeyCode::AltLeft]))
                 && let Ok((mut lv, mut av)) = vels.get_mut(entity)
             {
+                commands.entity(entity).insert(TempDisable);
+                if layers.filters & 0b01 == 0b01 {
+                    layers.filters = (layers.filters.0 - 0b01).into();
+                }
                 if let Ok(id) = others_ids.get(entity) {
                     let myid = SyncObjectMe::new(&mut rand, &mut count);
                     sync_actions.take_owner.push((*id, myid));
@@ -700,6 +705,19 @@ pub fn listen_for_mouse(
         }
     } else if let Some(single) = zoom {
         commands.entity(single.0).despawn();
+    }
+}
+#[derive(Component)]
+pub struct TempDisable;
+pub fn reset_layers(
+    mut phys: Query<(Entity, &LinearVelocity, &mut CollisionLayers), With<TempDisable>>,
+    mut commands: Commands,
+) {
+    for (e, v, mut c) in phys.iter_mut() {
+        if v.y <= 0.0 {
+            c.filters.0 += 0b01;
+            commands.entity(e).remove::<TempDisable>();
+        }
     }
 }
 pub fn esc_menu(

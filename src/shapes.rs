@@ -107,6 +107,7 @@ pub fn spawn_ico<'a>(
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, verticies)
     .with_inserted_indices(Indices::U16(indecies));
     let mut ent = commands.spawn((
+        CollisionLayers::new(0b11, LayerMask::ALL),
         Collider::convex_hull_from_mesh(&mesh).unwrap(),
         transform,
         Shape::Icosahedron,
@@ -227,6 +228,7 @@ pub fn spawn_oct<'a>(
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, verticies)
     .with_inserted_indices(Indices::U16(indecies));
     let mut ent = commands.spawn((
+        CollisionLayers::new(0b11, LayerMask::ALL),
         Collider::convex_hull_from_mesh(&mesh).unwrap(),
         transform,
         Shape::Octohedron,
@@ -342,6 +344,7 @@ pub fn spawn_tetra<'a>(
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, verticies)
     .with_inserted_indices(Indices::U16(indecies));
     let mut ent = commands.spawn((
+        CollisionLayers::new(0b11, LayerMask::ALL),
         Collider::convex_hull_from_mesh(&mesh).unwrap(),
         transform,
         Shape::Tetrahedron,
@@ -403,9 +406,21 @@ pub fn spawn_coin<'a>(
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
 ) -> EntityCommands<'a> {
-    let ratio = 16.0;
+    let ratio = 8.0;
     let mut ent = commands.spawn((
-        Collider::cylinder(m, m / ratio),
+        CollisionLayers::new(0b11, LayerMask::ALL),
+        Collider::compound(vec![
+            (
+                Position::default(),
+                Rotation::default(),
+                Collider::cylinder(m, m / ratio),
+            ),
+            (
+                Position::default(),
+                Rotation::default(),
+                Collider::cylinder(m + 1.0, m / (ratio * 16.0)),
+            ),
+        ]),
         transform,
         Shape::Disc,
         ColliderDensity(1.0 / 32.0),
@@ -590,6 +605,7 @@ pub fn spawn_dodec<'a>(
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, verticies)
     .with_inserted_indices(Indices::U16(indecies));
     let mut ent = commands.spawn((
+        CollisionLayers::new(0b11, LayerMask::ALL),
         Collider::convex_hull_from_mesh(&mesh).unwrap(),
         transform,
         Shape::Dodecahedron,
@@ -654,6 +670,7 @@ pub fn spawn_cube<'a>(
 ) -> EntityCommands<'a> {
     let d = m / 2.0 + 1.0;
     let mut cube = commands.spawn((
+        CollisionLayers::new(0b11, LayerMask::ALL),
         Collider::cuboid(m, m, m),
         transform,
         RigidBody::Dynamic,

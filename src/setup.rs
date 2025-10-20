@@ -153,6 +153,7 @@ pub fn setup(
     spawn_hand(0, &mut commands);
     commands.spawn((
         Transform::from_xyz(0.0, -T, 0.0),
+        CollisionLayers::new(0b01, LayerMask::ALL),
         Collider::cuboid(2.0 * W, 2.0 * T, 2.0 * W),
         RigidBody::Static,
         Floor,
@@ -164,6 +165,7 @@ pub fn setup(
     ));
     commands.spawn((
         Transform::from_xyz(0.0, 2.0 * (W - T), 0.0),
+        CollisionLayers::new(0b11, LayerMask::ALL),
         Collider::cuboid(2.0 * W, 2.0 * T, 2.0 * W),
         RigidBody::Static,
         Ceiling,
@@ -175,6 +177,7 @@ pub fn setup(
     ));
     commands.spawn((
         Transform::from_xyz(W + T / 2.0, W - T, 0.0),
+        CollisionLayers::new(0b11, LayerMask::ALL),
         Collider::cuboid(2.0 * T, 2.0 * W, 2.0 * W),
         RigidBody::Static,
         Wall,
@@ -186,6 +189,7 @@ pub fn setup(
     ));
     commands.spawn((
         Transform::from_xyz(-(W + T / 2.0), W - T, 0.0),
+        CollisionLayers::new(0b11, LayerMask::ALL),
         Collider::cuboid(2.0 * T, 2.0 * W, 2.0 * W),
         RigidBody::Static,
         Wall,
@@ -197,6 +201,7 @@ pub fn setup(
     ));
     commands.spawn((
         Transform::from_xyz(0.0, W - T, W + T / 2.0),
+        CollisionLayers::new(0b11, LayerMask::ALL),
         Collider::cuboid(2.0 * W, 2.0 * W, 2.0 * T),
         RigidBody::Static,
         Wall,
@@ -208,6 +213,7 @@ pub fn setup(
     ));
     commands.spawn((
         Transform::from_xyz(0.0, W - T, -(W + T / 2.0)),
+        CollisionLayers::new(0b11, LayerMask::ALL),
         Collider::cuboid(2.0 * W, 2.0 * W, 2.0 * T),
         RigidBody::Static,
         Wall,
