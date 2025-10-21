@@ -94,6 +94,7 @@ pub fn setup(
     }
     let font = include_bytes!("../assets/noto.ttf");
     let font = asset_server.add(Font::try_from_bytes(font.to_vec()).unwrap());
+    commands.insert_resource(FontRes(font.clone()));
     let _ = fs::create_dir("./cache");
     framepace.limiter = Limiter::from_framerate(60.0);
     let card_stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
@@ -304,6 +305,8 @@ pub fn setup(
         },
     ));
 }
+#[derive(Resource)]
+pub struct FontRes(pub Handle<Font>);
 #[derive(Component)]
 pub struct EscMenu;
 #[derive(Component)]

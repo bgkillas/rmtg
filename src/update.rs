@@ -4,7 +4,7 @@ use crate::download::{
 use crate::misc::{
     adjust_meshes, is_reversed, make_material, move_up, new_pile, new_pile_at, repaint_face,
 };
-use crate::setup::{EscMenu, SideMenu, T, W, Wall};
+use crate::setup::{EscMenu, FontRes, SideMenu, T, W, Wall};
 use crate::sync::{Packet, SyncObjectMe, Trans};
 use crate::*;
 use bevy::input::mouse::{
@@ -228,12 +228,13 @@ pub fn listen_for_mouse(
         Option<Single<Entity, With<SideMenu>>>,
         Option<Single<(Entity, &SearchDeck)>>,
     ),
-    (mut rand, text): (
+    (mut rand, text, font): (
         Single<&mut WyRand, With<GlobalRng>>,
         Option<Single<&TextInputContents>>,
+        Res<FontRes>,
     ),
 ) {
-    if matches!(*menu, Menu::Esc) {
+    if matches!(*menu, Menu::Esc) || (matches!(*menu, Menu::Side) && active_input.get().is_some()) {
         return;
     }
     let Some(cursor_position) = window.cursor_position() else {
@@ -632,6 +633,7 @@ pub fn listen_for_mouse(
                     &side,
                     &mut commands,
                     &mut active_input,
+                    font.0.clone(),
                 );
                 *menu = Menu::Side;
             }
@@ -903,8 +905,9 @@ pub fn cam_translation(
     mouse_motion: Res<AccumulatedMouseScroll>,
     mut cam: Single<&mut Transform, With<Camera3d>>,
     menu: Res<Menu>,
+    active_input: Res<InputFocus>,
 ) {
-    if !matches!(*menu, Menu::World) {
+    if matches!(*menu, Menu::Esc) || (matches!(*menu, Menu::Side) && active_input.get().is_some()) {
         return;
     }
     let scale = if input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
@@ -961,8 +964,9 @@ pub fn cam_rotation(
     mouse_motion: Res<AccumulatedMouseMotion>,
     mut cam: Single<&mut Transform, With<Camera3d>>,
     menu: Res<Menu>,
+    active_input: Res<InputFocus>,
 ) {
-    if !matches!(*menu, Menu::World) {
+    if matches!(*menu, Menu::Esc) || (matches!(*menu, Menu::Side) && active_input.get().is_some()) {
         return;
     }
     if mouse_button.pressed(MouseButton::Right) && mouse_motion.delta != Vec2::ZERO {
@@ -991,8 +995,9 @@ pub fn listen_for_deck(
     mut count: ResMut<SyncCount>,
     mut to_move: ResMut<ToMoveUp>,
     menu: Res<Menu>,
+    active_input: Res<InputFocus>,
 ) {
-    if !matches!(*menu, Menu::World) {
+    if matches!(*menu, Menu::Esc) || (matches!(*menu, Menu::Side) && active_input.get().is_some()) {
         return;
     }
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
@@ -1233,6 +1238,7 @@ pub fn search(
     side: &Option<Single<Entity, With<SideMenu>>>,
     commands: &mut Commands,
     active_input: &mut InputFocus,
+    font: Handle<Font>,
 ) {
     let mut search = None;
     if let Some(e) = &side {
@@ -1256,6 +1262,11 @@ pub fn search(
                     mode: TextInputMode::SingleLine,
                     clear_on_submit: false,
                     unfocus_on_submit: false,
+                    ..default()
+                },
+                TextFont {
+                    font,
+                    font_size: FONT_SIZE,
                     ..default()
                 },
                 TextInputContents::default(),
