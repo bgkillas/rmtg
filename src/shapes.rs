@@ -3,6 +3,7 @@ use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 use std::f32::consts::FRAC_PI_2;
+const BOUNCY: f32 = 0.5;
 #[derive(Encode, Decode, Component, Copy, Clone, Debug)]
 pub enum Shape {
     Cube,
@@ -112,6 +113,7 @@ pub fn spawn_ico<'a>(
         transform,
         Shape::Icosahedron,
         RigidBody::Dynamic,
+        Restitution::new(BOUNCY).with_combine_rule(CoefficientCombine::Max),
         LinearDamping(LIN_DAMPING),
         AngularDamping(ANG_DAMPING),
         SLEEP,
@@ -233,6 +235,7 @@ pub fn spawn_oct<'a>(
         transform,
         Shape::Octohedron,
         RigidBody::Dynamic,
+        Restitution::new(BOUNCY).with_combine_rule(CoefficientCombine::Max),
         LinearDamping(LIN_DAMPING),
         AngularDamping(ANG_DAMPING),
         SLEEP,
@@ -349,6 +352,7 @@ pub fn spawn_tetra<'a>(
         transform,
         Shape::Tetrahedron,
         RigidBody::Dynamic,
+        Restitution::new(BOUNCY).with_combine_rule(CoefficientCombine::Max),
         LinearDamping(LIN_DAMPING),
         AngularDamping(ANG_DAMPING),
         SLEEP,
@@ -425,6 +429,7 @@ pub fn spawn_coin<'a>(
         Shape::Disc,
         ColliderDensity(1.0 / 32.0),
         RigidBody::Dynamic,
+        Restitution::new(BOUNCY).with_combine_rule(CoefficientCombine::Max),
         LinearDamping(LIN_DAMPING),
         AngularDamping(ANG_DAMPING),
         SLEEP,
@@ -610,6 +615,7 @@ pub fn spawn_dodec<'a>(
         transform,
         Shape::Dodecahedron,
         RigidBody::Dynamic,
+        Restitution::new(BOUNCY).with_combine_rule(CoefficientCombine::Max),
         LinearDamping(LIN_DAMPING),
         AngularDamping(ANG_DAMPING),
         SLEEP,
@@ -674,6 +680,7 @@ pub fn spawn_cube<'a>(
         Collider::cuboid(m, m, m),
         transform,
         RigidBody::Dynamic,
+        Restitution::new(BOUNCY).with_combine_rule(CoefficientCombine::Max),
         LinearDamping(LIN_DAMPING),
         AngularDamping(ANG_DAMPING),
         SLEEP,
