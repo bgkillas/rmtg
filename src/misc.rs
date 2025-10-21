@@ -143,6 +143,7 @@ pub fn new_pile_at<'a>(
         SLEEP,
         CollisionLayers::new(0b11, LayerMask::ALL),
         Collider::cuboid(CARD_WIDTH, CARD_HEIGHT, 2.0 * size),
+        CollisionEventsEnabled,
         GravityScale(if follow_mouse || parent.is_some() {
             0.0
         } else {

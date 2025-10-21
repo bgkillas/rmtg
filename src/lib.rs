@@ -1,7 +1,7 @@
 use crate::setup::setup;
 use crate::update::{
     ToMoveUp, cam_rotation, cam_translation, esc_menu, follow_mouse, gather_hand, listen_for_deck,
-    listen_for_mouse, on_scroll_handler, pick_from_list, register_deck, reset_layers,
+    listen_for_mouse, on_scroll_handler, pick_from_list, pile_merge, register_deck, reset_layers,
     send_scroll_events, to_move_up, update_hand, update_search_deck,
 };
 use avian3d::prelude::*;
@@ -47,7 +47,7 @@ const APPID: u32 = 4046880;
 const FONT_SIZE: f32 = 16.0;
 const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
-//TODO counters, card grouping, equip, multi select
+//TODO counters, equip, multi select
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 pub fn start() {
     #[cfg(feature = "wasm")]
@@ -139,6 +139,7 @@ pub fn start() {
             .chain(),
     )
     .add_observer(on_scroll_handler)
+    .add_observer(pile_merge)
     .add_systems(PreUpdate, (get_sync, apply_sync).chain());
     app.run();
 }

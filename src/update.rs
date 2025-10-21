@@ -300,6 +300,11 @@ pub fn listen_for_mouse(
                 }
                 sync_actions.killed.push(*ids.get(entity).unwrap());
                 commands.entity(entity).despawn();
+                if let Some(entity) =
+                    search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
+                {
+                    commands.entity(entity).despawn()
+                }
             } else if input.just_pressed(KeyCode::KeyC) && input.pressed(KeyCode::ControlLeft) {
                 if input.pressed(KeyCode::ShiftLeft) {
                     *game_clipboard = GameClipboard::Pile(pile.clone());
@@ -1283,4 +1288,64 @@ pub fn search(
         );
     });
     update_search(commands, search.unwrap(), pile, transform, "");
+}
+pub fn pile_merge(
+    collision: On<CollisionStart>,
+    mut piles: Query<(Entity, &mut Pile, &mut Transform, &Children, &mut Collider)>,
+    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut query_meshes: Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
+    mut commands: Commands,
+    search_deck: Option<Single<(Entity, &SearchDeck)>>,
+    text: Option<Single<&TextInputContents>>,
+) {
+    if let Ok((e1, p1, t1, _, _)) = piles.get(collision.collider1)
+        && let Ok((e2, p2, t2, _, _)) = piles.get(collision.collider2)
+        && e1 < e2
+        && (t1.translation.x - t2.translation.x).abs() < CARD_WIDTH / 2.0
+        && (t1.translation.z - t2.translation.z).abs() < CARD_HEIGHT / 2.0
+        && is_reversed(t1) == is_reversed(t2)
+    {
+        let (
+            (ent, mut bottom_pile, mut bottom_transform, children, mut collider),
+            top_pile,
+            top_ent,
+        ) = if t1.translation.y < t2.translation.y {
+            let p2 = p2.clone();
+            (piles.get_mut(collision.collider1).unwrap(), p2, e2)
+        } else {
+            let p1 = p1.clone();
+            (piles.get_mut(collision.collider2).unwrap(), p1, e1)
+        };
+        if is_reversed(&bottom_transform) {
+            bottom_pile.0.splice(0..0, top_pile.0);
+        } else {
+            bottom_pile.0.extend(top_pile.0);
+        }
+        let card = bottom_pile.0.last().unwrap();
+        repaint_face(&mut mats, &mut materials, card, children);
+        adjust_meshes(
+            &bottom_pile,
+            children,
+            &mut meshes,
+            &mut query_meshes,
+            &mut bottom_transform,
+            &mut collider,
+        );
+        if let Some(search_deck) = search_deck {
+            if search_deck.1.0 == ent {
+                update_search(
+                    &mut commands,
+                    search_deck.0,
+                    &bottom_pile,
+                    &bottom_transform,
+                    text.as_ref().unwrap().get(),
+                );
+            } else if search_deck.1.0 == top_ent {
+                commands.entity(search_deck.0).despawn();
+            }
+        }
+        commands.entity(top_ent).despawn();
+    }
 }
