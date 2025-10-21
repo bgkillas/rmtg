@@ -511,13 +511,13 @@ impl From<&str> for Cost {
     }
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
-pub struct Card {
+pub struct SubCard {
     pub id: String,
     pub normal: CardInfo,
     pub alt: Option<CardInfo>,
     pub is_alt: bool,
 }
-impl Card {
+impl SubCard {
     pub fn clone_no_image(&self) -> Self {
         Self {
             id: self.id.clone(),
@@ -528,6 +528,56 @@ impl Card {
     }
     pub fn filter(&self, text: &str) -> bool {
         self.normal.filter(text) || self.alt.as_ref().map(|a| a.filter(text)).unwrap_or(false)
+    }
+}
+#[derive(Debug, Default, Clone, Encode, Decode)]
+pub struct Card {
+    pub id: String,
+    pub normal: CardInfo,
+    pub alt: Option<CardInfo>,
+    pub is_alt: bool,
+    pub equiped: Vec<SubCard>,
+}
+impl Card {
+    pub fn clone_no_image(&self) -> Self {
+        Self {
+            id: self.id.clone(),
+            normal: self.normal.clone_no_image(),
+            alt: self.alt.as_ref().map(|a| a.clone_no_image()),
+            is_alt: self.is_alt,
+            equiped: self.equiped.iter().map(|c| c.clone_no_image()).collect(),
+        }
+    }
+    pub fn filter(&self, text: &str) -> bool {
+        self.normal.filter(text) || self.alt.as_ref().map(|a| a.filter(text)).unwrap_or(false)
+    }
+    pub fn flatten(mut self) -> Vec<Card> {
+        let mut vec = Vec::with_capacity(self.equiped.len() + 1);
+        let drain = std::mem::take(&mut self.equiped);
+        vec.push(self);
+        vec.extend(drain.into_iter().map(|a| a.into()));
+        vec
+    }
+}
+impl From<Card> for SubCard {
+    fn from(value: Card) -> Self {
+        Self {
+            id: value.id,
+            normal: value.normal,
+            alt: value.alt,
+            is_alt: value.is_alt,
+        }
+    }
+}
+impl From<SubCard> for Card {
+    fn from(value: SubCard) -> Self {
+        Self {
+            id: value.id,
+            normal: value.normal,
+            alt: value.alt,
+            is_alt: value.is_alt,
+            equiped: Vec::new(),
+        }
     }
 }
 impl CardInfo {

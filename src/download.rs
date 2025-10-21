@@ -275,6 +275,7 @@ pub async fn parse(
                 toughness: alt_toughness,
                 image: image.into(),
             }),
+            equiped: Vec::new(),
             id: id.to_string(),
             is_alt: false,
         },
