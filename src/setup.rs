@@ -8,6 +8,7 @@ use crate::sync::{SyncObjectMe, spawn_hand};
 use crate::*;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rand::global::GlobalRng;
+#[cfg(feature = "steam")]
 use bevy_tangled::Compression;
 #[cfg(feature = "steam")]
 use bevy_tangled::{Client, ClientTrait, Reliability};

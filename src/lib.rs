@@ -45,7 +45,9 @@ use wasm_bindgen_futures::JsFuture;
 #[cfg(feature = "steam")]
 const APPID: u32 = 4046880;
 const FONT_SIZE: f32 = 16.0;
+#[allow(dead_code)]
 const FONT_HEIGHT: f32 = FONT_SIZE;
+#[allow(dead_code)]
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO counters, equip, multi select
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
