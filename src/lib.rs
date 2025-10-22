@@ -4,6 +4,7 @@ use crate::update::{
     listen_for_mouse, on_scroll_handler, pick_from_list, pile_merge, register_deck, reset_layers,
     send_scroll_events, to_move_up, update_hand, update_search_deck,
 };
+use avian3d::parry::either::IntoEither;
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
@@ -13,11 +14,12 @@ use bevy_rand::prelude::EntropyPlugin;
 use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
 use bevy_tangled::Client;
 use bevy_ui_text_input::TextInputPlugin;
+use itertools::Either;
 use rand::RngCore;
 use std::mem;
 use std::mem::MaybeUninit;
 use std::ops::RangeBounds;
-use std::slice::{Iter, IterMut};
+use std::slice::Iter;
 use std::sync::{Arc, Mutex};
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = 488.0;
@@ -225,10 +227,10 @@ fn test_get_deck() {
         println!(
             "{} {} {} {} {}",
             tmr.elapsed().as_millis(),
-            deck[0].0.0.len(),
-            deck[1].0.0.len(),
-            deck[2].0.0.len(),
-            deck[3].0.0.len()
+            deck[0].0.len(),
+            deck[1].0.len(),
+            deck[2].0.len(),
+            deck[3].0.len()
         );
     }
     app.add_systems(Update, test);
@@ -273,12 +275,19 @@ impl Pile {
             self.last_mut()
         }
     }
+    pub fn set_single(&mut self) {
+        if self.len() == 1 {
+            *self = Pile::Multiple(vec![self.pop()])
+        }
+    }
     pub fn take_card(&mut self, transform: &Transform) -> SubCard {
-        if is_reversed(transform) {
+        let ret = if is_reversed(transform) {
             self.remove(0)
         } else {
             self.pop()
-        }
+        };
+        self.set_single();
+        ret
     }
     pub fn len(&self) -> usize {
         match self {
@@ -289,7 +298,7 @@ impl Pile {
     }
     pub fn is_empty(&self) -> bool {
         match self {
-            Pile::Multiple(_) => false,
+            Pile::Multiple(v) => v.is_empty(),
             Pile::Single(_) => false,
             Pile::Empty => true,
         }
@@ -303,7 +312,11 @@ impl Pile {
     }
     pub fn pop(&mut self) -> SubCard {
         match self {
-            Pile::Multiple(v) => v.pop().unwrap(),
+            Pile::Multiple(v) => {
+                let ret = v.pop().unwrap();
+                self.set_single();
+                ret
+            }
             se @ Pile::Single(_) => {
                 let Pile::Single(s) = mem::take(se) else {
                     unreachable!()
@@ -383,7 +396,11 @@ impl Pile {
     }
     pub fn remove(&mut self, n: usize) -> SubCard {
         match self {
-            Pile::Multiple(v) => v.remove(n),
+            Pile::Multiple(v) => {
+                let ret = v.remove(n);
+                self.set_single();
+                ret
+            }
             se @ Pile::Single(_) => {
                 let Pile::Single(s) = mem::take(se) else {
                     unreachable!()
@@ -403,14 +420,14 @@ impl Pile {
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn iter(&self) -> Iter<'_, SubCard> {
+    pub fn iter(&self) -> impl Iterator<Item = &SubCard> {
         match self {
-            Pile::Multiple(v) => v.iter(),
-            Pile::Single(_) => todo!(),
+            Pile::Multiple(v) => Either::Left::<Iter<'_, SubCard>>(v.iter()),
+            Pile::Single(s) => Either::Right(s.into()),
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn iter_mut(&mut self) -> IterMut<'_, SubCard> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut SubCard> {
         match self {
             Pile::Multiple(v) => v.iter_mut(),
             Pile::Single(_) => todo!(),

@@ -468,6 +468,7 @@ pub fn apply_sync(
                         );
                         ignore.insert(syncobject);
                     }
+                    pile.set_single();
                     if !pile.is_empty() {
                         let card = pile.last();
                         repaint_face(&mut mats, &mut materials, card, children);

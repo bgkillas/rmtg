@@ -87,6 +87,7 @@ bevy={version="0.17.2", default-features = false, features = [
   "debug",
   "zstd_rust",
 ]}
+itertools="0.13.0"
 arboard={version="3.6.1", features = ["wayland-data-control"], optional = true}
 reqwest={version="0.12.24", features = ["rustls-tls"], default-features = false}
 json="0.12.4"
