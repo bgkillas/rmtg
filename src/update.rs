@@ -18,7 +18,6 @@ use bevy_rand::global::GlobalRng;
 use bevy_tangled::{ClientTrait, Compression, PeerId, Reliability};
 use bevy_ui_text_input::{TextInputContents, TextInputMode, TextInputNode};
 use rand::Rng;
-use rand::seq::SliceRandom;
 use std::f32::consts::PI;
 use std::mem;
 pub fn gather_hand(
@@ -273,13 +272,13 @@ pub fn listen_for_mouse(
                         let myid = SyncObjectMe::new(&mut rand, &mut count);
                         sync_actions.take_owner.push((*id, myid));
                     }
-                    pile.0.shuffle(&mut rand);
-                    let card = pile.0.last().unwrap();
+                    pile.shuffle(&mut rand);
+                    let card = pile.last();
                     repaint_face(&mut mats, &mut materials, card, children);
                     if let Ok(id) = ids.get(entity) {
                         sync_actions
                             .reorder
-                            .push((*id, pile.0.iter().map(|a| a.id.clone()).collect()));
+                            .push((*id, pile.iter().map(|a| a.id.clone()).collect()));
                     }
                     if let Some(entity) =
                         search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
@@ -341,7 +340,7 @@ pub fn listen_for_mouse(
                     };
                     let new = pile.take_card(&transform);
                     if !pile.is_empty() {
-                        let card = pile.0.last().unwrap();
+                        let card = pile.last();
                         repaint_face(&mut mats, &mut materials, card, children);
                         adjust_meshes(
                             &pile,
@@ -359,7 +358,7 @@ pub fn listen_for_mouse(
                     }
                     let id = SyncObjectMe::new(&mut rand, &mut count);
                     new_pile_at(
-                        Pile(vec![new]),
+                        Pile::Single(new.into()),
                         card_base.stock.clone(),
                         &mut materials,
                         &mut commands,
@@ -429,10 +428,10 @@ pub fn listen_for_mouse(
                 start.translation.y -= pile.len() as f32;
                 let mut transform = start;
                 let mut vec = Vec::with_capacity(pile.len());
-                for c in pile.0.drain(..) {
+                for c in pile.drain(..) {
                     let id = SyncObjectMe::new(&mut rand, &mut count);
                     new_pile_at(
-                        Pile(vec![c]),
+                        Pile::Single(c.into()),
                         card_base.stock.clone(),
                         &mut materials,
                         &mut commands,
@@ -570,7 +569,7 @@ pub fn listen_for_mouse(
                         let new = pile.take_card(&transform);
                         let id = SyncObjectMe::new(&mut rand, &mut count);
                         let mut ent = new_pile_at(
-                            Pile(vec![new]),
+                            Pile::Single(new.into()),
                             card_base.stock.clone(),
                             &mut materials,
                             &mut commands,
@@ -607,7 +606,7 @@ pub fn listen_for_mouse(
                         sync_actions.draw.push((*lid, vec, len));
                     }
                     if !pile.is_empty() {
-                        let card = pile.0.last().unwrap();
+                        let card = pile.last();
                         repaint_face(&mut mats, &mut materials, card, children);
                         adjust_meshes(
                             &pile,
@@ -760,7 +759,7 @@ pub fn update_search(
     let mut search = commands.get_entity(search).unwrap();
     search.clear_children();
     search.with_children(|parent| {
-        let node = |(i, c): (usize, &Card)| {
+        let node = |(i, c): (usize, &SubCard)| {
             parent.spawn((
                 TargetCard(i),
                 ImageNode::new(c.normal.image.clone_handle()),
@@ -771,14 +770,12 @@ pub fn update_search(
             ));
         };
         if is_reversed(transform) {
-            pile.0
-                .iter()
+            pile.iter()
                 .enumerate()
                 .filter(|(_, c)| c.filter(text))
                 .for_each(node);
         } else {
-            pile.0
-                .iter()
+            pile.iter()
                 .enumerate()
                 .filter(|(_, c)| c.filter(text))
                 .rev()
@@ -840,10 +837,10 @@ pub fn pick_from_list(
                     let myid = SyncObjectMe::new(&mut rand, &mut count);
                     sync_actions.take_owner.push((*id, myid));
                 }
-                let len = pile.0.len() as f32;
+                let len = pile.len() as f32;
                 let new = pile.remove(card.0);
-                if !pile.0.is_empty() {
-                    let card = pile.0.last().unwrap();
+                if !pile.is_empty() {
+                    let card = pile.last();
                     repaint_face(&mut mats, &mut materials, card, children);
                     adjust_meshes(
                         &pile,
@@ -861,7 +858,7 @@ pub fn pick_from_list(
                 }
                 let id = SyncObjectMe::new(&mut rand, &mut count);
                 new_pile_at(
-                    Pile(vec![new]),
+                    Pile::Single(new.into()),
                     card_base.stock.clone(),
                     &mut materials,
                     &mut commands,
@@ -1129,7 +1126,7 @@ pub fn register_deck(
 ) {
     let mut decks = decks.get_deck.0.lock().unwrap();
     for (deck, v, id) in decks.drain(..) {
-        info!("deck found of size {} at {} {}", deck.0.len(), v.x, v.y);
+        info!("deck found of size {} at {} {}", deck.len(), v.x, v.y);
         if let Some(ent) = new_pile(
             deck,
             card_base.stock.clone(),
@@ -1330,11 +1327,11 @@ pub fn pile_merge(
             (piles.get_mut(collision.collider2).unwrap(), p1, e1)
         };
         if is_reversed(&bottom_transform) {
-            bottom_pile.0.splice(0..0, top_pile.0);
+            bottom_pile.extend_start(top_pile);
         } else {
-            bottom_pile.0.extend(top_pile.0);
+            bottom_pile.extend(top_pile);
         }
-        let card = bottom_pile.0.last().unwrap();
+        let card = bottom_pile.last();
         repaint_face(&mut mats, &mut materials, card, children);
         adjust_meshes(
             &bottom_pile,

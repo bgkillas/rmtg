@@ -125,7 +125,7 @@ pub fn new_pile_at<'a>(
     if pile.is_empty() {
         return None;
     }
-    let card = pile.0.last().unwrap();
+    let card = pile.last();
     let top = card.normal.image().clone();
     let material_handle = make_material(materials, top);
     let size = pile.len() as f32;
@@ -193,7 +193,7 @@ pub fn is_reversed(transform: &Transform) -> bool {
 pub fn repaint_face(
     mats: &mut Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
     materials: &mut Assets<StandardMaterial>,
-    card: &Card,
+    card: &SubCard,
     children: &Children,
 ) {
     mats.get_mut(*children.first().unwrap()).unwrap().0 =

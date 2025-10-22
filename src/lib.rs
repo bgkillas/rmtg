@@ -14,7 +14,10 @@ use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
 use bevy_tangled::Client;
 use bevy_ui_text_input::TextInputPlugin;
 use rand::RngCore;
+use std::mem;
 use std::mem::MaybeUninit;
+use std::ops::RangeBounds;
+use std::slice::{Iter, IterMut};
 use std::sync::{Arc, Mutex};
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = 488.0;
@@ -38,6 +41,7 @@ use crate::sync::display_steam_info;
 use crate::sync::new_lobby;
 use crate::sync::{SendSleeping, Sent, SyncActions, SyncCount, SyncObject, apply_sync, get_sync};
 use bitcode::{Decode, Encode};
+use rand::seq::SliceRandom;
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
@@ -241,40 +245,177 @@ pub struct Hand {
     pub removed: Vec<usize>,
 }
 #[derive(Component, Default, Debug, Clone, Encode, Decode)]
-pub struct Pile(Vec<Card>);
+pub enum Pile {
+    Multiple(Vec<SubCard>),
+    Single(Box<Card>),
+    #[default]
+    Empty,
+}
 impl Pile {
     pub fn clone_no_image(&self) -> Self {
-        Pile(self.0.iter().map(|a| a.clone_no_image()).collect())
-    }
-    pub fn get_card(&self, transform: &Transform) -> &Card {
-        if is_reversed(transform) {
-            self.0.first().unwrap()
-        } else {
-            self.0.last().unwrap()
+        match self {
+            Pile::Multiple(v) => Pile::Multiple(v.iter().map(|a| a.clone_no_image()).collect()),
+            Pile::Single(s) => Pile::Single(s.clone_no_image().into()),
+            Pile::Empty => Pile::Empty,
         }
     }
-    pub fn get_mut_card(&mut self, transform: &Transform) -> &mut Card {
+    pub fn get_card(&self, transform: &Transform) -> &SubCard {
         if is_reversed(transform) {
-            self.0.first_mut().unwrap()
+            self.first()
         } else {
-            self.0.last_mut().unwrap()
+            self.last()
         }
     }
-    pub fn take_card(&mut self, transform: &Transform) -> Card {
+    pub fn get_mut_card(&mut self, transform: &Transform) -> &mut SubCard {
         if is_reversed(transform) {
-            self.0.remove(0)
+            self.first_mut()
         } else {
-            self.0.pop().unwrap()
+            self.last_mut()
+        }
+    }
+    pub fn take_card(&mut self, transform: &Transform) -> SubCard {
+        if is_reversed(transform) {
+            self.remove(0)
+        } else {
+            self.pop()
         }
     }
     pub fn len(&self) -> usize {
-        self.0.len()
+        match self {
+            Pile::Multiple(v) => v.len(),
+            Pile::Single(_) => 1,
+            Pile::Empty => 0,
+        }
     }
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        match self {
+            Pile::Multiple(_) => false,
+            Pile::Single(_) => false,
+            Pile::Empty => true,
+        }
     }
-    pub fn remove(&mut self, n: usize) -> Card {
-        self.0.remove(n)
+    pub fn last(&self) -> &SubCard {
+        match self {
+            Pile::Multiple(v) => v.last().unwrap(),
+            Pile::Single(s) => s.into(),
+            Pile::Empty => unreachable!(),
+        }
+    }
+    pub fn pop(&mut self) -> SubCard {
+        match self {
+            Pile::Multiple(v) => v.pop().unwrap(),
+            se @ Pile::Single(_) => {
+                let Pile::Single(s) = mem::take(se) else {
+                    unreachable!()
+                };
+                s.into()
+            }
+            Pile::Empty => unreachable!(),
+        }
+    }
+    pub fn first(&self) -> &SubCard {
+        match self {
+            Pile::Multiple(v) => &v[0],
+            Pile::Single(s) => s.into(),
+            Pile::Empty => unreachable!(),
+        }
+    }
+    pub fn last_mut(&mut self) -> &mut SubCard {
+        match self {
+            Pile::Multiple(v) => v.last_mut().unwrap(),
+            Pile::Single(s) => s.into(),
+            Pile::Empty => unreachable!(),
+        }
+    }
+    pub fn first_mut(&mut self) -> &mut SubCard {
+        match self {
+            Pile::Multiple(v) => &mut v[0],
+            Pile::Single(s) => s.into(),
+            Pile::Empty => unreachable!(),
+        }
+    }
+    pub fn extend(&mut self, other: Self) {
+        match (self, &other) {
+            (Pile::Multiple(a), Pile::Multiple(b)) => a.extend_from_slice(b),
+            (Pile::Multiple(a), Pile::Single(b)) => a.extend(b.clone().flatten()),
+            (se @ Pile::Single(_), _) => {
+                let Pile::Single(s) = mem::take(se) else {
+                    unreachable!()
+                };
+                let mut vec = s.flatten();
+                match other {
+                    Pile::Multiple(v) => vec.extend(v),
+                    Pile::Single(s) => vec.extend(s.flatten()),
+                    Pile::Empty => unreachable!(),
+                }
+                *se = Pile::Multiple(vec);
+            }
+            _ => unreachable!(),
+        }
+    }
+    pub fn extend_start(&mut self, other: Self) {
+        match (self, &other) {
+            (Pile::Multiple(a), Pile::Multiple(b)) => {
+                a.splice(0..0, b.clone());
+            }
+            (Pile::Multiple(a), Pile::Single(b)) => {
+                a.splice(0..0, b.clone().flatten());
+            }
+            (se @ Pile::Single(_), _) => {
+                let Pile::Single(s) = mem::take(se) else {
+                    unreachable!()
+                };
+                let mut vec = s.flatten();
+                match other {
+                    Pile::Multiple(v) => vec.splice(0..0, v),
+                    Pile::Single(s) => vec.splice(0..0, s.flatten()),
+                    Pile::Empty => unreachable!(),
+                };
+                *se = Pile::Multiple(vec);
+            }
+            _ => unreachable!(),
+        }
+    }
+    pub fn shuffle(&mut self, rng: &mut WyRand) {
+        if let Pile::Multiple(v) = self {
+            v.shuffle(rng)
+        }
+    }
+    pub fn remove(&mut self, n: usize) -> SubCard {
+        match self {
+            Pile::Multiple(v) => v.remove(n),
+            se @ Pile::Single(_) => {
+                let Pile::Single(s) = mem::take(se) else {
+                    unreachable!()
+                };
+                s.into()
+            }
+            Pile::Empty => unreachable!(),
+        }
+    }
+    pub fn drain<R>(&mut self, range: R) -> impl Iterator<Item = SubCard>
+    where
+        R: RangeBounds<usize>,
+    {
+        match self {
+            Pile::Multiple(v) => v.drain(range),
+            Pile::Single(_) => todo!(),
+            Pile::Empty => unreachable!(),
+        }
+    }
+    pub fn iter(&self) -> Iter<'_, SubCard> {
+        match self {
+            Pile::Multiple(v) => v.iter(),
+            Pile::Single(_) => todo!(),
+            Pile::Empty => unreachable!(),
+        }
+    }
+    pub fn iter_mut(&mut self) -> IterMut<'_, SubCard> {
+        match self {
+            Pile::Multiple(v) => v.iter_mut(),
+            Pile::Single(_) => todo!(),
+            Pile::Empty => unreachable!(),
+        }
     }
 }
 #[derive(Resource, Debug, Default, Clone)]
@@ -532,52 +673,71 @@ impl SubCard {
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct Card {
-    pub id: String,
-    pub normal: CardInfo,
-    pub alt: Option<CardInfo>,
-    pub is_alt: bool,
+    pub subcard: SubCard,
     pub equiped: Vec<SubCard>,
 }
 impl Card {
     pub fn clone_no_image(&self) -> Self {
         Self {
-            id: self.id.clone(),
-            normal: self.normal.clone_no_image(),
-            alt: self.alt.as_ref().map(|a| a.clone_no_image()),
-            is_alt: self.is_alt,
+            subcard: self.subcard.clone_no_image(),
             equiped: self.equiped.iter().map(|c| c.clone_no_image()).collect(),
         }
     }
     pub fn filter(&self, text: &str) -> bool {
-        self.normal.filter(text) || self.alt.as_ref().map(|a| a.filter(text)).unwrap_or(false)
+        self.subcard.filter(text)
     }
-    pub fn flatten(mut self) -> Vec<Card> {
+    pub fn flatten(mut self) -> Vec<SubCard> {
         let mut vec = Vec::with_capacity(self.equiped.len() + 1);
-        let drain = std::mem::take(&mut self.equiped);
-        vec.push(self);
-        vec.extend(drain.into_iter().map(|a| a.into()));
+        let drain = mem::take(&mut self.equiped);
+        vec.push(self.into());
+        vec.extend(drain);
         vec
     }
 }
 impl From<Card> for SubCard {
     fn from(value: Card) -> Self {
-        Self {
-            id: value.id,
-            normal: value.normal,
-            alt: value.alt,
-            is_alt: value.is_alt,
-        }
+        value.subcard
+    }
+}
+impl From<Box<Card>> for SubCard {
+    fn from(value: Box<Card>) -> Self {
+        value.subcard
     }
 }
 impl From<SubCard> for Card {
     fn from(value: SubCard) -> Self {
         Self {
-            id: value.id,
-            normal: value.normal,
-            alt: value.alt,
-            is_alt: value.is_alt,
+            subcard: value,
             equiped: Vec::new(),
         }
+    }
+}
+impl From<SubCard> for Box<Card> {
+    fn from(value: SubCard) -> Self {
+        Box::new(Card {
+            subcard: value,
+            equiped: Vec::new(),
+        })
+    }
+}
+impl<'a> From<&'a Card> for &'a SubCard {
+    fn from(value: &'a Card) -> Self {
+        &value.subcard
+    }
+}
+impl<'a> From<&'a mut Card> for &'a mut SubCard {
+    fn from(value: &'a mut Card) -> Self {
+        &mut value.subcard
+    }
+}
+impl<'a> From<&'a Box<Card>> for &'a SubCard {
+    fn from(value: &'a Box<Card>) -> Self {
+        &value.subcard
+    }
+}
+impl<'a> From<&'a mut Box<Card>> for &'a mut SubCard {
+    fn from(value: &'a mut Box<Card>) -> Self {
+        &mut value.subcard
     }
 }
 impl CardInfo {

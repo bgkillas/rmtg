@@ -252,7 +252,7 @@ pub fn apply_sync(
                                 gravity.0 = 0.0
                             } else {
                                 commands.entity(entity).remove::<InOtherHand>();
-                                repaint_face(&mut mats, &mut materials, &pile.0[0], children);
+                                repaint_face(&mut mats, &mut materials, pile.first(), children);
                                 gravity.0 = GRAVITY;
                             }
                         }
@@ -408,16 +408,19 @@ pub fn apply_sync(
             Packet::Reorder(lid, order) => {
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
-                if let Some((mut pile, children, entity, transform)) = query.iter_mut().find_map(
+                if let Some((pile, children, entity, transform)) = query.iter_mut().find_map(
                     |(a, t, _, _, _, _, e, _, c, d, _)| {
                         if *a == id { Some((d, c, e, t)) } else { None }
                     },
-                ) && let Some(pile) = &mut pile
+                ) && let Some(pile) = pile
                     && let Some(children) = children
                 {
-                    for (i, id) in order.into_iter().enumerate() {
-                        let n = pile.0[i..].iter().position(|c| c.id == id).unwrap() + i;
-                        pile.0.swap(i, n);
+                    let pile = pile.into_inner();
+                    if let Pile::Multiple(pile) = pile {
+                        for (i, id) in order.into_iter().enumerate() {
+                            let n = pile[i..].iter().position(|c| c.id == id).unwrap() + i;
+                            pile.swap(i, n);
+                        }
                     }
                     if let Some(search) = &search
                         && search.1.0 == entity
@@ -430,7 +433,7 @@ pub fn apply_sync(
                             text.as_ref().unwrap().get(),
                         );
                     }
-                    let card = pile.0.last().unwrap();
+                    let card = pile.last();
                     repaint_face(&mut mats, &mut materials, card, children);
                 }
             }
@@ -447,11 +450,10 @@ pub fn apply_sync(
                     && let Some(children) = children
                 {
                     let len = to.len();
-                    for ((id, trans), card) in to.into_iter().zip(pile.0.drain(start - len..start))
-                    {
+                    for ((id, trans), card) in to.into_iter().zip(pile.drain(start - len..start)) {
                         let syncobject = SyncObject { user, id: id.0 };
                         new_pile_at(
-                            Pile(vec![card]),
+                            Pile::Single(card.into()),
                             card_base.stock.clone(),
                             &mut materials,
                             &mut commands,
@@ -466,8 +468,8 @@ pub fn apply_sync(
                         );
                         ignore.insert(syncobject);
                     }
-                    if !pile.0.is_empty() {
-                        let card = pile.0.last().unwrap();
+                    if !pile.is_empty() {
+                        let card = pile.last();
                         repaint_face(&mut mats, &mut materials, card, children);
                         adjust_meshes(
                             pile,

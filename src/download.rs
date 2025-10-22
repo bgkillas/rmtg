@@ -49,7 +49,7 @@ pub async fn spawn_singleton_id(
             .0
             .lock()
             .unwrap()
-            .push((Pile(vec![card.0]), v, None));
+            .push((Pile::Single(card.0.into()), v, None));
     }
     None
 }
@@ -70,7 +70,7 @@ pub async fn spawn_singleton(
             .0
             .lock()
             .unwrap()
-            .push((Pile(vec![card.0]), v, None));
+            .push((Pile::Single(card.0.into()), v, None));
     }
     None
 }
@@ -78,12 +78,12 @@ pub async fn process_data(
     json: Members<'_>,
     client: reqwest::Client,
     asset_server: AssetServer,
-) -> Vec<Card> {
+) -> Vec<SubCard> {
     json.map(async |a| parse(a, &client, &asset_server, 1))
         .collect::<FuturesUnordered<_>>()
         .filter_map(async |a| a.await)
         .map(|(a, b)| vec![a; b])
-        .collect::<Vec<Vec<Card>>>()
+        .collect::<Vec<Vec<SubCard>>>()
         .await
         .into_iter()
         .flatten()
@@ -128,12 +128,16 @@ pub async fn get_alts(
     let mut vec = Vec::with_capacity(size);
     vec.extend(
         futures
-            /*.collect::<Vec<Vec<Card>>>()
+            /*.collect::<Vec<Vec<SubCard>>>()
             .await*/
             .into_iter()
             .flatten(),
     );
-    get_deck.0.lock().unwrap().push((Pile(vec), v, None));
+    get_deck
+        .0
+        .lock()
+        .unwrap()
+        .push((Pile::Multiple(vec), v, None));
     None
 }
 pub async fn add_images(
@@ -144,7 +148,7 @@ pub async fn add_images(
     client: reqwest::Client,
     asset_server: AssetServer,
 ) -> Option<()> {
-    join_all(pile.0.iter_mut().map(|p| async {
+    join_all(pile.iter_mut().map(|p| async {
         let bytes = get_bytes(&p.id, &client, true);
         if let Some(c) = p.alt.as_mut() {
             let bytes = get_bytes(&p.id, &client, false);
@@ -210,7 +214,7 @@ pub async fn parse(
     client: &reqwest::Client,
     asset_server: &AssetServer,
     n: usize,
-) -> Option<(Card, usize)> {
+) -> Option<(SubCard, usize)> {
     let double = value["card_faces"].members().next().is_some();
     let id = value["scryfall_id"]
         .as_str()
@@ -254,7 +258,7 @@ pub async fn parse(
     let (power, alt_power) = get(value, "power", |a| a.as_u16().unwrap_or_default());
     let (toughness, alt_toughness) = get(value, "toughness", |a| a.as_u16().unwrap_or_default());
     Some((
-        Card {
+        SubCard {
             normal: CardInfo {
                 name,
                 mana_cost,
@@ -275,7 +279,6 @@ pub async fn parse(
                 toughness: alt_toughness,
                 image: image.into(),
             }),
-            equiped: Vec::new(),
             id: id.to_string(),
             is_alt: false,
         },
@@ -294,13 +297,13 @@ pub async fn get_pile(
         .collect::<FuturesUnordered<_>>()
         .filter_map(async |a| a)
         .map(|(a, b)| vec![a; b])
-        .collect::<Vec<Vec<Card>>>()
+        .collect::<Vec<Vec<SubCard>>>()
         .await
         .into_iter()
         .flatten()
         .collect();
     let mut decks = decks.0.lock().unwrap();
-    decks.push((Pile(pile), v, None));
+    decks.push((Pile::Multiple(pile), v, None));
 }
 pub struct Exact {
     pub count: usize,
@@ -338,13 +341,13 @@ pub async fn get_deck_export(
         .collect::<FuturesUnordered<_>>()
         .filter_map(async |a| a)
         .map(|(a, b)| vec![a; b])
-        .collect::<Vec<Vec<Card>>>()
+        .collect::<Vec<Vec<SubCard>>>()
         .await
         .into_iter()
         .flatten()
         .collect();
     let mut decks = decks.0.lock().unwrap();
-    decks.push((Pile(pile), v, None));
+    decks.push((Pile::Multiple(pile), v, None));
 }
 pub async fn get_deck(
     url: String,
