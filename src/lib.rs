@@ -347,15 +347,15 @@ impl Pile {
         }
     }
     pub fn extend(&mut self, other: Self) {
-        match (self, &other) {
-            (Pile::Multiple(a), Pile::Multiple(b)) => a.extend_from_slice(b),
-            (Pile::Multiple(a), Pile::Single(b)) => a.extend(b.clone().flatten()),
-            (se @ Pile::Single(_), _) => {
+        match (self, other) {
+            (Pile::Multiple(a), Pile::Multiple(b)) => a.extend(b),
+            (Pile::Multiple(a), Pile::Single(b)) => a.extend(b.flatten()),
+            (se @ Pile::Single(_), o) => {
                 let Pile::Single(s) = mem::take(se) else {
                     unreachable!()
                 };
                 let mut vec = s.flatten();
-                match other {
+                match o {
                     Pile::Multiple(v) => vec.extend(v),
                     Pile::Single(s) => vec.extend(s.flatten()),
                     Pile::Empty => unreachable!(),
@@ -366,19 +366,19 @@ impl Pile {
         }
     }
     pub fn extend_start(&mut self, other: Self) {
-        match (self, &other) {
+        match (self, other) {
             (Pile::Multiple(a), Pile::Multiple(b)) => {
-                a.splice(0..0, b.clone());
+                a.splice(0..0, b);
             }
             (Pile::Multiple(a), Pile::Single(b)) => {
-                a.splice(0..0, b.clone().flatten());
+                a.splice(0..0, b.flatten());
             }
-            (se @ Pile::Single(_), _) => {
+            (se @ Pile::Single(_), o) => {
                 let Pile::Single(s) = mem::take(se) else {
                     unreachable!()
                 };
                 let mut vec = s.flatten();
-                match other {
+                match o {
                     Pile::Multiple(v) => vec.splice(0..0, v),
                     Pile::Single(s) => vec.splice(0..0, s.flatten()),
                     Pile::Empty => unreachable!(),
@@ -725,6 +725,29 @@ impl Card {
         vec.push(self.into());
         vec.extend(drain);
         vec
+    }
+    pub fn flatten_iter(&self) -> CardIter<'_> {
+        CardIter {
+            subcard: &self.subcard,
+            equiped: self.equiped.iter(),
+            started: false,
+        }
+    }
+}
+pub struct CardIter<'a> {
+    pub subcard: &'a SubCard,
+    pub equiped: Iter<'a, SubCard>,
+    started: bool,
+}
+impl<'a> Iterator for CardIter<'a> {
+    type Item = &'a SubCard;
+    fn next(&mut self) -> Option<Self::Item> {
+        if !self.started {
+            self.started = true;
+            Some(self.subcard)
+        } else {
+            self.equiped.next()
+        }
     }
 }
 impl From<Card> for SubCard {
