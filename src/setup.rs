@@ -6,6 +6,8 @@ use crate::sync::Packet;
 use crate::sync::SendSleeping;
 use crate::sync::{SyncObjectMe, spawn_hand};
 use crate::*;
+use bevy::asset::RenderAssetUsages;
+use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rand::global::GlobalRng;
 #[cfg(feature = "steam")]
@@ -13,6 +15,7 @@ use bevy_tangled::Compression;
 #[cfg(feature = "steam")]
 use bevy_tangled::{Client, ClientTrait, Reliability};
 use bytes::Bytes;
+use image::{GenericImageView, ImageReader};
 #[cfg(feature = "steam")]
 use std::collections::HashMap;
 #[cfg(feature = "steam")]
@@ -21,11 +24,14 @@ use std::collections::hash_map::Entry::Vacant;
 use std::env::args;
 use std::f32::consts::PI;
 use std::fs;
-const MAT_SCALE: f32 = 10.0;
-pub const MAT_WIDTH: f32 = 872.0 * MAT_SCALE;
-pub const MAT_HEIGHT: f32 = 525.0 * MAT_SCALE;
+use std::io::Cursor;
+const MAT_SCALE: f32 = CARD_WIDTH / 61.0;
+pub const MAT_WIDTH: f32 = 768.0 * MAT_SCALE;
+pub const MAT_HEIGHT: f32 = 449.0 * MAT_SCALE;
 pub const T: f32 = 256.0;
 pub const W: f32 = 16384.0;
+pub const WALL_COLOR: bevy::prelude::Color = bevy::prelude::Color::srgb_u8(103, 73, 40);
+pub const FLOOR_COLOR: bevy::prelude::Color = bevy::prelude::Color::srgb_u8(103, 73, 40);
 pub fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -117,41 +123,39 @@ pub fn setup(
         back: material_handle,
         side: card_side,
     });
-    let bytes = include_bytes!("../assets/mat.png");
-    let mat = get_from_img(Bytes::from(bytes.as_slice()), &asset_server).unwrap();
-    let playmat = materials.add(StandardMaterial {
-        base_color_texture: Some(mat),
-        alpha_mode: AlphaMode::Opaque,
-        unlit: true,
-        ..default()
-    });
     let mat_mesh = meshes.add(Rectangle::new(MAT_WIDTH, MAT_HEIGHT));
     let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
     transform.rotate_x(-PI / 2.0);
     commands.spawn((
         Mesh3d(mat_mesh.clone()),
-        MeshMaterial3d(playmat.clone()),
+        MeshMaterial3d(make_mat(&mut materials, &asset_server, [255, 85, 85, 0])),
         transform,
     ));
     let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
+    transform.scale.x = -1.0;
     transform.rotate_x(-PI / 2.0);
     commands.spawn((
         Mesh3d(mat_mesh.clone()),
-        MeshMaterial3d(playmat.clone()),
+        MeshMaterial3d(make_mat(&mut materials, &asset_server, [85, 85, 255, 0])),
         transform,
     ));
     let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
+    transform.scale.x = -1.0;
     transform.rotate_x(-PI / 2.0);
     transform.rotate_y(PI);
     commands.spawn((
         Mesh3d(mat_mesh.clone()),
-        MeshMaterial3d(playmat.clone()),
+        MeshMaterial3d(make_mat(&mut materials, &asset_server, [255, 85, 255, 0])),
         transform,
     ));
     let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
     transform.rotate_x(-PI / 2.0);
     transform.rotate_y(PI);
-    commands.spawn((Mesh3d(mat_mesh), MeshMaterial3d(playmat), transform));
+    commands.spawn((
+        Mesh3d(mat_mesh),
+        MeshMaterial3d(make_mat(&mut materials, &asset_server, [85, 255, 85, 0])),
+        transform,
+    ));
     spawn_hand(0, &mut commands);
     commands.spawn((
         Transform::from_xyz(0.0, -T, 0.0),
@@ -161,7 +165,8 @@ pub fn setup(
         Floor,
         Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * T - 2.0, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::BLACK,
+            base_color: FLOOR_COLOR,
+            unlit: true,
             ..default()
         })),
     ));
@@ -173,7 +178,8 @@ pub fn setup(
         Ceiling,
         Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * T, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::BLACK,
+            base_color: WALL_COLOR,
+            unlit: true,
             ..default()
         })),
     ));
@@ -185,7 +191,8 @@ pub fn setup(
         Wall,
         Mesh3d(meshes.add(Cuboid::new(2.0 * T, 2.0 * W, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::BLACK,
+            base_color: WALL_COLOR,
+            unlit: true,
             ..default()
         })),
     ));
@@ -197,7 +204,8 @@ pub fn setup(
         Wall,
         Mesh3d(meshes.add(Cuboid::new(2.0 * T, 2.0 * W, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::BLACK,
+            base_color: WALL_COLOR,
+            unlit: true,
             ..default()
         })),
     ));
@@ -209,7 +217,8 @@ pub fn setup(
         Wall,
         Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, 2.0 * T))),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::BLACK,
+            base_color: WALL_COLOR,
+            unlit: true,
             ..default()
         })),
     ));
@@ -221,7 +230,8 @@ pub fn setup(
         Wall,
         Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, 2.0 * T))),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::BLACK,
+            base_color: WALL_COLOR,
+            unlit: true,
             ..default()
         })),
     ));
@@ -321,3 +331,43 @@ pub struct Wall;
 pub struct Floor;
 #[derive(Component)]
 pub struct Ceiling;
+pub fn make_mat(
+    materials: &mut Assets<StandardMaterial>,
+    asset_server: &AssetServer,
+    color: [u8; 4],
+) -> Handle<StandardMaterial> {
+    let bytes = include_bytes!("../assets/mat.png");
+    let image = ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()
+        .ok()
+        .unwrap()
+        .decode()
+        .ok()
+        .unwrap();
+    let mut rgba = image.to_rgba8();
+    for p in rgba.pixels_mut() {
+        if p.0 != [0, 0, 0, 0] {
+            p.0 = color
+        }
+    }
+    let (width, height) = image.dimensions();
+    let image = Image::new(
+        Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        rgba.into_raw(),
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::RENDER_WORLD,
+    );
+    let mat = asset_server.add(image);
+    materials.add(StandardMaterial {
+        base_color_texture: Some(mat),
+        alpha_mode: AlphaMode::Opaque,
+        unlit: true,
+        cull_mode: None,
+        ..default()
+    })
+}
