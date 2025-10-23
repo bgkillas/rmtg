@@ -4,7 +4,6 @@ use crate::update::{
     listen_for_mouse, on_scroll_handler, pick_from_list, pile_merge, register_deck, reset_layers,
     send_scroll_events, to_move_up, update_hand, update_search_deck,
 };
-use avian3d::parry::either::IntoEither;
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
@@ -14,13 +13,12 @@ use bevy_rand::prelude::EntropyPlugin;
 use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
 use bevy_tangled::Client;
 use bevy_ui_text_input::TextInputPlugin;
-use itertools::Either;
 use rand::RngCore;
-use std::mem;
 use std::mem::MaybeUninit;
-use std::ops::RangeBounds;
-use std::slice::Iter;
+use std::ops::{Bound, RangeBounds};
+use std::slice::{Iter, IterMut};
 use std::sync::{Arc, Mutex};
+use std::{iter, mem, slice};
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = 488.0;
 pub const CARD_HEIGHT: f32 = 680.0;
@@ -43,6 +41,7 @@ use crate::sync::display_steam_info;
 use crate::sync::new_lobby;
 use crate::sync::{SendSleeping, Sent, SyncActions, SyncCount, SyncObject, apply_sync, get_sync};
 use bitcode::{Decode, Encode};
+use itertools::Either;
 use rand::seq::SliceRandom;
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -410,27 +409,44 @@ impl Pile {
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn drain<R>(&mut self, range: R) -> impl Iterator<Item = SubCard>
+    pub fn drain<R>(
+        &mut self,
+        range: R,
+    ) -> Either<impl Iterator<Item = SubCard>, impl Iterator<Item = SubCard>>
     where
         R: RangeBounds<usize>,
     {
         match self {
-            Pile::Multiple(v) => v.drain(range),
-            Pile::Single(_) => todo!(),
+            Pile::Multiple(v) => Either::Left(v.drain(range)),
+            se @ Pile::Single(_) => {
+                if matches!(range.start_bound(), Bound::Included(&0) | Bound::Unbounded)
+                    && matches!(
+                        range.end_bound(),
+                        Bound::Included(&0) | Bound::Excluded(&1) | Bound::Unbounded
+                    )
+                {
+                    let Pile::Single(s) = mem::take(se) else {
+                        unreachable!()
+                    };
+                    Either::Right(iter::once(s.into()))
+                } else {
+                    unreachable!()
+                }
+            }
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn iter(&self) -> impl Iterator<Item = &SubCard> {
+    pub fn iter(&self) -> Iter<'_, SubCard> {
         match self {
-            Pile::Multiple(v) => Either::Left::<Iter<'_, SubCard>>(v.iter()),
-            Pile::Single(s) => Either::Right(s.into()),
+            Pile::Multiple(v) => v.iter(),
+            Pile::Single(s) => slice::from_ref(s.into()).iter(),
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut SubCard> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, SubCard> {
         match self {
             Pile::Multiple(v) => v.iter_mut(),
-            Pile::Single(_) => todo!(),
+            Pile::Single(s) => slice::from_mut(s.into()).iter_mut(),
             Pile::Empty => unreachable!(),
         }
     }
