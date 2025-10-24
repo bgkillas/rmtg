@@ -1,9 +1,7 @@
 use crate::download::{
     Exact, get_alts, get_deck, get_deck_export, spawn_singleton, spawn_singleton_id,
 };
-use crate::misc::{
-    adjust_meshes, is_reversed, make_material, move_up, new_pile, new_pile_at, repaint_face,
-};
+use crate::misc::{adjust_meshes, is_reversed, move_up, new_pile, new_pile_at, repaint_face};
 use crate::setup::{EscMenu, FontRes, SideMenu, T, W, Wall};
 use crate::sync::{Packet, SyncObjectMe, Trans};
 use crate::*;
@@ -171,7 +169,7 @@ pub fn follow_mouse(
 }
 pub fn listen_for_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
-    camera: Single<(&Camera, &GlobalTransform, Entity), With<Camera3d>>,
+    camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
     window: Single<&Window, With<PrimaryWindow>>,
     mut pset: ParamSet<(
         SpatialQuery,
@@ -184,7 +182,7 @@ pub fn listen_for_mouse(
         Option<&ChildOf>,
         Option<&InHand>,
     )>,
-    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
+    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut hands: Query<(&mut Hand, Option<&Owned>, Entity)>,
     mut vels: Query<(&mut LinearVelocity, &mut AngularVelocity)>,
     mut commands: Commands,
@@ -211,7 +209,7 @@ pub fn listen_for_mouse(
         side,
         search_deck,
     ): (
-        Option<Single<(Entity, &mut ZoomHold, &mut MeshMaterial3d<StandardMaterial>)>>,
+        Option<Single<(Entity, &mut ZoomHold, &mut ImageNode)>>,
         ResMut<Download>,
         Res<AssetServer>,
         ResMut<GameClipboard>,
@@ -239,7 +237,7 @@ pub fn listen_for_mouse(
     let Some(cursor_position) = window.cursor_position() else {
         return;
     };
-    let (camera, camera_transform, cament) = camera.into_inner();
+    let (camera, camera_transform) = camera.into_inner();
     let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
         return;
     };
@@ -637,32 +635,34 @@ pub fn listen_for_mouse(
                 *menu = Menu::Side;
             }
             if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
+                let mut spawn = || {
+                    let card = pile.get_card(&transform);
+                    commands.spawn((
+                        Node {
+                            width: Val::Px(CARD_WIDTH),
+                            height: Val::Px(CARD_HEIGHT),
+                            ..default()
+                        },
+                        ImageNode::new(card.normal.image().clone()),
+                        ZoomHold(entity.to_bits(), false),
+                    ));
+                };
                 if let Some(mut single) = zoom {
                     if single.1.0 != entity.to_bits() {
+                        if !is_reversed(&transform) {
+                            spawn();
+                        }
                         commands.entity(single.0).despawn();
                     } else if input.just_pressed(KeyCode::KeyO)
                         && let Some(alt) = &pile.get_card(&transform).alt
                     {
-                        single.2.0 = make_material(
-                            &mut materials,
-                            if single.1.1 {
-                                &pile.get_card(&transform).normal
-                            } else {
-                                alt
-                            }
-                            .image()
-                            .clone(),
-                        );
+                        let card = pile.get_card(&transform);
+                        single.2.image =
+                            if single.1.1 { &card.normal } else { alt }.image().clone();
                         single.1.1 = !single.1.1;
                     }
                 } else if !is_reversed(&transform) {
-                    let card = pile.get_card(&transform);
-                    commands.entity(cament).with_child((
-                        Mesh3d(card_base.stock.clone()),
-                        MeshMaterial3d(make_material(&mut materials, card.normal.image().clone())),
-                        Transform::from_xyz(0.0, 0.0, -1024.0),
-                        ZoomHold(entity.to_bits(), false),
-                    ));
+                    spawn()
                 }
             } else if let Some(single) = zoom {
                 commands.entity(single.0).despawn();
@@ -792,7 +792,7 @@ pub fn pick_from_list(
     mouse_input: Res<ButtonInput<MouseButton>>,
     mut commands: Commands,
     card_base: Res<CardBase>,
-    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
+    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut query_meshes: Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
@@ -1243,9 +1243,9 @@ pub fn search(
     }
     let mut ent = commands.spawn((
         Node {
-            width: Val::Percent(100.0 / 3.0),
+            width: Val::Percent(40.0),
             height: Val::Percent(100.0),
-            left: Val::Percent(200.0 / 3.0),
+            left: Val::Percent(60.0),
             ..default()
         },
         SideMenu,
@@ -1300,7 +1300,7 @@ pub fn search(
 pub fn pile_merge(
     collision: On<CollisionStart>,
     mut piles: Query<(Entity, &mut Pile, &mut Transform, &Children, &mut Collider)>,
-    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
+    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut query_meshes: Query<(&mut Mesh3d, &mut Transform), Without<Children>>,

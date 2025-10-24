@@ -111,6 +111,7 @@ bevy_ui_text_input = {git="https://github.com/ickshonpe/bevy_ui_text_input"}
 #bevy_console = "0.14.1"
 #rune = "0.14.1"
 bevy_mod_mipmap_generator={git="https://github.com/DGriffin91/bevy_mod_mipmap_generator"}
+lz4_flex = { version = "0.11.5", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
 winapi={version="0.3.9",features = ["wincon"]}

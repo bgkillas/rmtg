@@ -185,7 +185,7 @@ pub fn apply_sync(
     down: Res<Download>,
     mut commands: Commands,
     hand: Single<Entity, (With<Owned>, With<Hand>)>,
-    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
+    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     card_base: Res<CardBase>,

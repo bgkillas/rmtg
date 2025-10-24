@@ -4,6 +4,7 @@ use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy_mod_mipmap_generator::{MipmapGeneratorSettings, generate_mips_texture};
+use bitcode::{decode, encode};
 use bytes::Bytes;
 use futures::StreamExt;
 use futures::future::join_all;
@@ -12,9 +13,10 @@ use image::imageops::FilterType;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
 use json::iterators::Members;
+use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::fs;
 use std::io::Cursor;
-pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<Image>> {
+pub fn parse_no_mips(bytes: Bytes) -> Option<Image> {
     let image = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
         .ok()?
@@ -22,7 +24,7 @@ pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<I
         .ok()?;
     let rgba = image.to_rgba8();
     let (width, height) = image.dimensions();
-    let mut image = Image::new(
+    Some(Image::new(
         Extent3d {
             width,
             height,
@@ -32,7 +34,10 @@ pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<I
         rgba.into_raw(),
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::RENDER_WORLD,
-    );
+    ))
+}
+pub fn parse_bytes(bytes: Bytes) -> Option<Image> {
+    let mut image = parse_no_mips(bytes)?;
     generate_mips_texture(
         &mut image,
         &MipmapGeneratorSettings {
@@ -43,6 +48,10 @@ pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<I
         &mut 0,
     )
     .unwrap();
+    Some(image)
+}
+pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<Image>> {
+    let image = parse_bytes(bytes)?;
     Some(asset_server.add(image))
 }
 pub async fn spawn_singleton_id(
@@ -161,26 +170,47 @@ pub async fn add_images(
     asset_server: AssetServer,
 ) -> Option<()> {
     join_all(pile.iter_mut().map(|p| async {
-        let bytes = get_bytes(&p.id, &client, true);
+        let bytes = get_bytes(&p.id, &client, &asset_server, true);
         if let Some(c) = p.alt.as_mut() {
-            let bytes = get_bytes(&p.id, &client, false);
-            c.image = get_from_img(bytes.await.unwrap(), &asset_server)
-                .unwrap()
-                .into();
+            let bytes = get_bytes(&p.id, &client, &asset_server, false);
+            c.image = bytes.await.unwrap()
         }
-        p.normal.image = get_from_img(bytes.await.unwrap(), &asset_server)
-            .unwrap()
-            .into();
+        p.normal.image = bytes.await.unwrap()
     }))
     .await;
     let v = Vec2::new(transform.translation.x, transform.translation.z);
     deck.0.lock().unwrap().push((pile, v, Some(id)));
     None
 }
-async fn get_bytes(id: &str, client: &reqwest::Client, normal: bool) -> Option<Bytes> {
-    let path = format!("./cache/{id}-{}.jpg", if normal { 0 } else { 1 });
+#[derive(Encode, Decode)]
+pub struct ImageData {
+    data: Vec<u8>,
+    mip: u32,
+    width: u32,
+    height: u32,
+}
+async fn get_bytes(
+    id: &str,
+    client: &reqwest::Client,
+    asset_server: &AssetServer,
+    normal: bool,
+) -> Option<UninitImage> {
+    let path = format!("./cache/{id}-{}", if normal { 0 } else { 1 });
     if let Ok(data) = fs::read(&path) {
-        Some(data.into())
+        let image_data: ImageData = decode(&decompress_size_prepended(&data).ok()?).ok()?;
+        let mut image = Image::new_uninit(
+            Extent3d {
+                width: image_data.width,
+                height: image_data.height,
+                depth_or_array_layers: 1,
+            },
+            TextureDimension::D2,
+            TextureFormat::Rgba8UnormSrgb,
+            RenderAssetUsages::RENDER_WORLD,
+        );
+        image.data = Some(image_data.data);
+        image.texture_descriptor.mip_level_count = image_data.mip;
+        Some(asset_server.add(image).into())
     } else {
         let url = if normal {
             format!(
@@ -197,8 +227,16 @@ async fn get_bytes(id: &str, client: &reqwest::Client, normal: bool) -> Option<B
         };
         let res = client.get(url).send().await.ok()?;
         if let Ok(bytes) = res.bytes().await {
-            let _ = fs::write(path, &bytes);
-            Some(bytes)
+            let mut image = parse_bytes(bytes)?;
+            let image_data = ImageData {
+                data: mem::take(&mut image.data)?,
+                mip: image.texture_descriptor.mip_level_count,
+                width: image.width(),
+                height: image.height(),
+            };
+            fs::write(path, compress_prepend_size(&encode(&image_data))).ok()?;
+            image.data = Some(image_data.data);
+            Some(asset_server.add(image).into())
         } else {
             None
         }
@@ -231,13 +269,13 @@ pub async fn parse(
     let id = value["scryfall_id"]
         .as_str()
         .or_else(|| value["id"].as_str())?;
-    let bytes = get_bytes(id, client, true);
-    let alt_bytes = if double {
-        get_bytes(id, client, false).await
+    let bytes = get_bytes(id, client, asset_server, true);
+    let alt_image = if double {
+        get_bytes(id, client, asset_server, false).await
     } else {
         None
     };
-    let bytes = bytes.await?;
+    let image = bytes.await?;
     let alt_name = value["meld_result"]["name"]
         .as_str()
         .or_else(|| {
@@ -253,8 +291,6 @@ pub async fn parse(
         .and_then(|a| a["name"].as_str())
         .unwrap_or_else(|| value["name"].as_str().unwrap())
         .to_string();
-    let image = get_from_img(bytes, asset_server)?;
-    let alt_image = alt_bytes.and_then(|bytes| get_from_img(bytes, asset_server));
     let (mana_cost, alt_mana_cost) = get(value, "mana_cost", |a| {
         a.as_str().unwrap_or_default().into()
     });
@@ -279,7 +315,7 @@ pub async fn parse(
                 color,
                 power,
                 toughness,
-                image: image.into(),
+                image,
             },
             alt: alt_image.map(|image| CardInfo {
                 name: alt_name.unwrap(),
@@ -289,7 +325,7 @@ pub async fn parse(
                 color: alt_color,
                 power: alt_power,
                 toughness: alt_toughness,
-                image: image.into(),
+                image,
             }),
             id: id.to_string(),
             is_alt: false,

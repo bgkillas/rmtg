@@ -191,7 +191,7 @@ pub fn is_reversed(transform: &Transform) -> bool {
         .is_sign_positive()
 }
 pub fn repaint_face(
-    mats: &mut Query<&mut MeshMaterial3d<StandardMaterial>, Without<ZoomHold>>,
+    mats: &mut Query<&mut MeshMaterial3d<StandardMaterial>>,
     materials: &mut Assets<StandardMaterial>,
     card: &SubCard,
     children: &Children,
