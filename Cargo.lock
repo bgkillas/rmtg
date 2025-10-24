@@ -1113,6 +1113,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ef8e4b7e61dfe7719bb03c884dc270cd46a82efb40f93e9933b990c5c190c59"
 
 [[package]]
+name = "bevy_mod_mipmap_generator"
+version = "0.1.0"
+source = "git+https://github.com/DGriffin91/bevy_mod_mipmap_generator#0ef4a0a37188361a9ff6bdab7f6d50b20cb6dda3"
+dependencies = [
+ "anyhow",
+ "bevy",
+ "futures-lite",
+ "image",
+]
+
+[[package]]
 name = "bevy_pbr"
 version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5421,6 +5432,7 @@ dependencies = [
  "avian3d",
  "bevy",
  "bevy_framepace",
+ "bevy_mod_mipmap_generator",
  "bevy_prng",
  "bevy_rand",
  "bevy_rich_text3d",

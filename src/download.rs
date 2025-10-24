@@ -3,10 +3,12 @@ use crate::sync::SyncObject;
 use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
+use bevy_mod_mipmap_generator::{MipmapGeneratorSettings, generate_mips_texture};
 use bytes::Bytes;
 use futures::StreamExt;
 use futures::future::join_all;
 use futures::stream::FuturesUnordered;
+use image::imageops::FilterType;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
 use json::iterators::Members;
@@ -20,7 +22,7 @@ pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<I
         .ok()?;
     let rgba = image.to_rgba8();
     let (width, height) = image.dimensions();
-    let image = Image::new(
+    let mut image = Image::new(
         Extent3d {
             width,
             height,
@@ -31,6 +33,16 @@ pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<I
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::RENDER_WORLD,
     );
+    generate_mips_texture(
+        &mut image,
+        &MipmapGeneratorSettings {
+            anisotropic_filtering: 16,
+            filter_type: FilterType::Lanczos3,
+            ..default()
+        },
+        &mut 0,
+    )
+    .unwrap();
     Some(asset_server.add(image))
 }
 pub async fn spawn_singleton_id(
