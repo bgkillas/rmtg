@@ -668,12 +668,15 @@ impl From<&str> for Cost {
                     "R" => cost.red += 1,
                     "G" => cost.green += 1,
                     "C" => cost.colorless += 1,
-                    "P" => cost.pay += 1,
+                    "P" => {
+                        cost.total -= 1;
+                        cost.pay += 1
+                    }
                     "X" => {
                         cost.total -= 1;
                         cost.var += 1
                     }
-                    _ => {
+                    c => {
                         cost.total -= 1;
                         cost.total += c.parse::<u8>().unwrap();
                         cost.any += c.parse::<u8>().unwrap()
