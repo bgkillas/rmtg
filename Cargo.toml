@@ -58,7 +58,7 @@ bevy={version="0.17.2", default-features = false, features = [
   "bevy_image",
   "bevy_mesh",
   "bevy_camera",
-  "bevy_light",
+  #"bevy_light",
   "bevy_shader",
   "bevy_sprite",
   "bevy_sprite_picking_backend",

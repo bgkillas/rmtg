@@ -149,9 +149,9 @@ pub fn spawn_ico<'a>(
                 Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
-                    alpha_mode: AlphaMode::Premultiplied,
-                    base_color: bevy::prelude::Color::BLACK,
                     unlit: true,
+                    alpha_mode: AlphaMode::Multiply,
+                    base_color: bevy::prelude::Color::BLACK,
                     ..default()
                 })),
                 Text3dStyling {
@@ -271,9 +271,9 @@ pub fn spawn_oct<'a>(
                 Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
-                    alpha_mode: AlphaMode::Premultiplied,
-                    base_color: bevy::prelude::Color::BLACK,
                     unlit: true,
+                    alpha_mode: AlphaMode::Multiply,
+                    base_color: bevy::prelude::Color::BLACK,
                     ..default()
                 })),
                 Text3dStyling {
@@ -388,9 +388,10 @@ pub fn spawn_tetra<'a>(
                 Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
-                    alpha_mode: AlphaMode::Premultiplied,
-                    base_color: bevy::prelude::Color::BLACK,
                     unlit: true,
+
+                    alpha_mode: AlphaMode::Multiply,
+                    base_color: bevy::prelude::Color::BLACK,
                     ..default()
                 })),
                 Text3dStyling {
@@ -455,9 +456,9 @@ pub fn spawn_coin<'a>(
                 Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
-                    alpha_mode: AlphaMode::Premultiplied,
-                    base_color: bevy::prelude::Color::BLACK,
                     unlit: true,
+                    alpha_mode: AlphaMode::Multiply,
+                    base_color: bevy::prelude::Color::BLACK,
                     ..default()
                 })),
                 Text3dStyling {
@@ -651,9 +652,9 @@ pub fn spawn_dodec<'a>(
                 Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
-                    alpha_mode: AlphaMode::Premultiplied,
-                    base_color: bevy::prelude::Color::BLACK,
                     unlit: true,
+                    alpha_mode: AlphaMode::Multiply,
+                    base_color: bevy::prelude::Color::BLACK,
                     ..default()
                 })),
                 Text3dStyling {
@@ -711,9 +712,9 @@ pub fn spawn_cube<'a>(
                 Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
-                    alpha_mode: AlphaMode::Premultiplied,
-                    base_color: bevy::prelude::Color::BLACK,
                     unlit: true,
+                    alpha_mode: AlphaMode::Multiply,
+                    base_color: bevy::prelude::Color::BLACK,
                     ..default()
                 })),
                 Text3dStyling {

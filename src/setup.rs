@@ -25,9 +25,9 @@ use std::env::args;
 use std::f32::consts::PI;
 use std::fs;
 use std::io::Cursor;
-const MAT_SCALE: f32 = CARD_WIDTH / 61.0;
-pub const MAT_WIDTH: f32 = 768.0 * MAT_SCALE;
-pub const MAT_HEIGHT: f32 = 449.0 * MAT_SCALE;
+const MAT_SCALE: f32 = CARD_WIDTH / 45.0;
+pub const MAT_WIDTH: f32 = 593.0 * MAT_SCALE;
+pub const MAT_HEIGHT: f32 = 334.0 * MAT_SCALE;
 pub const T: f32 = 256.0;
 pub const W: f32 = 16384.0;
 pub const WALL_COLOR: bevy::prelude::Color = bevy::prelude::Color::srgb_u8(103, 73, 40);
@@ -365,7 +365,7 @@ pub fn make_mat(
     let mat = asset_server.add(image);
     materials.add(StandardMaterial {
         base_color_texture: Some(mat),
-        alpha_mode: AlphaMode::Opaque,
+        alpha_mode: AlphaMode::Premultiplied,
         unlit: true,
         cull_mode: None,
         ..default()
