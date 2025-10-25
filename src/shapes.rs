@@ -1,10 +1,11 @@
+use crate::counters::{Value, make_counter};
 use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 use std::f32::consts::FRAC_PI_2;
 const BOUNCY: f32 = 0.5;
-#[derive(Encode, Decode, Component, Copy, Clone, Debug)]
+#[derive(Encode, Decode, Component, Clone, Debug)]
 pub enum Shape {
     Cube,
     Icosahedron,
@@ -12,6 +13,7 @@ pub enum Shape {
     Octohedron,
     Tetrahedron,
     Disc,
+    Counter(Value),
 }
 impl Shape {
     pub fn create<'a>(
@@ -28,6 +30,9 @@ impl Shape {
             Shape::Octohedron => spawn_oct(192.0, transform, commands, meshes, materials),
             Shape::Tetrahedron => spawn_tetra(128.0, transform, commands, meshes, materials),
             Shape::Disc => spawn_coin(96.0, transform, commands, meshes, materials),
+            Shape::Counter(v) => {
+                make_counter(256.0, transform, commands, meshes, materials, v.clone())
+            }
         }
     }
 }

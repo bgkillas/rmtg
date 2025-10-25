@@ -173,7 +173,15 @@ pub fn listen_for_mouse(
     window: Single<&Window, With<PrimaryWindow>>,
     mut pset: ParamSet<(
         SpatialQuery,
-        Query<(&mut Collider, &mut GravityScale, &mut CollisionLayers)>,
+        Query<
+            (
+                &mut Collider,
+                &mut GravityScale,
+                &mut CollisionLayers,
+                &mut Transform,
+            ),
+            (Without<Pile>, Without<ChildOf>),
+        >,
     )>,
     mut cards: Query<(
         &mut Pile,
@@ -217,7 +225,7 @@ pub fn listen_for_mouse(
         ResMut<SyncActions>,
         Query<&SyncObjectMe>,
         Query<&SyncObject>,
-        Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
+        Query<(&mut Mesh3d, &mut Transform), (Without<Children>, With<ChildOf>)>,
         Option<Single<Entity, With<FollowMouse>>>,
         Query<&Shape>,
         ResMut<Menu>,
@@ -404,20 +412,7 @@ pub fn listen_for_mouse(
                         .remove_parent_in_place();
                 }
             } else if input.just_pressed(KeyCode::KeyE) {
-                let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
-                let n = (2.0 * rot / PI).round() as isize;
-                let rev = is_reversed(&transform);
-                transform.rotation = Quat::from_rotation_z(match n {
-                    0 => -PI / 2.0,
-                    1 => 0.0,
-                    2 | -2 => PI / 2.0,
-                    -1 => PI,
-                    _ => unreachable!(),
-                });
-                transform.rotate_x(-PI / 2.0);
-                if rev {
-                    transform.rotate_z(PI);
-                }
+                rotate_right(&mut transform);
             } else if input.just_pressed(KeyCode::KeyS)
                 && input.pressed(KeyCode::ControlLeft)
                 && pile.len() > 1
@@ -470,20 +465,7 @@ pub fn listen_for_mouse(
                     );
                 }
             } else if input.just_pressed(KeyCode::KeyQ) {
-                let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
-                let n = (2.0 * rot / PI).round() as isize;
-                let rev = is_reversed(&transform);
-                transform.rotation = Quat::from_rotation_z(match n {
-                    0 => PI / 2.0,
-                    1 => PI,
-                    2 | -2 => -PI / 2.0,
-                    -1 => 0.0,
-                    _ => unreachable!(),
-                });
-                transform.rotate_x(-PI / 2.0);
-                if rev {
-                    transform.rotate_z(PI);
-                }
+                rotate_left(&mut transform);
             } else if input.just_pressed(KeyCode::KeyO)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
                 && !is_reversed(&transform)
@@ -667,7 +649,7 @@ pub fn listen_for_mouse(
             } else if let Some(single) = zoom {
                 commands.entity(single.0).despawn();
             }
-        } else if let Ok((_, mut phys, mut layers)) = colliders.get_mut(entity) {
+        } else if let Ok((_, mut phys, mut layers, mut transform)) = colliders.get_mut(entity) {
             if let Some(single) = zoom {
                 commands.entity(single.0).despawn();
             }
@@ -685,7 +667,7 @@ pub fn listen_for_mouse(
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
                 && let Ok(shape) = shape.get(entity)
             {
-                *game_clipboard = GameClipboard::Shape(*shape);
+                *game_clipboard = GameClipboard::Shape(shape.clone());
             } else if (input.just_pressed(KeyCode::KeyR)
                 || input.all_pressed([KeyCode::KeyR, KeyCode::AltLeft]))
                 && let Ok((mut lv, mut av)) = vels.get_mut(entity)
@@ -705,12 +687,64 @@ pub fn listen_for_mouse(
                     * (rand.random_range(32.0..64.0) + av.y.abs());
                 av.z = if rand.random() { 1.0 } else { -1.0 }
                     * (rand.random_range(32.0..64.0) + av.z.abs());
+            } else if input.just_pressed(KeyCode::KeyQ) {
+                let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
+                let n = (2.0 * rot / PI).round() as isize;
+                transform.rotation = Quat::from_rotation_y(match n {
+                    0 => -PI / 2.0,
+                    1 => PI,
+                    2 | -2 => -PI / 2.0,
+                    -1 => 0.0,
+                    _ => unreachable!(),
+                });
+            } else if input.just_pressed(KeyCode::KeyE) {
+                let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
+                let n = (2.0 * rot / PI).round() as isize;
+                transform.rotation = Quat::from_rotation_y(match n {
+                    0 => PI / 2.0,
+                    1 => 0.0,
+                    2 | -2 => PI / 2.0,
+                    -1 => PI,
+                    _ => unreachable!(),
+                });
             }
         } else if let Some(single) = zoom {
             commands.entity(single.0).despawn();
         }
     } else if let Some(single) = zoom {
         commands.entity(single.0).despawn();
+    }
+}
+fn rotate_left(transform: &mut Mut<Transform>) {
+    let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
+    let n = (2.0 * rot / PI).round() as isize;
+    let rev = is_reversed(transform);
+    transform.rotation = Quat::from_rotation_z(match n {
+        0 => PI / 2.0,
+        1 => PI,
+        2 | -2 => -PI / 2.0,
+        -1 => 0.0,
+        _ => unreachable!(),
+    });
+    transform.rotate_x(-PI / 2.0);
+    if rev {
+        transform.rotate_z(PI);
+    }
+}
+fn rotate_right(transform: &mut Mut<Transform>) {
+    let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
+    let n = (2.0 * rot / PI).round() as isize;
+    let rev = is_reversed(transform);
+    transform.rotation = Quat::from_rotation_z(match n {
+        0 => -PI / 2.0,
+        1 => 0.0,
+        2 | -2 => PI / 2.0,
+        -1 => PI,
+        _ => unreachable!(),
+    });
+    transform.rotate_x(-PI / 2.0);
+    if rev {
+        transform.rotate_z(PI);
     }
 }
 #[derive(Component)]
@@ -795,7 +829,7 @@ pub fn pick_from_list(
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut query_meshes: Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
+    mut query_meshes: Query<(&mut Mesh3d, &mut Transform), (Without<Children>, With<ChildOf>)>,
     (
         mut colliders,
         follow,
@@ -1303,7 +1337,7 @@ pub fn pile_merge(
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut query_meshes: Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
+    mut query_meshes: Query<(&mut Mesh3d, &mut Transform), (Without<Children>, With<ChildOf>)>,
     mut commands: Commands,
     search_deck: Option<Single<(Entity, &SearchDeck)>>,
     text: Option<Single<&TextInputContents>>,

@@ -203,7 +203,7 @@ pub fn adjust_meshes(
     pile: &Pile,
     children: &Children,
     meshes: &mut Assets<Mesh>,
-    query: &mut Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
+    query: &mut Query<(&mut Mesh3d, &mut Transform), (Without<Children>, With<ChildOf>)>,
     transform: &mut Transform,
     collider: &mut Collider,
 ) {

@@ -1,3 +1,4 @@
+use crate::counters::{Value, make_counter};
 use crate::download::get_from_img;
 use crate::shapes::{spawn_coin, spawn_cube, spawn_dodec, spawn_ico, spawn_oct, spawn_tetra};
 #[cfg(feature = "steam")]
@@ -298,6 +299,17 @@ pub fn setup(
         Visibility::Hidden,
         BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
     ));
+    let mut transform = Transform::from_xyz(0.0, 512.0, -512.0);
+    transform.rotate_y(PI);
+    let mut counter = make_counter(
+        256.0,
+        transform,
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        Value(0),
+    );
+    counter.insert(SyncObjectMe::new(&mut rand, &mut count));
     #[cfg(feature = "steam")]
     commands.spawn((
         Node {

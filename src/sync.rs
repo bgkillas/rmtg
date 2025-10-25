@@ -1,3 +1,4 @@
+use crate::counters::Value;
 use crate::download::add_images;
 use crate::misc::{adjust_meshes, new_pile_at, repaint_face};
 #[cfg(feature = "steam")]
@@ -8,6 +9,7 @@ use crate::update::{SearchDeck, update_search};
 use crate::*;
 use bevy::diagnostic::FrameCount;
 use bevy_rand::global::GlobalRng;
+use bevy_rich_text3d::Text3d;
 use bevy_tangled::{ClientTrait, Compression, Reliability};
 use bevy_ui_text_input::TextInputContents;
 use bitcode::{Decode, Encode};
@@ -64,6 +66,15 @@ pub fn get_sync(
         client
             .broadcast(
                 &Packet::Flip(flip),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
+            .unwrap();
+    }
+    for (id, to) in sync_actions.counter.drain(..) {
+        client
+            .broadcast(
+                &Packet::Counter(id, to),
                 Reliability::Reliable,
                 Compression::Compressed,
             )
@@ -171,13 +182,7 @@ pub fn apply_sync(
         With<Children>,
     >,
     mut queryme: Query<
-        (
-            &SyncObjectMe,
-            &GlobalTransform,
-            Option<&Pile>,
-            Option<&Shape>,
-            Entity,
-        ),
+        (&SyncObjectMe, &GlobalTransform, Option<&Pile>, Entity),
         Without<SyncObject>,
     >,
     mut sent: ResMut<Sent>,
@@ -192,10 +197,12 @@ pub fn apply_sync(
     mut count: ResMut<SyncCount>,
     mut client: ResMut<Client>,
     mut colliders: Query<&mut Collider>,
-    mut query_meshes: Query<(&mut Mesh3d, &mut Transform), Without<Children>>,
-    (search, text): (
+    mut query_meshes: Query<(&mut Mesh3d, &mut Transform), (Without<Children>, With<ChildOf>)>,
+    (search, text, mut shape, mut text3d): (
         Option<Single<(Entity, &SearchDeck)>>,
         Option<Single<&TextInputContents>>,
+        Query<&mut Shape>,
+        Query<&mut Text3d>,
     ),
 ) {
     let mut ignore = HashSet::new();
@@ -282,8 +289,7 @@ pub fn apply_sync(
                             Compression::Compressed,
                         )
                         .unwrap();
-                    if let Some((_, _, _, _, e)) =
-                        queryme.iter().find(|(id, _, _, _, _)| id.0 == from.id)
+                    if let Some((_, _, _, e)) = queryme.iter().find(|(id, _, _, _)| id.0 == from.id)
                     {
                         count.rem(1);
                         commands
@@ -304,8 +310,8 @@ pub fn apply_sync(
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
                 if sent.add(id) {
-                    if let Some((b, c, s)) = queryme.iter_mut().find_map(|(a, b, c, s, _)| {
-                        if a.0 == lid.0 { Some((b, c, s)) } else { None }
+                    if let Some((b, c, e)) = queryme.iter_mut().find_map(|(a, b, c, e)| {
+                        if a.0 == lid.0 { Some((b, c, e)) } else { None }
                     }) {
                         if let Some(c) = c {
                             client
@@ -316,11 +322,11 @@ pub fn apply_sync(
                                     Compression::Compressed,
                                 )
                                 .unwrap();
-                        } else if let Some(s) = s {
+                        } else if let Ok(s) = shape.get(e) {
                             client
                                 .send(
                                     sender,
-                                    &Packet::NewShape(lid, *s, Trans::from(b)),
+                                    &Packet::NewShape(lid, s.clone(), Trans::from(b)),
                                     Reliability::Reliable,
                                     Compression::Compressed,
                                 )
@@ -494,6 +500,25 @@ pub fn apply_sync(
                     }
                 }
             }
+            Packet::Counter(lid, to) => {
+                let user = sender.raw();
+                let id = SyncObject { user, id: lid.0 };
+                if let Some((Some(children), e)) = query.iter_mut().find_map(
+                    |(a, _, _, _, _, _, e, _, c, _, _)| {
+                        if *a == id { Some((c, e)) } else { None }
+                    },
+                ) {
+                    for c in children {
+                        if let (Ok(counter), Ok(mut t)) = (shape.get_mut(e), text3d.get_mut(*c)) {
+                            let Shape::Counter(v) = counter.into_inner() else {
+                                unreachable!()
+                            };
+                            *v = to.clone();
+                            *t.get_single_mut().unwrap() = v.0.to_string()
+                        }
+                    }
+                }
+            }
         }
     });
     #[cfg(feature = "steam")]
@@ -601,6 +626,7 @@ pub struct SyncActions {
     pub reorder: Vec<(SyncObjectMe, Vec<String>)>,
     pub draw: Vec<(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize)>,
     pub flip: Vec<SyncObjectMe>,
+    pub counter: Vec<(SyncObjectMe, Value)>,
 }
 #[derive(Encode, Decode, Debug)]
 pub enum Packet {
@@ -612,6 +638,7 @@ pub enum Packet {
     New(SyncObjectMe, Pile, Trans),
     NewShape(SyncObjectMe, Shape, Trans),
     Flip(SyncObjectMe),
+    Counter(SyncObjectMe, Value),
     Reorder(SyncObjectMe, Vec<String>),
     Draw(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize),
     SetUser(usize),
