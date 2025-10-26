@@ -714,26 +714,30 @@ pub fn listen_for_mouse(
                     * (rand.random_range(32.0..64.0) + av.y.abs());
                 av.z = if rand.random() { 1.0 } else { -1.0 }
                     * (rand.random_range(32.0..64.0) + av.z.abs());
-            } else if input.just_pressed(KeyCode::KeyQ) {
-                let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
-                let n = (2.0 * rot / PI).round() as isize;
-                transform.rotation = Quat::from_rotation_y(match n {
-                    0 => -PI / 2.0,
-                    1 => PI,
-                    2 | -2 => -PI / 2.0,
-                    -1 => 0.0,
-                    _ => unreachable!(),
-                });
             } else if input.just_pressed(KeyCode::KeyE) {
                 let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
                 let n = (2.0 * rot / PI).round() as isize;
-                transform.rotation = Quat::from_rotation_y(match n {
-                    0 => PI / 2.0,
-                    1 => 0.0,
-                    2 | -2 => PI / 2.0,
-                    -1 => PI,
-                    _ => unreachable!(),
-                });
+                transform.rotate_y(
+                    match n {
+                        0 => -PI / 2.0,
+                        1 => 0.0,
+                        2 | -2 => PI / 2.0,
+                        -1 => PI,
+                        _ => unreachable!(),
+                    } - rot,
+                );
+            } else if input.just_pressed(KeyCode::KeyQ) {
+                let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
+                let n = (2.0 * rot / PI).round() as isize;
+                transform.rotate_y(
+                    match n {
+                        0 => PI / 2.0,
+                        1 => PI,
+                        2 | -2 => -PI / 2.0,
+                        -1 => 0.0,
+                        _ => unreachable!(),
+                    } - rot,
+                );
             }
         } else if let Some(single) = zoom {
             commands.entity(single.0).despawn();
