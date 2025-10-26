@@ -59,19 +59,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: nightly
-          target: x86_64-pc-windows-msvc
-          override: true
       - name: Install MSYS2 and GMP
         uses: msys2/setup-msys2@v2
         with:
          update: true
          install: >-
           base-devel
-          mingw-w64-x86_64-rust
+          mingw-w64-x86_64-rustup
           mingw-w64-x86_64-gcc
           mingw-w64-x86_64-pkg-config
           mingw-w64-x86_64-gmp
@@ -91,6 +85,11 @@ jobs:
           llvm
           ninja
          msystem: MINGW64
+      - name: install rust
+        run: |
+         rustup target add x86_64-pc-windows-gnu
+         rustup install nightly-x86_64-pc-windows-gnu
+         rustup component add rust-src --toolchain nightly-x86_64-pc-windows-gnu
       - name: Build
         shell: msys2 {0}
         env:
