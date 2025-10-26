@@ -709,7 +709,7 @@ pub fn listen_for_mouse(
                     *menu = Menu::Counter;
                     let mut input_buffer = TextInputBuffer::default();
                     let editor = &mut input_buffer.editor;
-                    editor.insert_string("hp", None);
+                    editor.insert_string("n", None);
                     let ent = commands
                         .spawn((
                             CounterMenu(entity, v.clone()),
@@ -1027,7 +1027,7 @@ pub fn update_search_deck(
                 && let Ok(parsed) = kalc_lib::parse::input_var(
                     text.get(),
                     &[Variable {
-                        name: vec!['h', 'p'],
+                        name: vec!['n'],
                         parsed: vec![NumStr::Num(
                             Number::from_f64(counter.1.0 as f64, &Options::default()).into(),
                         )],

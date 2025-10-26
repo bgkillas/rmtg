@@ -55,9 +55,9 @@ const FONT_SIZE: f32 = 16.0;
 const FONT_HEIGHT: f32 = FONT_SIZE;
 #[allow(dead_code)]
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
-//TODO counters, equip, multi select
+//TODO equip, multi select
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
-pub fn start() {
+pub fn start() -> AppExit {
     #[cfg(feature = "wasm")]
     console_error_panic_hook::set_once();
     #[cfg(feature = "wasm")]
@@ -149,7 +149,7 @@ pub fn start() {
     .add_observer(on_scroll_handler)
     .add_observer(pile_merge)
     .add_systems(PreUpdate, (get_sync, apply_sync).chain());
-    app.run();
+    app.run()
 }
 #[derive(Resource, Default)]
 pub enum Menu {
