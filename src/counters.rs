@@ -52,4 +52,4 @@ pub fn make_counter<'a>(
     cmds
 }
 #[derive(Encode, Decode, Debug, Clone)]
-pub struct Value(pub isize);
+pub struct Value(pub i128);

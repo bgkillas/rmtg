@@ -155,6 +155,7 @@ pub fn start() {
 pub enum Menu {
     #[default]
     World,
+    Counter,
     Esc,
     Side,
 }

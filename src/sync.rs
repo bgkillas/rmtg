@@ -541,14 +541,12 @@ pub fn apply_sync(
                     ) {
                         run(children, e);
                     }
-                } else {
-                    if let Some((Some(children), e)) = query.iter_mut().find_map(
-                        |(a, _, _, _, _, _, e, _, c, _, _)| {
-                            if *a == id { Some((c, e)) } else { None }
-                        },
-                    ) {
-                        run(children, e);
-                    }
+                } else if let Some((Some(children), e)) = query.iter_mut().find_map(
+                    |(a, _, _, _, _, _, e, _, c, _, _)| {
+                        if *a == id { Some((c, e)) } else { None }
+                    },
+                ) {
+                    run(children, e);
                 }
             }
         }
