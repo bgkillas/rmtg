@@ -86,6 +86,13 @@ jobs:
           ninja
          msystem: MINGW64
       - name: install rust
+        shell: msys2 {0}
+        env:
+         CARGO_HOME: /mingw64/.cargo
+         RUSTUP_HOME: /mingw64/.rustup
+         PKG_CONFIG_PATH: /mingw64/lib/pkgconfig
+         PATH: /mingw64/bin:$PATH
+         CC: clang
         run: |
          rustup target add x86_64-pc-windows-gnu
          rustup install nightly-x86_64-pc-windows-gnu
