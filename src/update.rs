@@ -18,9 +18,9 @@ use bevy_rich_text3d::Text3d;
 use bevy_tangled::{ClientTrait, Compression, PeerId, Reliability};
 use bevy_ui_text_input::{TextInputBuffer, TextInputContents, TextInputMode, TextInputNode};
 use cosmic_text::Edit;
-#[cfg(feature = "bin")]
+#[cfg(feature = "calc")]
 use kalc_lib::complex::NumStr;
-#[cfg(feature = "bin")]
+#[cfg(feature = "calc")]
 use kalc_lib::units::{Number, Options, Variable};
 use rand::Rng;
 use std::f32::consts::PI;
@@ -704,7 +704,7 @@ pub fn listen_for_mouse(
                 && let Ok(s) = shape.get(entity)
                 && let Shape::Counter(v) = s
             {
-                #[cfg(feature = "bin")]
+                #[cfg(feature = "calc")]
                 {
                     *menu = Menu::Counter;
                     let mut input_buffer = TextInputBuffer::default();
@@ -1021,7 +1021,7 @@ pub fn update_search_deck(
                 update_search(&mut commands, single.0, pile, transform, text.get())
             }
         }
-        #[cfg(feature = "bin")]
+        #[cfg(feature = "calc")]
         Menu::Counter => {
             if let Some(counter) = counter
                 && let Ok(parsed) = kalc_lib::parse::input_var(

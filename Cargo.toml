@@ -27,7 +27,8 @@ wasm-opt = false
 
 [features]
 default=["bin", "steam", "ip"]
-bin=["dep:arboard", "tokio/rt-multi-thread", "dep:kalc-lib"]
+bin=["dep:arboard", "tokio/rt-multi-thread", "calc"]
+calc=["dep:kalc-lib"]
 wasm=["bevy_rand/wasm_js", "dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:web-sys", "dep:console_error_panic_hook"]
 steam=["bevy_tangled/steam"]
 ip=["bevy_tangled/tangled"]
