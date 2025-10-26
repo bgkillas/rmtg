@@ -94,6 +94,7 @@ jobs:
          PATH: /mingw64/bin:$PATH
          CC: clang
         run: |
+         rustup default nightly
          rustup target add x86_64-pc-windows-gnu
          rustup install nightly-x86_64-pc-windows-gnu
          rustup component add rust-src --toolchain nightly-x86_64-pc-windows-gnu
