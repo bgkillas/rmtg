@@ -173,6 +173,7 @@ pub fn follow_mouse(
             card.3.0 = (point - card.1.translation) / time_since.delta_secs();
         }
         commands.entity(card.0).remove::<FollowMouse>();
+        commands.entity(card.0).remove::<SleepingDisabled>();
         card.2.0 = GRAVITY
     }
 }
@@ -263,7 +264,7 @@ pub fn listen_for_mouse(
         };
         if let Ok((mut pile, children, parent, inhand)) = cards.get_mut(entity) {
             if input.just_pressed(KeyCode::KeyF) {
-                transform.rotate_local_y(PI);
+                transform.rotate_local_z(PI);
                 if let Some(entity) =
                     search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
                 {
@@ -693,6 +694,7 @@ pub fn listen_for_mouse(
                     }
                     phys.0 = 0.0;
                     commands.entity(entity).insert(FollowMouse);
+                    commands.entity(entity).insert(SleepingDisabled);
                 }
             } else if input.just_pressed(KeyCode::KeyC)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
@@ -756,29 +758,9 @@ pub fn listen_for_mouse(
                 av.z = if rand.random() { 1.0 } else { -1.0 }
                     * (rand.random_range(32.0..64.0) + av.z.abs());
             } else if input.just_pressed(KeyCode::KeyE) {
-                let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
-                let n = (2.0 * rot / PI).round() as isize;
-                transform.rotate_y(
-                    match n {
-                        0 => -PI / 2.0,
-                        1 => 0.0,
-                        2 | -2 => PI / 2.0,
-                        -1 => PI,
-                        _ => unreachable!(),
-                    } - rot,
-                );
+                rotate_right(&mut transform)
             } else if input.just_pressed(KeyCode::KeyQ) {
-                let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
-                let n = (2.0 * rot / PI).round() as isize;
-                transform.rotate_y(
-                    match n {
-                        0 => PI / 2.0,
-                        1 => PI,
-                        2 | -2 => -PI / 2.0,
-                        -1 => 0.0,
-                        _ => unreachable!(),
-                    } - rot,
-                );
+                rotate_left(&mut transform)
             }
         } else if let Some(single) = zoom {
             commands.entity(single.0).despawn();
@@ -788,36 +770,30 @@ pub fn listen_for_mouse(
     }
 }
 fn rotate_left(transform: &mut Mut<Transform>) {
-    let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
+    let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
     let n = (2.0 * rot / PI).round() as isize;
-    let rev = is_reversed(transform);
-    transform.rotation = Quat::from_rotation_z(match n {
-        0 => PI / 2.0,
-        1 => PI,
-        2 | -2 => -PI / 2.0,
-        -1 => 0.0,
-        _ => unreachable!(),
-    });
-    transform.rotate_x(-PI / 2.0);
-    if rev {
-        transform.rotate_z(PI);
-    }
+    transform.rotate_y(
+        match n {
+            0 => PI / 2.0,
+            1 => PI,
+            2 | -2 => -PI / 2.0,
+            -1 => 0.0,
+            _ => unreachable!(),
+        } - rot,
+    );
 }
 fn rotate_right(transform: &mut Mut<Transform>) {
-    let (_, _, rot) = transform.rotation.to_euler(EulerRot::XYZ);
+    let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
     let n = (2.0 * rot / PI).round() as isize;
-    let rev = is_reversed(transform);
-    transform.rotation = Quat::from_rotation_z(match n {
-        0 => -PI / 2.0,
-        1 => 0.0,
-        2 | -2 => PI / 2.0,
-        -1 => PI,
-        _ => unreachable!(),
-    });
-    transform.rotate_x(-PI / 2.0);
-    if rev {
-        transform.rotate_z(PI);
-    }
+    transform.rotate_y(
+        match n {
+            0 => -PI / 2.0,
+            1 => 0.0,
+            2 | -2 => PI / 2.0,
+            -1 => PI,
+            _ => unreachable!(),
+        } - rot,
+    );
 }
 #[derive(Component)]
 pub struct CounterMenu(Entity, Value);

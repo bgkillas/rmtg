@@ -184,11 +184,7 @@ pub fn new_pile_at<'a>(
     Some(ent)
 }
 pub fn is_reversed(transform: &Transform) -> bool {
-    transform
-        .rotation
-        .to_euler(EulerRot::XYZ)
-        .0
-        .is_sign_positive()
+    (transform.rotation * Vec3::Y).y < 0.0
 }
 pub fn repaint_face(
     mats: &mut Query<&mut MeshMaterial3d<StandardMaterial>>,
@@ -208,13 +204,13 @@ pub fn adjust_meshes(
     collider: &mut Collider,
 ) {
     let size = pile.len() as f32;
-    *collider = Collider::cuboid(CARD_WIDTH, CARD_HEIGHT, 2.0 * size);
+    *collider = Collider::cuboid(CARD_WIDTH, 2.0 * size, CARD_HEIGHT);
     let mut children = children.iter();
     let (_, mut top) = query.get_mut(children.next().unwrap()).unwrap();
-    let delta = top.translation.z - size;
-    top.translation.z -= delta;
+    let delta = top.translation.y - size;
+    top.translation.y -= delta;
     let (_, mut bottom) = query.get_mut(children.next().unwrap()).unwrap();
-    bottom.translation.z += delta;
+    bottom.translation.y += delta;
     transform.translation.y -= delta / 2.0;
     let (mesh, t1, t2) = side(size, meshes);
     let (mut leftmesh, mut leftt) = query.get_mut(children.next().unwrap()).unwrap();
