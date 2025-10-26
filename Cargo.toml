@@ -36,9 +36,9 @@ ip=["bevy_tangled/tangled"]
 bevy={version="0.17.2", default-features = false, features = [
   "std",
   "async_executor",
-  "android-game-activity",
-  "android_shared_stdcxx",
-  "animation",
+  #"android-game-activity",
+  #"android_shared_stdcxx",
+  #"animation",
   "bevy_asset",
   #"bevy_audio",
   "bevy_color",
@@ -84,10 +84,10 @@ bevy={version="0.17.2", default-features = false, features = [
   "webgl2",
   "x11",
   "wayland",
-  "debug",
+  #"debug",
   "zstd_rust",
 ]}
-itertools="0.13.0"
+itertools="0.14.0"
 arboard={version="3.6.1", features = ["wayland-data-control"], optional = true}
 reqwest={version="0.12.24", features = ["rustls-tls"], default-features = false}
 json="0.12.4"
@@ -104,7 +104,7 @@ wasm-bindgen-futures = {version="0.4.54", optional = true}
 web-sys = { version = "0.3.81", optional = true, features = ["Clipboard", "Navigator", "Window"] }
 console_error_panic_hook = { version = "0.1.7", optional = true }
 avian3d={version="0.4.0", features = ["simd"]}
-bevy_rich_text3d = {git="https://github.com/bgkillas/bevy_rich_text3d"}
+bevy_rich_text3d = {git="https://github.com/mintlu8/bevy_rich_text3d"}
 bevy_tangled = {git = "https://github.com/bgkillas/bevy_tangled", default-features = false, features = ["bevy", "compress"]}
 bitcode = {git="https://github.com/SoftbearStudios/bitcode", version = "0.6.7", branch = "large_c_style_enums"}
 bevy_ui_text_input = {git="https://github.com/ickshonpe/bevy_ui_text_input"}

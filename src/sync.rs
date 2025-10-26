@@ -80,6 +80,21 @@ pub fn get_sync(
             )
             .unwrap();
     }
+    for (id, to) in sync_actions.counter_me.drain(..) {
+        client
+            .broadcast(
+                &Packet::Counter(
+                    SyncObject {
+                        id: id.0,
+                        user: client.my_id().0,
+                    },
+                    to,
+                ),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
+            .unwrap();
+    }
     for (id, order) in sync_actions.reorder.drain(..) {
         client
             .broadcast(
@@ -182,7 +197,13 @@ pub fn apply_sync(
         With<Children>,
     >,
     mut queryme: Query<
-        (&SyncObjectMe, &GlobalTransform, Option<&Pile>, Entity),
+        (
+            &SyncObjectMe,
+            &GlobalTransform,
+            Option<&Pile>,
+            Entity,
+            Option<&Children>,
+        ),
         Without<SyncObject>,
     >,
     mut sent: ResMut<Sent>,
@@ -289,7 +310,8 @@ pub fn apply_sync(
                             Compression::Compressed,
                         )
                         .unwrap();
-                    if let Some((_, _, _, e)) = queryme.iter().find(|(id, _, _, _)| id.0 == from.id)
+                    if let Some((_, _, _, e, _)) =
+                        queryme.iter().find(|(id, _, _, _, _)| id.0 == from.id)
                     {
                         count.rem(1);
                         commands
@@ -310,7 +332,7 @@ pub fn apply_sync(
                 let user = sender.raw();
                 let id = SyncObject { user, id: lid.0 };
                 if sent.add(id) {
-                    if let Some((b, c, e)) = queryme.iter_mut().find_map(|(a, b, c, e)| {
+                    if let Some((b, c, e)) = queryme.iter_mut().find_map(|(a, b, c, e, _)| {
                         if a.0 == lid.0 { Some((b, c, e)) } else { None }
                     }) {
                         if let Some(c) = c {
@@ -500,22 +522,32 @@ pub fn apply_sync(
                     }
                 }
             }
-            Packet::Counter(lid, to) => {
-                let user = sender.raw();
-                let id = SyncObject { user, id: lid.0 };
-                if let Some((Some(children), e)) = query.iter_mut().find_map(
-                    |(a, _, _, _, _, _, e, _, c, _, _)| {
-                        if *a == id { Some((c, e)) } else { None }
-                    },
-                ) {
-                    for c in children {
-                        if let (Ok(counter), Ok(mut t)) = (shape.get_mut(e), text3d.get_mut(*c)) {
-                            let Shape::Counter(v) = counter.into_inner() else {
-                                unreachable!()
-                            };
-                            *v = to.clone();
-                            *t.get_single_mut().unwrap() = v.0.to_string()
-                        }
+            Packet::Counter(id, to) => {
+                let mut run = |children: &Children, e: Entity| {
+                    let c = children[0];
+                    if let (Ok(counter), Ok(mut t)) = (shape.get_mut(e), text3d.get_mut(c)) {
+                        let Shape::Counter(v) = counter.into_inner() else {
+                            unreachable!()
+                        };
+                        *v = to.clone();
+                        *t.get_single_mut().unwrap() = v.0.to_string()
+                    }
+                };
+                if id.user == client.my_id().0 {
+                    if let Some((Some(children), e)) = queryme.iter_mut().find_map(
+                        |(a, _, _, e, c)| {
+                            if a.0 == id.id { Some((c, e)) } else { None }
+                        },
+                    ) {
+                        run(children, e);
+                    }
+                } else {
+                    if let Some((Some(children), e)) = query.iter_mut().find_map(
+                        |(a, _, _, _, _, _, e, _, c, _, _)| {
+                            if *a == id { Some((c, e)) } else { None }
+                        },
+                    ) {
+                        run(children, e);
                     }
                 }
             }
@@ -626,7 +658,8 @@ pub struct SyncActions {
     pub reorder: Vec<(SyncObjectMe, Vec<String>)>,
     pub draw: Vec<(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize)>,
     pub flip: Vec<SyncObjectMe>,
-    pub counter: Vec<(SyncObjectMe, Value)>,
+    pub counter_me: Vec<(SyncObjectMe, Value)>,
+    pub counter: Vec<(SyncObject, Value)>,
 }
 #[derive(Encode, Decode, Debug)]
 pub enum Packet {
@@ -638,7 +671,7 @@ pub enum Packet {
     New(SyncObjectMe, Pile, Trans),
     NewShape(SyncObjectMe, Shape, Trans),
     Flip(SyncObjectMe),
-    Counter(SyncObjectMe, Value),
+    Counter(SyncObject, Value),
     Reorder(SyncObjectMe, Vec<String>),
     Draw(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize),
     SetUser(usize),

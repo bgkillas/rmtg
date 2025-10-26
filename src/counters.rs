@@ -1,5 +1,4 @@
 use crate::shapes::Shape;
-use crate::sync::{SyncActions, SyncObjectMe};
 use crate::{ANG_DAMPING, GRAVITY, LIN_DAMPING, SLEEP};
 use avian3d::prelude::*;
 use bevy::prelude::*;
@@ -48,46 +47,9 @@ pub fn make_counter<'a>(
                 anchor: TextAnchor::CENTER,
                 ..default()
             },
-        ))
-        .observe(add_hover)
-        .observe(del_hover);
+        ));
     });
     cmds
 }
 #[derive(Encode, Decode, Debug, Clone)]
 pub struct Value(pub isize);
-#[derive(Component)]
-pub struct Hovered;
-pub fn add_hover(event: On<Pointer<Over>>, mut commands: Commands) {
-    commands.entity(event.entity).insert(Hovered);
-}
-pub fn del_hover(event: On<Pointer<Out>>, mut commands: Commands) {
-    commands.entity(event.entity).remove::<Hovered>();
-}
-pub fn update_hover(
-    mut hovered: Single<(&mut Text3d, &ChildOf), With<Hovered>>,
-    mut counter: Query<&mut Shape>,
-    id: Query<&SyncObjectMe>,
-    mouse_input: Res<ButtonInput<MouseButton>>,
-    mut sync_actions: ResMut<SyncActions>,
-) {
-    let a = mouse_input.just_pressed(MouseButton::Left);
-    let b = mouse_input.just_pressed(MouseButton::Right);
-    if a || b {
-        let Ok(counter) = counter.get_mut(hovered.1.0) else {
-            unreachable!()
-        };
-        let Shape::Counter(counter) = counter.into_inner() else {
-            unreachable!()
-        };
-        if a {
-            counter.0 += 1;
-        } else if b {
-            counter.0 -= 1;
-        }
-        *hovered.0.get_single_mut().unwrap() = counter.0.to_string();
-        if let Ok(id) = id.get(hovered.1.0) {
-            sync_actions.counter.push((*id, counter.clone()));
-        }
-    }
-}

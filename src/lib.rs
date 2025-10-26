@@ -34,7 +34,6 @@ mod setup;
 mod shapes;
 pub mod sync;
 mod update;
-use crate::counters::update_hover;
 use crate::misc::is_reversed;
 use crate::shapes::Shape;
 #[cfg(feature = "steam")]
@@ -98,7 +97,6 @@ pub fn start() {
                 meta_check: AssetMetaCheck::Never,
                 ..default()
             }),
-        MeshPickingPlugin,
         PhysicsPlugins::default(),
         PhysicsDebugPlugin,
         FramepacePlugin,
@@ -129,27 +127,24 @@ pub fn start() {
         Update,
         (
             (
-                (
-                    pick_from_list,
-                    send_scroll_events,
-                    #[cfg(feature = "steam")]
-                    display_steam_info,
-                    listen_for_deck,
-                    register_deck,
-                    cam_translation,
-                    cam_rotation,
-                    esc_menu,
-                    #[cfg(all(feature = "steam", feature = "ip"))]
-                    new_lobby,
-                    update_search_deck,
-                    (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
-                ),
-                to_move_up,
-                reset_layers,
-            )
-                .chain(),
-            update_hover,
-        ),
+                pick_from_list,
+                send_scroll_events,
+                #[cfg(feature = "steam")]
+                display_steam_info,
+                listen_for_deck,
+                register_deck,
+                cam_translation,
+                cam_rotation,
+                esc_menu,
+                #[cfg(all(feature = "steam", feature = "ip"))]
+                new_lobby,
+                update_search_deck,
+                (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
+            ),
+            to_move_up,
+            reset_layers,
+        )
+            .chain(),
     )
     .add_observer(on_scroll_handler)
     .add_observer(pile_merge)

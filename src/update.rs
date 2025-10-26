@@ -13,6 +13,7 @@ use bevy::picking::hover::HoverMap;
 use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalRng;
+use bevy_rich_text3d::Text3d;
 use bevy_tangled::{ClientTrait, Compression, PeerId, Reliability};
 use bevy_ui_text_input::{TextInputContents, TextInputMode, TextInputNode};
 use rand::Rng;
@@ -211,7 +212,7 @@ pub fn listen_for_mouse(
         others_ids,
         mut query_meshes,
         follow,
-        shape,
+        mut shape,
         mut menu,
         mut active_input,
         side,
@@ -227,16 +228,18 @@ pub fn listen_for_mouse(
         Query<&SyncObject>,
         Query<(&mut Mesh3d, &mut Transform), (Without<Children>, With<ChildOf>)>,
         Option<Single<Entity, With<FollowMouse>>>,
-        Query<&Shape>,
+        Query<&mut Shape>,
         ResMut<Menu>,
         ResMut<InputFocus>,
         Option<Single<Entity, With<SideMenu>>>,
         Option<Single<(Entity, &SearchDeck)>>,
     ),
-    (mut rand, text, font): (
+    (mut rand, text, font, mut text3d, children): (
         Single<&mut WyRand, With<GlobalRng>>,
         Option<Single<&TextInputContents>>,
         Res<FontRes>,
+        Query<&mut Text3d>,
+        Query<&Children, Without<Pile>>,
     ),
 ) {
     if matches!(*menu, Menu::Esc) || (matches!(*menu, Menu::Side) && active_input.get().is_some()) {
@@ -653,16 +656,40 @@ pub fn listen_for_mouse(
             if let Some(single) = zoom {
                 commands.entity(single.0).despawn();
             }
-            if mouse_input.just_pressed(MouseButton::Left) {
-                if let Some(e) = follow {
-                    commands.entity(*e).remove::<FollowMouse>();
+            if mouse_input.just_pressed(MouseButton::Right)
+                && let Ok(s) = shape.get_mut(entity)
+                && let Shape::Counter(v) = s.into_inner()
+            {
+                v.0 -= 1;
+                let ent = children.get(entity).unwrap()[0];
+                let mut text = text3d.get_mut(ent).unwrap();
+                *text.get_single_mut().unwrap() = v.0.to_string();
+                if let Ok(id) = ids.get(entity) {
+                    sync_actions.counter_me.push((*id, v.clone()));
                 }
-                if let Ok(id) = others_ids.get(entity) {
-                    let myid = SyncObjectMe::new(&mut rand, &mut count);
-                    sync_actions.take_owner.push((*id, myid));
+            } else if mouse_input.just_pressed(MouseButton::Left) {
+                if !input.pressed(KeyCode::ControlLeft)
+                    && let Ok(s) = shape.get_mut(entity)
+                    && let Shape::Counter(v) = s.into_inner()
+                {
+                    v.0 += 1;
+                    let ent = children.get(entity).unwrap()[0];
+                    let mut text = text3d.get_mut(ent).unwrap();
+                    *text.get_single_mut().unwrap() = v.0.to_string();
+                    if let Ok(id) = ids.get(entity) {
+                        sync_actions.counter_me.push((*id, v.clone()));
+                    }
+                } else {
+                    if let Some(e) = follow {
+                        commands.entity(*e).remove::<FollowMouse>();
+                    }
+                    if let Ok(id) = others_ids.get(entity) {
+                        let myid = SyncObjectMe::new(&mut rand, &mut count);
+                        sync_actions.take_owner.push((*id, myid));
+                    }
+                    phys.0 = 0.0;
+                    commands.entity(entity).insert(FollowMouse);
                 }
-                phys.0 = 0.0;
-                commands.entity(entity).insert(FollowMouse);
             } else if input.just_pressed(KeyCode::KeyC)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
                 && let Ok(shape) = shape.get(entity)
