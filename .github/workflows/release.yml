@@ -109,9 +109,8 @@ jobs:
         run: cargo +nightly-x86_64-pc-windows-gnu build --target x86_64-pc-windows-gnu --release
       - name: make
         run: |
-          find .
           mkdir rmtg
-          cp target/release/rmtg.exe rmtg
+          cp target/x86_64-pc-windows-gnu/release/rmtg.exe rmtg
           cp steam_api64.dll rmtg
       - uses: actions/upload-artifact@v4
         with:

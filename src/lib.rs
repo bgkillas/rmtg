@@ -57,6 +57,9 @@ const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO equip, multi select
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
+pub fn main() {
+    start();
+}
 pub fn start() -> AppExit {
     #[cfg(feature = "wasm")]
     console_error_panic_hook::set_once();

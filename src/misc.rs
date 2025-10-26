@@ -3,7 +3,6 @@ use crate::sync::SyncObjectMe;
 use crate::*;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalRng;
-use std::f32::consts::PI;
 pub fn make_material(
     materials: &mut Assets<StandardMaterial>,
     top: Handle<Image>,
@@ -28,8 +27,7 @@ pub fn new_pile(
     id: Option<SyncObject>,
 ) -> Option<Entity> {
     let size = pile.len() as f32;
-    let mut transform = Transform::from_xyz(v.x, size, v.y);
-    transform.rotate_x(-PI / 2.0);
+    let transform = Transform::from_xyz(v.x, size, v.y);
     new_pile_at(
         pile,
         card_stock,
@@ -94,19 +92,19 @@ pub fn move_up(
 }
 fn side(size: f32, meshes: &mut Assets<Mesh>) -> (Handle<Mesh>, Transform, Transform) {
     let mesh = meshes.add(Rectangle::new(2.0 * size, CARD_HEIGHT));
-    let mut transform2 = Transform::from_rotation(Quat::from_rotation_y(PI / 2.0));
-    transform2.translation.x = CARD_WIDTH / 2.0;
-    let mut transform3 = Transform::from_rotation(Quat::from_rotation_y(-PI / 2.0));
-    transform3.translation.x = -CARD_WIDTH / 2.0;
-    (mesh, transform2, transform3)
+    (
+        mesh,
+        Transform::from_xyz(CARD_WIDTH / 2.0, 0.0, 0.0).looking_to(Dir3::NEG_X, Dir3::Z),
+        Transform::from_xyz(-CARD_WIDTH / 2.0, 0.0, 0.0).looking_to(Dir3::X, Dir3::Z),
+    )
 }
 fn topbottom(size: f32, meshes: &mut Assets<Mesh>) -> (Handle<Mesh>, Transform, Transform) {
     let mesh2 = meshes.add(Rectangle::new(CARD_WIDTH, 2.0 * size));
-    let mut transform4 = Transform::from_rotation(Quat::from_rotation_x(PI / 2.0));
-    transform4.translation.y = -CARD_HEIGHT / 2.0;
-    let mut transform5 = Transform::from_rotation(Quat::from_rotation_x(-PI / 2.0));
-    transform5.translation.y = CARD_HEIGHT / 2.0;
-    (mesh2, transform4, transform5)
+    (
+        mesh2,
+        Transform::from_xyz(0.0, 0.0, -CARD_HEIGHT / 2.0).looking_to(Dir3::Z, Dir3::NEG_Y),
+        Transform::from_xyz(0.0, 0.0, CARD_HEIGHT / 2.0).looking_to(Dir3::NEG_Z, Dir3::NEG_Y),
+    )
 }
 pub fn new_pile_at<'a>(
     pile: Pile,
@@ -129,8 +127,6 @@ pub fn new_pile_at<'a>(
     let top = card.normal.image().clone();
     let material_handle = make_material(materials, top);
     let size = pile.len() as f32;
-    let mut transform1 = Transform::from_rotation(Quat::from_rotation_y(PI));
-    transform1.translation.z = -size;
     let (mesh, transform2, transform3) = side(size, meshes);
     let (mesh2, transform4, transform5) = topbottom(size, meshes);
     let mut ent = commands.spawn((
@@ -142,7 +138,7 @@ pub fn new_pile_at<'a>(
         AngularDamping(ANG_DAMPING),
         SLEEP,
         CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::cuboid(CARD_WIDTH, CARD_HEIGHT, 2.0 * size),
+        Collider::cuboid(CARD_WIDTH, 2.0 * size, CARD_HEIGHT),
         CollisionEventsEnabled,
         GravityScale(if follow_mouse || parent.is_some() {
             0.0
@@ -153,9 +149,13 @@ pub fn new_pile_at<'a>(
             (
                 Mesh3d(card_stock.clone()),
                 MeshMaterial3d(material_handle),
-                Transform::from_xyz(0.0, 0.0, size),
+                Transform::from_xyz(0.0, size, 0.0).looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
             ),
-            (Mesh3d(card_stock), MeshMaterial3d(card_back), transform1),
+            (
+                Mesh3d(card_stock),
+                MeshMaterial3d(card_back),
+                Transform::from_xyz(0.0, -size, 0.0).looking_to(Dir3::Y, Dir3::NEG_Z)
+            ),
             (
                 Mesh3d(mesh.clone()),
                 MeshMaterial3d(card_side.clone()),
