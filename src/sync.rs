@@ -392,7 +392,7 @@ pub fn apply_sync(
                 sent.del(id);
                 ignore.insert(id);
                 shape
-                    .create(trans.into(), &mut commands, &mut materials, &mut meshes)
+                    .create(trans.into(), &mut commands, &mut meshes, &mut materials)
                     .insert(id);
             }
             Packet::SetUser(id) => {

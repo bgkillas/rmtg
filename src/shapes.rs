@@ -5,6 +5,7 @@ use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 use std::f32::consts::FRAC_PI_2;
 const BOUNCY: f32 = 0.5;
+const EPSILON: f32 = CARD_THICKNESS;
 #[derive(Encode, Decode, Component, Clone, Debug)]
 pub enum Shape {
     Cube,
@@ -20,8 +21,8 @@ impl Shape {
         &self,
         transform: Transform,
         commands: &'a mut Commands,
-        materials: &mut Assets<StandardMaterial>,
         meshes: &mut Assets<Mesh>,
+        materials: &mut Assets<StandardMaterial>,
     ) -> EntityCommands<'a> {
         match self {
             Shape::Cube => spawn_cube(256.0, transform, commands, meshes, materials),
@@ -133,19 +134,19 @@ pub fn spawn_ico<'a>(
     ent.with_children(|parent| {
         for (i, [mut x, mut y, mut z]) in faces.into_iter().enumerate() {
             if x < 0.0 {
-                x -= 1.0;
+                x -= EPSILON;
             } else {
-                x += 1.0;
+                x += EPSILON;
             }
             if y < 0.0 {
-                y -= 1.0;
+                y -= EPSILON;
             } else {
-                y += 1.0;
+                y += EPSILON;
             }
             if z < 0.0 {
-                z -= 1.0;
+                z -= EPSILON;
             } else {
-                z += 1.0;
+                z += EPSILON;
             }
             parent.spawn((
                 Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
@@ -255,19 +256,19 @@ pub fn spawn_oct<'a>(
     ent.with_children(|parent| {
         for (i, [mut x, mut y, mut z]) in faces.into_iter().enumerate() {
             if x < 0.0 {
-                x -= 1.0;
+                x -= EPSILON;
             } else {
-                x += 1.0;
+                x += EPSILON;
             }
             if y < 0.0 {
-                y -= 1.0;
+                y -= EPSILON;
             } else {
-                y += 1.0;
+                y += EPSILON;
             }
             if z < 0.0 {
-                z -= 1.0;
+                z -= EPSILON;
             } else {
-                z += 1.0;
+                z += EPSILON;
             }
             parent.spawn((
                 Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
@@ -372,19 +373,19 @@ pub fn spawn_tetra<'a>(
     ent.with_children(|parent| {
         for (i, [mut x, mut y, mut z]) in faces.into_iter().enumerate() {
             if x < 0.0 {
-                x -= 1.0;
+                x -= EPSILON;
             } else {
-                x += 1.0;
+                x += EPSILON;
             }
             if y < 0.0 {
-                y -= 1.0;
+                y -= EPSILON;
             } else {
-                y += 1.0;
+                y += EPSILON;
             }
             if z < 0.0 {
-                z -= 1.0;
+                z -= EPSILON;
             } else {
-                z += 1.0;
+                z += EPSILON;
             }
             parent.spawn((
                 Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
@@ -428,7 +429,7 @@ pub fn spawn_coin<'a>(
             (
                 Position::default(),
                 Rotation::default(),
-                Collider::cylinder(m + 1.0, m / (ratio * 16.0)),
+                Collider::cylinder(m + EPSILON, m / (ratio * 16.0)),
             ),
         ]),
         transform,
@@ -450,9 +451,9 @@ pub fn spawn_coin<'a>(
     ent.with_children(|parent| {
         for (i, [mut y]) in [[m / ratio], [-m / ratio]].into_iter().enumerate() {
             if y < 0.0 {
-                y -= 1.0;
+                y -= EPSILON;
             } else {
-                y += 1.0;
+                y += EPSILON;
             }
             parent.spawn((
                 Transform::from_xyz(0.0, y, 0.0).looking_at(Vec3::default(), Dir3::Z),
@@ -636,19 +637,19 @@ pub fn spawn_dodec<'a>(
     ent.with_children(|parent| {
         for (i, [mut x, mut y, mut z]) in faces.into_iter().enumerate() {
             if x < 0.0 {
-                x -= 1.0;
+                x -= EPSILON;
             } else {
-                x += 1.0;
+                x += EPSILON;
             }
             if y < 0.0 {
-                y -= 1.0;
+                y -= EPSILON;
             } else {
-                y += 1.0;
+                y += EPSILON;
             }
             if z < 0.0 {
-                z -= 1.0;
+                z -= EPSILON;
             } else {
-                z += 1.0;
+                z += EPSILON;
             }
             parent.spawn((
                 Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
@@ -680,7 +681,7 @@ pub fn spawn_cube<'a>(
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
 ) -> EntityCommands<'a> {
-    let d = m / 2.0 + 1.0;
+    let d = m / 2.0 + EPSILON;
     let mut cube = commands.spawn((
         CollisionLayers::new(0b11, LayerMask::ALL),
         Collider::cuboid(m, m, m),

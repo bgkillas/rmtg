@@ -26,7 +26,7 @@ pub fn new_pile(
     count: &mut SyncCount,
     id: Option<SyncObject>,
 ) -> Option<Entity> {
-    let size = pile.len() as f32;
+    let size = pile.len() as f32 * CARD_THICKNESS;
     let transform = Transform::from_xyz(v.x, size, v.y);
     new_pile_at(
         pile,
@@ -126,7 +126,7 @@ pub fn new_pile_at<'a>(
     let card = pile.last();
     let top = card.normal.image().clone();
     let material_handle = make_material(materials, top);
-    let size = pile.len() as f32;
+    let size = pile.len() as f32 * CARD_THICKNESS;
     let (mesh, transform2, transform3) = side(size, meshes);
     let (mesh2, transform4, transform5) = topbottom(size, meshes);
     let mut ent = commands.spawn((
@@ -203,7 +203,7 @@ pub fn adjust_meshes(
     transform: &mut Transform,
     collider: &mut Collider,
 ) {
-    let size = pile.len() as f32;
+    let size = pile.len() as f32 * CARD_THICKNESS;
     *collider = Collider::cuboid(CARD_WIDTH, 2.0 * size, CARD_HEIGHT);
     let mut children = children.iter();
     let (_, mut top) = query.get_mut(children.next().unwrap()).unwrap();

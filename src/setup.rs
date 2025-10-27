@@ -1,6 +1,5 @@
-use crate::counters::{Value, make_counter};
+use crate::counters::Value;
 use crate::download::get_from_img;
-use crate::shapes::{spawn_coin, spawn_cube, spawn_dodec, spawn_ico, spawn_oct, spawn_tetra};
 #[cfg(feature = "steam")]
 use crate::sync::Packet;
 #[cfg(feature = "steam")]
@@ -241,48 +240,42 @@ pub fn setup(
         Msaa::Sample8,
         Transform::from_xyz(0.0, START_Y, START_Z).looking_at(Vec3::ZERO, Vec3::Y),
     ));
-    let mut cube = spawn_cube(
-        256.0,
+    let mut cube = Shape::Cube.create(
         Transform::from_xyz(0.0, 128.0, 0.0),
         &mut commands,
         &mut meshes,
         &mut materials,
     );
     cube.insert(SyncObjectMe::new(&mut rand, &mut count));
-    let mut tetra = spawn_tetra(
-        128.0,
+    let mut tetra = Shape::Tetrahedron.create(
         Transform::from_xyz(-256.0, 192.0, 0.0),
         &mut commands,
         &mut meshes,
         &mut materials,
     );
     tetra.insert(SyncObjectMe::new(&mut rand, &mut count));
-    let mut ico = spawn_ico(
-        96.0,
+    let mut ico = Shape::Icosahedron.create(
         Transform::from_xyz(320.0, 128.0, 0.0),
         &mut commands,
         &mut meshes,
         &mut materials,
     );
     ico.insert(SyncObjectMe::new(&mut rand, &mut count));
-    let mut oct = spawn_oct(
-        192.0,
+    let mut oct = Shape::Octohedron.create(
         Transform::from_xyz(672.0, 128.0, 0.0),
         &mut commands,
         &mut meshes,
         &mut materials,
     );
     oct.insert(SyncObjectMe::new(&mut rand, &mut count));
-    let mut dodec = spawn_dodec(
-        96.0,
+    let mut dodec = Shape::Dodecahedron.create(
         Transform::from_xyz(1056.0, 128.0, 0.0),
         &mut commands,
         &mut meshes,
         &mut materials,
     );
     dodec.insert(SyncObjectMe::new(&mut rand, &mut count));
-    let mut coin = spawn_coin(
-        96.0,
+    let mut coin = Shape::Disc.create(
         Transform::from_xyz(0.0, 128.0, 256.0),
         &mut commands,
         &mut meshes,
@@ -301,14 +294,8 @@ pub fn setup(
     ));
     let mut transform = Transform::from_xyz(0.0, 512.0, -512.0);
     transform.rotate_y(PI);
-    let mut counter = make_counter(
-        256.0,
-        transform,
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-        Value(0),
-    );
+    let mut counter =
+        Shape::Counter(Value(0)).create(transform, &mut commands, &mut meshes, &mut materials);
     counter.insert(SyncObjectMe::new(&mut rand, &mut count));
     #[cfg(feature = "steam")]
     commands.spawn((

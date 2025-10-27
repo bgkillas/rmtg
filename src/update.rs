@@ -342,7 +342,7 @@ pub fn listen_for_mouse(
                     transform.translation.y += 8.0;
                 }
                 if input.pressed(KeyCode::ControlLeft) && pile.len() > 1 {
-                    let len = pile.len() as f32;
+                    let len = pile.len() as f32 * CARD_THICKNESS;
                     let draw_len = if is_reversed(&transform) {
                         1
                     } else {
@@ -422,7 +422,7 @@ pub fn listen_for_mouse(
                 && pile.len() > 1
             {
                 let mut start = *transform;
-                start.translation.y -= pile.len() as f32;
+                start.translation.y -= pile.len() as f32 * CARD_THICKNESS;
                 let mut transform = start;
                 let mut vec = Vec::with_capacity(pile.len());
                 for c in pile.drain(..) {
@@ -926,7 +926,7 @@ pub fn pick_from_list(
                     let myid = SyncObjectMe::new(&mut rand, &mut count);
                     sync_actions.take_owner.push((*id, myid));
                 }
-                let len = pile.len() as f32;
+                let len = pile.len() as f32 * CARD_THICKNESS;
                 let new = pile.remove(card.0);
                 if !pile.is_empty() {
                     let card = pile.last();
@@ -1248,8 +1248,8 @@ pub fn listen_for_deck(
                     .create(
                         Transform::from_xyz(v.x, 256.0, v.y),
                         &mut commands,
-                        &mut materials,
                         &mut meshes,
+                        &mut materials,
                     )
                     .insert(SyncObjectMe::new(&mut rand, &mut count))
                     .id(),
