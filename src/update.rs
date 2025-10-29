@@ -717,7 +717,7 @@ pub fn listen_for_mouse(
                             CounterMenu(entity, v.clone()),
                             Node {
                                 width: Val::Percent(20.0),
-                                height: Val::Px(FONT_HEIGHT * 1.5),
+                                height: Val::Px(FONT_HEIGHT * 2.0 * 1.5),
                                 ..default()
                             },
                             BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
@@ -729,7 +729,7 @@ pub fn listen_for_mouse(
                             },
                             TextFont {
                                 font: font.0.clone(),
-                                font_size: FONT_SIZE,
+                                font_size: FONT_SIZE * 2.0,
                                 ..default()
                             },
                             TextInputContents::default(),
@@ -822,7 +822,9 @@ pub fn esc_menu(
     mut active_input: ResMut<InputFocus>,
     mouse_input: Res<ButtonInput<MouseButton>>,
 ) {
-    if input.just_pressed(KeyCode::Escape) {
+    if input.just_pressed(KeyCode::Escape)
+        || (input.just_pressed(KeyCode::Enter) && matches!(*menu, Menu::Counter))
+    {
         if let Some(e) = side {
             commands.entity(*e).despawn()
         }
