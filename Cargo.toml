@@ -85,7 +85,7 @@ bevy={version="0.17.2", default-features = false, features = [
   "webgl2",
   "x11",
   "wayland",
-  #"debug",
+  "debug",
   "zstd_rust",
 ]}
 itertools="0.14.0"

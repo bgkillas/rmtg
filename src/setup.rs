@@ -6,8 +6,6 @@ use crate::sync::Packet;
 use crate::sync::SendSleeping;
 use crate::sync::{SyncObjectMe, spawn_hand};
 use crate::*;
-use bevy::asset::RenderAssetUsages;
-use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rand::global::GlobalRng;
 #[cfg(feature = "steam")]
@@ -15,7 +13,6 @@ use bevy_tangled::Compression;
 #[cfg(feature = "steam")]
 use bevy_tangled::{Client, ClientTrait, Reliability};
 use bytes::Bytes;
-use image::{GenericImageView, ImageReader};
 #[cfg(feature = "steam")]
 use std::collections::HashMap;
 #[cfg(feature = "steam")]
@@ -24,10 +21,9 @@ use std::collections::hash_map::Entry::Vacant;
 use std::env::args;
 use std::f32::consts::PI;
 use std::fs;
-use std::io::Cursor;
-const MAT_SCALE: f32 = CARD_WIDTH / 45.0;
-pub const MAT_WIDTH: f32 = 593.0 * MAT_SCALE;
-pub const MAT_HEIGHT: f32 = 334.0 * MAT_SCALE;
+pub const MAT_WIDTH: f32 = MAT_HEIGHT * 16.0 / 9.0;
+pub const MAT_HEIGHT: f32 = 5.0 * CARD_HEIGHT + 6.0 * MAT_BAR;
+pub const MAT_BAR: f32 = CARD_HEIGHT / 12.0;
 pub const T: f32 = 256.0;
 pub const W: f32 = 16384.0;
 pub const WALL_COLOR: bevy::prelude::Color = bevy::prelude::Color::srgb_u8(103, 73, 40);
@@ -123,39 +119,42 @@ pub fn setup(
         back: material_handle,
         side: card_side,
     });
-    let mat_mesh = meshes.add(Rectangle::new(MAT_WIDTH, MAT_HEIGHT));
-    let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
-    transform.rotate_x(-PI / 2.0);
-    commands.spawn((
-        Mesh3d(mat_mesh.clone()),
-        MeshMaterial3d(make_mat(&mut materials, &asset_server, [255, 85, 85, 0])),
+    let transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
+    make_mat(
+        &mut materials,
+        &mut meshes,
+        &mut commands,
         transform,
-    ));
+        [255, 85, 85],
+    );
     let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
     transform.scale.x = -1.0;
-    transform.rotate_x(-PI / 2.0);
-    commands.spawn((
-        Mesh3d(mat_mesh.clone()),
-        MeshMaterial3d(make_mat(&mut materials, &asset_server, [85, 85, 255, 0])),
+    make_mat(
+        &mut materials,
+        &mut meshes,
+        &mut commands,
         transform,
-    ));
+        [85, 85, 255],
+    );
     let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
     transform.scale.x = -1.0;
-    transform.rotate_x(-PI / 2.0);
     transform.rotate_y(PI);
-    commands.spawn((
-        Mesh3d(mat_mesh.clone()),
-        MeshMaterial3d(make_mat(&mut materials, &asset_server, [255, 85, 255, 0])),
+    make_mat(
+        &mut materials,
+        &mut meshes,
+        &mut commands,
         transform,
-    ));
+        [255, 85, 255],
+    );
     let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
-    transform.rotate_x(-PI / 2.0);
     transform.rotate_y(PI);
-    commands.spawn((
-        Mesh3d(mat_mesh),
-        MeshMaterial3d(make_mat(&mut materials, &asset_server, [85, 255, 85, 0])),
+    make_mat(
+        &mut materials,
+        &mut meshes,
+        &mut commands,
         transform,
-    ));
+        [85, 255, 85],
+    );
     spawn_hand(0, &mut commands);
     commands.spawn((
         Transform::from_xyz(0.0, -T, 0.0),
@@ -332,41 +331,75 @@ pub struct Floor;
 pub struct Ceiling;
 pub fn make_mat(
     materials: &mut Assets<StandardMaterial>,
-    asset_server: &AssetServer,
-    color: [u8; 4],
-) -> Handle<StandardMaterial> {
-    let bytes = include_bytes!("../assets/mat.png");
-    let image = ImageReader::new(Cursor::new(bytes))
-        .with_guessed_format()
-        .ok()
-        .unwrap()
-        .decode()
-        .ok()
-        .unwrap();
-    let mut rgba = image.to_rgba8();
-    for p in rgba.pixels_mut() {
-        if p.0 != [0, 0, 0, 0] {
-            p.0 = color
-        }
-    }
-    let (width, height) = image.dimensions();
-    let image = Image::new(
-        Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        TextureDimension::D2,
-        rgba.into_raw(),
-        TextureFormat::Rgba8UnormSrgb,
-        RenderAssetUsages::RENDER_WORLD,
-    );
-    let mat = asset_server.add(image);
-    materials.add(StandardMaterial {
-        base_color_texture: Some(mat),
-        alpha_mode: AlphaMode::Premultiplied,
+    meshes: &mut Assets<Mesh>,
+    commands: &mut Commands,
+    transform: Transform,
+    [r, g, b]: [u8; 3],
+) {
+    let mat = materials.add(StandardMaterial {
+        alpha_mode: AlphaMode::Opaque,
         unlit: true,
         cull_mode: None,
+        base_color: bevy::color::Color::srgb_u8(r, g, b),
         ..default()
-    })
+    });
+    commands
+        .spawn((transform, InheritedVisibility::default()))
+        .with_children(|p| {
+            p.spawn((
+                Mesh3d(meshes.add(Rectangle::new(MAT_WIDTH, MAT_BAR))),
+                MeshMaterial3d(mat.clone()),
+                Transform::from_xyz(0.0, 0.0, MAT_HEIGHT / 2.0 - MAT_BAR / 2.0)
+                    .looking_to(Vec3::Y, Vec3::NEG_Z),
+            ));
+            p.spawn((
+                Mesh3d(meshes.add(Rectangle::new(MAT_WIDTH, MAT_BAR))),
+                MeshMaterial3d(mat.clone()),
+                Transform::from_xyz(0.0, 0.0, MAT_BAR / 2.0 - MAT_HEIGHT / 2.0)
+                    .looking_to(Vec3::Y, Vec3::NEG_Z),
+            ));
+            p.spawn((
+                Mesh3d(meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
+                MeshMaterial3d(mat.clone()),
+                Transform::from_xyz(MAT_WIDTH / 2.0 - MAT_BAR / 2.0, 0.0, 0.0)
+                    .looking_to(Vec3::Y, Vec3::NEG_Z),
+            ));
+            p.spawn((
+                Mesh3d(meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
+                MeshMaterial3d(mat.clone()),
+                Transform::from_xyz(MAT_BAR / 2.0 - MAT_WIDTH / 2.0, 0.0, 0.0)
+                    .looking_to(Vec3::Y, Vec3::NEG_Z),
+            ));
+            for i in 1..5 {
+                p.spawn((
+                    Mesh3d(meshes.add(Rectangle::new(CARD_WIDTH, MAT_BAR))),
+                    MeshMaterial3d(mat.clone()),
+                    Transform::from_xyz(
+                        MAT_WIDTH / 2.0 - CARD_WIDTH / 2.0 - MAT_BAR,
+                        0.0,
+                        i as f32 * (CARD_HEIGHT + MAT_BAR) - MAT_HEIGHT / 2.0 + MAT_BAR / 2.0,
+                    )
+                    .looking_to(Vec3::Y, Vec3::NEG_Z),
+                ));
+            }
+            p.spawn((
+                Mesh3d(meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
+                MeshMaterial3d(mat.clone()),
+                Transform::from_xyz(MAT_WIDTH / 2.0 - MAT_BAR * 1.5 - CARD_WIDTH, 0.0, 0.0)
+                    .looking_to(Vec3::Y, Vec3::NEG_Z),
+            ));
+            p.spawn((
+                Mesh3d(meshes.add(Rectangle::new(
+                    MAT_WIDTH - CARD_WIDTH - 2.0 * MAT_BAR,
+                    MAT_BAR,
+                ))),
+                MeshMaterial3d(mat.clone()),
+                Transform::from_xyz(
+                    -CARD_WIDTH / 2.0 - MAT_BAR,
+                    0.0,
+                    MAT_HEIGHT / 2.0 - MAT_BAR * 1.5 - CARD_HEIGHT * 1.5,
+                )
+                .looking_to(Vec3::Y, Vec3::NEG_Z),
+            ));
+        });
 }
