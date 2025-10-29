@@ -799,6 +799,8 @@ fn rotate_right(transform: &mut Mut<Transform>) {
 pub struct CounterMenu(Entity, Value);
 #[derive(Component)]
 pub struct TempDisable;
+#[derive(Component)]
+pub struct CardSpot;
 pub fn reset_layers(
     mut phys: Query<(Entity, &LinearVelocity, &mut CollisionLayers), With<TempDisable>>,
     mut commands: Commands,
@@ -1505,5 +1507,31 @@ pub fn pile_merge(
             }
         }
         commands.entity(top_ent).despawn();
+    }
+}
+pub fn set_card_spot(
+    spatial: SpatialQuery,
+    query: Query<&GlobalTransform, With<CardSpot>>,
+    mut transforms: Query<(&mut Transform, &Pile, Entity), With<SyncObjectMe>>,
+    mut commands: Commands,
+) {
+    for transform in query {
+        let transform = transform.compute_transform();
+        for ent in spatial.shape_intersections(
+            &Collider::cuboid(CARD_WIDTH / 2.0, CARD_HEIGHT / 2.0, CARD_THICKNESS / 2.0),
+            transform.translation,
+            transform.rotation,
+            &SpatialQueryFilter::DEFAULT,
+        ) {
+            if let Ok((mut t, pile, entity)) = transforms.get_mut(ent) {
+                let mut transform = transform;
+                transform.translation.y = pile.len() as f32 * CARD_THICKNESS / 2.0;
+                if transform.translation.distance(t.translation) > CARD_THICKNESS {
+                    *t = transform;
+                    commands.entity(entity).remove::<FollowMouse>();
+                }
+                continue;
+            }
+        }
     }
 }

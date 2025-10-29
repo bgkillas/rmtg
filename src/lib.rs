@@ -2,7 +2,7 @@ use crate::setup::setup;
 use crate::update::{
     ToMoveUp, cam_rotation, cam_translation, esc_menu, follow_mouse, gather_hand, listen_for_deck,
     listen_for_mouse, on_scroll_handler, pick_from_list, pile_merge, register_deck, reset_layers,
-    send_scroll_events, to_move_up, update_hand, update_search_deck,
+    send_scroll_events, set_card_spot, to_move_up, update_hand, update_search_deck,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -131,6 +131,7 @@ pub fn start() -> AppExit {
         Update,
         (
             (
+                set_card_spot,
                 pick_from_list,
                 send_scroll_events,
                 #[cfg(feature = "steam")]

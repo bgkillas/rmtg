@@ -5,6 +5,7 @@ use crate::sync::Packet;
 #[cfg(feature = "steam")]
 use crate::sync::SendSleeping;
 use crate::sync::{SyncObjectMe, spawn_hand};
+use crate::update::CardSpot;
 use crate::*;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rand::global::GlobalRng;
@@ -125,25 +126,26 @@ pub fn setup(
         &mut meshes,
         &mut commands,
         transform,
+        true,
         [255, 85, 85],
     );
-    let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
-    transform.scale.x = -1.0;
+    let transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
     make_mat(
         &mut materials,
         &mut meshes,
         &mut commands,
         transform,
+        false,
         [85, 85, 255],
     );
     let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
-    transform.scale.x = -1.0;
     transform.rotate_y(PI);
     make_mat(
         &mut materials,
         &mut meshes,
         &mut commands,
         transform,
+        false,
         [255, 85, 255],
     );
     let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
@@ -153,6 +155,7 @@ pub fn setup(
         &mut meshes,
         &mut commands,
         transform,
+        true,
         [85, 255, 85],
     );
     spawn_hand(0, &mut commands);
@@ -334,6 +337,7 @@ pub fn make_mat(
     meshes: &mut Assets<Mesh>,
     commands: &mut Commands,
     transform: Transform,
+    right: bool,
     [r, g, b]: [u8; 3],
 ) {
     let mat = materials.add(StandardMaterial {
@@ -343,38 +347,37 @@ pub fn make_mat(
         base_color: bevy::color::Color::srgb_u8(r, g, b),
         ..default()
     });
+    let trans = |x: f32, y: f32, z: f32| -> Transform {
+        Transform::from_xyz(if right { x } else { -x }, y, z)
+    };
     commands
         .spawn((transform, InheritedVisibility::default()))
         .with_children(|p| {
             p.spawn((
                 Mesh3d(meshes.add(Rectangle::new(MAT_WIDTH, MAT_BAR))),
                 MeshMaterial3d(mat.clone()),
-                Transform::from_xyz(0.0, 0.0, MAT_HEIGHT / 2.0 - MAT_BAR / 2.0)
-                    .looking_to(Vec3::Y, Vec3::NEG_Z),
+                trans(0.0, 0.0, MAT_HEIGHT / 2.0 - MAT_BAR / 2.0).looking_to(Vec3::Y, Vec3::NEG_Z),
             ));
             p.spawn((
                 Mesh3d(meshes.add(Rectangle::new(MAT_WIDTH, MAT_BAR))),
                 MeshMaterial3d(mat.clone()),
-                Transform::from_xyz(0.0, 0.0, MAT_BAR / 2.0 - MAT_HEIGHT / 2.0)
-                    .looking_to(Vec3::Y, Vec3::NEG_Z),
+                trans(0.0, 0.0, MAT_BAR / 2.0 - MAT_HEIGHT / 2.0).looking_to(Vec3::Y, Vec3::NEG_Z),
             ));
             p.spawn((
                 Mesh3d(meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
                 MeshMaterial3d(mat.clone()),
-                Transform::from_xyz(MAT_WIDTH / 2.0 - MAT_BAR / 2.0, 0.0, 0.0)
-                    .looking_to(Vec3::Y, Vec3::NEG_Z),
+                trans(MAT_WIDTH / 2.0 - MAT_BAR / 2.0, 0.0, 0.0).looking_to(Vec3::Y, Vec3::NEG_Z),
             ));
             p.spawn((
                 Mesh3d(meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
                 MeshMaterial3d(mat.clone()),
-                Transform::from_xyz(MAT_BAR / 2.0 - MAT_WIDTH / 2.0, 0.0, 0.0)
-                    .looking_to(Vec3::Y, Vec3::NEG_Z),
+                trans(MAT_BAR / 2.0 - MAT_WIDTH / 2.0, 0.0, 0.0).looking_to(Vec3::Y, Vec3::NEG_Z),
             ));
             for i in 1..5 {
                 p.spawn((
                     Mesh3d(meshes.add(Rectangle::new(CARD_WIDTH, MAT_BAR))),
                     MeshMaterial3d(mat.clone()),
-                    Transform::from_xyz(
+                    trans(
                         MAT_WIDTH / 2.0 - CARD_WIDTH / 2.0 - MAT_BAR,
                         0.0,
                         i as f32 * (CARD_HEIGHT + MAT_BAR) - MAT_HEIGHT / 2.0 + MAT_BAR / 2.0,
@@ -382,10 +385,23 @@ pub fn make_mat(
                     .looking_to(Vec3::Y, Vec3::NEG_Z),
                 ));
             }
+            for i in 0..5 {
+                p.spawn((
+                    trans(
+                        MAT_WIDTH / 2.0 - MAT_BAR - CARD_WIDTH / 2.0,
+                        CARD_THICKNESS / 2.0,
+                        MAT_HEIGHT / 2.0
+                            - MAT_BAR
+                            - CARD_HEIGHT / 2.0
+                            - i as f32 * (CARD_HEIGHT + MAT_BAR),
+                    ),
+                    CardSpot,
+                ));
+            }
             p.spawn((
                 Mesh3d(meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
                 MeshMaterial3d(mat.clone()),
-                Transform::from_xyz(MAT_WIDTH / 2.0 - MAT_BAR * 1.5 - CARD_WIDTH, 0.0, 0.0)
+                trans(MAT_WIDTH / 2.0 - MAT_BAR * 1.5 - CARD_WIDTH, 0.0, 0.0)
                     .looking_to(Vec3::Y, Vec3::NEG_Z),
             ));
             p.spawn((
@@ -394,7 +410,7 @@ pub fn make_mat(
                     MAT_BAR,
                 ))),
                 MeshMaterial3d(mat.clone()),
-                Transform::from_xyz(
+                trans(
                     -CARD_WIDTH / 2.0 - MAT_BAR,
                     0.0,
                     MAT_HEIGHT / 2.0 - MAT_BAR * 1.5 - CARD_HEIGHT * 1.5,
