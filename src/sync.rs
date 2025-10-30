@@ -218,7 +218,15 @@ pub fn apply_sync(
     mut count: ResMut<SyncCount>,
     mut client: ResMut<Client>,
     mut colliders: Query<&mut Collider>,
-    mut query_meshes: Query<(&mut Mesh3d, &mut Transform), (Without<Children>, With<ChildOf>)>,
+    mut query_meshes: Query<
+        (&mut Mesh3d, &mut Transform),
+        (
+            Without<Children>,
+            With<ChildOf>,
+            Without<Shape>,
+            Without<Pile>,
+        ),
+    >,
     (search, text, mut shape, mut text3d): (
         Option<Single<(Entity, &SearchDeck)>>,
         Option<Single<&TextInputContents>>,

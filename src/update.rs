@@ -6,6 +6,7 @@ use crate::misc::{adjust_meshes, is_reversed, move_up, new_pile, new_pile_at, re
 use crate::setup::{EscMenu, FontRes, SideMenu, T, W, Wall};
 use crate::sync::{Packet, SyncObjectMe, Trans};
 use crate::*;
+use avian3d::math::Vector;
 use bevy::input::mouse::{
     AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit, MouseWheel,
 };
@@ -87,7 +88,6 @@ pub fn update_hand(
             }
             let idx = entry.0 as f32 - hand.1.count as f32 / 2.0;
             transform.translation = Vec3::new((idx + 0.5) * CARD_WIDTH / 2.0, idx * 2.0, 0.0);
-            transform.rotation = Quat::from_rotation_x(-PI / 2.0);
         }
     }
     hand.1.removed.clear();
@@ -183,7 +183,10 @@ pub fn listen_for_mouse(
     window: Single<&Window, With<PrimaryWindow>>,
     mut pset: ParamSet<(
         SpatialQuery,
-        Query<(&mut Collider, &mut GravityScale, &mut CollisionLayers), Without<ChildOf>>,
+        Query<
+            (&mut Collider, &mut GravityScale, &mut CollisionLayers),
+            Or<(With<Pile>, With<Shape>)>,
+        >,
     )>,
     mut cards: Query<(&mut Pile, &Children, Option<&ChildOf>, Option<&InHand>)>,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
@@ -221,7 +224,15 @@ pub fn listen_for_mouse(
         ResMut<SyncActions>,
         Query<&SyncObjectMe>,
         Query<&SyncObject>,
-        Query<(&mut Mesh3d, &mut Transform), (Without<Children>, With<ChildOf>)>,
+        Query<
+            (&mut Mesh3d, &mut Transform),
+            (
+                Without<Children>,
+                With<ChildOf>,
+                Without<Shape>,
+                Without<Pile>,
+            ),
+        >,
         Option<Single<Entity, With<FollowMouse>>>,
         Query<&mut Shape>,
         ResMut<Menu>,
@@ -235,7 +246,7 @@ pub fn listen_for_mouse(
         Res<FontRes>,
         Query<&mut Text3d>,
         Query<&Children, Without<Pile>>,
-        Query<&mut Transform, Without<ChildOf>>,
+        Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
     ),
 ) {
     if matches!(*menu, Menu::Esc)
@@ -904,7 +915,15 @@ pub fn pick_from_list(
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut query_meshes: Query<(&mut Mesh3d, &mut Transform), (Without<Children>, With<ChildOf>)>,
+    mut query_meshes: Query<
+        (&mut Mesh3d, &mut Transform),
+        (
+            Without<Children>,
+            With<ChildOf>,
+            Without<Shape>,
+            Without<Pile>,
+        ),
+    >,
     (mut colliders, follow, mut rand, mut count, ids, mut sync_actions, others_ids, text): (
         Query<&mut Collider>,
         Option<Single<Entity, With<FollowMouse>>>,
@@ -1455,7 +1474,15 @@ pub fn pile_merge(
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut query_meshes: Query<(&mut Mesh3d, &mut Transform), (Without<Children>, With<ChildOf>)>,
+    mut query_meshes: Query<
+        (&mut Mesh3d, &mut Transform),
+        (
+            Without<Children>,
+            With<ChildOf>,
+            Without<Shape>,
+            Without<Pile>,
+        ),
+    >,
     mut commands: Commands,
     search_deck: Option<Single<(Entity, &SearchDeck)>>,
     text: Option<Single<&TextInputContents>>,
@@ -1512,7 +1539,15 @@ pub fn pile_merge(
 pub fn set_card_spot(
     spatial: SpatialQuery,
     query: Query<&GlobalTransform, With<CardSpot>>,
-    mut transforms: Query<(&mut Transform, &Pile), (With<SyncObjectMe>, Without<FollowMouse>)>,
+    mut transforms: Query<
+        (
+            &mut Transform,
+            &mut LinearVelocity,
+            &mut AngularVelocity,
+            &Pile,
+        ),
+        (With<SyncObjectMe>, Without<FollowMouse>),
+    >,
 ) {
     for transform in query {
         let transform = transform.compute_transform();
@@ -1522,10 +1557,12 @@ pub fn set_card_spot(
             transform.rotation,
             &SpatialQueryFilter::DEFAULT,
         ) {
-            if let Ok((mut t, pile)) = transforms.get_mut(ent) {
+            if let Ok((mut t, mut lv, mut av, pile)) = transforms.get_mut(ent) {
                 let mut transform = transform;
                 transform.translation.y = pile.len() as f32 * CARD_THICKNESS / 2.0;
                 if transform.translation.distance(t.translation) > CARD_THICKNESS {
+                    lv.0 = Vector::default();
+                    av.0 = Vector::default();
                     *t = transform;
                 }
                 continue;

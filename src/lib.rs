@@ -22,7 +22,7 @@ use std::{iter, mem, slice};
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = 500.0;
 pub const CARD_HEIGHT: f32 = 700.0;
-pub const CARD_THICKNESS: f32 = 1.0;
+pub const CARD_THICKNESS: f32 = 2.0;
 pub const START_Y: f32 = 8192.0;
 pub const START_Z: f32 = 4096.0;
 pub const GRAVITY: f32 = 512.0;

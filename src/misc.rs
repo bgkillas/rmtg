@@ -27,7 +27,7 @@ pub fn new_pile(
     id: Option<SyncObject>,
 ) -> Option<Entity> {
     let size = pile.len() as f32 * CARD_THICKNESS;
-    let transform = Transform::from_xyz(v.x, size, v.y);
+    let transform = Transform::from_xyz(v.x, size / 2.0, v.y);
     new_pile_at(
         pile,
         card_stock,
@@ -91,7 +91,7 @@ pub fn move_up(
     }
 }
 fn side(size: f32, meshes: &mut Assets<Mesh>) -> (Handle<Mesh>, Transform, Transform) {
-    let mesh = meshes.add(Rectangle::new(2.0 * size, CARD_HEIGHT));
+    let mesh = meshes.add(Rectangle::new(size, CARD_HEIGHT));
     (
         mesh,
         Transform::from_xyz(CARD_WIDTH / 2.0, 0.0, 0.0).looking_to(Dir3::NEG_X, Dir3::Z),
@@ -99,7 +99,7 @@ fn side(size: f32, meshes: &mut Assets<Mesh>) -> (Handle<Mesh>, Transform, Trans
     )
 }
 fn topbottom(size: f32, meshes: &mut Assets<Mesh>) -> (Handle<Mesh>, Transform, Transform) {
-    let mesh2 = meshes.add(Rectangle::new(CARD_WIDTH, 2.0 * size));
+    let mesh2 = meshes.add(Rectangle::new(CARD_WIDTH, size));
     (
         mesh2,
         Transform::from_xyz(0.0, 0.0, -CARD_HEIGHT / 2.0).looking_to(Dir3::Z, Dir3::NEG_Y),
@@ -138,7 +138,7 @@ pub fn new_pile_at<'a>(
         AngularDamping(ANG_DAMPING),
         SLEEP,
         CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::cuboid(CARD_WIDTH, 2.0 * size, CARD_HEIGHT),
+        Collider::cuboid(CARD_WIDTH, size, CARD_HEIGHT),
         CollisionEventsEnabled,
         GravityScale(if follow_mouse || parent.is_some() {
             0.0
@@ -149,12 +149,12 @@ pub fn new_pile_at<'a>(
             (
                 Mesh3d(card_stock.clone()),
                 MeshMaterial3d(material_handle),
-                Transform::from_xyz(0.0, size, 0.0).looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
+                Transform::from_xyz(0.0, size / 2.0, 0.0).looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
             ),
             (
                 Mesh3d(card_stock),
                 MeshMaterial3d(card_back),
-                Transform::from_xyz(0.0, -size, 0.0).looking_to(Dir3::Y, Dir3::NEG_Z)
+                Transform::from_xyz(0.0, -size / 2.0, 0.0).looking_to(Dir3::Y, Dir3::NEG_Z)
             ),
             (
                 Mesh3d(mesh.clone()),
@@ -199,15 +199,23 @@ pub fn adjust_meshes(
     pile: &Pile,
     children: &Children,
     meshes: &mut Assets<Mesh>,
-    query: &mut Query<(&mut Mesh3d, &mut Transform), (Without<Children>, With<ChildOf>)>,
+    query: &mut Query<
+        (&mut Mesh3d, &mut Transform),
+        (
+            Without<Children>,
+            With<ChildOf>,
+            Without<Shape>,
+            Without<Pile>,
+        ),
+    >,
     transform: &mut Transform,
     collider: &mut Collider,
 ) {
     let size = pile.len() as f32 * CARD_THICKNESS;
-    *collider = Collider::cuboid(CARD_WIDTH, 2.0 * size, CARD_HEIGHT);
+    *collider = Collider::cuboid(CARD_WIDTH, size, CARD_HEIGHT);
     let mut children = children.iter();
     let (_, mut top) = query.get_mut(children.next().unwrap()).unwrap();
-    let delta = top.translation.y - size;
+    let delta = top.translation.y - size / 2.0;
     top.translation.y -= delta;
     let (_, mut bottom) = query.get_mut(children.next().unwrap()).unwrap();
     bottom.translation.y += delta;
