@@ -1512,8 +1512,7 @@ pub fn pile_merge(
 pub fn set_card_spot(
     spatial: SpatialQuery,
     query: Query<&GlobalTransform, With<CardSpot>>,
-    mut transforms: Query<(&mut Transform, &Pile, Entity), With<SyncObjectMe>>,
-    mut commands: Commands,
+    mut transforms: Query<(&mut Transform, &Pile), (With<SyncObjectMe>, Without<FollowMouse>)>,
 ) {
     for transform in query {
         let transform = transform.compute_transform();
@@ -1523,12 +1522,11 @@ pub fn set_card_spot(
             transform.rotation,
             &SpatialQueryFilter::DEFAULT,
         ) {
-            if let Ok((mut t, pile, entity)) = transforms.get_mut(ent) {
+            if let Ok((mut t, pile)) = transforms.get_mut(ent) {
                 let mut transform = transform;
                 transform.translation.y = pile.len() as f32 * CARD_THICKNESS / 2.0;
                 if transform.translation.distance(t.translation) > CARD_THICKNESS {
                     *t = transform;
-                    commands.entity(entity).remove::<FollowMouse>();
                 }
                 continue;
             }
