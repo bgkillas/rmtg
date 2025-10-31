@@ -27,7 +27,7 @@ use rand::Rng;
 use std::f32::consts::PI;
 use std::mem;
 pub fn gather_hand(
-    mut hand: Single<(&Transform, &mut Hand, Entity), With<Owned>>,
+    mut hand: Single<(&Transform, &mut Hand, Entity)>,
     mut cards: Query<
         (
             Entity,
@@ -35,6 +35,7 @@ pub fn gather_hand(
             &mut LinearVelocity,
             &mut AngularVelocity,
             &Pile,
+            Option<&SyncObject>,
         ),
         (
             With<Pile>,
@@ -45,6 +46,9 @@ pub fn gather_hand(
     >,
     spatial: SpatialQuery,
     mut commands: Commands,
+    mut sync_actions: ResMut<SyncActions>,
+    mut count: ResMut<SyncCount>,
+    mut rand: Single<&mut WyRand, With<GlobalRng>>,
 ) {
     let intersections = spatial.shape_intersections(
         &Collider::cuboid(4096.0, 256.0, 32.0),
@@ -53,9 +57,14 @@ pub fn gather_hand(
         &SpatialQueryFilter::DEFAULT,
     );
     for ent in intersections {
-        if let Ok((entity, mut grav, mut linvel, mut angvel, pile)) = cards.get_mut(ent)
+        if let Ok((entity, mut grav, mut linvel, mut angvel, pile, obj)) = cards.get_mut(ent)
             && pile.len() == 1
         {
+            if let Some(n) = obj {
+                sync_actions
+                    .take_owner
+                    .push((*n, SyncObjectMe::new(&mut rand, &mut count)))
+            }
             linvel.0 = default();
             angvel.0 = default();
             grav.0 = 0.0;
@@ -67,7 +76,7 @@ pub fn gather_hand(
     }
 }
 pub fn update_hand(
-    mut hand: Single<(&Transform, &mut Hand, Option<&Children>), With<Owned>>,
+    mut hand: Single<(&Transform, &mut Hand, Option<&Children>)>,
     mut card: Query<(&mut InHand, &mut Transform), (With<InHand>, Without<Hand>)>,
 ) {
     if let Some(children) = hand.2 {
@@ -196,7 +205,7 @@ pub fn listen_for_mouse(
         Option<&InOtherHand>,
     )>,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
-    mut hands: Query<(&mut Hand, Option<&Owned>, Entity)>,
+    mut hand: Single<(&mut Hand, Entity)>,
     mut vels: Query<(&mut LinearVelocity, &mut AngularVelocity)>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -355,12 +364,9 @@ pub fn listen_for_mouse(
                     repaint_face(&mut mats, &mut materials, pile.first(), children);
                     colliders.get_mut(entity).unwrap().1.0 = GRAVITY;
                 }
-                if let Some(parent) = parent
-                    && let Some(inhand) = inhand
-                {
-                    let mut hand = hands.get_mut(parent.0).unwrap().0;
-                    hand.count -= 1;
-                    hand.removed.push(inhand.0);
+                if let Some(inhand) = inhand {
+                    hand.0.count -= 1;
+                    hand.0.removed.push(inhand.0);
                     transform.translation.y += 128.0;
                 } else {
                     transform.translation.y += 8.0;
@@ -543,7 +549,7 @@ pub fn listen_for_mouse(
                 KeyCode::Digit8,
                 KeyCode::Digit9,
             ]) {
-                if parent.is_none() {
+                if parent.is_none() && inother.is_none() {
                     let mut n = 0;
                     macro_rules! get {
                         ($(($a:expr, $b:expr)),*) => {
@@ -566,7 +572,6 @@ pub fn listen_for_mouse(
                         (KeyCode::Digit9, 9)
                     );
                     let n = n.min(pile.len());
-                    let mut hand = hands.iter_mut().find(|e| e.1.is_some()).unwrap();
                     let mut vec = Vec::new();
                     let len = if is_reversed(&transform) {
                         n
@@ -586,7 +591,7 @@ pub fn listen_for_mouse(
                             card_base.side.clone(),
                             Transform::default(),
                             false,
-                            Some(hand.2),
+                            Some(hand.1),
                             None,
                             Some(id),
                         )

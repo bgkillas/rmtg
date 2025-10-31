@@ -248,8 +248,6 @@ fn test_get_deck() {
     app.update();
 }
 #[derive(Component, Default, Debug)]
-pub struct Owned;
-#[derive(Component, Default, Debug)]
 pub struct InHand(pub usize);
 #[derive(Component, Default, Debug)]
 pub struct Hand {

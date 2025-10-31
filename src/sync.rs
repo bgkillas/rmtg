@@ -210,7 +210,7 @@ pub fn apply_sync(
     asset_server: Res<AssetServer>,
     down: Res<Download>,
     mut commands: Commands,
-    hand: Single<Entity, (With<Owned>, With<Hand>)>,
+    hand: Single<Entity, With<Hand>>,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -601,7 +601,7 @@ pub fn spawn_hand(me: usize, commands: &mut Commands) {
     if me == 1 || me == 3 {
         transform.rotate_y(PI);
     }
-    commands.spawn((transform, Hand::default(), Owned));
+    commands.spawn((transform, Hand::default()));
 }
 #[cfg(all(feature = "steam", feature = "ip"))]
 pub fn new_lobby(
