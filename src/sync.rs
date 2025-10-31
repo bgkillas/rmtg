@@ -1,6 +1,6 @@
 use crate::counters::Value;
 use crate::download::add_images;
-use crate::misc::{adjust_meshes, new_pile_at, repaint_face};
+use crate::misc::{adjust_meshes, make_cam, make_cur, new_pile_at, repaint_face};
 #[cfg(feature = "steam")]
 use crate::setup::SteamInfo;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
@@ -8,6 +8,7 @@ use crate::shapes::Shape;
 use crate::update::{GiveEnts, SearchDeck, update_search};
 use crate::*;
 use bevy::diagnostic::FrameCount;
+use bevy::window::PrimaryWindow;
 use bevy_rand::global::GlobalRng;
 use bevy_rich_text3d::Text3d;
 use bevy_tangled::{ClientTrait, Compression, PeerId, Reliability};
@@ -37,6 +38,9 @@ pub fn get_sync(
     client: Res<Client>,
     send_sleep: Res<SendSleeping>,
     frame: Res<FrameCount>,
+    camera: Single<(&Camera, &GlobalTransform), (With<Camera3d>, Without<SyncObjectMe>)>,
+    window: Single<&Window, With<PrimaryWindow>>,
+    spatial: SpatialQuery,
 ) {
     let send_sleep = send_sleep
         .0
@@ -125,6 +129,28 @@ pub fn get_sync(
                 Reliability::Reliable,
                 Compression::Compressed,
             )
+            .unwrap();
+    }
+    let Some(cursor_position) = window.cursor_position() else {
+        return;
+    };
+    let (camera, camera_transform) = camera.into_inner();
+    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        return;
+    };
+    let hit = spatial.cast_ray(
+        ray.origin,
+        ray.direction,
+        f32::MAX,
+        true,
+        &SpatialQueryFilter::DEFAULT,
+    );
+    if let Some(hit) = hit {
+        let cam = camera_transform.translation();
+        let cur = ray.origin + ray.direction * hit.distance;
+        let packet = Packet::Indicator(cam.into(), cur.into());
+        client
+            .broadcast(&packet, Reliability::Reliable, Compression::Compressed)
             .unwrap();
     }
     let packet = Packet::Pos(vec);
@@ -227,11 +253,20 @@ pub fn apply_sync(
             Without<Pile>,
         ),
     >,
-    (search, text, mut shape, mut text3d): (
+    (search, text, mut shape, mut text3d, mut cams, mut curs, peers): (
         Option<Single<(Entity, &SearchDeck)>>,
         Option<Single<&TextInputContents>>,
         Query<&mut Shape>,
         Query<&mut Text3d>,
+        Query<
+            (&CameraInd, &mut Transform),
+            (Without<SyncObject>, Without<ChildOf>, Without<CursorInd>),
+        >,
+        Query<
+            (&CursorInd, &mut Transform),
+            (Without<SyncObject>, Without<ChildOf>, Without<CameraInd>),
+        >,
+        Res<Peers>,
     ),
 ) {
     let mut ignore = HashSet::new();
@@ -407,10 +442,13 @@ pub fn apply_sync(
                     .create(trans.into(), &mut commands, &mut meshes, &mut materials)
                     .insert(id);
             }
-            Packet::SetUser(id) => {
-                info!("joined as number {} user", id);
-                commands.entity(*hand).despawn();
-                spawn_hand(id, &mut commands);
+            Packet::SetUser(peer, id) => {
+                if peer == client.my_id() {
+                    info!("joined as number {} user", id);
+                    commands.entity(*hand).despawn();
+                    spawn_hand(id, &mut commands);
+                }
+                peers.0.lock().unwrap().insert(peer, id);
             }
             Packet::Dead(lid) => {
                 let user = sender;
@@ -585,11 +623,49 @@ pub fn apply_sync(
                     run(children, e);
                 }
             }
+            Packet::Indicator(cam, cur) => {
+                if let Some(id) = peers.0.lock().unwrap().get(&sender) {
+                    if let Some(mut t) = cams
+                        .iter_mut()
+                        .find_map(|(a, t)| if a.0 == sender { Some(t) } else { None })
+                    {
+                        t.translation = cam.into()
+                    } else {
+                        make_cam(
+                            &mut commands,
+                            sender,
+                            *id,
+                            cam.into(),
+                            &mut materials,
+                            &mut meshes,
+                        );
+                    }
+                    if let Some(mut t) = curs
+                        .iter_mut()
+                        .find_map(|(a, t)| if a.0 == sender { Some(t) } else { None })
+                    {
+                        t.translation = cur.into()
+                    } else {
+                        make_cur(
+                            &mut commands,
+                            sender,
+                            *id,
+                            cam.into(),
+                            &mut materials,
+                            &mut meshes,
+                        );
+                    }
+                }
+            }
         }
     });
     #[cfg(feature = "steam")]
     client.flush();
 }
+#[derive(Component)]
+pub struct CameraInd(pub PeerId);
+#[derive(Component)]
+pub struct CursorInd(pub PeerId);
 pub fn spawn_hand(me: usize, commands: &mut Commands) {
     let mut transform = match me {
         0 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
@@ -610,6 +686,8 @@ pub fn new_lobby(
     down: Res<Download>,
     #[cfg(feature = "ip")] send_sleep: Res<SendSleeping>,
     #[cfg(feature = "ip")] give: Res<GiveEnts>,
+    #[cfg(feature = "ip")] peers: Res<Peers>,
+    #[cfg(feature = "ip")] rempeers: Res<RemPeers>,
 ) {
     if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft]) {
         if input.just_pressed(KeyCode::KeyN) {
@@ -619,44 +697,63 @@ pub fn new_lobby(
         } else if input.just_pressed(KeyCode::KeyM) {
             info!("hosting ip");
             #[cfg(feature = "ip")]
-            let send = send_sleep.0.clone();
-            #[cfg(feature = "ip")]
-            let give = give.0.clone();
-            #[cfg(feature = "ip")]
-            client
-                .host_ip_runtime(
-                    Some(Box::new(move |client, peer| {
-                        client
-                            .send(
-                                peer,
-                                &Packet::SetUser(peer.0 as usize),
-                                Reliability::Reliable,
-                                Compression::Compressed,
-                            )
-                            .unwrap();
-                        send.store(true, std::sync::atomic::Ordering::Relaxed);
-                    })),
-                    Some(Box::new(move |_, peer| {
-                        give.lock().unwrap().push(peer);
-                    })),
-                    &down.runtime.0,
-                )
-                .unwrap();
+            {
+                let send = send_sleep.0.clone();
+                let give = give.0.clone();
+                let rempeers = rempeers.0.clone();
+                let peers = peers.0.clone();
+                let peers2 = peers.clone();
+                client
+                    .host_ip_runtime(
+                        Some(Box::new(move |client, peer| {
+                            peers.lock().unwrap().insert(peer, peer.0 as usize);
+                            client
+                                .broadcast(
+                                    &Packet::SetUser(peer, peer.0 as usize),
+                                    Reliability::Reliable,
+                                    Compression::Compressed,
+                                )
+                                .unwrap();
+                            client
+                                .send(
+                                    peer,
+                                    &Packet::SetUser(client.my_id(), 0),
+                                    Reliability::Reliable,
+                                    Compression::Compressed,
+                                )
+                                .unwrap();
+                            send.store(true, std::sync::atomic::Ordering::Relaxed);
+                        })),
+                        Some(Box::new(move |_, peer| {
+                            peers2.lock().unwrap().remove(&peer);
+                            rempeers.lock().unwrap().push(peer);
+                            give.lock().unwrap().push(peer);
+                        })),
+                        &down.runtime.0,
+                    )
+                    .unwrap();
+            }
         } else if input.just_pressed(KeyCode::KeyK) {
             info!("joining ip");
             #[cfg(feature = "ip")]
-            let send = send_sleep.0.clone();
-            #[cfg(feature = "ip")]
-            client
-                .join_ip_runtime(
-                    "127.0.0.1".parse().unwrap(),
-                    Some(Box::new(move |_, _| {
-                        send.store(true, std::sync::atomic::Ordering::Relaxed);
-                    })),
-                    None,
-                    &down.runtime.0,
-                )
-                .unwrap();
+            {
+                let send = send_sleep.0.clone();
+                let rempeers = rempeers.0.clone();
+                let peers = peers.0.clone();
+                client
+                    .join_ip_runtime(
+                        "127.0.0.1".parse().unwrap(),
+                        Some(Box::new(move |_, _| {
+                            send.store(true, std::sync::atomic::Ordering::Relaxed);
+                        })),
+                        Some(Box::new(move |_, peer| {
+                            peers.lock().unwrap().remove(&peer);
+                            rempeers.lock().unwrap().push(peer);
+                        })),
+                        &down.runtime.0,
+                    )
+                    .unwrap();
+            }
         }
     }
 }
@@ -713,7 +810,8 @@ pub enum Packet {
     Counter(SyncObject, Value),
     Reorder(SyncObjectMe, Vec<String>),
     Draw(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize),
-    SetUser(usize),
+    SetUser(PeerId, usize),
+    Indicator(Pos, Pos),
 }
 #[derive(Encode, Decode, Debug)]
 pub struct Phys {
@@ -732,29 +830,43 @@ impl Phys {
     }
 }
 #[derive(Encode, Decode, Debug, Copy, Clone)]
+pub struct Pos(u32, u32, u32);
+impl From<Pos> for Vec3 {
+    fn from(value: Pos) -> Self {
+        unsafe { mem::transmute::<Pos, Vec3>(value) }
+    }
+}
+impl From<Vec3> for Pos {
+    fn from(value: Vec3) -> Self {
+        unsafe { mem::transmute::<Vec3, Pos>(value) }
+    }
+}
+#[derive(Encode, Decode, Debug, Copy, Clone)]
+pub struct Rot(u128);
+#[derive(Encode, Decode, Debug, Copy, Clone)]
 pub struct Trans {
-    pub translation: (u32, u32, u32),
-    pub rotation: u128,
+    pub translation: Pos,
+    pub rotation: Rot,
 }
 impl Trans {
     pub fn from(value: &GlobalTransform) -> Self {
         Self {
-            translation: unsafe { mem::transmute::<Vec3, (u32, u32, u32)>(value.translation()) },
-            rotation: unsafe { mem::transmute::<Quat, u128>(value.rotation()) },
+            translation: unsafe { mem::transmute::<Vec3, Pos>(value.translation()) },
+            rotation: unsafe { mem::transmute::<Quat, Rot>(value.rotation()) },
         }
     }
     pub fn from_transform(value: &Transform) -> Self {
         Self {
-            translation: unsafe { mem::transmute::<Vec3, (u32, u32, u32)>(value.translation) },
-            rotation: unsafe { mem::transmute::<Quat, u128>(value.rotation) },
+            translation: unsafe { mem::transmute::<Vec3, Pos>(value.translation) },
+            rotation: unsafe { mem::transmute::<Quat, Rot>(value.rotation) },
         }
     }
 }
 impl From<Trans> for Transform {
     fn from(value: Trans) -> Self {
         Self {
-            translation: unsafe { mem::transmute::<(u32, u32, u32), Vec3>(value.translation) },
-            rotation: unsafe { mem::transmute::<u128, Quat>(value.rotation) },
+            translation: unsafe { mem::transmute::<Pos, Vec3>(value.translation) },
+            rotation: unsafe { mem::transmute::<Rot, Quat>(value.rotation) },
             scale: Vec3::splat(1.0),
         }
     }

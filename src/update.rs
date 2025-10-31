@@ -4,7 +4,7 @@ use crate::download::{
 };
 use crate::misc::{adjust_meshes, is_reversed, move_up, new_pile, new_pile_at, repaint_face};
 use crate::setup::{EscMenu, FontRes, SideMenu, T, W, Wall};
-use crate::sync::{InOtherHand, Packet, SyncObjectMe, Trans};
+use crate::sync::{CameraInd, CursorInd, InOtherHand, Packet, SyncObjectMe, Trans};
 use crate::*;
 use avian3d::math::Vector;
 use bevy::input::mouse::{
@@ -1606,6 +1606,27 @@ pub fn set_card_spot(
                 }
                 continue;
             }
+        }
+    }
+}
+pub fn rem_peers(
+    rem_peers: Res<RemPeers>,
+    cams: Query<(Entity, &CameraInd)>,
+    curs: Query<(Entity, &CursorInd)>,
+    mut commands: Commands,
+) {
+    for peer in rem_peers.0.lock().unwrap().drain(..) {
+        if let Some(e) = cams
+            .iter()
+            .find_map(|(e, a)| if a.0 == peer { Some(e) } else { None })
+        {
+            commands.entity(e).despawn()
+        }
+        if let Some(e) = curs
+            .iter()
+            .find_map(|(e, a)| if a.0 == peer { Some(e) } else { None })
+        {
+            commands.entity(e).despawn()
         }
     }
 }

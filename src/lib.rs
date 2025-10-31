@@ -2,8 +2,8 @@ use crate::setup::setup;
 use crate::update::{
     GiveEnts, ToMoveUp, cam_rotation, cam_translation, esc_menu, follow_mouse, gather_hand,
     give_ents, listen_for_deck, listen_for_mouse, on_scroll_handler, pick_from_list, pile_merge,
-    register_deck, reset_layers, send_scroll_events, set_card_spot, to_move_up, update_hand,
-    update_search_deck,
+    register_deck, rem_peers, reset_layers, send_scroll_events, set_card_spot, to_move_up,
+    update_hand, update_search_deck,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -12,9 +12,10 @@ use bevy_framepace::FramepacePlugin;
 use bevy_prng::WyRand;
 use bevy_rand::prelude::EntropyPlugin;
 use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
-use bevy_tangled::Client;
+use bevy_tangled::{Client, PeerId};
 use bevy_ui_text_input::TextInputPlugin;
 use rand::RngCore;
+use std::collections::HashMap;
 use std::mem::MaybeUninit;
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
@@ -29,6 +30,13 @@ pub const START_Z: f32 = 4096.0;
 pub const GRAVITY: f32 = 512.0;
 pub const LIN_DAMPING: f32 = 0.25;
 pub const ANG_DAMPING: f32 = 0.25;
+pub const PLAYER0: bevy::color::Color = bevy::color::Color::srgb_u8(255, 85, 85);
+pub const PLAYER1: bevy::color::Color = bevy::color::Color::srgb_u8(85, 85, 255);
+pub const PLAYER2: bevy::color::Color = bevy::color::Color::srgb_u8(255, 85, 255);
+pub const PLAYER3: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 85);
+pub const PLAYER4: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 255);
+pub const PLAYER5: bevy::color::Color = bevy::color::Color::srgb_u8(255, 255, 85);
+pub const PLAYER: [bevy::color::Color; 6] = [PLAYER0, PLAYER1, PLAYER2, PLAYER3, PLAYER4, PLAYER5];
 mod counters;
 mod download;
 mod misc;
@@ -117,6 +125,8 @@ pub fn start() -> AppExit {
     .insert_resource(ToMoveUp::default())
     .insert_resource(SyncCount::default())
     .insert_resource(Sent::default())
+    .insert_resource(Peers::default())
+    .insert_resource(RemPeers::default())
     .insert_resource(Menu::default())
     .insert_resource(GiveEnts::default())
     .insert_resource(SendSleeping::default())
@@ -154,6 +164,7 @@ pub fn start() -> AppExit {
             )
                 .chain(),
             give_ents,
+            rem_peers,
         ),
     )
     .add_observer(on_scroll_handler)
@@ -247,6 +258,10 @@ fn test_get_deck() {
     app.add_systems(Update, test);
     app.update();
 }
+#[derive(Resource, Default, Debug)]
+pub struct Peers(pub Arc<Mutex<HashMap<PeerId, usize>>>);
+#[derive(Resource, Default, Debug)]
+pub struct RemPeers(pub Arc<Mutex<Vec<PeerId>>>);
 #[derive(Component, Default, Debug)]
 pub struct InHand(pub usize);
 #[derive(Component, Default, Debug)]

@@ -40,6 +40,8 @@ pub fn setup(
     mut count: ResMut<SyncCount>,
     #[cfg(feature = "steam")] send_sleep: Res<SendSleeping>,
     #[cfg(feature = "steam")] give: Res<GiveEnts>,
+    #[cfg(feature = "steam")] peers: Res<Peers>,
+    #[cfg(feature = "steam")] rempeers: Res<RemPeers>,
 ) {
     #[cfg(feature = "steam")]
     {
@@ -47,6 +49,9 @@ pub fn setup(
         let who2 = who.clone();
         let send = send_sleep.0.clone();
         let give = give.0.clone();
+        let rempeers = rempeers.0.clone();
+        let peers = peers.0.clone();
+        let peers2 = peers.clone();
         let _ = client.init_steam(
             Some(Box::new(move |client, peer| {
                 if client.is_host() {
@@ -61,10 +66,18 @@ pub fn setup(
                             k += 1;
                         }
                     }
+                    peers.lock().unwrap().insert(peer, k);
+                    client
+                        .broadcast(
+                            &Packet::SetUser(peer, k),
+                            Reliability::Reliable,
+                            Compression::Compressed,
+                        )
+                        .unwrap();
                     client
                         .send(
                             peer,
-                            &Packet::SetUser(k),
+                            &Packet::SetUser(client.my_id(), 0),
                             Reliability::Reliable,
                             Compression::Compressed,
                         )
@@ -73,6 +86,8 @@ pub fn setup(
                 send.store(true, std::sync::atomic::Ordering::Relaxed);
             })),
             Some(Box::new(move |client, peer| {
+                peers2.lock().unwrap().remove(&peer);
+                rempeers.lock().unwrap().push(peer);
                 if client.is_host() {
                     give.lock().unwrap().push(peer);
                     let mut who = who2.lock().unwrap();
@@ -124,7 +139,7 @@ pub fn setup(
         &mut commands,
         transform,
         true,
-        [255, 85, 85],
+        PLAYER0,
     );
     let transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
     make_mat(
@@ -133,7 +148,7 @@ pub fn setup(
         &mut commands,
         transform,
         false,
-        [85, 85, 255],
+        PLAYER1,
     );
     let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
     transform.rotate_y(PI);
@@ -143,7 +158,7 @@ pub fn setup(
         &mut commands,
         transform,
         false,
-        [255, 85, 255],
+        PLAYER2,
     );
     let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
     transform.rotate_y(PI);
@@ -153,7 +168,7 @@ pub fn setup(
         &mut commands,
         transform,
         true,
-        [85, 255, 85],
+        PLAYER3,
     );
     spawn_hand(0, &mut commands);
     commands.spawn((
@@ -335,13 +350,12 @@ pub fn make_mat(
     commands: &mut Commands,
     transform: Transform,
     right: bool,
-    [r, g, b]: [u8; 3],
+    color: bevy::color::Color,
 ) {
     let mat = materials.add(StandardMaterial {
         alpha_mode: AlphaMode::Opaque,
         unlit: true,
-        cull_mode: None,
-        base_color: bevy::color::Color::srgb_u8(r, g, b),
+        base_color: color,
         ..default()
     });
     let trans = |x: f32, y: f32, z: f32| -> Transform {
@@ -353,22 +367,26 @@ pub fn make_mat(
             p.spawn((
                 Mesh3d(meshes.add(Rectangle::new(MAT_WIDTH, MAT_BAR))),
                 MeshMaterial3d(mat.clone()),
-                trans(0.0, 0.0, MAT_HEIGHT / 2.0 - MAT_BAR / 2.0).looking_to(Vec3::Y, Vec3::NEG_Z),
+                trans(0.0, 0.0, MAT_HEIGHT / 2.0 - MAT_BAR / 2.0)
+                    .looking_to(Vec3::NEG_Y, Vec3::NEG_Z),
             ));
             p.spawn((
                 Mesh3d(meshes.add(Rectangle::new(MAT_WIDTH, MAT_BAR))),
                 MeshMaterial3d(mat.clone()),
-                trans(0.0, 0.0, MAT_BAR / 2.0 - MAT_HEIGHT / 2.0).looking_to(Vec3::Y, Vec3::NEG_Z),
+                trans(0.0, 0.0, MAT_BAR / 2.0 - MAT_HEIGHT / 2.0)
+                    .looking_to(Vec3::NEG_Y, Vec3::NEG_Z),
             ));
             p.spawn((
                 Mesh3d(meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
                 MeshMaterial3d(mat.clone()),
-                trans(MAT_WIDTH / 2.0 - MAT_BAR / 2.0, 0.0, 0.0).looking_to(Vec3::Y, Vec3::NEG_Z),
+                trans(MAT_WIDTH / 2.0 - MAT_BAR / 2.0, 0.0, 0.0)
+                    .looking_to(Vec3::NEG_Y, Vec3::NEG_Z),
             ));
             p.spawn((
                 Mesh3d(meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
                 MeshMaterial3d(mat.clone()),
-                trans(MAT_BAR / 2.0 - MAT_WIDTH / 2.0, 0.0, 0.0).looking_to(Vec3::Y, Vec3::NEG_Z),
+                trans(MAT_BAR / 2.0 - MAT_WIDTH / 2.0, 0.0, 0.0)
+                    .looking_to(Vec3::NEG_Y, Vec3::NEG_Z),
             ));
             for i in 1..5 {
                 p.spawn((
@@ -379,7 +397,7 @@ pub fn make_mat(
                         0.0,
                         i as f32 * (CARD_HEIGHT + MAT_BAR) - MAT_HEIGHT / 2.0 + MAT_BAR / 2.0,
                     )
-                    .looking_to(Vec3::Y, Vec3::NEG_Z),
+                    .looking_to(Vec3::NEG_Y, Vec3::NEG_Z),
                 ));
             }
             for i in 0..5 {
@@ -399,7 +417,7 @@ pub fn make_mat(
                 Mesh3d(meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
                 MeshMaterial3d(mat.clone()),
                 trans(MAT_WIDTH / 2.0 - MAT_BAR * 1.5 - CARD_WIDTH, 0.0, 0.0)
-                    .looking_to(Vec3::Y, Vec3::NEG_Z),
+                    .looking_to(Vec3::NEG_Y, Vec3::NEG_Z),
             ));
             p.spawn((
                 Mesh3d(meshes.add(Rectangle::new(
@@ -412,7 +430,7 @@ pub fn make_mat(
                     0.0,
                     MAT_HEIGHT / 2.0 - MAT_BAR * 1.5 - CARD_HEIGHT * 1.5,
                 )
-                .looking_to(Vec3::Y, Vec3::NEG_Z),
+                .looking_to(Vec3::NEG_Y, Vec3::NEG_Z),
             ));
         });
 }

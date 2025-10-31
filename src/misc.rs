@@ -1,8 +1,9 @@
 use crate::setup::Wall;
-use crate::sync::SyncObjectMe;
+use crate::sync::{CameraInd, CursorInd, SyncObjectMe};
 use crate::*;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalRng;
+use bevy_tangled::PeerId;
 pub fn make_material(
     materials: &mut Assets<StandardMaterial>,
     top: Handle<Image>,
@@ -234,4 +235,44 @@ pub fn adjust_meshes(
     let (mut bottommesh, mut bottomt) = query.get_mut(children.next().unwrap()).unwrap();
     bottommesh.0 = mesh2;
     *bottomt = t2;
+}
+pub fn make_cam(
+    commands: &mut Commands,
+    peer: PeerId,
+    id: usize,
+    pos: Vec3,
+    materials: &mut Assets<StandardMaterial>,
+    meshes: &mut Assets<Mesh>,
+) {
+    commands.spawn((
+        Mesh3d(meshes.add(Sphere::new(128.0))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            alpha_mode: AlphaMode::Opaque,
+            unlit: true,
+            base_color: PLAYER[id % PLAYER.len()],
+            ..default()
+        })),
+        Transform::from_xyz(pos.x, pos.y, pos.z),
+        CameraInd(peer),
+    ));
+}
+pub fn make_cur(
+    commands: &mut Commands,
+    peer: PeerId,
+    id: usize,
+    pos: Vec3,
+    materials: &mut Assets<StandardMaterial>,
+    meshes: &mut Assets<Mesh>,
+) {
+    commands.spawn((
+        Mesh3d(meshes.add(Sphere::new(32.0))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            alpha_mode: AlphaMode::Opaque,
+            unlit: true,
+            base_color: PLAYER[id % PLAYER.len()],
+            ..default()
+        })),
+        Transform::from_xyz(pos.x, pos.y, pos.z),
+        CursorInd(peer),
+    ));
 }
