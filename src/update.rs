@@ -4,7 +4,7 @@ use crate::download::{
 };
 use crate::misc::{adjust_meshes, is_reversed, move_up, new_pile, new_pile_at, repaint_face};
 use crate::setup::{EscMenu, FontRes, SideMenu, T, W, Wall};
-use crate::sync::{Packet, SyncObjectMe, Trans};
+use crate::sync::{InOtherHand, Packet, SyncObjectMe, Trans};
 use crate::*;
 use avian3d::math::Vector;
 use bevy::input::mouse::{
@@ -188,7 +188,13 @@ pub fn listen_for_mouse(
             Or<(With<Pile>, With<Shape>)>,
         >,
     )>,
-    mut cards: Query<(&mut Pile, &Children, Option<&ChildOf>, Option<&InHand>)>,
+    mut cards: Query<(
+        &mut Pile,
+        &Children,
+        Option<&ChildOf>,
+        Option<&InHand>,
+        Option<&InOtherHand>,
+    )>,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut hands: Query<(&mut Hand, Option<&Owned>, Entity)>,
     mut vels: Query<(&mut LinearVelocity, &mut AngularVelocity)>,
@@ -273,7 +279,7 @@ pub fn listen_for_mouse(
         let Ok(mut transform) = transform.get_mut(entity) else {
             return;
         };
-        if let Ok((mut pile, children, parent, inhand)) = cards.get_mut(entity) {
+        if let Ok((mut pile, children, parent, inhand, inother)) = cards.get_mut(entity) {
             if input.just_pressed(KeyCode::KeyF) {
                 transform.rotate_local_z(PI);
                 if let Some(entity) =
@@ -342,6 +348,13 @@ pub fn listen_for_mouse(
                     clipboard.set_text(&text);
                 }
             } else if mouse_input.just_pressed(MouseButton::Left) {
+                if inother.is_some() {
+                    let mut ent = commands.entity(entity);
+                    ent.remove::<InOtherHand>();
+                    ent.remove::<SleepingDisabled>();
+                    repaint_face(&mut mats, &mut materials, pile.first(), children);
+                    colliders.get_mut(entity).unwrap().1.0 = GRAVITY;
+                }
                 if let Some(parent) = parent
                     && let Some(inhand) = inhand
                 {
