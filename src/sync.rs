@@ -282,12 +282,16 @@ pub fn apply_sync(
                             && let Some(children) = children
                         {
                             if in_hand {
-                                commands.entity(entity).insert(InOtherHand);
+                                let mut ent = commands.entity(entity);
+                                ent.insert(InOtherHand);
+                                ent.insert(SleepingDisabled);
                                 mats.get_mut(*children.first().unwrap()).unwrap().0 =
                                     mats.get_mut(*children.get(1).unwrap()).unwrap().0.clone();
                                 gravity.0 = 0.0
                             } else {
-                                commands.entity(entity).remove::<InOtherHand>();
+                                let mut ent = commands.entity(entity);
+                                ent.remove::<InOtherHand>();
+                                ent.remove::<SleepingDisabled>();
                                 repaint_face(&mut mats, &mut materials, pile.first(), children);
                                 gravity.0 = GRAVITY;
                             }

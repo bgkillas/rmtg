@@ -1140,7 +1140,9 @@ pub fn cam_rotation(
         let delta_pitch = -mouse_motion.delta.y * 0.001;
         let (yaw, pitch, roll) = cam.rotation.to_euler(EulerRot::YXZ);
         let yaw = yaw + delta_yaw;
-        let pitch = pitch + delta_pitch;
+        let pitch = (pitch + delta_pitch)
+            .max((-PI / 2.0).next_up())
+            .min((PI / 2.0).next_down());
         cam.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, roll);
     }
 }
