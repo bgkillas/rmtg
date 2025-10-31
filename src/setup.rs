@@ -80,22 +80,26 @@ pub fn setup(
         );
         let mut next = false;
         let mut lobby = None;
-        let mut f = |arg: &str| {
-            //TODO
+        for arg in args().skip(1) {
             if arg == "+connect_lobby" {
                 next = true;
             } else if next {
                 lobby = Some(arg.parse::<u64>().unwrap());
             }
-        };
-        for arg in args().skip(1) {
-            f(&arg)
-        }
-        for arg in client.args().split(' ') {
-            f(arg)
         }
         if let Some(lobby) = lobby {
             client.join_steam(lobby);
+        } else {
+            for arg in client.args().split(' ') {
+                if arg == "+connect_lobby" {
+                    next = true;
+                } else if next {
+                    lobby = Some(arg.parse::<u64>().unwrap());
+                }
+            }
+            if let Some(lobby) = lobby {
+                client.join_steam(lobby);
+            }
         }
     }
     let font = include_bytes!("../assets/noto.ttf");
