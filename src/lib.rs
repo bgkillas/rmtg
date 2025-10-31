@@ -1,8 +1,9 @@
 use crate::setup::setup;
 use crate::update::{
-    ToMoveUp, cam_rotation, cam_translation, esc_menu, follow_mouse, gather_hand, listen_for_deck,
-    listen_for_mouse, on_scroll_handler, pick_from_list, pile_merge, register_deck, reset_layers,
-    send_scroll_events, set_card_spot, to_move_up, update_hand, update_search_deck,
+    GiveEnts, ToMoveUp, cam_rotation, cam_translation, esc_menu, follow_mouse, gather_hand,
+    give_ents, listen_for_deck, listen_for_mouse, on_scroll_handler, pick_from_list, pile_merge,
+    register_deck, reset_layers, send_scroll_events, set_card_spot, to_move_up, update_hand,
+    update_search_deck,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -113,10 +114,11 @@ pub fn start() -> AppExit {
         ..default()
     })
     .insert_resource(clipboard)
-    .insert_resource(ToMoveUp(Vec::new()))
+    .insert_resource(ToMoveUp::default())
     .insert_resource(SyncCount::default())
     .insert_resource(Sent::default())
     .insert_resource(Menu::default())
+    .insert_resource(GiveEnts::default())
     .insert_resource(SendSleeping::default())
     .insert_resource(SyncActions::default())
     .insert_resource(game_clipboard)
@@ -131,25 +133,28 @@ pub fn start() -> AppExit {
         Update,
         (
             (
-                set_card_spot,
-                pick_from_list,
-                send_scroll_events,
-                #[cfg(feature = "steam")]
-                display_steam_info,
-                listen_for_deck,
-                register_deck,
-                cam_translation,
-                cam_rotation,
-                esc_menu,
-                #[cfg(all(feature = "steam", feature = "ip"))]
-                new_lobby,
-                update_search_deck,
-                (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
-            ),
-            to_move_up,
-            reset_layers,
-        )
-            .chain(),
+                (
+                    set_card_spot,
+                    pick_from_list,
+                    send_scroll_events,
+                    #[cfg(feature = "steam")]
+                    display_steam_info,
+                    listen_for_deck,
+                    register_deck,
+                    cam_translation,
+                    cam_rotation,
+                    esc_menu,
+                    #[cfg(all(feature = "steam", feature = "ip"))]
+                    new_lobby,
+                    update_search_deck,
+                    (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
+                ),
+                to_move_up,
+                reset_layers,
+            )
+                .chain(),
+            give_ents,
+        ),
     )
     .add_observer(on_scroll_handler)
     .add_observer(pile_merge)

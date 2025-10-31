@@ -5,7 +5,7 @@ use crate::sync::Packet;
 #[cfg(feature = "steam")]
 use crate::sync::SendSleeping;
 use crate::sync::{SyncObjectMe, spawn_hand};
-use crate::update::CardSpot;
+use crate::update::{CardSpot, GiveEnts};
 use crate::*;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rand::global::GlobalRng;
@@ -39,12 +39,14 @@ pub fn setup(
     mut rand: Single<&mut WyRand, With<GlobalRng>>,
     mut count: ResMut<SyncCount>,
     #[cfg(feature = "steam")] send_sleep: Res<SendSleeping>,
+    #[cfg(feature = "steam")] give: Res<GiveEnts>,
 ) {
     #[cfg(feature = "steam")]
     {
         let who = Arc::new(Mutex::new(HashMap::new()));
         let who2 = who.clone();
         let send = send_sleep.0.clone();
+        let give = give.0.clone();
         let _ = client.init_steam(
             Some(Box::new(move |client, peer| {
                 if client.is_host() {
@@ -71,8 +73,8 @@ pub fn setup(
                 send.store(true, std::sync::atomic::Ordering::Relaxed);
             })),
             Some(Box::new(move |client, peer| {
-                //TODO give ents to host
                 if client.is_host() {
+                    give.lock().unwrap().push(peer);
                     let mut who = who2.lock().unwrap();
                     who.retain(|_, p| *p != peer)
                 }
@@ -89,17 +91,6 @@ pub fn setup(
         }
         if let Some(lobby) = lobby {
             client.join_steam(lobby);
-        } else {
-            for arg in client.args().split(' ') {
-                if arg == "+connect_lobby" {
-                    next = true;
-                } else if next {
-                    lobby = Some(arg.parse::<u64>().unwrap());
-                }
-            }
-            if let Some(lobby) = lobby {
-                client.join_steam(lobby);
-            }
         }
     }
     let font = include_bytes!("../assets/noto.ttf");

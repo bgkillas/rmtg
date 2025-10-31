@@ -1317,8 +1317,8 @@ pub fn register_deck(
             sent.del(id);
             client
                 .send(
-                    PeerId(id.user),
-                    &Packet::Received(SyncObjectMe(id.id)),
+                    id.user,
+                    &Packet::Received(id.id),
                     Reliability::Reliable,
                     Compression::Compressed,
                 )
@@ -1335,8 +1335,27 @@ pub fn to_move_up(
         move_up(ent, &ents, &mut pset);
     }
 }
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct ToMoveUp(pub Vec<Entity>);
+pub fn give_ents(
+    to_do: Res<GiveEnts>,
+    ents: Query<&SyncObject>,
+    mut sync_actions: ResMut<SyncActions>,
+    mut rand: Single<&mut WyRand, With<GlobalRng>>,
+    mut count: ResMut<SyncCount>,
+) {
+    for peer in to_do.0.lock().unwrap().drain(..) {
+        for id in ents {
+            if id.user == peer {
+                sync_actions
+                    .take_owner
+                    .push((*id, SyncObjectMe::new(&mut rand, &mut count)));
+            }
+        }
+    }
+}
+#[derive(Resource, Default)]
+pub struct GiveEnts(pub Arc<Mutex<Vec<PeerId>>>);
 pub fn on_scroll_handler(
     mut scroll: On<Scroll>,
     mut query: Query<(&mut ScrollPosition, &Node, &ComputedNode)>,

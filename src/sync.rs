@@ -5,12 +5,12 @@ use crate::misc::{adjust_meshes, new_pile_at, repaint_face};
 use crate::setup::SteamInfo;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
 use crate::shapes::Shape;
-use crate::update::{SearchDeck, update_search};
+use crate::update::{GiveEnts, SearchDeck, update_search};
 use crate::*;
 use bevy::diagnostic::FrameCount;
 use bevy_rand::global::GlobalRng;
 use bevy_rich_text3d::Text3d;
-use bevy_tangled::{ClientTrait, Compression, Reliability};
+use bevy_tangled::{ClientTrait, Compression, PeerId, Reliability};
 use bevy_ui_text_input::TextInputContents;
 use bitcode::{Decode, Encode};
 use std::collections::{HashMap, HashSet};
@@ -85,8 +85,8 @@ pub fn get_sync(
             .broadcast(
                 &Packet::Counter(
                     SyncObject {
-                        id: id.0,
-                        user: client.my_id().0,
+                        id,
+                        user: client.my_id(),
                     },
                     to,
                 ),
@@ -240,9 +240,9 @@ pub fn apply_sync(
         let data = packet.data;
         match data {
             Packet::Pos(data) => {
-                let user = sender.raw();
+                let user = sender;
                 for (lid, trans, phys, in_hand) in data {
-                    let id = SyncObject { user, id: lid.0 };
+                    let id = SyncObject { user, id: lid };
                     if sent.has(&id) || ignore.contains(&id) {
                         continue;
                     }
@@ -306,20 +306,20 @@ pub fn apply_sync(
             }
             Packet::Take(from, to) => {
                 let new = SyncObject {
-                    user: sender.raw(),
-                    id: to.0,
+                    user: sender,
+                    id: to,
                 };
                 ignore.insert(new);
-                if from.user == client.my_id().raw() {
+                if from.user == client.my_id() {
                     client
                         .broadcast(
-                            &Packet::Received(SyncObjectMe(from.id)),
+                            &Packet::Received(from.id),
                             Reliability::Reliable,
                             Compression::Compressed,
                         )
                         .unwrap();
                     if let Some((_, _, _, e, _)) =
-                        queryme.iter().find(|(id, _, _, _, _)| id.0 == from.id)
+                        queryme.iter().find(|(id, _, _, _, _)| **id == from.id)
                     {
                         count.rem(1);
                         commands
@@ -337,8 +337,8 @@ pub fn apply_sync(
                 }
             }
             Packet::Request(lid) => {
-                let user = sender.raw();
-                let id = SyncObject { user, id: lid.0 };
+                let user = sender;
+                let id = SyncObject { user, id: lid };
                 if sent.add(id) {
                     if let Some((b, c, e)) = queryme.iter_mut().find_map(|(a, b, c, e, _)| {
                         if a.0 == lid.0 { Some((b, c, e)) } else { None }
@@ -368,13 +368,13 @@ pub fn apply_sync(
                 }
             }
             Packet::Received(lid) => {
-                let user = sender.raw();
-                let id = SyncObject { user, id: lid.0 };
+                let user = sender;
+                let id = SyncObject { user, id: lid };
                 sent.del(id);
             }
             Packet::New(lid, pile, trans) => {
-                let user = sender.raw();
-                let id = SyncObject { user, id: lid.0 };
+                let user = sender;
+                let id = SyncObject { user, id: lid };
                 let deck = down.get_deck.clone();
                 let client = down.client.0.clone();
                 let asset_server = asset_server.clone();
@@ -395,8 +395,8 @@ pub fn apply_sync(
                         Compression::Compressed,
                     )
                     .unwrap();
-                let user = sender.raw();
-                let id = SyncObject { user, id: lid.0 };
+                let user = sender;
+                let id = SyncObject { user, id: lid };
                 sent.del(id);
                 ignore.insert(id);
                 shape
@@ -409,8 +409,8 @@ pub fn apply_sync(
                 spawn_hand(id, &mut commands);
             }
             Packet::Dead(lid) => {
-                let user = sender.raw();
-                let id = SyncObject { user, id: lid.0 };
+                let user = sender;
+                let id = SyncObject { user, id: lid };
                 if let Some(e) = query.iter_mut().find_map(
                     |(a, _, _, _, _, _, b, _, _, _, _)| if *a == id { Some(b) } else { None },
                 ) {
@@ -423,8 +423,8 @@ pub fn apply_sync(
                 }
             }
             Packet::Flip(lid) => {
-                let user = sender.raw();
-                let id = SyncObject { user, id: lid.0 };
+                let user = sender;
+                let id = SyncObject { user, id: lid };
                 if let Some((transform, children, mut pile)) = query.iter_mut().find_map(
                     |(a, b, _, _, _, _, _, _, c, d, _)| {
                         if *a == id { Some((b, c, d)) } else { None }
@@ -442,8 +442,8 @@ pub fn apply_sync(
                 }
             }
             Packet::Reorder(lid, order) => {
-                let user = sender.raw();
-                let id = SyncObject { user, id: lid.0 };
+                let user = sender;
+                let id = SyncObject { user, id: lid };
                 if let Some((pile, children, entity, transform)) = query.iter_mut().find_map(
                     |(a, t, _, _, _, _, e, _, c, d, _)| {
                         if *a == id { Some((d, c, e, t)) } else { None }
@@ -498,8 +498,8 @@ pub fn apply_sync(
                 }
             }
             Packet::Draw(lid, to, start) => {
-                let user = sender.raw();
-                let id = SyncObject { user, id: lid.0 };
+                let user = sender;
+                let id = SyncObject { user, id: lid };
                 if let Some((mut pile, children, mut transform, entity)) =
                     query.iter_mut().find_map(
                         |(a, t, _, _, _, _, e, _, c, d, _)| {
@@ -511,7 +511,7 @@ pub fn apply_sync(
                 {
                     let len = to.len();
                     for ((id, trans), card) in to.into_iter().zip(pile.drain(start - len..start)) {
-                        let syncobject = SyncObject { user, id: id.0 };
+                        let syncobject = SyncObject { user, id };
                         new_pile_at(
                             Pile::Single(card.into()),
                             card_base.stock.clone(),
@@ -565,10 +565,10 @@ pub fn apply_sync(
                         *t.get_single_mut().unwrap() = v.0.to_string()
                     }
                 };
-                if id.user == client.my_id().0 {
+                if id.user == client.my_id() {
                     if let Some((Some(children), e)) = queryme.iter_mut().find_map(
                         |(a, _, _, e, c)| {
-                            if a.0 == id.id { Some((c, e)) } else { None }
+                            if *a == id.id { Some((c, e)) } else { None }
                         },
                     ) {
                         run(children, e);
@@ -605,6 +605,7 @@ pub fn new_lobby(
     mut client: ResMut<Client>,
     down: Res<Download>,
     #[cfg(feature = "ip")] send_sleep: Res<SendSleeping>,
+    #[cfg(feature = "ip")] give: Res<GiveEnts>,
 ) {
     if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft]) {
         if input.just_pressed(KeyCode::KeyN) {
@@ -615,6 +616,8 @@ pub fn new_lobby(
             info!("hosting ip");
             #[cfg(feature = "ip")]
             let send = send_sleep.0.clone();
+            #[cfg(feature = "ip")]
+            let give = give.0.clone();
             #[cfg(feature = "ip")]
             client
                 .host_ip_runtime(
@@ -629,7 +632,9 @@ pub fn new_lobby(
                             .unwrap();
                         send.store(true, std::sync::atomic::Ordering::Relaxed);
                     })),
-                    None,
+                    Some(Box::new(move |_, peer| {
+                        give.lock().unwrap().push(peer);
+                    })),
                     &down.runtime.0,
                 )
                 .unwrap();
@@ -750,12 +755,12 @@ impl From<Trans> for Transform {
         }
     }
 }
-#[derive(Component, Default, Debug, Encode, Decode, Eq, PartialEq, Hash, Copy, Clone)]
+#[derive(Component, Debug, Encode, Decode, Eq, PartialEq, Hash, Copy, Clone)]
 pub struct SyncObject {
-    pub user: u64,
-    pub id: u64,
+    pub user: PeerId,
+    pub id: SyncObjectMe,
 }
-#[derive(Component, Default, Debug, Encode, Decode, Eq, PartialEq, Copy, Clone)]
+#[derive(Component, Default, Debug, Encode, Decode, Eq, PartialEq, Copy, Clone, Hash)]
 pub struct SyncObjectMe(pub u64);
 impl SyncObjectMe {
     pub fn new(rand: &mut Single<&mut WyRand, With<GlobalRng>>, count: &mut SyncCount) -> Self {
