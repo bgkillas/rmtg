@@ -330,7 +330,7 @@ pub fn spawn_tetra<'a>(
                     ];
                     let dot = n[0] * ox + n[1] * oy + n[2] * oz;
                     indecies.push(a[0]);
-                    if dot > 0.0 {
+                    if dot < 0.0 {
                         indecies.push(b[0]);
                         indecies.push(c[0]);
                     } else {
@@ -372,30 +372,30 @@ pub fn spawn_tetra<'a>(
     ));
     ent.with_children(|parent| {
         for (i, [mut x, mut y, mut z]) in faces.into_iter().enumerate() {
-            if x < 0.0 {
+            if x > 0.0 {
                 x -= EPSILON;
             } else {
                 x += EPSILON;
             }
-            if y < 0.0 {
+            if y > 0.0 {
                 y -= EPSILON;
             } else {
                 y += EPSILON;
             }
-            if z < 0.0 {
+            if z > 0.0 {
                 z -= EPSILON;
             } else {
                 z += EPSILON;
             }
             parent.spawn((
-                Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
+                Transform::from_xyz(x, y, z)
+                    .looking_to(Dir3::new(Vec3::new(x, y, z)).unwrap(), Dir3::Z),
                 Text3d::new((i + 1).to_string()),
                 Side(i + 1),
                 Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                     unlit: true,
-
                     alpha_mode: AlphaMode::Multiply,
                     base_color: bevy::prelude::Color::BLACK,
                     ..default()

@@ -71,6 +71,7 @@ pub fn setup(
                 send.store(true, std::sync::atomic::Ordering::Relaxed);
             })),
             Some(Box::new(move |client, peer| {
+                //TODO give ents to host
                 if client.is_host() {
                     let mut who = who2.lock().unwrap();
                     who.retain(|_, p| *p != peer)
@@ -80,6 +81,7 @@ pub fn setup(
         let mut next = false;
         let mut lobby = None;
         let mut f = |arg: &str| {
+            //TODO
             if arg == "+connect_lobby" {
                 next = true;
             } else if next {

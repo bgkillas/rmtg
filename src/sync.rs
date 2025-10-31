@@ -452,11 +452,35 @@ pub fn apply_sync(
                     && let Some(children) = children
                 {
                     let pile = pile.into_inner();
+                    let mut fail = false;
                     if let Pile::Multiple(pile) = pile {
                         for (i, id) in order.into_iter().enumerate() {
-                            let n = pile[i..].iter().position(|c| c.id == id).unwrap() + i;
-                            pile.swap(i, n);
+                            if let Some(k) = pile[i..].iter().position(|c| c.id == id) {
+                                pile.swap(i, k + i);
+                            } else {
+                                fail = true;
+                                break;
+                            }
                         }
+                    } else {
+                        fail = true;
+                    }
+                    if fail {
+                        if let Some(search) = &search
+                            && search.1.0 == entity
+                        {
+                            commands.entity(search.0).despawn()
+                        }
+                        commands.entity(entity).despawn();
+                        client
+                            .send(
+                                sender,
+                                &Packet::Request(lid),
+                                Reliability::Reliable,
+                                Compression::Compressed,
+                            )
+                            .unwrap();
+                        return;
                     }
                     if let Some(search) = &search
                         && search.1.0 == entity
