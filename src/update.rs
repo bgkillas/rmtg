@@ -255,13 +255,14 @@ pub fn listen_for_mouse(
         Option<Single<Entity, With<SideMenu>>>,
         Option<Single<(Entity, &SearchDeck)>>,
     ),
-    (mut rand, text, font, mut text3d, children, mut transform): (
+    (mut rand, text, font, mut text3d, children, mut transform, hover_map): (
         Single<&mut WyRand, With<GlobalRng>>,
         Option<Single<&TextInputContents>>,
         Res<FontRes>,
         Query<&mut Text3d>,
         Query<&Children, Without<Pile>>,
         Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
+        Res<HoverMap>,
     ),
 ) {
     if matches!(*menu, Menu::Esc)
@@ -357,6 +358,13 @@ pub fn listen_for_mouse(
                     clipboard.set_text(&text);
                 }
             } else if mouse_input.just_pressed(MouseButton::Left) {
+                if matches!(*menu, Menu::Side | Menu::Counter)
+                    && hover_map
+                        .values()
+                        .all(|a| a.keys().all(|e| e.to_bits() != u32::MAX as u64))
+                {
+                    return;
+                }
                 if inother.is_some() {
                     let mut ent = commands.entity(entity);
                     ent.remove::<InOtherHand>();
@@ -1146,10 +1154,13 @@ pub fn cam_rotation(
     mouse_motion: Res<AccumulatedMouseMotion>,
     mut cam: Single<&mut Transform, With<Camera3d>>,
     menu: Res<Menu>,
-    active_input: Res<InputFocus>,
+    hover_map: Res<HoverMap>,
 ) {
     if matches!(*menu, Menu::Esc)
-        || (matches!(*menu, Menu::Side | Menu::Counter) && active_input.get().is_some())
+        || (matches!(*menu, Menu::Side | Menu::Counter)
+            && hover_map
+                .values()
+                .all(|a| a.keys().all(|e| e.to_bits() != u32::MAX as u64)))
     {
         return;
     }
