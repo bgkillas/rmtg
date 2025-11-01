@@ -105,7 +105,7 @@ wasm-bindgen = {version="0.2.105", optional = true}
 wasm-bindgen-futures = {version="0.4.55", optional = true}
 web-sys = { version = "0.3.82", optional = true, features = ["Clipboard", "Navigator", "Window"] }
 console_error_panic_hook = { version = "0.1.7", optional = true }
-avian3d={version="0.4.0", features = ["simd"]}
+avian3d={version="0.4.1", features = ["simd"]}
 bevy_rich_text3d = {git="https://github.com/mintlu8/bevy_rich_text3d"}
 bevy_tangled = {git = "https://github.com/bgkillas/bevy_tangled", default-features = false, features = ["bevy", "compress"]}
 bitcode = {git="https://github.com/SoftbearStudios/bitcode", version = "0.6.7", branch = "large_c_style_enums"}

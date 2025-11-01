@@ -26,6 +26,8 @@ use kalc_lib::units::{Number, Options, Variable};
 use rand::Rng;
 use std::f32::consts::PI;
 use std::mem;
+#[derive(Component)]
+pub struct HandIgnore;
 pub fn gather_hand(
     mut hand: Single<(&Transform, &mut Hand, Entity)>,
     mut cards: Query<
@@ -36,12 +38,14 @@ pub fn gather_hand(
             &mut AngularVelocity,
             &Pile,
             Option<&SyncObject>,
+            Option<&HandIgnore>,
         ),
         (
             With<Pile>,
             Without<Hand>,
             Without<InHand>,
             Without<FollowMouse>,
+            Without<FollowOtherMouse>,
         ),
     >,
     spatial: SpatialQuery,
@@ -57,21 +61,25 @@ pub fn gather_hand(
         &SpatialQueryFilter::DEFAULT,
     );
     for ent in intersections {
-        if let Ok((entity, mut grav, mut linvel, mut angvel, pile, obj)) = cards.get_mut(ent)
+        if let Ok((entity, mut grav, mut linvel, mut angvel, pile, obj, ign)) = cards.get_mut(ent)
             && pile.len() == 1
         {
-            if let Some(n) = obj {
-                sync_actions
-                    .take_owner
-                    .push((*n, SyncObjectMe::new(&mut rand, &mut count)))
+            if ign.is_some() {
+                commands.entity(entity).remove::<HandIgnore>();
+            } else {
+                if let Some(n) = obj {
+                    sync_actions
+                        .take_owner
+                        .push((*n, SyncObjectMe::new(&mut rand, &mut count)))
+                }
+                linvel.0 = default();
+                angvel.0 = default();
+                grav.0 = 0.0;
+                commands.entity(entity).insert(InHand(hand.1.count));
+                commands.entity(entity).insert(RigidBodyDisabled);
+                hand.1.count += 1;
+                commands.entity(hand.2).add_child(entity);
             }
-            linvel.0 = default();
-            angvel.0 = default();
-            grav.0 = 0.0;
-            commands.entity(entity).insert(InHand(hand.1.count));
-            commands.entity(entity).insert(RigidBodyDisabled);
-            hand.1.count += 1;
-            commands.entity(hand.2).add_child(entity);
         }
     }
 }
@@ -305,14 +313,14 @@ pub fn listen_for_mouse(
                 }
             } else if input.just_pressed(KeyCode::KeyR) {
                 if pile.len() > 1 {
-                    if let Ok(id) = others_ids.get(entity) {
-                        let myid = SyncObjectMe::new(&mut rand, &mut count);
-                        sync_actions.take_owner.push((*id, myid));
-                    }
                     pile.shuffle(&mut rand);
                     let card = pile.last();
                     repaint_face(&mut mats, &mut materials, card, children);
                     if let Ok(id) = ids.get(entity) {
+                        sync_actions
+                            .reorder_me
+                            .push((*id, pile.iter().map(|a| a.id.clone()).collect()));
+                    } else if let Ok(id) = others_ids.get(entity) {
                         sync_actions
                             .reorder
                             .push((*id, pile.iter().map(|a| a.id.clone()).collect()));
@@ -420,8 +428,14 @@ pub fn listen_for_mouse(
                         Some(id),
                     );
                     if let Ok(lid) = ids.get(entity) {
-                        sync_actions.draw.push((
+                        sync_actions.draw_me.push((
                             *lid,
+                            vec![(id, Trans::from_transform(&transform))],
+                            draw_len,
+                        ));
+                    } else if let Ok(oid) = others_ids.get(entity) {
+                        sync_actions.draw.push((
+                            *oid,
                             vec![(id, Trans::from_transform(&transform))],
                             draw_len,
                         ));
@@ -449,7 +463,10 @@ pub fn listen_for_mouse(
                     commands
                         .entity(entity)
                         .insert(FollowMouse)
+                        .insert(SleepingDisabled)
                         .remove::<InHand>()
+                        .remove::<InOtherHand>()
+                        .remove::<FollowOtherMouse>()
                         .remove::<RigidBodyDisabled>()
                         .remove_parent_in_place();
                 }
@@ -488,7 +505,10 @@ pub fn listen_for_mouse(
                 }
                 if let Ok(lid) = ids.get(entity) {
                     let len = vec.len();
-                    sync_actions.draw.push((*lid, vec, len));
+                    sync_actions.draw_me.push((*lid, vec, len));
+                } else if let Ok(id) = others_ids.get(entity) {
+                    let len = vec.len();
+                    sync_actions.draw.push((*id, vec, len));
                 }
                 if ids.contains(entity) {
                     count.rem(1);
@@ -624,7 +644,12 @@ pub fn listen_for_mouse(
                         if !is_reversed(&transform) {
                             vec.reverse();
                         }
-                        sync_actions.draw.push((*lid, vec, len));
+                        sync_actions.draw_me.push((*lid, vec, len));
+                    } else if let Ok(id) = others_ids.get(entity) {
+                        if !is_reversed(&transform) {
+                            vec.reverse();
+                        }
+                        sync_actions.draw.push((*id, vec, len));
                     }
                     if !pile.is_empty() {
                         let card = pile.last();
@@ -730,8 +755,11 @@ pub fn listen_for_mouse(
                         sync_actions.take_owner.push((*id, myid));
                     }
                     phys.0 = 0.0;
-                    commands.entity(entity).insert(FollowMouse);
-                    commands.entity(entity).insert(SleepingDisabled);
+                    commands
+                        .entity(entity)
+                        .insert(FollowMouse)
+                        .insert(SleepingDisabled)
+                        .remove::<FollowOtherMouse>();
                 }
             } else if input.just_pressed(KeyCode::KeyC)
                 && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
@@ -1010,8 +1038,14 @@ pub fn pick_from_list(
                     Some(id),
                 );
                 if let Ok(lid) = ids.get(entity) {
-                    sync_actions.draw.push((
+                    sync_actions.draw_me.push((
                         *lid,
+                        vec![(id, Trans::from_transform(&transform))],
+                        card.0 + 1,
+                    ));
+                } else if let Ok(oid) = others_ids.get(entity) {
+                    sync_actions.draw.push((
+                        *oid,
                         vec![(id, Trans::from_transform(&transform))],
                         card.0 + 1,
                     ));
@@ -1520,7 +1554,10 @@ pub fn search(
 }
 pub fn pile_merge(
     collision: On<CollisionStart>,
-    mut piles: Query<(Entity, &mut Pile, &mut Transform, &Children, &mut Collider)>,
+    mut piles: Query<
+        (Entity, &mut Pile, &mut Transform, &Children, &mut Collider),
+        (Without<SyncObject>, Without<InHand>),
+    >,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,

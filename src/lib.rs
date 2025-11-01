@@ -847,6 +847,8 @@ pub enum GameClipboard {
 #[derive(Component, Default, Debug)]
 pub struct FollowMouse;
 #[derive(Component, Default, Debug)]
+pub struct FollowOtherMouse;
+#[derive(Component, Default, Debug)]
 pub struct ZoomHold(pub u64, pub bool);
 #[cfg(not(feature = "wasm"))]
 #[derive(Resource)]

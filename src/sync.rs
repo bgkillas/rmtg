@@ -5,7 +5,7 @@ use crate::misc::{adjust_meshes, make_cam, make_cur, new_pile_at, repaint_face};
 use crate::setup::SteamInfo;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
 use crate::shapes::Shape;
-use crate::update::{GiveEnts, SearchDeck, update_search};
+use crate::update::{GiveEnts, HandIgnore, SearchDeck, update_search};
 use crate::*;
 use bevy::diagnostic::FrameCount;
 use bevy::window::PrimaryWindow;
@@ -54,6 +54,7 @@ pub fn get_sync(
                 Trans::from(transform),
                 Phys::from(vel, ang),
                 in_hand.is_some(),
+                follow.is_some(),
             ))
         }
     }
@@ -108,10 +109,41 @@ pub fn get_sync(
             )
             .unwrap();
     }
+    for (id, order) in sync_actions.reorder_me.drain(..) {
+        client
+            .broadcast(
+                &Packet::Reorder(
+                    SyncObject {
+                        id,
+                        user: client.my_id(),
+                    },
+                    order,
+                ),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
+            .unwrap();
+    }
     for (id, to, start) in sync_actions.draw.drain(..) {
         client
             .broadcast(
                 &Packet::Draw(id, to, start),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
+            .unwrap();
+    }
+    for (id, to, start) in sync_actions.draw_me.drain(..) {
+        client
+            .broadcast(
+                &Packet::Draw(
+                    SyncObject {
+                        id,
+                        user: client.my_id(),
+                    },
+                    to,
+                    start,
+                ),
                 Reliability::Reliable,
                 Compression::Compressed,
             )
@@ -219,24 +251,27 @@ pub fn apply_sync(
             Option<&Children>,
             Option<&mut Pile>,
             &mut GravityScale,
+            Option<&FollowOtherMouse>,
         ),
-        With<Children>,
+        (With<Children>, Without<SyncObjectMe>),
     >,
     mut queryme: Query<
         (
             &SyncObjectMe,
             &GlobalTransform,
-            Option<&Pile>,
+            Option<&mut Pile>,
             Entity,
             Option<&Children>,
+            Option<&InHand>,
+            &mut Transform,
         ),
-        Without<SyncObject>,
+        (Without<SyncObject>, Without<Mesh3d>),
     >,
     mut sent: ResMut<Sent>,
     asset_server: Res<AssetServer>,
     down: Res<Download>,
     mut commands: Commands,
-    hand: Single<Entity, With<Hand>>,
+    mut hand: Single<(Entity, &mut Hand)>,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -260,11 +295,21 @@ pub fn apply_sync(
         Query<&mut Text3d>,
         Query<
             (&CameraInd, &mut Transform),
-            (Without<SyncObject>, Without<ChildOf>, Without<CursorInd>),
+            (
+                Without<SyncObject>,
+                Without<SyncObjectMe>,
+                Without<ChildOf>,
+                Without<CursorInd>,
+            ),
         >,
         Query<
             (&CursorInd, &mut Transform),
-            (Without<SyncObject>, Without<ChildOf>, Without<CameraInd>),
+            (
+                Without<SyncObject>,
+                Without<SyncObjectMe>,
+                Without<ChildOf>,
+                Without<CameraInd>,
+            ),
         >,
         Res<Peers>,
     ),
@@ -276,7 +321,7 @@ pub fn apply_sync(
         match data {
             Packet::Pos(data) => {
                 let user = sender;
-                for (lid, trans, phys, in_hand) in data {
+                for (lid, trans, phys, in_hand, follow_mouse) in data {
                     let id = SyncObject { user, id: lid };
                     if sent.has(&id) || ignore.contains(&id) {
                         continue;
@@ -292,11 +337,12 @@ pub fn apply_sync(
                         mut gravity,
                         mut lv,
                         mut av,
+                        followother,
                     )) = query
                         .iter_mut()
-                        .find_map(|(a, b, z, r, lv, av, e, h, c, p, g)| {
+                        .find_map(|(a, b, z, r, lv, av, e, h, c, p, g, f)| {
                             if *a == id {
-                                Some((b, z, r, h, c, e, p, g, lv, av))
+                                Some((b, z, r, h, c, e, p, g, lv, av, f))
                             } else {
                                 None
                             }
@@ -331,6 +377,19 @@ pub fn apply_sync(
                                 gravity.0 = GRAVITY;
                             }
                         }
+                        if followother.is_some() != follow_mouse {
+                            if follow_mouse {
+                                let mut ent = commands.entity(entity);
+                                ent.insert(SleepingDisabled);
+                                ent.insert(FollowOtherMouse);
+                                gravity.0 = 0.0
+                            } else {
+                                let mut ent = commands.entity(entity);
+                                ent.remove::<SleepingDisabled>();
+                                ent.remove::<FollowOtherMouse>();
+                                gravity.0 = GRAVITY
+                            }
+                        }
                     } else if sent.add(id) {
                         client
                             .send(
@@ -357,19 +416,28 @@ pub fn apply_sync(
                             Compression::Compressed,
                         )
                         .unwrap();
-                    if let Some((_, _, _, e, _)) =
-                        queryme.iter().find(|(id, _, _, _, _)| **id == from.id)
+                    if let Some((_, _, _, e, _, inhand, _)) = queryme
+                        .iter()
+                        .find(|(id, _, _, _, _, _, _)| **id == from.id)
                     {
+                        if let Some(inhand) = inhand {
+                            hand.1.count -= 1;
+                            hand.1.removed.push(inhand.0);
+                        }
                         count.rem(1);
                         commands
                             .entity(e)
+                            .remove::<InHand>()
+                            .remove::<RigidBodyDisabled>()
                             .remove::<SyncObjectMe>()
                             .remove::<FollowMouse>()
-                            .insert(new);
+                            .insert(new)
+                            .insert(HandIgnore)
+                            .remove_parent_in_place();
                     }
-                } else if let Some((mut id, _, _, _, _, _, _, _, _, _, _)) = query
+                } else if let Some((mut id, _, _, _, _, _, _, _, _, _, _, _)) = query
                     .iter_mut()
-                    .find(|(id, _, _, _, _, _, _, _, _, _, _)| *id.as_ref() == from)
+                    .find(|(id, _, _, _, _, _, _, _, _, _, _, _)| *id.as_ref() == from)
                 {
                     sent.add(*id);
                     *id = new
@@ -379,7 +447,7 @@ pub fn apply_sync(
                 let user = sender;
                 let id = SyncObject { user, id: lid };
                 if sent.add(id) {
-                    if let Some((b, c, e)) = queryme.iter_mut().find_map(|(a, b, c, e, _)| {
+                    if let Some((b, c, e)) = queryme.iter_mut().find_map(|(a, b, c, e, _, _, _)| {
                         if a.0 == lid.0 { Some((b, c, e)) } else { None }
                     }) {
                         if let Some(c) = c {
@@ -445,7 +513,7 @@ pub fn apply_sync(
             Packet::SetUser(peer, id) => {
                 if peer == client.my_id() {
                     info!("joined as number {} user", id);
-                    commands.entity(*hand).despawn();
+                    commands.entity(hand.0).despawn();
                     spawn_hand(id, &mut commands);
                 }
                 peers.0.lock().unwrap().insert(peer, id);
@@ -454,7 +522,7 @@ pub fn apply_sync(
                 let user = sender;
                 let id = SyncObject { user, id: lid };
                 if let Some(e) = query.iter_mut().find_map(
-                    |(a, _, _, _, _, _, b, _, _, _, _)| if *a == id { Some(b) } else { None },
+                    |(a, _, _, _, _, _, b, _, _, _, _, _)| if *a == id { Some(b) } else { None },
                 ) {
                     commands.entity(e).despawn();
                     if let Some(search) = &search
@@ -468,7 +536,7 @@ pub fn apply_sync(
                 let user = sender;
                 let id = SyncObject { user, id: lid };
                 if let Some((transform, children, mut pile)) = query.iter_mut().find_map(
-                    |(a, b, _, _, _, _, _, _, c, d, _)| {
+                    |(a, b, _, _, _, _, _, _, c, d, _, _)| {
                         if *a == id { Some((b, c, d)) } else { None }
                     },
                 ) && let Some(pile) = &mut pile
@@ -483,74 +551,82 @@ pub fn apply_sync(
                     }
                 }
             }
-            Packet::Reorder(lid, order) => {
-                let user = sender;
-                let id = SyncObject { user, id: lid };
-                if let Some((pile, children, entity, transform)) = query.iter_mut().find_map(
-                    |(a, t, _, _, _, _, e, _, c, d, _)| {
-                        if *a == id { Some((d, c, e, t)) } else { None }
-                    },
-                ) && let Some(pile) = pile
-                    && let Some(children) = children
-                {
-                    let pile = pile.into_inner();
-                    let mut fail = false;
-                    if let Pile::Multiple(pile) = pile {
-                        for (i, id) in order.into_iter().enumerate() {
-                            if let Some(k) = pile[i..].iter().position(|c| c.id == id) {
-                                pile.swap(i, k + i);
-                            } else {
-                                fail = true;
-                                break;
+            Packet::Reorder(id, order) => {
+                let run =
+                    |pile: &mut Pile, children: _, transform: &Transform, entity: _, ask: bool| {
+                        let mut fail = false;
+                        if let Pile::Multiple(pile) = pile {
+                            for (i, id) in order.into_iter().enumerate() {
+                                if let Some(k) = pile[i..].iter().position(|c| c.id == id) {
+                                    pile.swap(i, k + i);
+                                } else {
+                                    fail = true;
+                                    break;
+                                }
                             }
+                        } else {
+                            fail = true;
                         }
-                    } else {
-                        fail = true;
-                    }
-                    if fail {
+                        if fail && ask {
+                            if let Some(search) = &search
+                                && search.1.0 == entity
+                            {
+                                commands.entity(search.0).despawn()
+                            }
+                            commands.entity(entity).despawn();
+                            client
+                                .send(
+                                    sender,
+                                    &Packet::Request(id.id),
+                                    Reliability::Reliable,
+                                    Compression::Compressed,
+                                )
+                                .unwrap();
+                            return;
+                        }
                         if let Some(search) = &search
                             && search.1.0 == entity
                         {
-                            commands.entity(search.0).despawn()
+                            update_search(
+                                &mut commands,
+                                search.0,
+                                pile,
+                                transform,
+                                text.as_ref().unwrap().get(),
+                            );
                         }
-                        commands.entity(entity).despawn();
-                        client
-                            .send(
-                                sender,
-                                &Packet::Request(lid),
-                                Reliability::Reliable,
-                                Compression::Compressed,
-                            )
-                            .unwrap();
-                        return;
-                    }
-                    if let Some(search) = &search
-                        && search.1.0 == entity
-                    {
-                        update_search(
-                            &mut commands,
-                            search.0,
-                            pile,
-                            &transform,
-                            text.as_ref().unwrap().get(),
-                        );
-                    }
-                    let card = pile.last();
-                    repaint_face(&mut mats, &mut materials, card, children);
-                }
-            }
-            Packet::Draw(lid, to, start) => {
-                let user = sender;
-                let id = SyncObject { user, id: lid };
-                if let Some((mut pile, children, mut transform, entity)) =
-                    query.iter_mut().find_map(
-                        |(a, t, _, _, _, _, e, _, c, d, _)| {
-                            if *a == id { Some((d, c, t, e)) } else { None }
-                        },
-                    )
+                        let card = pile.last();
+                        repaint_face(&mut mats, &mut materials, card, children);
+                    };
+                if id.user == client.my_id()
+                    && let Some((mut pile, children, transform, entity)) =
+                        queryme.iter_mut().find_map(|(a, _, p, e, c, _, t)| {
+                            if *a == id.id {
+                                Some((p, c, t, e))
+                            } else {
+                                None
+                            }
+                        })
                     && let Some(pile) = &mut pile
                     && let Some(children) = children
                 {
+                    run(pile, children, &transform, entity, false)
+                } else if let Some((pile, children, entity, transform)) = query.iter_mut().find_map(
+                    |(a, t, _, _, _, _, e, _, c, d, _, _)| {
+                        if *a == id { Some((d, c, e, t)) } else { None }
+                    },
+                ) && let Some(mut pile) = pile
+                    && let Some(children) = children
+                {
+                    run(&mut pile, children, &transform, entity, true)
+                }
+            }
+            Packet::Draw(id, to, start) => {
+                let user = sender;
+                let run = |pile: &mut Pile,
+                           children: _,
+                           mut transform: Mut<Transform>,
+                           entity: _| {
                     let len = to.len();
                     for ((id, trans), card) in to.into_iter().zip(pile.drain(start - len..start)) {
                         let syncobject = SyncObject { user, id };
@@ -594,6 +670,30 @@ pub fn apply_sync(
                             text.as_ref().unwrap().get(),
                         );
                     }
+                };
+                if id.user == client.my_id()
+                    && let Some((mut pile, children, transform, entity)) =
+                        queryme.iter_mut().find_map(|(a, _, p, e, c, _, t)| {
+                            if *a == id.id {
+                                Some((p, c, t, e))
+                            } else {
+                                None
+                            }
+                        })
+                    && let Some(pile) = &mut pile
+                    && let Some(children) = children
+                {
+                    run(pile, children, transform, entity);
+                } else if let Some((mut pile, children, transform, entity)) =
+                    query.iter_mut().find_map(
+                        |(a, t, _, _, _, _, e, _, c, d, _, _)| {
+                            if *a == id { Some((d, c, t, e)) } else { None }
+                        },
+                    )
+                    && let Some(pile) = &mut pile
+                    && let Some(children) = children
+                {
+                    run(pile, children, transform, entity);
                 }
             }
             Packet::Counter(id, to) => {
@@ -609,14 +709,14 @@ pub fn apply_sync(
                 };
                 if id.user == client.my_id() {
                     if let Some((Some(children), e)) = queryme.iter_mut().find_map(
-                        |(a, _, _, e, c)| {
+                        |(a, _, _, e, c, _, _)| {
                             if *a == id.id { Some((c, e)) } else { None }
                         },
                     ) {
                         run(children, e);
                     }
                 } else if let Some((Some(children), e)) = query.iter_mut().find_map(
-                    |(a, _, _, _, _, _, e, _, c, _, _)| {
+                    |(a, _, _, _, _, _, e, _, c, _, _, _)| {
                         if *a == id { Some((c, e)) } else { None }
                     },
                 ) {
@@ -791,15 +891,17 @@ impl Sent {
 pub struct SyncActions {
     pub killed: Vec<SyncObjectMe>,
     pub take_owner: Vec<(SyncObject, SyncObjectMe)>,
-    pub reorder: Vec<(SyncObjectMe, Vec<String>)>,
-    pub draw: Vec<(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize)>,
+    pub reorder_me: Vec<(SyncObjectMe, Vec<String>)>,
+    pub reorder: Vec<(SyncObject, Vec<String>)>,
+    pub draw_me: Vec<(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize)>,
+    pub draw: Vec<(SyncObject, Vec<(SyncObjectMe, Trans)>, usize)>,
     pub flip: Vec<SyncObjectMe>,
     pub counter_me: Vec<(SyncObjectMe, Value)>,
     pub counter: Vec<(SyncObject, Value)>,
 }
 #[derive(Encode, Decode, Debug)]
 pub enum Packet {
-    Pos(Vec<(SyncObjectMe, Trans, Phys, bool)>),
+    Pos(Vec<(SyncObjectMe, Trans, Phys, bool, bool)>),
     Request(SyncObjectMe),
     Received(SyncObjectMe),
     Dead(SyncObjectMe),
@@ -808,8 +910,8 @@ pub enum Packet {
     NewShape(SyncObjectMe, Shape, Trans),
     Flip(SyncObjectMe),
     Counter(SyncObject, Value),
-    Reorder(SyncObjectMe, Vec<String>),
-    Draw(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize),
+    Reorder(SyncObject, Vec<String>),
+    Draw(SyncObject, Vec<(SyncObjectMe, Trans)>, usize),
     SetUser(PeerId, usize),
     Indicator(Pos, Pos),
 }
@@ -886,7 +988,7 @@ impl SyncObjectMe {
 }
 #[derive(Resource, Default)]
 pub struct SyncCount {
-    vec: Vec<(SyncObjectMe, Trans, Phys, bool)>,
+    vec: Vec<(SyncObjectMe, Trans, Phys, bool, bool)>,
     count: usize,
 }
 impl SyncCount {
@@ -897,10 +999,10 @@ impl SyncCount {
     pub fn rem(&mut self, n: usize) {
         self.count -= n;
     }
-    pub fn take(&mut self) -> Vec<(SyncObjectMe, Trans, Phys, bool)> {
+    pub fn take(&mut self) -> Vec<(SyncObjectMe, Trans, Phys, bool, bool)> {
         mem::take(&mut self.vec)
     }
-    pub fn give(&mut self, vec: Vec<(SyncObjectMe, Trans, Phys, bool)>) {
+    pub fn give(&mut self, vec: Vec<(SyncObjectMe, Trans, Phys, bool, bool)>) {
         self.vec = vec;
     }
 }
