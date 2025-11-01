@@ -1362,7 +1362,9 @@ pub fn register_deck(
 ) {
     let mut decks = decks.get_deck.0.lock().unwrap();
     for (deck, v, id) in decks.drain(..) {
-        info!("deck found of size {} at {} {}", deck.len(), v.x, v.y);
+        if id.is_none() {
+            info!("deck found of size {} at {} {}", deck.len(), v.x, v.y);
+        }
         if let Some(ent) = new_pile(
             deck,
             card_base.stock.clone(),

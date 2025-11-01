@@ -163,6 +163,23 @@ pub fn get_sync(
             )
             .unwrap();
     }
+    if !vec.is_empty() {
+        let packet = Packet::Pos(vec);
+        client
+            .broadcast(&packet, Reliability::Reliable, Compression::Compressed)
+            .unwrap();
+        let Packet::Pos(mut vec) = packet else {
+            unreachable!()
+        };
+        vec.clear();
+        count.give(vec);
+        count.add(v);
+    } else {
+        count.give(vec);
+        count.add(v);
+    }
+    #[cfg(feature = "steam")]
+    client.flush();
     let Some(cursor_position) = window.cursor_position() else {
         return;
     };
@@ -185,18 +202,6 @@ pub fn get_sync(
             .broadcast(&packet, Reliability::Reliable, Compression::Compressed)
             .unwrap();
     }
-    let packet = Packet::Pos(vec);
-    client
-        .broadcast(&packet, Reliability::Reliable, Compression::Compressed)
-        .unwrap();
-    let Packet::Pos(mut vec) = packet else {
-        unreachable!()
-    };
-    vec.clear();
-    count.give(vec);
-    count.add(v);
-    #[cfg(feature = "steam")]
-    client.flush();
 }
 #[cfg(feature = "steam")]
 pub fn display_steam_info(
@@ -265,7 +270,7 @@ pub fn apply_sync(
             Option<&InHand>,
             &mut Transform,
         ),
-        (Without<SyncObject>, Without<Mesh3d>),
+        (Without<SyncObject>, Without<ChildOf>),
     >,
     mut sent: ResMut<Sent>,
     asset_server: Res<AssetServer>,
@@ -822,9 +827,11 @@ pub fn new_lobby(
                                     Compression::Compressed,
                                 )
                                 .unwrap();
+                            info!("user {peer} has joined");
                             send.store(true, std::sync::atomic::Ordering::Relaxed);
                         })),
                         Some(Box::new(move |_, peer| {
+                            info!("user {peer} has left");
                             peers2.lock().unwrap().remove(&peer);
                             rempeers.lock().unwrap().push(peer);
                             give.lock().unwrap().push(peer);
@@ -843,10 +850,12 @@ pub fn new_lobby(
                 client
                     .join_ip_runtime(
                         "127.0.0.1".parse().unwrap(),
-                        Some(Box::new(move |_, _| {
+                        Some(Box::new(move |_, peer| {
+                            info!("user {peer} has joined");
                             send.store(true, std::sync::atomic::Ordering::Relaxed);
                         })),
                         Some(Box::new(move |_, peer| {
+                            info!("user {peer} has left");
                             peers.lock().unwrap().remove(&peer);
                             rempeers.lock().unwrap().push(peer);
                         })),

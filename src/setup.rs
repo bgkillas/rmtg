@@ -54,6 +54,7 @@ pub fn setup(
         let peers2 = peers.clone();
         let _ = client.init_steam(
             Some(Box::new(move |client, peer| {
+                info!("user {peer} has joined");
                 if client.is_host() {
                     let mut k = 1;
                     {
@@ -86,6 +87,7 @@ pub fn setup(
                 send.store(true, std::sync::atomic::Ordering::Relaxed);
             })),
             Some(Box::new(move |client, peer| {
+                info!("user {peer} has left");
                 peers2.lock().unwrap().remove(&peer);
                 rempeers.lock().unwrap().push(peer);
                 if client.is_host() {
@@ -141,7 +143,8 @@ pub fn setup(
         true,
         PLAYER0,
     );
-    let transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
+    let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
+    transform.rotate_y(PI);
     make_mat(
         &mut materials,
         &mut meshes,
@@ -150,8 +153,7 @@ pub fn setup(
         false,
         PLAYER1,
     );
-    let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
-    transform.rotate_y(PI);
+    let transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
     make_mat(
         &mut materials,
         &mut meshes,
