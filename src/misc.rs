@@ -205,6 +205,7 @@ pub fn adjust_meshes(
         (
             Without<Children>,
             With<ChildOf>,
+            Without<InHand>,
             Without<Shape>,
             Without<Pile>,
         ),

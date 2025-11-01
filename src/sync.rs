@@ -270,7 +270,7 @@ pub fn apply_sync(
             Option<&InHand>,
             &mut Transform,
         ),
-        (Without<SyncObject>, Without<ChildOf>),
+        (Without<SyncObject>, Or<(Without<ChildOf>, With<InHand>)>),
     >,
     mut sent: ResMut<Sent>,
     asset_server: Res<AssetServer>,
@@ -289,6 +289,7 @@ pub fn apply_sync(
         (
             Without<Children>,
             With<ChildOf>,
+            Without<InHand>,
             Without<Shape>,
             Without<Pile>,
         ),

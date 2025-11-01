@@ -252,6 +252,7 @@ pub fn listen_for_mouse(
             (
                 Without<Children>,
                 With<ChildOf>,
+                Without<InHand>,
                 Without<Shape>,
                 Without<Pile>,
             ),
@@ -974,6 +975,7 @@ pub fn pick_from_list(
         (
             Without<Children>,
             With<ChildOf>,
+            Without<InHand>,
             Without<Shape>,
             Without<Pile>,
         ),
@@ -1568,6 +1570,7 @@ pub fn pile_merge(
         (
             Without<Children>,
             With<ChildOf>,
+            Without<InHand>,
             Without<Shape>,
             Without<Pile>,
         ),
