@@ -420,6 +420,29 @@ impl Pile {
             _ => unreachable!(),
         }
     }
+    pub fn splice_at(&mut self, at: usize, other: Self) {
+        match (self, other) {
+            (Pile::Multiple(a), Pile::Multiple(b)) => {
+                a.splice(at..at, b);
+            }
+            (Pile::Multiple(a), Pile::Single(b)) => {
+                a.splice(at..at, b.flatten());
+            }
+            (se @ Pile::Single(_), o) => {
+                let Pile::Single(s) = mem::take(se) else {
+                    unreachable!()
+                };
+                let mut vec = s.flatten();
+                match o {
+                    Pile::Multiple(v) => vec.splice(at..at, v),
+                    Pile::Single(s) => vec.splice(at..at, s.flatten()),
+                    Pile::Empty => unreachable!(),
+                };
+                *se = Pile::Multiple(vec);
+            }
+            _ => unreachable!(),
+        }
+    }
     pub fn shuffle(&mut self, rng: &mut WyRand) {
         if let Pile::Multiple(v) = self {
             v.shuffle(rng)

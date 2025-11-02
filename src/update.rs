@@ -1576,7 +1576,7 @@ pub fn pile_merge(
             Option<&SyncObject>,
             Option<&SyncObjectMe>,
         ),
-        Without<InHand>,
+        (Without<InHand>, Without<FollowMouse>),
     >,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,

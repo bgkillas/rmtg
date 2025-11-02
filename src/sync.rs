@@ -496,6 +496,15 @@ pub fn apply_sync(
                 {
                     sent.add(*id);
                     *id = new
+                } else {
+                    client
+                        .send(
+                            sender,
+                            &Packet::Request(new.id),
+                            Reliability::Reliable,
+                            Compression::Compressed,
+                        )
+                        .unwrap();
                 }
             }
             Packet::Request(lid) => {
@@ -646,7 +655,7 @@ pub fn apply_sync(
                             commands.entity(entity).despawn();
                             client
                                 .send(
-                                    sender,
+                                    id.user,
                                     &Packet::Request(id.id),
                                     Reliability::Reliable,
                                     Compression::Compressed,
@@ -692,7 +701,99 @@ pub fn apply_sync(
                 }
             }
             Packet::Merge(base, from, at) => {
-                todo!()
+                let (top_pile, top_ent) = if from.user == client.my_id()
+                    && let Some((pile, ent)) =
+                        queryme.iter().find_map(
+                            |(a, _, p, e, _, _, _)| {
+                                if *a == from.id { Some((p, e)) } else { None }
+                            },
+                        )
+                    && let Some(pile) = pile
+                {
+                    (pile.clone(), ent)
+                } else if let Some((pile, ent)) = query.iter().find_map(
+                    |(a, _, _, _, _, _, e, _, _, d, _, _)| {
+                        if *a == from { Some((d, e)) } else { None }
+                    },
+                ) && let Some(pile) = pile
+                {
+                    (pile.clone(), ent)
+                } else if base.user != client.my_id()
+                    && let Some(base_ent) = query.iter_mut().find_map(
+                        |(a, _, _, _, _, _, e, _, _, _, _, _)| {
+                            if *a == base { Some(e) } else { None }
+                        },
+                    )
+                {
+                    commands.entity(base_ent).despawn();
+                    client
+                        .send(
+                            base.user,
+                            &Packet::Request(base.id),
+                            Reliability::Reliable,
+                            Compression::Compressed,
+                        )
+                        .unwrap();
+                    return;
+                } else {
+                    return;
+                };
+                commands.entity(top_ent).despawn();
+                let (mut base_pile, base_children, base_ent, mut base_transform) = if base.user
+                    == client.my_id()
+                    && let Some((pile, children, ent, transform)) =
+                        queryme.iter_mut().find_map(|(a, _, p, e, c, _, t)| {
+                            if *a == base.id {
+                                Some((p, c, e, t))
+                            } else {
+                                None
+                            }
+                        })
+                    && let Some(pile) = pile
+                    && let Some(children) = children
+                {
+                    (pile, children, ent, transform)
+                } else if let Some((pile, children, ent, transform)) = query.iter_mut().find_map(
+                    |(a, t, _, _, _, _, e, _, c, d, _, _)| {
+                        if *a == base { Some((d, c, e, t)) } else { None }
+                    },
+                ) && let Some(pile) = pile
+                    && let Some(children) = children
+                {
+                    (pile, children, ent, transform)
+                } else {
+                    client
+                        .send(
+                            base.user,
+                            &Packet::Request(base.id),
+                            Reliability::Reliable,
+                            Compression::Compressed,
+                        )
+                        .unwrap();
+                    return;
+                };
+                if at > base_pile.len() && base.user != client.my_id() {
+                    client
+                        .send(
+                            base.user,
+                            &Packet::Request(base.id),
+                            Reliability::Reliable,
+                            Compression::Compressed,
+                        )
+                        .unwrap();
+                    return;
+                }
+                base_pile.splice_at(at, top_pile);
+                let card = base_pile.last();
+                repaint_face(&mut mats, &mut materials, card, base_children);
+                adjust_meshes(
+                    &base_pile,
+                    base_children,
+                    &mut meshes,
+                    &mut query_meshes,
+                    &mut base_transform,
+                    &mut colliders.get_mut(base_ent).unwrap(),
+                );
             }
             Packet::Draw(id, to, start) => {
                 let user = sender;
@@ -707,7 +808,7 @@ pub fn apply_sync(
                             commands.entity(entity).despawn();
                             client
                                 .send(
-                                    sender,
+                                    id.user,
                                     &Packet::Request(id.id),
                                     Reliability::Reliable,
                                     Compression::Compressed,
