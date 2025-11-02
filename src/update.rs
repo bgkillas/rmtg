@@ -296,6 +296,9 @@ pub fn listen_for_mouse(
     let mut colliders = pset.p1();
     if let Some(RayHitData { entity, .. }) = hit {
         let Ok(mut transform) = transform.get_mut(entity) else {
+            if let Some(single) = zoom {
+                commands.entity(single.0).despawn();
+            }
             return;
         };
         if let Ok((mut pile, children, parent, inhand, inother)) = cards.get_mut(entity) {
