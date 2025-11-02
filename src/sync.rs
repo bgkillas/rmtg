@@ -520,6 +520,11 @@ pub fn apply_sync(
             }
             Packet::SetUser(peer, id) => {
                 if peer == client.my_id() {
+                    for (_, _, _, e, _, _, _) in queryme.iter() {
+                        if shape.contains(e) {
+                            commands.entity(e).despawn()
+                        }
+                    }
                     info!("joined as number {} user", id);
                     commands.entity(hand.0).despawn();
                     spawn_hand(id, &mut commands);

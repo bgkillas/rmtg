@@ -43,6 +43,7 @@ pub fn setup(
     #[cfg(feature = "steam")] peers: Res<Peers>,
     #[cfg(feature = "steam")] rempeers: Res<RemPeers>,
 ) {
+    let mut no_obj = false;
     #[cfg(feature = "steam")]
     {
         let who = Arc::new(Mutex::new(HashMap::new()));
@@ -107,6 +108,7 @@ pub fn setup(
             }
         }
         if let Some(lobby) = lobby {
+            no_obj = true;
             client.join_steam(lobby);
         }
     }
@@ -256,48 +258,50 @@ pub fn setup(
         Msaa::Sample8,
         Transform::from_xyz(0.0, START_Y, START_Z).looking_at(Vec3::ZERO, Vec3::Y),
     ));
-    let mut cube = Shape::Cube.create(
-        Transform::from_xyz(0.0, 128.0, 0.0),
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-    );
-    cube.insert(SyncObjectMe::new(&mut rand, &mut count));
-    let mut tetra = Shape::Tetrahedron.create(
-        Transform::from_xyz(-256.0, 192.0, 0.0),
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-    );
-    tetra.insert(SyncObjectMe::new(&mut rand, &mut count));
-    let mut ico = Shape::Icosahedron.create(
-        Transform::from_xyz(320.0, 128.0, 0.0),
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-    );
-    ico.insert(SyncObjectMe::new(&mut rand, &mut count));
-    let mut oct = Shape::Octohedron.create(
-        Transform::from_xyz(672.0, 128.0, 0.0),
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-    );
-    oct.insert(SyncObjectMe::new(&mut rand, &mut count));
-    let mut dodec = Shape::Dodecahedron.create(
-        Transform::from_xyz(1056.0, 128.0, 0.0),
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-    );
-    dodec.insert(SyncObjectMe::new(&mut rand, &mut count));
-    let mut coin = Shape::Disc.create(
-        Transform::from_xyz(0.0, 128.0, 256.0),
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-    );
-    coin.insert(SyncObjectMe::new(&mut rand, &mut count));
+    if !no_obj {
+        let mut cube = Shape::Cube.create(
+            Transform::from_xyz(0.0, 128.0, 0.0),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
+        cube.insert(SyncObjectMe::new(&mut rand, &mut count));
+        let mut tetra = Shape::Tetrahedron.create(
+            Transform::from_xyz(-256.0, 192.0, 0.0),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
+        tetra.insert(SyncObjectMe::new(&mut rand, &mut count));
+        let mut ico = Shape::Icosahedron.create(
+            Transform::from_xyz(320.0, 160.0, 0.0),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
+        ico.insert(SyncObjectMe::new(&mut rand, &mut count));
+        let mut oct = Shape::Octohedron.create(
+            Transform::from_xyz(672.0, 192.0, 0.0),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
+        oct.insert(SyncObjectMe::new(&mut rand, &mut count));
+        let mut dodec = Shape::Dodecahedron.create(
+            Transform::from_xyz(1056.0, 160.0, 0.0),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
+        dodec.insert(SyncObjectMe::new(&mut rand, &mut count));
+        let mut coin = Shape::Disc.create(
+            Transform::from_xyz(0.0, 128.0, 256.0),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
+        coin.insert(SyncObjectMe::new(&mut rand, &mut count));
+    }
     commands.spawn((
         Node {
             width: Val::Percent(100.0),

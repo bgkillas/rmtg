@@ -2,6 +2,7 @@ use crate::counters::{Value, make_counter};
 use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
+use bevy::render::render_resource::Face;
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 use std::f32::consts::FRAC_PI_2;
 const BOUNCY: f32 = 0.5;
@@ -299,62 +300,68 @@ pub fn spawn_tetra<'a>(
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
 ) -> EntityCommands<'a> {
-    let verticies: Vec<[f32; 3]> = vec![[m, m, m], [m, -m, -m], [-m, m, -m], [-m, -m, m]];
-    let mut f = Vec::with_capacity(12);
-    for (i, a) in verticies.iter().enumerate() {
-        let [ax, ay, az] = a;
-        let an = ax * ax + ay * ay + az * az;
-        for (j, b) in verticies.iter().enumerate() {
-            let [bx, by, bz] = b;
-            let bn = bx * bx + by * by + bz * bz;
-            let t = (ax * bx + ay * by + az * bz) / (an * bn).sqrt();
-            let t = t.acos();
-            if (t - 1.9106332).abs() < 0.125 {
-                f.push([i as u16, j as u16]);
-            }
-        }
-    }
-    let mut indecies = Vec::with_capacity(12);
-    let mut faces = Vec::with_capacity(4);
-    for a in &f {
-        for b in &f {
-            for c in &f {
-                if a[1] == b[0] && b[1] == c[0] && c[1] == a[0] && a[0] < b[0] && b[0] < c[0] {
-                    let [ox, oy, oz] = verticies[a[0] as usize];
-                    let u = verticies[b[0] as usize];
-                    let v = verticies[c[0] as usize];
-                    let n = [
-                        u[1] * v[2] - u[2] * v[1],
-                        u[2] * v[0] - u[0] * v[2],
-                        u[0] * v[1] - u[1] * v[0],
-                    ];
-                    let dot = n[0] * ox + n[1] * oy + n[2] * oz;
-                    indecies.push(a[0]);
-                    if dot < 0.0 {
-                        indecies.push(b[0]);
-                        indecies.push(c[0]);
-                    } else {
-                        indecies.push(c[0]);
-                        indecies.push(b[0]);
-                    }
-                    faces.push([
-                        (ox + u[0] + v[0]) / 3.0,
-                        (oy + u[1] + v[1]) / 3.0,
-                        (oz + u[2] + v[2]) / 3.0,
-                    ])
+    fn make(m: f32) -> (Mesh, Vec<[f32; 3]>) {
+        let verticies: Vec<[f32; 3]> = vec![[m, m, m], [m, -m, -m], [-m, m, -m], [-m, -m, m]];
+        let mut f = Vec::with_capacity(12);
+        for (i, a) in verticies.iter().enumerate() {
+            let [ax, ay, az] = a;
+            let an = ax * ax + ay * ay + az * az;
+            for (j, b) in verticies.iter().enumerate() {
+                let [bx, by, bz] = b;
+                let bn = bx * bx + by * by + bz * bz;
+                let t = (ax * bx + ay * by + az * bz) / (an * bn).sqrt();
+                let t = t.acos();
+                if (t - 1.9106332).abs() < 0.125 {
+                    f.push([i as u16, j as u16]);
                 }
             }
         }
+        let mut indecies = Vec::with_capacity(12);
+        let mut faces = Vec::with_capacity(4);
+        for a in &f {
+            for b in &f {
+                for c in &f {
+                    if a[1] == b[0] && b[1] == c[0] && c[1] == a[0] && a[0] < b[0] && b[0] < c[0] {
+                        let [ox, oy, oz] = verticies[a[0] as usize];
+                        let u = verticies[b[0] as usize];
+                        let v = verticies[c[0] as usize];
+                        let n = [
+                            u[1] * v[2] - u[2] * v[1],
+                            u[2] * v[0] - u[0] * v[2],
+                            u[0] * v[1] - u[1] * v[0],
+                        ];
+                        let dot = n[0] * ox + n[1] * oy + n[2] * oz;
+                        indecies.push(a[0]);
+                        if dot > 0.0 {
+                            indecies.push(b[0]);
+                            indecies.push(c[0]);
+                        } else {
+                            indecies.push(c[0]);
+                            indecies.push(b[0]);
+                        }
+                        faces.push([
+                            (ox + u[0] + v[0]) / 3.0,
+                            (oy + u[1] + v[1]) / 3.0,
+                            (oz + u[2] + v[2]) / 3.0,
+                        ])
+                    }
+                }
+            }
+        }
+        (
+            Mesh::new(
+                PrimitiveTopology::TriangleList,
+                RenderAssetUsages::RENDER_WORLD,
+            )
+            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, verticies)
+            .with_inserted_indices(Indices::U16(indecies)),
+            faces,
+        )
     }
-    let mesh = Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::RENDER_WORLD,
-    )
-    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, verticies)
-    .with_inserted_indices(Indices::U16(indecies));
+    let (mesh, faces) = make(m);
     let mut ent = commands.spawn((
         CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::convex_hull_from_mesh(&mesh).unwrap(),
+        Collider::convex_hull_from_mesh(&make(m + CARD_THICKNESS).0).unwrap(),
         transform,
         Shape::Tetrahedron,
         RigidBody::Dynamic,
@@ -367,6 +374,7 @@ pub fn spawn_tetra<'a>(
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: bevy::prelude::Color::WHITE,
             unlit: true,
+            cull_mode: Some(Face::Front),
             ..default()
         })),
     ));
