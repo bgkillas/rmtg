@@ -51,7 +51,7 @@ pub fn setup(
         let send = send_sleep.0.clone();
         let give = give.0.clone();
         let rempeers = rempeers.0.clone();
-        let peers = peers.0.clone();
+        let peers = peers.map.clone();
         let peers2 = peers.clone();
         let _ = client.init_steam(
             Some(Box::new(move |client, peer| {

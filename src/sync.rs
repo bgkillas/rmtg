@@ -15,7 +15,6 @@ use bevy_tangled::{ClientTrait, Compression, PeerId, Reliability};
 use bevy_ui_text_input::TextInputContents;
 use bitcode::{Decode, Encode};
 use std::collections::{HashMap, HashSet};
-use std::f32::consts::PI;
 use std::mem;
 use std::sync::atomic::AtomicBool;
 #[derive(Resource, Default)]
@@ -57,6 +56,53 @@ pub fn get_sync(
                 follow.is_some(),
             ))
         }
+    }
+    for (base, merge, at) in sync_actions.merge_me.drain(..) {
+        client
+            .broadcast(
+                &Packet::Merge(
+                    SyncObject {
+                        id: base,
+                        user: client.my_id(),
+                    },
+                    SyncObject {
+                        id: merge,
+                        user: client.my_id(),
+                    },
+                    at,
+                ),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
+            .unwrap();
+    }
+    for (base, merge, at) in sync_actions.merge.drain(..) {
+        client
+            .broadcast(
+                &Packet::Merge(
+                    SyncObject {
+                        id: base,
+                        user: client.my_id(),
+                    },
+                    merge,
+                    at,
+                ),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
+            .unwrap();
+    }
+    for dead in sync_actions.killed_me.drain(..) {
+        client
+            .broadcast(
+                &Packet::Dead(SyncObject {
+                    id: dead,
+                    user: client.my_id(),
+                }),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
+            .unwrap();
     }
     for dead in sync_actions.killed.drain(..) {
         client
@@ -294,7 +340,7 @@ pub fn apply_sync(
             Without<Pile>,
         ),
     >,
-    (search, text, mut shape, mut text3d, mut cams, mut curs, peers): (
+    (search, text, mut shape, mut text3d, mut cams, mut curs, mut peers): (
         Option<Single<(Entity, &SearchDeck)>>,
         Option<Single<&TextInputContents>>,
         Query<&mut Shape>,
@@ -317,7 +363,7 @@ pub fn apply_sync(
                 Without<CameraInd>,
             ),
         >,
-        Res<Peers>,
+        ResMut<Peers>,
     ),
 ) {
     let mut ind = false;
@@ -529,13 +575,23 @@ pub fn apply_sync(
                     info!("joined as number {} user", id);
                     commands.entity(hand.0).despawn();
                     spawn_hand(id, &mut commands);
+                    peers.me = id;
                 }
-                peers.0.lock().unwrap().insert(peer, id);
+                peers.map.lock().unwrap().insert(peer, id);
             }
-            Packet::Dead(lid) => {
-                let user = sender;
-                let id = SyncObject { user, id: lid };
-                if let Some(e) = query.iter_mut().find_map(
+            Packet::Dead(id) => {
+                if id.user == client.my_id()
+                    && let Some(e) = queryme
+                        .iter()
+                        .find_map(|(a, _, _, e, _, _, _)| if *a == id.id { Some(e) } else { None })
+                {
+                    commands.entity(e).despawn();
+                    if let Some(search) = &search
+                        && search.1.0 == e
+                    {
+                        commands.entity(search.0).despawn()
+                    }
+                } else if let Some(e) = query.iter().find_map(
                     |(a, _, _, _, _, _, b, _, _, _, _, _)| if *a == id { Some(b) } else { None },
                 ) {
                     commands.entity(e).despawn();
@@ -634,6 +690,9 @@ pub fn apply_sync(
                 {
                     run(&mut pile, children, &transform, entity, true)
                 }
+            }
+            Packet::Merge(base, from, at) => {
+                todo!()
             }
             Packet::Draw(id, to, start) => {
                 let user = sender;
@@ -757,7 +816,7 @@ pub fn apply_sync(
                     return;
                 }
                 ind = true;
-                if let Some(id) = peers.0.lock().unwrap().get(&sender) {
+                if let Some(id) = peers.map.lock().unwrap().get(&sender) {
                     if let Some(mut t) = cams
                         .iter_mut()
                         .find_map(|(a, t)| if a.0 == sender { Some(t) } else { None })
@@ -800,16 +859,15 @@ pub struct CameraInd(pub PeerId);
 #[derive(Component)]
 pub struct CursorInd(pub PeerId);
 pub fn spawn_hand(me: usize, commands: &mut Commands) {
-    let mut transform = match me {
+    let transform = match me {
         0 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
-        1 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0),
+        1 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0)
+            .looking_to(Dir3::Z, Dir3::Y),
         2 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
-        3 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0),
-        _ => Transform::from_xyz(0.0, 64.0, 0.0),
+        3 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0)
+            .looking_to(Dir3::Z, Dir3::Y),
+        _ => Transform::default(),
     };
-    if me == 1 || me == 3 {
-        transform.rotate_y(PI);
-    }
     commands.spawn((transform, Hand::default()));
 }
 #[cfg(all(feature = "steam", feature = "ip"))]
@@ -834,7 +892,7 @@ pub fn new_lobby(
                 let send = send_sleep.0.clone();
                 let give = give.0.clone();
                 let rempeers = rempeers.0.clone();
-                let peers = peers.0.clone();
+                let peers = peers.map.clone();
                 let peers2 = peers.clone();
                 client
                     .host_ip_runtime(
@@ -874,7 +932,7 @@ pub fn new_lobby(
             {
                 let send = send_sleep.0.clone();
                 let rempeers = rempeers.0.clone();
-                let peers = peers.0.clone();
+                let peers = peers.map.clone();
                 client
                     .join_ip_runtime(
                         "127.0.0.1".parse().unwrap(),
@@ -926,7 +984,10 @@ impl Sent {
 }
 #[derive(Resource, Default)]
 pub struct SyncActions {
-    pub killed: Vec<SyncObjectMe>,
+    pub killed_me: Vec<SyncObjectMe>,
+    pub killed: Vec<SyncObject>,
+    pub merge: Vec<(SyncObjectMe, SyncObject, usize)>,
+    pub merge_me: Vec<(SyncObjectMe, SyncObjectMe, usize)>,
     pub take_owner: Vec<(SyncObject, SyncObjectMe)>,
     pub reorder_me: Vec<(SyncObjectMe, Vec<String>)>,
     pub reorder: Vec<(SyncObject, Vec<String>)>,
@@ -941,7 +1002,7 @@ pub enum Packet {
     Pos(Vec<(SyncObjectMe, Trans, Phys, bool, bool)>),
     Request(SyncObjectMe),
     Received(SyncObjectMe),
-    Dead(SyncObjectMe),
+    Dead(SyncObject),
     Take(SyncObject, SyncObjectMe),
     New(SyncObjectMe, Pile, Trans),
     NewShape(SyncObjectMe, Shape, Trans),
@@ -949,6 +1010,7 @@ pub enum Packet {
     Counter(SyncObject, Value),
     Reorder(SyncObject, Vec<String>),
     Draw(SyncObject, Vec<(SyncObjectMe, Trans)>, usize),
+    Merge(SyncObject, SyncObject, usize),
     SetUser(PeerId, usize),
     Indicator(Pos, Pos),
 }

@@ -3,7 +3,7 @@ use crate::download::{
     Exact, get_alts, get_deck, get_deck_export, spawn_singleton, spawn_singleton_id,
 };
 use crate::misc::{adjust_meshes, is_reversed, move_up, new_pile, new_pile_at, repaint_face};
-use crate::setup::{EscMenu, FontRes, SideMenu, T, W, Wall};
+use crate::setup::{EscMenu, FontRes, MAT_WIDTH, SideMenu, T, W, Wall};
 use crate::sync::{CameraInd, CursorInd, InOtherHand, Packet, SyncObjectMe, Trans};
 use crate::*;
 use avian3d::math::Vector;
@@ -39,6 +39,7 @@ pub fn gather_hand(
             &Pile,
             Option<&SyncObject>,
             Option<&HandIgnore>,
+            &mut Transform,
         ),
         (
             With<Pile>,
@@ -55,13 +56,14 @@ pub fn gather_hand(
     mut rand: Single<&mut WyRand, With<GlobalRng>>,
 ) {
     let intersections = spatial.shape_intersections(
-        &Collider::cuboid(4096.0, 256.0, 32.0),
+        &Collider::cuboid(MAT_WIDTH, CARD_HEIGHT, CARD_HEIGHT),
         hand.0.translation,
         hand.0.rotation,
         &SpatialQueryFilter::DEFAULT,
     );
     for ent in intersections {
-        if let Ok((entity, mut grav, mut linvel, mut angvel, pile, obj, ign)) = cards.get_mut(ent)
+        if let Ok((entity, mut grav, mut linvel, mut angvel, pile, obj, ign, mut trans)) =
+            cards.get_mut(ent)
             && pile.len() == 1
         {
             if ign.is_some() {
@@ -75,10 +77,13 @@ pub fn gather_hand(
                 linvel.0 = default();
                 angvel.0 = default();
                 grav.0 = 0.0;
-                commands.entity(entity).insert(InHand(hand.1.count));
-                commands.entity(entity).insert(RigidBodyDisabled);
+                commands
+                    .entity(entity)
+                    .insert(InHand(hand.1.count))
+                    .insert(RigidBodyDisabled);
                 hand.1.count += 1;
                 commands.entity(hand.2).add_child(entity);
+                trans.rotation = Quat::default();
             }
         }
     }
@@ -347,7 +352,7 @@ pub fn listen_for_mouse(
                 if ids.contains(entity) {
                     count.rem(1);
                 }
-                sync_actions.killed.push(*ids.get(entity).unwrap());
+                sync_actions.killed_me.push(*ids.get(entity).unwrap());
                 commands.entity(entity).despawn();
                 if let Some(entity) =
                     search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
@@ -517,7 +522,7 @@ pub fn listen_for_mouse(
                 if ids.contains(entity) {
                     count.rem(1);
                 }
-                sync_actions.killed.push(*ids.get(entity).unwrap());
+                sync_actions.killed_me.push(*ids.get(entity).unwrap());
                 commands.entity(entity).despawn();
                 if let Some(entity) =
                     search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
@@ -668,7 +673,7 @@ pub fn listen_for_mouse(
                         );
                     } else {
                         if let Ok(id) = ids.get(entity) {
-                            sync_actions.killed.push(*id);
+                            sync_actions.killed_me.push(*id);
                             count.rem(1);
                         }
                         commands.entity(entity).despawn();
@@ -1562,8 +1567,16 @@ pub fn search(
 pub fn pile_merge(
     collision: On<CollisionStart>,
     mut piles: Query<
-        (Entity, &mut Pile, &mut Transform, &Children, &mut Collider),
-        (Without<SyncObject>, Without<InHand>),
+        (
+            Entity,
+            &mut Pile,
+            &mut Transform,
+            &Children,
+            &mut Collider,
+            Option<&SyncObject>,
+            Option<&SyncObjectMe>,
+        ),
+        Without<InHand>,
     >,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -1581,25 +1594,47 @@ pub fn pile_merge(
     mut commands: Commands,
     search_deck: Option<Single<(Entity, &SearchDeck)>>,
     text: Option<Single<&TextInputContents>>,
+    mut sync_actions: ResMut<SyncActions>,
 ) {
-    if let Ok((e1, p1, t1, _, _)) = piles.get(collision.collider1)
-        && let Ok((e2, p2, t2, _, _)) = piles.get(collision.collider2)
+    if let Ok((e1, p1, t1, _, _, s1, m1)) = piles.get(collision.collider1)
+        && let Ok((e2, p2, t2, _, _, s2, m2)) = piles.get(collision.collider2)
         && e1 < e2
         && (t1.translation.x - t2.translation.x).abs() < CARD_WIDTH / 2.0
         && (t1.translation.z - t2.translation.z).abs() < CARD_HEIGHT / 2.0
         && is_reversed(t1) == is_reversed(t2)
     {
         let (
-            (ent, mut bottom_pile, mut bottom_transform, children, mut collider),
+            (ent, mut bottom_pile, mut bottom_transform, children, mut collider, sync, sync_me),
             top_pile,
             top_ent,
+            top_sync,
+            top_sync_me,
         ) = if t1.translation.y < t2.translation.y {
             let p2 = p2.clone();
-            (piles.get_mut(collision.collider1).unwrap(), p2, e2)
+            let s2 = s2.cloned();
+            let m2 = m2.cloned();
+            (piles.get_mut(collision.collider1).unwrap(), p2, e2, s2, m2)
         } else {
             let p1 = p1.clone();
-            (piles.get_mut(collision.collider2).unwrap(), p1, e1)
+            let s1 = s1.cloned();
+            let m1 = m1.cloned();
+            (piles.get_mut(collision.collider2).unwrap(), p1, e1, s1, m1)
         };
+        if sync.is_some() {
+            return;
+        }
+        if let Some(mid) = sync_me {
+            let at = if is_reversed(&bottom_transform) {
+                0
+            } else {
+                bottom_pile.len()
+            };
+            if let Some(id) = top_sync {
+                sync_actions.merge.push((*mid, id, at))
+            } else if let Some(id) = top_sync_me {
+                sync_actions.merge_me.push((*mid, id, at))
+            }
+        }
         if is_reversed(&bottom_transform) {
             bottom_pile.extend_start(top_pile);
         } else {

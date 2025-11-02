@@ -66,6 +66,7 @@ const FONT_HEIGHT: f32 = FONT_SIZE;
 #[allow(dead_code)]
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO equip, multi select
+//TODO alt o
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 pub fn main() {
     start();
@@ -142,34 +143,37 @@ pub fn start() -> AppExit {
     .add_systems(
         Update,
         (
+            (get_sync, apply_sync).chain(),
             (
                 (
-                    set_card_spot,
-                    pick_from_list,
-                    send_scroll_events,
-                    #[cfg(feature = "steam")]
-                    display_steam_info,
-                    listen_for_deck,
-                    register_deck,
-                    cam_translation,
-                    cam_rotation,
-                    esc_menu,
-                    #[cfg(all(feature = "steam", feature = "ip"))]
-                    new_lobby,
-                    update_search_deck,
-                    (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
-                ),
-                to_move_up,
-                reset_layers,
-            )
-                .chain(),
-            give_ents,
-            rem_peers,
-        ),
+                    (
+                        set_card_spot,
+                        pick_from_list,
+                        send_scroll_events,
+                        #[cfg(feature = "steam")]
+                        display_steam_info,
+                        listen_for_deck,
+                        register_deck,
+                        cam_translation,
+                        cam_rotation,
+                        esc_menu,
+                        #[cfg(all(feature = "steam", feature = "ip"))]
+                        new_lobby,
+                        update_search_deck,
+                        (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
+                    ),
+                    to_move_up,
+                    reset_layers,
+                )
+                    .chain(),
+                give_ents,
+                rem_peers,
+            ),
+        )
+            .chain(),
     )
     .add_observer(on_scroll_handler)
-    .add_observer(pile_merge)
-    .add_systems(PreUpdate, (get_sync, apply_sync).chain());
+    .add_observer(pile_merge);
     app.run()
 }
 #[derive(Resource, Default)]
@@ -259,7 +263,10 @@ fn test_get_deck() {
     app.update();
 }
 #[derive(Resource, Default, Debug)]
-pub struct Peers(pub Arc<Mutex<HashMap<PeerId, usize>>>);
+pub struct Peers {
+    pub map: Arc<Mutex<HashMap<PeerId, usize>>>,
+    pub me: usize,
+}
 #[derive(Resource, Default, Debug)]
 pub struct RemPeers(pub Arc<Mutex<Vec<PeerId>>>);
 #[derive(Component, Default, Debug)]
