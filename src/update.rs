@@ -347,7 +347,8 @@ pub fn listen_for_mouse(
                     }
                 }
             } else if input.just_pressed(KeyCode::Backspace)
-                && input.all_pressed([KeyCode::ControlLeft, KeyCode::AltLeft])
+                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+                && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
             {
                 if ids.contains(entity) {
                     count.rem(1);
@@ -359,8 +360,10 @@ pub fn listen_for_mouse(
                 {
                     commands.entity(entity).despawn()
                 }
-            } else if input.just_pressed(KeyCode::KeyC) && input.pressed(KeyCode::ControlLeft) {
-                if input.pressed(KeyCode::ShiftLeft) {
+            } else if input.just_pressed(KeyCode::KeyC)
+                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+            {
+                if input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
                     *game_clipboard = GameClipboard::Pile(pile.clone());
                 } else if !is_reversed(&transform) {
                     let card = pile.get_card(&transform);
@@ -396,7 +399,9 @@ pub fn listen_for_mouse(
                 } else {
                     transform.translation.y += 8.0;
                 }
-                if input.pressed(KeyCode::ControlLeft) && pile.len() > 1 {
+                if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+                    && pile.len() > 1
+                {
                     let len = pile.len() as f32 * CARD_THICKNESS;
                     let draw_len = if is_reversed(&transform) {
                         1
@@ -482,7 +487,7 @@ pub fn listen_for_mouse(
             } else if input.just_pressed(KeyCode::KeyE) {
                 rotate_right(&mut transform);
             } else if input.just_pressed(KeyCode::KeyS)
-                && input.pressed(KeyCode::ControlLeft)
+                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
                 && pile.len() > 1
             {
                 let mut start = *transform;
@@ -538,7 +543,8 @@ pub fn listen_for_mouse(
             } else if input.just_pressed(KeyCode::KeyQ) {
                 rotate_left(&mut transform);
             } else if input.just_pressed(KeyCode::KeyO)
-                && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
+                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+                && input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
                 && !is_reversed(&transform)
             {
                 let top = pile.get_card(&transform);
@@ -742,7 +748,7 @@ pub fn listen_for_mouse(
                     sync_actions.counter.push((*id, v.clone()));
                 }
             } else if mouse_input.just_pressed(MouseButton::Left) {
-                if !input.pressed(KeyCode::ControlLeft)
+                if !input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
                     && let Ok(s) = shape.get_mut(entity)
                     && let Shape::Counter(v) = s.into_inner()
                 {
@@ -771,12 +777,13 @@ pub fn listen_for_mouse(
                         .remove::<FollowOtherMouse>();
                 }
             } else if input.just_pressed(KeyCode::KeyC)
-                && input.all_pressed([KeyCode::ControlLeft, KeyCode::ShiftLeft])
+                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+                && input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
                 && let Ok(shape) = shape.get(entity)
             {
                 *game_clipboard = GameClipboard::Shape(shape.clone());
             } else if input.just_pressed(KeyCode::KeyR)
-                && input.pressed(KeyCode::ControlLeft)
+                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
                 && let Ok(s) = shape.get(entity)
                 && let Shape::Counter(v) = s
             {
@@ -813,7 +820,8 @@ pub fn listen_for_mouse(
                     active_input.set(ent);
                 }
             } else if (input.just_pressed(KeyCode::KeyR)
-                || input.all_pressed([KeyCode::KeyR, KeyCode::AltLeft]))
+                || (input.pressed(KeyCode::KeyR)
+                    && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])))
                 && let Ok((mut lv, mut av)) = vels.get_mut(entity)
             {
                 commands.entity(entity).insert(TempDisable);
@@ -1245,8 +1253,8 @@ pub fn listen_for_deck(
     }
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
         && (input.just_pressed(KeyCode::KeyV)
-            || (input.pressed(KeyCode::ShiftLeft)
-                && input.pressed(KeyCode::AltLeft)
+            || (input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
+                && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
                 && input.pressed(KeyCode::KeyV)))
     {
         let Some(cursor_position) = window.cursor_position() else {
@@ -1264,7 +1272,7 @@ pub fn listen_for_deck(
             v.x = point.x;
             v.y = point.z;
         }
-        if !input.pressed(KeyCode::ShiftLeft) {
+        if !input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
             let client = down.client.0.clone();
             let decks = down.get_deck.clone();
             let asset_server = asset_server.clone();
