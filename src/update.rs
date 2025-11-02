@@ -2,7 +2,9 @@ use crate::counters::Value;
 use crate::download::{
     Exact, get_alts, get_deck, get_deck_export, spawn_singleton, spawn_singleton_id,
 };
-use crate::misc::{adjust_meshes, is_reversed, move_up, new_pile, new_pile_at, repaint_face};
+use crate::misc::{
+    adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile, new_pile_at, repaint_face,
+};
 use crate::setup::{EscMenu, FontRes, MAT_WIDTH, SideMenu, T, W, Wall};
 use crate::sync::{CameraInd, CursorInd, InOtherHand, Packet, SyncObjectMe, Trans};
 use crate::*;
@@ -1146,6 +1148,7 @@ pub fn cam_translation(
     mut cam: Single<&mut Transform, With<Camera3d>>,
     menu: Res<Menu>,
     active_input: Res<InputFocus>,
+    peers: Res<Peers>,
 ) {
     if matches!(*menu, Menu::Esc)
         || (matches!(*menu, Menu::Side | Menu::Counter) && active_input.get().is_some())
@@ -1197,8 +1200,7 @@ pub fn cam_translation(
         Vec3::new(W - T, 2.0 * (W - 2.0 * T), W - T),
     );
     if input.pressed(KeyCode::Space) {
-        *cam.into_inner() =
-            Transform::from_xyz(0.0, START_Y, START_Z).looking_at(Vec3::ZERO, Vec3::Y);
+        *cam.into_inner() = default_cam_pos(peers.me.unwrap_or_default());
     }
 }
 pub fn cam_rotation(

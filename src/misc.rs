@@ -1,4 +1,4 @@
-use crate::setup::Wall;
+use crate::setup::{MAT_WIDTH, Wall};
 use crate::sync::{CameraInd, CursorInd, SyncObjectMe};
 use crate::*;
 use bevy_prng::WyRand;
@@ -279,4 +279,17 @@ pub fn make_cur(
         Transform::from_xyz(pos.x, pos.y, pos.z),
         CursorInd(peer),
     ));
+}
+pub fn default_cam_pos(n: usize) -> Transform {
+    let x = if n / 2 == 0 {
+        MAT_WIDTH / 2.0
+    } else {
+        -MAT_WIDTH / 2.0
+    };
+    let z = if n.is_multiple_of(2) {
+        MAT_WIDTH
+    } else {
+        -MAT_WIDTH
+    };
+    Transform::from_xyz(x, START_Y, z).looking_at(Vec3::new(x, 0.0, 0.0), Vec3::Y)
 }

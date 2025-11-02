@@ -1,5 +1,6 @@
 use crate::counters::Value;
 use crate::download::get_from_img;
+use crate::misc::default_cam_pos;
 #[cfg(feature = "steam")]
 use crate::sync::Packet;
 #[cfg(feature = "steam")]
@@ -253,11 +254,7 @@ pub fn setup(
             ..default()
         })),
     ));
-    commands.spawn((
-        Camera3d::default(),
-        Msaa::Sample8,
-        Transform::from_xyz(0.0, START_Y, START_Z).looking_at(Vec3::ZERO, Vec3::Y),
-    ));
+    commands.spawn((Camera3d::default(), Msaa::Sample8, default_cam_pos(0)));
     if !no_obj {
         let mut cube = Shape::Cube.create(
             Transform::from_xyz(0.0, 128.0, 0.0),

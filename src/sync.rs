@@ -1,6 +1,6 @@
 use crate::counters::Value;
 use crate::download::add_images;
-use crate::misc::{adjust_meshes, make_cam, make_cur, new_pile_at, repaint_face};
+use crate::misc::{adjust_meshes, default_cam_pos, make_cam, make_cur, new_pile_at, repaint_face};
 #[cfg(feature = "steam")]
 use crate::setup::SteamInfo;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
@@ -344,7 +344,7 @@ pub fn apply_sync(
             Without<Pile>,
         ),
     >,
-    (search, text, mut shape, mut text3d, mut cams, mut curs, mut peers): (
+    (search, text, mut shape, mut text3d, mut cams, mut curs, mut peers, cam): (
         Option<Single<(Entity, &SearchDeck)>>,
         Option<Single<&TextInputContents>>,
         Query<&mut Shape>,
@@ -368,8 +368,20 @@ pub fn apply_sync(
             ),
         >,
         ResMut<Peers>,
+        Single<
+            &mut Transform,
+            (
+                With<Camera3d>,
+                Without<SyncObject>,
+                Without<SyncObjectMe>,
+                Without<ChildOf>,
+                Without<CursorInd>,
+                Without<CameraInd>,
+            ),
+        >,
     ),
 ) {
+    let mut cam = cam.into_inner();
     let mut ind = false;
     let mut ignore = HashSet::new();
     client.recv(|client, packet| {
@@ -589,6 +601,7 @@ pub fn apply_sync(
                     commands.entity(hand.0).despawn();
                     spawn_hand(id, &mut commands);
                     peers.me = Some(id);
+                    *cam = default_cam_pos(peers.me.unwrap_or_default());
                 }
                 peers.map.lock().unwrap().insert(peer, id);
             }

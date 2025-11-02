@@ -26,7 +26,6 @@ pub const CARD_WIDTH: f32 = 500.0;
 pub const CARD_HEIGHT: f32 = 700.0;
 pub const CARD_THICKNESS: f32 = 2.0;
 pub const START_Y: f32 = 8192.0;
-pub const START_Z: f32 = 4096.0;
 pub const GRAVITY: f32 = 512.0;
 pub const LIN_DAMPING: f32 = 0.25;
 pub const ANG_DAMPING: f32 = 0.25;
