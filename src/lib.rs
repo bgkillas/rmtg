@@ -151,35 +151,32 @@ pub fn start() -> AppExit {
     .add_systems(
         Update,
         (
-            (get_sync, apply_sync).chain(),
             (
                 (
-                    (
-                        set_card_spot,
-                        pick_from_list,
-                        send_scroll_events,
-                        #[cfg(feature = "steam")]
-                        display_steam_info,
-                        listen_for_deck,
-                        register_deck,
-                        cam_translation,
-                        cam_rotation,
-                        esc_menu,
-                        #[cfg(all(feature = "steam", feature = "ip"))]
-                        new_lobby,
-                        update_search_deck,
-                        (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
-                    ),
-                    to_move_up,
-                    reset_layers,
-                )
-                    .chain(),
-                give_ents,
-                rem_peers,
-            ),
-        )
-            .chain(),
+                    set_card_spot,
+                    pick_from_list,
+                    send_scroll_events,
+                    #[cfg(feature = "steam")]
+                    display_steam_info,
+                    listen_for_deck,
+                    register_deck,
+                    cam_translation,
+                    cam_rotation,
+                    esc_menu,
+                    #[cfg(all(feature = "steam", feature = "ip"))]
+                    new_lobby,
+                    update_search_deck,
+                    (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
+                ),
+                to_move_up,
+                reset_layers,
+            )
+                .chain(),
+            give_ents,
+            rem_peers,
+        ),
     )
+    .add_systems(PreUpdate, (get_sync, apply_sync).chain())
     .add_observer(on_scroll_handler)
     .add_observer(pile_merge);
     app.run()
@@ -273,7 +270,7 @@ fn test_get_deck() {
 #[derive(Resource, Default, Debug)]
 pub struct Peers {
     pub map: Arc<Mutex<HashMap<PeerId, usize>>>,
-    pub me: usize,
+    pub me: Option<usize>,
 }
 #[derive(Resource, Default, Debug)]
 pub struct RemPeers(pub Arc<Mutex<Vec<PeerId>>>);

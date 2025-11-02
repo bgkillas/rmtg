@@ -51,8 +51,8 @@ pub fn setup(
         let send = send_sleep.0.clone();
         let give = give.0.clone();
         let rempeers = rempeers.0.clone();
-        let peers = peers.map.clone();
-        let peers2 = peers.clone();
+        let peers1 = peers.map.clone();
+        let peers2 = peers1.clone();
         let _ = client.init_steam(
             Some(Box::new(move |client, peer| {
                 info!("user {peer} has joined");
@@ -68,7 +68,7 @@ pub fn setup(
                             k += 1;
                         }
                     }
-                    peers.lock().unwrap().insert(peer, k);
+                    peers1.lock().unwrap().insert(peer, k);
                     client
                         .broadcast(
                             &Packet::SetUser(peer, k),

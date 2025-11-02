@@ -40,7 +40,11 @@ pub fn get_sync(
     camera: Single<(&Camera, &GlobalTransform), (With<Camera3d>, Without<SyncObjectMe>)>,
     window: Single<&Window, With<PrimaryWindow>>,
     spatial: SpatialQuery,
+    peers: Res<Peers>,
 ) {
+    if peers.me.is_none() {
+        return;
+    }
     let send_sleep = send_sleep
         .0
         .swap(false, std::sync::atomic::Ordering::Relaxed);
@@ -584,7 +588,7 @@ pub fn apply_sync(
                     info!("joined as number {} user", id);
                     commands.entity(hand.0).despawn();
                     spawn_hand(id, &mut commands);
-                    peers.me = id;
+                    peers.me = Some(id);
                 }
                 peers.map.lock().unwrap().insert(peer, id);
             }
@@ -978,16 +982,18 @@ pub fn new_lobby(
     down: Res<Download>,
     #[cfg(feature = "ip")] send_sleep: Res<SendSleeping>,
     #[cfg(feature = "ip")] give: Res<GiveEnts>,
-    #[cfg(feature = "ip")] peers: Res<Peers>,
+    mut peers: ResMut<Peers>,
     #[cfg(feature = "ip")] rempeers: Res<RemPeers>,
 ) {
     if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft]) {
         if input.just_pressed(KeyCode::KeyN) {
             info!("hosting steam");
+            peers.me = Some(0);
             #[cfg(feature = "steam")]
             client.host_steam().unwrap();
         } else if input.just_pressed(KeyCode::KeyM) {
             info!("hosting ip");
+            peers.me = Some(0);
             #[cfg(feature = "ip")]
             {
                 let send = send_sleep.0.clone();
