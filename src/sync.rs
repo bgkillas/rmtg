@@ -372,6 +372,7 @@ pub fn apply_sync(
                                 let mut ent = commands.entity(entity);
                                 ent.insert(InOtherHand);
                                 ent.insert(SleepingDisabled);
+                                ent.insert(RigidBodyDisabled);
                                 mats.get_mut(*children.first().unwrap()).unwrap().0 =
                                     mats.get_mut(*children.get(1).unwrap()).unwrap().0.clone();
                                 gravity.0 = 0.0
@@ -379,6 +380,7 @@ pub fn apply_sync(
                                 let mut ent = commands.entity(entity);
                                 ent.remove::<InOtherHand>();
                                 ent.remove::<SleepingDisabled>();
+                                ent.remove::<RigidBodyDisabled>();
                                 repaint_face(&mut mats, &mut materials, pile.first(), children);
                                 gravity.0 = GRAVITY;
                             }
@@ -632,8 +634,23 @@ pub fn apply_sync(
                 let run = |pile: &mut Pile,
                            children: _,
                            mut transform: Mut<Transform>,
-                           entity: _| {
+                           entity: _,
+                           resend: bool| {
                     let len = to.len();
+                    if start > pile.len() || len > start {
+                        if resend {
+                            commands.entity(entity).despawn();
+                            client
+                                .send(
+                                    sender,
+                                    &Packet::Request(id.id),
+                                    Reliability::Reliable,
+                                    Compression::Compressed,
+                                )
+                                .unwrap();
+                        }
+                        return;
+                    }
                     for ((id, trans), card) in to.into_iter().zip(pile.drain(start - len..start)) {
                         let syncobject = SyncObject { user, id };
                         new_pile_at(
@@ -689,7 +706,7 @@ pub fn apply_sync(
                     && let Some(pile) = &mut pile
                     && let Some(children) = children
                 {
-                    run(pile, children, transform, entity);
+                    run(pile, children, transform, entity, false);
                 } else if let Some((mut pile, children, transform, entity)) =
                     query.iter_mut().find_map(
                         |(a, t, _, _, _, _, e, _, c, d, _, _)| {
@@ -699,7 +716,7 @@ pub fn apply_sync(
                     && let Some(pile) = &mut pile
                     && let Some(children) = children
                 {
-                    run(pile, children, transform, entity);
+                    run(pile, children, transform, entity, true);
                 }
             }
             Packet::Counter(id, to) => {
