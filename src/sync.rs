@@ -320,6 +320,7 @@ pub fn apply_sync(
         Res<Peers>,
     ),
 ) {
+    let mut ind = false;
     let mut ignore = HashSet::new();
     client.recv(|client, packet| {
         let sender = packet.src;
@@ -752,6 +753,10 @@ pub fn apply_sync(
                 }
             }
             Packet::Indicator(cam, cur) => {
+                if ind {
+                    return;
+                }
+                ind = true;
                 if let Some(id) = peers.0.lock().unwrap().get(&sender) {
                     if let Some(mut t) = cams
                         .iter_mut()
