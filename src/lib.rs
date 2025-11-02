@@ -52,12 +52,20 @@ use crate::sync::display_steam_info;
 use crate::sync::new_lobby;
 use crate::sync::{SendSleeping, Sent, SyncActions, SyncCount, SyncObject, apply_sync, get_sync};
 use bitcode::{Decode, Encode};
+#[cfg(feature = "wasm")]
+use futures::channel::oneshot;
 use itertools::Either;
 use rand::seq::SliceRandom;
 #[cfg(feature = "wasm")]
+use wasm_bindgen::JsCast;
+#[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg(feature = "wasm")]
+use wasm_bindgen::prelude::*;
+#[cfg(feature = "wasm")]
 use wasm_bindgen_futures::JsFuture;
+#[cfg(feature = "wasm")]
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement};
 #[cfg(feature = "steam")]
 const APPID: u32 = 4046880;
 const FONT_SIZE: f32 = 16.0;
@@ -1230,4 +1238,27 @@ pub enum CreatureType {
     #[default]
     None,
     All,
+}
+#[cfg(feature = "wasm")]
+pub async fn get_image_bytes(url: &str) -> Option<(Vec<u8>, u32, u32)> {
+    let img = HtmlImageElement::new().ok()?;
+    img.set_cross_origin(Some("anonymous"));
+    img.set_src(url);
+    let (tx, rx) = oneshot::channel::<()>();
+    let onload = Closure::once(Box::new(move || tx.send(()).unwrap()) as Box<dyn FnOnce()>);
+    img.set_onload(Some(onload.as_ref().unchecked_ref()));
+    onload.forget();
+    rx.await.unwrap();
+    let document = web_sys::window().unwrap().document().unwrap();
+    let canvas: HtmlCanvasElement = document.create_element("canvas").ok()?.dyn_into().ok()?;
+    canvas.set_width(img.width());
+    canvas.set_height(img.height());
+    let ctx: CanvasRenderingContext2d = canvas.get_context("2d").ok()?.unwrap().dyn_into().ok()?;
+    ctx.draw_image_with_html_image_element(&img, 0.0, 0.0)
+        .ok()?;
+    let data = ctx
+        .get_image_data(0.0, 0.0, img.width() as f64, img.height() as f64)
+        .ok()?
+        .data();
+    Some((data.0, img.width(), img.height()))
 }

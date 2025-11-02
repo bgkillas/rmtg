@@ -29,7 +29,7 @@ wasm-opt = false
 default=["bin", "steam", "ip"]
 bin=["dep:arboard", "tokio/rt-multi-thread", "calc"]
 calc=["dep:kalc-lib"]
-wasm=["bevy_rand/wasm_js", "dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:web-sys", "dep:console_error_panic_hook"]
+wasm=["bevy_rand/wasm_js", "dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:web-sys", "dep:console_error_panic_hook", "dep:js-sys"]
 steam=["bevy_tangled/steam"]
 ip=["bevy_tangled/tangled"]
 
@@ -103,7 +103,8 @@ bevy_rand = {version = "0.12.1", features = ["rand_chacha", "wyrand"] }
 bevy_prng = { version = "0.12.1", features = ["rand_chacha", "wyrand"] }
 wasm-bindgen = {version="0.2.105", optional = true}
 wasm-bindgen-futures = {version="0.4.55", optional = true}
-web-sys = { version = "0.3.82", optional = true, features = ["Clipboard", "Navigator", "Window"] }
+web-sys = { version = "0.3.82", optional = true, features = ["Clipboard", "Navigator", "Window", "HtmlImageElement", "HtmlCanvasElement", "CanvasRenderingContext2d", "Document", "ImageData"] }
+js-sys = {version="0.3.82",optional = true}
 console_error_panic_hook = { version = "0.1.7", optional = true }
 avian3d={version="0.4.1", features = ["simd"]}
 bevy_rich_text3d = {git="https://github.com/mintlu8/bevy_rich_text3d"}

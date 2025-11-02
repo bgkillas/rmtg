@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta http-equiv="Content-Security-Policy" content="connect-src 'self' https://api.scryfall.com https://embed.scryfall.com; img-src 'self' https://*.scryfall.io; style-src 'self' https://embed.scryfall.com 'unsafe-inline'; script-src 'self' https://embed.scryfall.com 'unsafe-inline' 'wasm-unsafe-eval' 'unsafe-eval'; font-src 'self' https://embed.scryfall.com">    <link rel="modulepreload" href="pkg/rmtg.js" as="script">
+    <meta http-equiv="Content-Security-Policy" content="connect-src 'self' api.scryfall.com embed.scryfall.com; img-src 'self' *.scryfall.io; style-src 'self' embed.scryfall.com 'nonce-canv' 'unsafe-inline'; script-src 'self' embed.scryfall.com 'nonce-canv' 'wasm-unsafe-eval'; font-src 'self' embed.scryfall.com;">
+    <link rel="modulepreload" href="pkg/rmtg.js" as="script">
     <link rel="preload" href="pkg/rmtg_bg.wasm" as="fetch" type="application/wasm" crossorigin>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>rmtg</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
-    <style>
+    <style nonce="canv">
         html, body {
           margin: 0;
           padding: 0;
@@ -28,7 +29,7 @@
 <body>
     <canvas id="canvas"></canvas>
     <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
-    <script type="module" crossorigin="anonymous">
+    <script type="module" crossorigin="anonymous" nonce="canv">
         import init from './pkg/rmtg.js'; async function run() { await init(); } run();
     </script>
 </body>

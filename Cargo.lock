@@ -5270,6 +5270,7 @@ dependencies = [
  "futures",
  "image",
  "itertools 0.14.0",
+ "js-sys",
  "json",
  "kalc-lib",
  "lz4_flex",

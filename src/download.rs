@@ -24,22 +24,29 @@ pub fn parse_no_mips(bytes: Bytes) -> Option<Image> {
         .ok()?;
     let rgba = image.to_rgba8();
     let (width, height) = image.dimensions();
-    Some(Image::new(
+    Some(make_img(rgba.into_raw(), width, height))
+}
+pub fn make_img(rgba: Vec<u8>, width: u32, height: u32) -> Image {
+    Image::new(
         Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
-        rgba.into_raw(),
+        rgba,
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::RENDER_WORLD,
-    ))
+    )
 }
 pub fn parse_bytes(bytes: Bytes) -> Option<Image> {
     let mut image = parse_no_mips(bytes)?;
+    generate_mips(&mut image);
+    Some(image)
+}
+pub fn generate_mips(image: &mut Image) {
     generate_mips_texture(
-        &mut image,
+        image,
         &MipmapGeneratorSettings {
             anisotropic_filtering: 16,
             filter_type: FilterType::Lanczos3,
@@ -48,7 +55,6 @@ pub fn parse_bytes(bytes: Bytes) -> Option<Image> {
         &mut 0,
     )
     .unwrap();
-    Some(image)
 }
 pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<Image>> {
     let image = parse_bytes(bytes)?;
@@ -196,7 +202,9 @@ async fn get_bytes(
     normal: bool,
 ) -> Option<UninitImage> {
     let path = format!("./cache/{id}-{}", if normal { 0 } else { 1 });
-    if let Ok(data) = fs::read(&path) {
+    if !cfg!(feature = "wasm")
+        && let Ok(data) = fs::read(&path)
+    {
         let image_data: ImageData = decode(&decompress_size_prepended(&data).ok()?).ok()?;
         let mut image = Image::new_uninit(
             Extent3d {
@@ -225,21 +233,26 @@ async fn get_bytes(
                 &id[1..2]
             )
         };
-        let res = client.get(url).send().await.ok()?;
-        if let Ok(bytes) = res.bytes().await {
-            let mut image = parse_bytes(bytes)?;
-            let image_data = ImageData {
-                data: mem::take(&mut image.data)?,
-                mip: image.texture_descriptor.mip_level_count,
-                width: image.width(),
-                height: image.height(),
-            };
-            fs::write(path, compress_prepend_size(&encode(&image_data))).ok()?;
-            image.data = Some(image_data.data);
-            Some(asset_server.add(image).into())
-        } else {
-            None
-        }
+        #[cfg(feature = "wasm")]
+        let (bytes, w, h) = get_image_bytes(&url).await?.into();
+        #[cfg(feature = "wasm")]
+        let mut image = make_img(bytes, w, h);
+        #[cfg(feature = "wasm")]
+        generate_mips(&mut image);
+        #[cfg(not(feature = "wasm"))]
+        let bytes = client.get(url).send().await.ok()?.bytes().await.ok()?;
+        #[cfg(not(feature = "wasm"))]
+        let mut image = parse_bytes(bytes)?;
+        let image_data = ImageData {
+            data: mem::take(&mut image.data)?,
+            mip: image.texture_descriptor.mip_level_count,
+            width: image.width(),
+            height: image.height(),
+        };
+        #[cfg(not(feature = "wasm"))]
+        fs::write(path, compress_prepend_size(&encode(&image_data))).ok()?;
+        image.data = Some(image_data.data);
+        Some(asset_server.add(image).into())
     }
 }
 fn get<T: Default, F>(value: &JsonValue, index: &str, f: F) -> (T, T)
