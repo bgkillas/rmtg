@@ -76,6 +76,13 @@ pub fn spawn_ico<'a>(
             }
         }
     }
+    let rot = Quat::from_euler(EulerRot::XYZ, 1.706441, -0.33977506, 0.38868707);
+    for [a, b, c] in verticies.iter_mut() {
+        let v = rot.mul_vec3(Vec3::new(*a, *b, *c));
+        *a = v.x;
+        *b = v.y;
+        *c = v.z;
+    }
     let mut indecies = Vec::with_capacity(60);
     let mut faces = Vec::with_capacity(20);
     for a in &f {
@@ -198,6 +205,13 @@ pub fn spawn_oct<'a>(
             }
         }
     }
+    let rot = Quat::from_euler(EulerRot::XYZ, 2.2662134, 0.7197562, 1.4539983);
+    for [a, b, c] in verticies.iter_mut() {
+        let v = rot.mul_vec3(Vec3::new(*a, *b, *c));
+        *a = v.x;
+        *b = v.y;
+        *c = v.z;
+    }
     let mut indecies = Vec::with_capacity(24);
     let mut faces = Vec::with_capacity(8);
     for a in &f {
@@ -301,7 +315,7 @@ pub fn spawn_tetra<'a>(
     materials: &mut Assets<StandardMaterial>,
 ) -> EntityCommands<'a> {
     fn make(m: f32) -> (Mesh, Vec<[f32; 3]>) {
-        let verticies: Vec<[f32; 3]> = vec![[m, m, m], [m, -m, -m], [-m, m, -m], [-m, -m, m]];
+        let mut verticies: Vec<[f32; 3]> = vec![[m, m, m], [m, -m, -m], [-m, m, -m], [-m, -m, m]];
         let mut f = Vec::with_capacity(12);
         for (i, a) in verticies.iter().enumerate() {
             let [ax, ay, az] = a;
@@ -315,6 +329,13 @@ pub fn spawn_tetra<'a>(
                     f.push([i as u16, j as u16]);
                 }
             }
+        }
+        let rot = Quat::from_euler(EulerRot::XYZ, -2.5109453, 0.20455404, 0.63817024);
+        for [a, b, c] in verticies.iter_mut() {
+            let v = rot.mul_vec3(Vec3::new(*a, *b, *c));
+            *a = v.x;
+            *b = v.y;
+            *c = v.z;
         }
         let mut indecies = Vec::with_capacity(12);
         let mut faces = Vec::with_capacity(4);
@@ -458,6 +479,7 @@ pub fn spawn_coin<'a>(
     ));
     ent.with_children(|parent| {
         for (i, [mut y]) in [[m / ratio], [-m / ratio]].into_iter().enumerate() {
+            let i = 1 - i;
             if y < 0.0 {
                 y -= EPSILON;
             } else {
@@ -534,6 +556,13 @@ pub fn spawn_dodec<'a>(
                 f.push([i as u16, j as u16]);
             }
         }
+    }
+    let rot = Quat::from_euler(EulerRot::XYZ, 0.6557172, 0.53113717, 2.7700996);
+    for [a, b, c] in verticies.iter_mut() {
+        let v = rot.mul_vec3(Vec3::new(*a, *b, *c));
+        *a = v.x;
+        *b = v.y;
+        *c = v.z;
     }
     let mut indecies = Vec::with_capacity(180);
     let mut faces = Vec::with_capacity(12);
