@@ -42,7 +42,7 @@ pub fn get_sync(
     spatial: SpatialQuery,
     peers: Res<Peers>,
 ) {
-    if peers.me.is_none() {
+    if peers.me.is_none() && !peers.map.lock().unwrap().is_empty() {
         return;
     }
     let send_sleep = send_sleep
