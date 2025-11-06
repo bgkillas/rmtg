@@ -48,7 +48,7 @@ pub fn generate_mips(image: &mut Image) {
     generate_mips_texture(
         image,
         &MipmapGeneratorSettings {
-            anisotropic_filtering: 16,
+            anisotropic_filtering: 1,
             filter_type: FilterType::Lanczos3,
             ..default()
         },

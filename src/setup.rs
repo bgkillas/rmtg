@@ -8,6 +8,7 @@ use crate::sync::SendSleeping;
 use crate::sync::{SyncObjectMe, spawn_hand};
 use crate::update::{CardSpot, GiveEnts};
 use crate::*;
+use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rand::global::GlobalRng;
 #[cfg(feature = "steam")]
@@ -254,7 +255,12 @@ pub fn setup(
             ..default()
         })),
     ));
-    commands.spawn((Camera3d::default(), Msaa::Sample8, default_cam_pos(0)));
+    commands.spawn((
+        Camera3d::default(),
+        Msaa::Sample8,
+        default_cam_pos(0),
+        Tonemapping::None,
+    ));
     if !no_obj {
         let mut cube = Shape::Cube.create(
             Transform::from_xyz(0.0, 128.0, 0.0),
