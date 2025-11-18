@@ -34,7 +34,7 @@ steam=["bevy_tangled/steam"]
 ip=["bevy_tangled/tangled"]
 
 [dependencies]
-bevy={version="0.17.2", default-features = false, features = [
+bevy={version="0.17.3", default-features = false, features = [
   "std",
   "async_executor",
   #"android-game-activity",
@@ -93,12 +93,12 @@ itertools="0.14.0"
 arboard={version="3.6.1", features = ["wayland-data-control"], optional = true}
 reqwest={version="0.12.24", features = ["rustls-tls"], default-features = false}
 json="0.12.4"
-image="0.25.8"
+image="0.25.9"
 futures="0.3.31"
 bevy_framepace = {git = "https://github.com/TotalKrill/bevy_framepace"}
 tokio={version="1.48.0",default-features = false,features=["rt","macros"]}
 rand = "0.9.2"
-bytes = "1.10.1"
+bytes = "1.11.0"
 bevy_rand = {version = "0.12.1", features = ["rand_chacha", "wyrand"] }
 bevy_prng = { version = "0.12.1", features = ["rand_chacha", "wyrand"] }
 wasm-bindgen = {version="0.2.105", optional = true}
@@ -114,7 +114,7 @@ bevy_ui_text_input = {git="https://github.com/ickshonpe/bevy_ui_text_input"}
 #bevy_console = "0.14.1"
 #rune = "0.14.1"
 bevy_mod_mipmap_generator={git="https://github.com/DGriffin91/bevy_mod_mipmap_generator"}
-lz4_flex = { version = "0.11.5", default-features = false }
+lz4_flex = { version = "0.12.0", default-features = false }
 kalc-lib = {git="https://github.com/bgkillas/kalc-lib",version = "1.5.1", optional = true}
 cosmic-text = "0.14.2"
 
