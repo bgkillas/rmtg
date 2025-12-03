@@ -95,22 +95,22 @@ reqwest={version="0.12.24", features = ["rustls-tls"], default-features = false}
 json="0.12.4"
 image="0.25.9"
 futures="0.3.31"
-bevy_framepace = {git = "https://github.com/TotalKrill/bevy_framepace"}
+bevy_framepace = "0.20.0"
 tokio={version="1.48.0",default-features = false,features=["rt","macros"]}
 rand = "0.9.2"
 bytes = "1.11.0"
 bevy_rand = {version = "0.12.1", features = ["rand_chacha", "wyrand"] }
 bevy_prng = { version = "0.12.1", features = ["rand_chacha", "wyrand"] }
-wasm-bindgen = {version="0.2.105", optional = true}
-wasm-bindgen-futures = {version="0.4.55", optional = true}
-web-sys = { version = "0.3.82", optional = true, features = ["Clipboard", "Navigator", "Window", "HtmlImageElement", "HtmlCanvasElement", "CanvasRenderingContext2d", "Document", "ImageData"] }
-js-sys = {version="0.3.82",optional = true}
+wasm-bindgen = {version="0.2.106", optional = true}
+wasm-bindgen-futures = {version="0.4.56", optional = true}
+web-sys = { version = "0.3.83", optional = true, features = ["Clipboard", "Navigator", "Window", "HtmlImageElement", "HtmlCanvasElement", "CanvasRenderingContext2d", "Document", "ImageData"] }
+js-sys = {version="0.3.83",optional = true}
 console_error_panic_hook = { version = "0.1.7", optional = true }
 avian3d={version="0.4.1", features = ["simd"]}
-bevy_rich_text3d = {git="https://github.com/mintlu8/bevy_rich_text3d"}
+bevy_rich_text3d = "0.5.1"
 bevy_tangled = {git = "https://github.com/bgkillas/bevy_tangled", default-features = false, features = ["bevy", "compress"]}
 bitcode = {git="https://github.com/SoftbearStudios/bitcode", version = "0.6.7", branch = "large_c_style_enums"}
-bevy_ui_text_input = {git="https://github.com/ickshonpe/bevy_ui_text_input"}
+bevy_ui_text_input = "0.6.0"
 #bevy_console = "0.14.1"
 #rune = "0.14.1"
 bevy_mod_mipmap_generator={git="https://github.com/DGriffin91/bevy_mod_mipmap_generator"}
