@@ -31,7 +31,7 @@ use std::mem;
 #[derive(Component)]
 pub struct HandIgnore;
 pub fn gather_hand(
-    mut hand: Single<(&Transform, &mut Hand, Entity)>,
+    mut hand: Single<(&Transform, &mut Hand, Entity, Option<&Children>)>,
     mut cards: Query<
         (
             Entity,
@@ -51,6 +51,7 @@ pub fn gather_hand(
             Without<FollowOtherMouse>,
         ),
     >,
+    mut child: Query<&mut InHand>,
     spatial: SpatialQuery,
     mut commands: Commands,
     mut sync_actions: ResMut<SyncActions>,
@@ -79,11 +80,25 @@ pub fn gather_hand(
                 linvel.0 = default();
                 angvel.0 = default();
                 grav.0 = 0.0;
+                let entry = (2.0 * (trans.translation.x - hand.0.translation.x) / CARD_WIDTH
+                    + (hand.1.count as f32 - 1.0) / 2.0)
+                    .ceil() as usize;
+                hand.1.count += 1;
+                if entry != hand.1.count - 1 {
+                    if let Some(children) = hand.3 {
+                        for c in children {
+                            if let Ok(mut e) = child.get_mut(*c) {
+                                if entry <= e.0 {
+                                    e.0 += 1;
+                                }
+                            }
+                        }
+                    }
+                }
                 commands
                     .entity(entity)
-                    .insert(InHand(hand.1.count))
+                    .insert(InHand(entry.clamp(0, hand.1.count - 1)))
                     .insert(RigidBodyDisabled);
-                hand.1.count += 1;
                 commands.entity(hand.2).add_child(entity);
                 trans.rotation = Quat::default();
             }
