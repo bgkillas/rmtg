@@ -47,7 +47,6 @@ pub fn gather_hand(
             With<Pile>,
             Without<Hand>,
             Without<InHand>,
-            Without<FollowMouse>,
             Without<FollowOtherMouse>,
         ),
     >,
@@ -80,30 +79,39 @@ pub fn gather_hand(
                 linvel.0 = default();
                 angvel.0 = default();
                 grav.0 = 0.0;
-                let entry = (2.0 * (trans.translation.x - hand.0.translation.x) / CARD_WIDTH
-                    + (hand.1.count as f32 - 1.0) / 2.0)
-                    .ceil() as usize;
-                hand.1.count += 1;
-                if entry != hand.1.count - 1 {
-                    if let Some(children) = hand.3 {
-                        for c in children {
-                            if let Ok(mut e) = child.get_mut(*c) {
-                                if entry <= e.0 {
-                                    e.0 += 1;
-                                }
-                            }
-                        }
-                    }
-                }
+                let entry = place_pos(&mut hand, trans.translation.x, &mut child);
                 commands
                     .entity(entity)
-                    .insert(InHand(entry.clamp(0, hand.1.count - 1)))
+                    .insert(InHand(entry))
                     .insert(RigidBodyDisabled);
+                hand.1.count += 1;
                 commands.entity(hand.2).add_child(entity);
                 trans.rotation = Quat::default();
             }
         }
     }
+}
+fn place_pos(
+    hand: &mut Single<(&Transform, &mut Hand, Entity, Option<&Children>)>,
+    x: f32,
+    child: &mut Query<&mut InHand>,
+) -> usize {
+    let entry =
+        ((2.0 * (x - hand.0.translation.x) / CARD_WIDTH + (hand.1.count as f32 - 1.0) / 2.0).ceil()
+            as usize)
+            .min(hand.1.count);
+    if entry != hand.1.count
+        && let Some(children) = hand.3
+    {
+        for c in children {
+            if let Ok(mut e) = child.get_mut(*c)
+                && entry <= e.0
+            {
+                e.0 += 1;
+            }
+        }
+    }
+    entry
 }
 pub fn update_hand(
     mut hand: Single<(&Transform, &mut Hand, Option<&Children>)>,
@@ -135,7 +143,7 @@ pub fn follow_mouse(
     mouse_input: Res<ButtonInput<MouseButton>>,
     camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
     window: Single<&Window, With<PrimaryWindow>>,
-    cards: Query<(&Collider, &Transform), Without<FollowMouse>>,
+    cards: Query<(&Collider, &Transform), (Without<FollowMouse>, Without<Hand>)>,
     mut commands: Commands,
     time_since: Res<Time>,
     spatial: SpatialQuery,
@@ -148,9 +156,11 @@ pub fn follow_mouse(
             &mut LinearVelocity,
             &Collider,
         ),
-        With<FollowMouse>,
+        (With<FollowMouse>, Without<Hand>),
     >,
     menu: Res<Menu>,
+    mut child: Query<&mut InHand>,
+    mut hand: Single<(&Transform, &mut Hand, Entity, Option<&Children>)>,
 ) {
     let Some(cursor_position) = window.cursor_position() else {
         return;
@@ -202,7 +212,30 @@ pub fn follow_mouse(
                 T - W + (aabb.min.z - card.1.translation.z).abs(),
                 W - T - (aabb.max.z - card.1.translation.z).abs(),
             );
-            card.1.translation = point;
+            if child.contains(card.0) {
+                if spatial
+                    .shape_intersections(
+                        card.4,
+                        point,
+                        card.1.rotation,
+                        &SpatialQueryFilter::from_mask(u32::MAX - 0b100),
+                    )
+                    .contains(&hand.2)
+                {
+                    let n = place_pos(&mut hand, point.x, &mut child);
+                    child.get_mut(card.0).unwrap().0 = n;
+                } else {
+                    hand.1.removed.push(child.get(card.0).unwrap().0);
+                    commands
+                        .entity(card.0)
+                        .remove_parent_in_place()
+                        .remove::<RigidBodyDisabled>()
+                        .remove::<InHand>();
+                    card.1.translation = point;
+                }
+            } else {
+                card.1.translation = point;
+            }
         }
     } else {
         if let Some(time) =
