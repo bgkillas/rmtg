@@ -113,6 +113,30 @@ fn place_pos(
     }
     entry
 }
+fn swap_pos(
+    hand: &mut Single<(&Transform, &mut Hand, Entity, Option<&Children>)>,
+    x: f32,
+    child: &mut Query<&mut InHand>,
+    cur: usize,
+) -> usize {
+    let entry =
+        ((2.0 * (x - hand.0.translation.x) / CARD_WIDTH + (hand.1.count as f32 - 2.0) / 2.0).ceil()
+            as usize)
+            .min(hand.1.count - 1);
+    if cur != entry
+        && let Some(children) = hand.3
+    {
+        for c in children {
+            if let Ok(mut e) = child.get_mut(*c)
+                && e.0 == entry
+            {
+                e.0 = cur;
+                break;
+            }
+        }
+    }
+    entry
+}
 pub fn update_hand(
     mut hand: Single<(&Transform, &mut Hand, Option<&Children>)>,
     mut card: Query<(&mut InHand, &mut Transform), (With<InHand>, Without<Hand>)>,
@@ -155,6 +179,7 @@ pub fn follow_mouse(
             &mut GravityScale,
             &mut LinearVelocity,
             &Collider,
+            &GlobalTransform,
         ),
         (With<FollowMouse>, Without<Hand>),
     >,
@@ -213,24 +238,26 @@ pub fn follow_mouse(
                 W - T - (aabb.max.z - card.1.translation.z).abs(),
             );
             if child.contains(card.0) {
-                if spatial
-                    .shape_intersections(
-                        card.4,
-                        point,
-                        card.1.rotation,
-                        &SpatialQueryFilter::from_mask(u32::MAX - 0b100),
-                    )
-                    .contains(&hand.2)
+                if Collider::cuboid(
+                    MAT_WIDTH + CARD_THICKNESS,
+                    CARD_HEIGHT + CARD_THICKNESS,
+                    CARD_HEIGHT + CARD_THICKNESS,
+                )
+                .aabb(hand.0.translation, hand.0.rotation)
+                .intersects(&card.4.aabb(point, card.1.rotation))
                 {
-                    let n = place_pos(&mut hand, point.x, &mut child);
+                    let cur = child.get(card.0).unwrap().0;
+                    let n = swap_pos(&mut hand, point.x, &mut child, cur);
                     child.get_mut(card.0).unwrap().0 = n;
                 } else {
+                    hand.1.count -= 1;
                     hand.1.removed.push(child.get(card.0).unwrap().0);
                     commands
                         .entity(card.0)
                         .remove_parent_in_place()
                         .remove::<RigidBodyDisabled>()
-                        .remove::<InHand>();
+                        .remove::<InHand>()
+                        .insert(HandIgnore);
                     card.1.translation = point;
                 }
             } else {
@@ -239,10 +266,10 @@ pub fn follow_mouse(
         }
     } else {
         if let Some(time) =
-            ray.intersect_plane(card.1.translation, InfinitePlane3d { normal: Dir3::Y })
+            ray.intersect_plane(card.5.translation(), InfinitePlane3d { normal: Dir3::Y })
         {
             let point = ray.get_point(time);
-            card.3.0 = (point - card.1.translation) / time_since.delta_secs();
+            card.3.0 = (point - card.5.translation()) / time_since.delta_secs();
         }
         commands.entity(card.0).remove::<FollowMouse>();
         commands.entity(card.0).remove::<SleepingDisabled>();
