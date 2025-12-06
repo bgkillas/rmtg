@@ -277,7 +277,7 @@ pub fn make_cur(
             ..default()
         })),
         Transform::from_xyz(pos.x, pos.y, pos.z),
-        CursorInd(peer),
+        CursorInd(peer, false),
     ));
 }
 pub fn default_cam_pos(n: usize) -> Transform {

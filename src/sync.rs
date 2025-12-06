@@ -41,6 +41,7 @@ pub fn get_sync(
     window: Single<&Window, With<PrimaryWindow>>,
     spatial: SpatialQuery,
     peers: Res<Peers>,
+    mouse_input: Res<ButtonInput<MouseButton>>,
 ) {
     if peers.me.is_none() && !peers.map.lock().unwrap().is_empty() {
         return;
@@ -247,7 +248,11 @@ pub fn get_sync(
     if let Some(hit) = hit {
         let cam = camera_transform.translation();
         let cur = ray.origin + ray.direction * hit.distance;
-        let packet = Packet::Indicator(cam.into(), cur.into());
+        let packet = Packet::Indicator(
+            cam.into(),
+            cur.into(),
+            mouse_input.pressed(MouseButton::Middle),
+        );
         client
             .broadcast(&packet, Reliability::Reliable, Compression::Compressed)
             .unwrap();
@@ -359,7 +364,7 @@ pub fn apply_sync(
             ),
         >,
         Query<
-            (&CursorInd, &mut Transform),
+            (&mut CursorInd, &mut Transform, Entity),
             (
                 Without<SyncObject>,
                 Without<SyncObjectMe>,
@@ -929,7 +934,7 @@ pub fn apply_sync(
                     run(children, e);
                 }
             }
-            Packet::Indicator(cam, cur) => {
+            Packet::Indicator(cam, cur, ping) => {
                 if ind {
                     return;
                 }
@@ -950,10 +955,42 @@ pub fn apply_sync(
                             &mut meshes,
                         );
                     }
-                    if let Some(mut t) = curs
-                        .iter_mut()
-                        .find_map(|(a, t)| if a.0 == sender { Some(t) } else { None })
+                    if let Some((mut b, mut t, e)) = curs.iter_mut().find(|(a, _, _)| a.0 == sender)
                     {
+                        if ping != b.1
+                            && let Ok(mut mat) = mats.get_mut(e)
+                        {
+                            b.1 = ping;
+                            if ping {
+                                fn sub(
+                                    a: bevy::color::Color,
+                                    b: bevy::color::Color,
+                                ) -> bevy::color::Color {
+                                    let mut a = a.to_linear();
+                                    let b = b.to_linear();
+                                    a.red -= b.red;
+                                    a.green -= b.green;
+                                    a.blue -= b.blue;
+                                    a.into()
+                                }
+                                mat.0 = materials.add(StandardMaterial {
+                                    alpha_mode: AlphaMode::Opaque,
+                                    unlit: true,
+                                    base_color: sub(
+                                        bevy::color::Color::WHITE,
+                                        PLAYER[id % PLAYER.len()],
+                                    ),
+                                    ..default()
+                                });
+                            } else {
+                                mat.0 = materials.add(StandardMaterial {
+                                    alpha_mode: AlphaMode::Opaque,
+                                    unlit: true,
+                                    base_color: PLAYER[id % PLAYER.len()],
+                                    ..default()
+                                });
+                            }
+                        }
                         t.translation = cur.into()
                     } else {
                         make_cur(
@@ -975,7 +1012,7 @@ pub fn apply_sync(
 #[derive(Component)]
 pub struct CameraInd(pub PeerId);
 #[derive(Component)]
-pub struct CursorInd(pub PeerId);
+pub struct CursorInd(pub PeerId, pub bool);
 pub fn spawn_hand(me: usize, commands: &mut Commands) {
     let transform = match me {
         0 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
@@ -1132,7 +1169,7 @@ pub enum Packet {
     Draw(SyncObject, Vec<(SyncObjectMe, Trans)>, usize),
     Merge(SyncObject, SyncObject, usize),
     SetUser(PeerId, usize),
-    Indicator(Pos, Pos),
+    Indicator(Pos, Pos, bool),
 }
 #[derive(Encode, Decode, Debug)]
 pub struct Phys {
