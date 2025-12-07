@@ -40,10 +40,9 @@ pub fn get_sync(
     camera: Single<(&Camera, &GlobalTransform), (With<Camera3d>, Without<SyncObjectMe>)>,
     window: Single<&Window, With<PrimaryWindow>>,
     spatial: SpatialQuery,
-    peers: Res<Peers>,
     mouse_input: Res<ButtonInput<MouseButton>>,
 ) {
-    if peers.me.is_none() && !peers.map.lock().unwrap().is_empty() {
+    if !client.is_connected() {
         return;
     }
     let send_sleep = send_sleep
@@ -386,6 +385,9 @@ pub fn apply_sync(
         >,
     ),
 ) {
+    if !client.is_connected() {
+        return;
+    }
     let mut cam = cam.into_inner();
     let mut ind = false;
     let mut ignore = HashSet::new();

@@ -1469,7 +1469,7 @@ dependencies = [
 [[package]]
 name = "bevy_tangled"
 version = "0.1.0"
-source = "git+https://github.com/bgkillas/bevy_tangled#b30b7d6d3dfe817e059cb1f1ba172dd36c0b8874"
+source = "git+https://github.com/bgkillas/bevy_tangled#f2d4ef7f0f6501e4470fe09392ff58683caa02cf"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
