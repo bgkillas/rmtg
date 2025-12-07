@@ -26,15 +26,24 @@ impl Shape {
         materials: &mut Assets<StandardMaterial>,
     ) -> EntityCommands<'a> {
         match self {
-            Shape::Cube => spawn_cube(256.0, transform, commands, meshes, materials),
-            Shape::Icosahedron => spawn_ico(96.0, transform, commands, meshes, materials),
-            Shape::Dodecahedron => spawn_dodec(96.0, transform, commands, meshes, materials),
-            Shape::Octohedron => spawn_oct(192.0, transform, commands, meshes, materials),
-            Shape::Tetrahedron => spawn_tetra(128.0, transform, commands, meshes, materials),
-            Shape::Disc => spawn_coin(96.0, transform, commands, meshes, materials),
-            Shape::Counter(v) => {
-                make_counter(256.0, transform, commands, meshes, materials, v.clone())
+            Shape::Cube => spawn_cube(MAT_BAR * 4.0, transform, commands, meshes, materials),
+            Shape::Icosahedron => spawn_ico(MAT_BAR * 4.0, transform, commands, meshes, materials),
+            Shape::Dodecahedron => {
+                spawn_dodec(MAT_BAR * 4.0, transform, commands, meshes, materials)
             }
+            Shape::Octohedron => spawn_oct(MAT_BAR * 4.0, transform, commands, meshes, materials),
+            Shape::Tetrahedron => {
+                spawn_tetra(MAT_BAR * 4.0, transform, commands, meshes, materials)
+            }
+            Shape::Disc => spawn_coin(MAT_BAR * 4.0, transform, commands, meshes, materials),
+            Shape::Counter(v) => make_counter(
+                MAT_BAR * 4.0,
+                transform,
+                commands,
+                meshes,
+                materials,
+                v.clone(),
+            ),
         }
     }
 }

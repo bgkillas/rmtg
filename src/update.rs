@@ -223,7 +223,7 @@ pub fn follow_mouse(
             .reduce(f32::max)
         {
             let max = max.max(aabb.max.y);
-            card.1.translation.y = max + 8.0;
+            card.1.translation.y = max + CARD_THICKNESS * 4.0;
         }
         if let Some(time) =
             ray.intersect_plane(card.1.translation, InfinitePlane3d { normal: Dir3::Y })
@@ -499,7 +499,7 @@ pub fn listen_for_mouse(
                         );
                     }
                     let mut transform = *transform;
-                    transform.translation.y += len + 8.0;
+                    transform.translation.y += len + CARD_THICKNESS * 4.0;
                     if let Some(e) = follow {
                         commands.entity(*e).remove::<FollowMouse>();
                     }
@@ -909,7 +909,7 @@ pub fn listen_for_mouse(
                     let myid = SyncObjectMe::new(&mut rand, &mut count);
                     sync_actions.take_owner.push((*id, myid));
                 }
-                lv.y = 4096.0;
+                lv.y = MAT_WIDTH;
                 av.x = if rand.random() { 1.0 } else { -1.0 }
                     * (rand.random_range(32.0..64.0) + av.x.abs());
                 av.y = if rand.random() { 1.0 } else { -1.0 }
@@ -1113,7 +1113,7 @@ pub fn pick_from_list(
                     );
                 }
                 let mut transform = *trans;
-                transform.translation.y += len + 8.0;
+                transform.translation.y += len + CARD_THICKNESS * 4.0;
                 if let Some(e) = &follow {
                     commands.entity(**e).remove::<FollowMouse>();
                 }
@@ -1231,9 +1231,9 @@ pub fn cam_translation(
         return;
     }
     let scale = if input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
-        128.0
+        CARD_THICKNESS * 64.0
     } else {
-        32.0
+        CARD_THICKNESS * 16.0
     };
     if !input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
         let apply = |translate: Vec3, cam: &mut Transform| {
@@ -1264,7 +1264,7 @@ pub fn cam_translation(
     }
     if mouse_motion.delta.y != 0.0 {
         let translate = cam.forward().as_vec3() * scale * mouse_motion.delta.y * 16.0;
-        if cam.translation.y < -translate.y {
+        if cam.translation.y + translate.y <= 0.0 {
             cam.translation.y /= 2.0;
         } else {
             cam.translation += translate;
@@ -1457,6 +1457,9 @@ pub fn register_deck(
 ) {
     let mut decks = decks.get_deck.0.lock().unwrap();
     for (deck, v, id) in decks.drain(..) {
+        if deck.is_empty() {
+            continue;
+        }
         if id.is_none() {
             info!("deck found of size {} at {} {}", deck.len(), v.x, v.y);
         }

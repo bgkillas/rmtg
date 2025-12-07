@@ -1,4 +1,4 @@
-use crate::setup::setup;
+use crate::setup::{MAT_BAR, MAT_HEIGHT, MAT_WIDTH, setup};
 use crate::update::{
     GiveEnts, ToMoveUp, cam_rotation, cam_translation, esc_menu, follow_mouse, gather_hand,
     give_ents, listen_for_deck, listen_for_mouse, on_scroll_handler, pick_from_list, pile_merge,
@@ -22,12 +22,12 @@ use std::slice::{Iter, IterMut};
 use std::sync::{Arc, Mutex};
 use std::{iter, mem, slice};
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
-pub const CARD_WIDTH: f32 = 500.0;
-pub const CARD_HEIGHT: f32 = 700.0;
-pub const CARD_THICKNESS: f32 = 2.0;
-pub const START_Y: f32 = 8192.0;
-pub const GRAVITY: f32 = 512.0;
-pub const LIN_DAMPING: f32 = 0.25;
+pub const CARD_WIDTH: f32 = CARD_HEIGHT * 5.0 / 7.0;
+pub const CARD_HEIGHT: f32 = (MAT_HEIGHT - MAT_BAR) / 5.0 - MAT_BAR;
+pub const CARD_THICKNESS: f32 = CARD_WIDTH / 256.0;
+pub const START_Y: f32 = MAT_WIDTH;
+pub const GRAVITY: f32 = CARD_WIDTH;
+pub const LIN_DAMPING: f32 = CARD_THICKNESS;
 pub const ANG_DAMPING: f32 = 0.25;
 pub const PLAYER0: bevy::color::Color = bevy::color::Color::srgb_u8(255, 85, 85);
 pub const PLAYER1: bevy::color::Color = bevy::color::Color::srgb_u8(85, 85, 255);
@@ -189,7 +189,7 @@ pub enum Menu {
     Side,
 }
 pub const SLEEP: SleepThreshold = SleepThreshold {
-    linear: 8.0,
+    linear: 4.0 * CARD_THICKNESS,
     angular: 0.25,
 };
 #[test]

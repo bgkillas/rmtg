@@ -24,11 +24,11 @@ use std::collections::hash_map::Entry::Vacant;
 use std::env::args;
 use std::f32::consts::PI;
 use std::fs;
-pub const MAT_WIDTH: f32 = MAT_HEIGHT * 16.0 / 9.0;
-pub const MAT_HEIGHT: f32 = 5.0 * CARD_HEIGHT + 6.0 * MAT_BAR;
-pub const MAT_BAR: f32 = CARD_HEIGHT / 12.0;
-pub const T: f32 = 256.0;
-pub const W: f32 = 16384.0;
+pub const MAT_WIDTH: f32 = 1.0;
+pub const MAT_HEIGHT: f32 = MAT_WIDTH * 9.0 / 16.0;
+pub const MAT_BAR: f32 = MAT_HEIGHT / 64.0;
+pub const T: f32 = MAT_WIDTH;
+pub const W: f32 = MAT_WIDTH * 4.0;
 pub const WALL_COLOR: bevy::prelude::Color = bevy::prelude::Color::srgb_u8(103, 73, 40);
 pub const FLOOR_COLOR: bevy::prelude::Color = bevy::prelude::Color::srgb_u8(103, 73, 40);
 pub fn setup(
@@ -263,42 +263,42 @@ pub fn setup(
     ));
     if !no_obj {
         let mut cube = Shape::Cube.create(
-            Transform::from_xyz(0.0, 128.0, 0.0),
+            Transform::from_xyz(MAT_WIDTH + CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
         );
         cube.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut tetra = Shape::Tetrahedron.create(
-            Transform::from_xyz(-256.0, 192.0, 0.0),
+            Transform::from_xyz(MAT_WIDTH + CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
         );
         tetra.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut ico = Shape::Icosahedron.create(
-            Transform::from_xyz(320.0, 160.0, 0.0),
+            Transform::from_xyz(MAT_WIDTH + 2.0 * CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
         );
         ico.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut oct = Shape::Octohedron.create(
-            Transform::from_xyz(672.0, 192.0, 0.0),
+            Transform::from_xyz(MAT_WIDTH + 2.0 * CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
         );
         oct.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut dodec = Shape::Dodecahedron.create(
-            Transform::from_xyz(1056.0, 160.0, 0.0),
+            Transform::from_xyz(MAT_WIDTH + 3.0 * CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
         );
         dodec.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut coin = Shape::Disc.create(
-            Transform::from_xyz(0.0, 128.0, 256.0),
+            Transform::from_xyz(MAT_WIDTH + 3.0 * CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
@@ -315,7 +315,7 @@ pub fn setup(
         Visibility::Hidden,
         BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
     ));
-    let mut transform = Transform::from_xyz(0.0, 512.0, -512.0);
+    let mut transform = Transform::from_xyz(0.0, MAT_BAR * 4.0, 0.0);
     transform.rotate_y(PI);
     let mut counter =
         Shape::Counter(Value(0)).create(transform, &mut commands, &mut meshes, &mut materials);
