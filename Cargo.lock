@@ -1469,7 +1469,7 @@ dependencies = [
 [[package]]
 name = "bevy_tangled"
 version = "0.1.0"
-source = "git+https://github.com/bgkillas/bevy_tangled#f2d4ef7f0f6501e4470fe09392ff58683caa02cf"
+source = "git+https://github.com/bgkillas/bevy_tangled#6afc7aeece18c4b4153ea987d09c6c6dc3f67ebc"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -2614,9 +2614,9 @@ checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
 
 [[package]]
 name = "flate2"
-version = "1.1.7"
+version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2152dbcb980c05735e2a651d96011320a949eb31a0c8b38b72645ce97dec676"
+checksum = "bfe33edd8e85a12a67454e37f8c75e730830d83e313556ab9ebf9ee7fbeb3bfb"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
