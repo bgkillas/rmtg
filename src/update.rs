@@ -472,9 +472,9 @@ pub fn listen_for_mouse(
                 if let Some(inhand) = inhand {
                     hand.0.count -= 1;
                     hand.0.removed.push(inhand.0);
-                    transform.translation.y += 128.0;
+                    transform.translation.y += 64.0 * CARD_THICKNESS;
                 } else {
-                    transform.translation.y += 8.0;
+                    transform.translation.y += 4.0 * CARD_THICKNESS;
                 }
                 if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
                     && pile.len() > 1
@@ -587,10 +587,10 @@ pub fn listen_for_mouse(
                         None,
                         Some(id),
                     );
-                    transform.translation.x += CARD_WIDTH + 4.0;
-                    if transform.translation.x >= W - T - CARD_WIDTH - 4.0 {
+                    transform.translation.x += CARD_WIDTH + CARD_THICKNESS * 2.0;
+                    if transform.translation.x >= W - T - CARD_WIDTH - CARD_THICKNESS * 2.0 {
                         transform.translation.x = start.translation.x;
-                        transform.translation.z += CARD_HEIGHT + 4.0;
+                        transform.translation.z += CARD_HEIGHT + CARD_THICKNESS * 2.0;
                     }
                     vec.push((id, Trans::from_transform(&transform)));
                 }
@@ -1270,9 +1270,10 @@ pub fn cam_translation(
             cam.translation += translate;
         }
     }
+    let epsilon = Vec3::splat(CARD_THICKNESS);
     cam.translation = cam.translation.clamp(
-        Vec3::new(T - W, CARD_THICKNESS, T - W),
-        Vec3::new(W - T, 2.0 * (W - CARD_THICKNESS * T), W - T),
+        Vec3::new(T - W, 0.0, T - W) + epsilon,
+        Vec3::new(W - T, 2.0 * (W - T) - T, W - T) - epsilon,
     );
     if input.pressed(KeyCode::Space) {
         *cam.into_inner() = default_cam_pos(peers.me.unwrap_or_default());
@@ -1429,7 +1430,7 @@ pub fn listen_for_deck(
             GameClipboard::Shape(shape) => Some(
                 shape
                     .create(
-                        Transform::from_xyz(v.x, 256.0, v.y),
+                        Transform::from_xyz(v.x, 4.0 * MAT_BAR, v.y),
                         &mut commands,
                         &mut meshes,
                         &mut materials,

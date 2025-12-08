@@ -85,7 +85,7 @@ pub fn move_up(
         translation.y = m;
         let (collider, transform) = ents.get(entity).unwrap();
         let aabb = collider.aabb(transform.translation, transform.rotation);
-        let max = m + (aabb.max.y - aabb.min.y) / 2.0 + 4.0;
+        let max = m + (aabb.max.y - aabb.min.y) / 2.0 + CARD_THICKNESS * 2.0;
         let max = max.max(aabb.max.y);
         let mut pos = pset.p0();
         let mut position = pos.get_mut(entity).unwrap();

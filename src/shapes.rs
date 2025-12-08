@@ -27,13 +27,13 @@ impl Shape {
     ) -> EntityCommands<'a> {
         match self {
             Shape::Cube => spawn_cube(MAT_BAR * 4.0, transform, commands, meshes, materials),
-            Shape::Icosahedron => spawn_ico(MAT_BAR * 4.0, transform, commands, meshes, materials),
+            Shape::Icosahedron => spawn_ico(MAT_BAR * 2.0, transform, commands, meshes, materials),
             Shape::Dodecahedron => {
-                spawn_dodec(MAT_BAR * 4.0, transform, commands, meshes, materials)
+                spawn_dodec(MAT_BAR * 2.0, transform, commands, meshes, materials)
             }
             Shape::Octohedron => spawn_oct(MAT_BAR * 4.0, transform, commands, meshes, materials),
             Shape::Tetrahedron => {
-                spawn_tetra(MAT_BAR * 4.0, transform, commands, meshes, materials)
+                spawn_tetra(MAT_BAR * 2.0, transform, commands, meshes, materials)
             }
             Shape::Disc => spawn_coin(MAT_BAR * 4.0, transform, commands, meshes, materials),
             Shape::Counter(v) => make_counter(

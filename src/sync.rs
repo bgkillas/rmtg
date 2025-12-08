@@ -1017,12 +1017,28 @@ pub struct CameraInd(pub PeerId);
 pub struct CursorInd(pub PeerId, pub bool);
 pub fn spawn_hand(me: usize, commands: &mut Commands) {
     let transform = match me {
-        0 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
-        1 => Transform::from_xyz(MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0)
-            .looking_to(Dir3::Z, Dir3::Y),
-        2 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, MAT_HEIGHT + CARD_HEIGHT / 2.0),
-        3 => Transform::from_xyz(-MAT_WIDTH / 2.0, 64.0, -MAT_HEIGHT - CARD_HEIGHT / 2.0)
-            .looking_to(Dir3::Z, Dir3::Y),
+        0 => Transform::from_xyz(
+            MAT_WIDTH / 2.0,
+            CARD_HEIGHT / 2.0,
+            MAT_HEIGHT + CARD_HEIGHT / 2.0,
+        ),
+        1 => Transform::from_xyz(
+            MAT_WIDTH / 2.0,
+            CARD_HEIGHT / 2.0,
+            -MAT_HEIGHT - CARD_HEIGHT / 2.0,
+        )
+        .looking_to(Dir3::Z, Dir3::Y),
+        2 => Transform::from_xyz(
+            -MAT_WIDTH / 2.0,
+            CARD_HEIGHT / 2.0,
+            MAT_HEIGHT + CARD_HEIGHT / 2.0,
+        ),
+        3 => Transform::from_xyz(
+            -MAT_WIDTH / 2.0,
+            CARD_HEIGHT / 2.0,
+            -MAT_HEIGHT - CARD_HEIGHT / 2.0,
+        )
+        .looking_to(Dir3::Z, Dir3::Y),
         _ => Transform::default(),
     };
     commands.spawn((transform, Hand::default()));
