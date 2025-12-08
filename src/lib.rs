@@ -125,6 +125,13 @@ pub fn start() -> AppExit {
         Text3dPlugin::default(),
         TextInputPlugin,
     ))
+    .insert_gizmo_config(
+        PhysicsGizmos {
+            axis_lengths: None,
+            ..default()
+        },
+        GizmoConfig::default(),
+    )
     .insert_resource(LoadFonts {
         font_embedded: vec![include_bytes!("../assets/noto.ttf")],
         ..default()

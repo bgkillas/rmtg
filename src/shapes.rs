@@ -178,7 +178,7 @@ pub fn spawn_ico<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: 32.0,
+                    size: 64.0,
                     world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
@@ -308,7 +308,7 @@ pub fn spawn_oct<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: 32.0,
+                    size: 64.0,
                     world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
@@ -441,7 +441,7 @@ pub fn spawn_tetra<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: 32.0,
+                    size: 64.0,
                     world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
@@ -509,7 +509,7 @@ pub fn spawn_coin<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: 32.0,
+                    size: 64.0,
                     world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
@@ -713,7 +713,7 @@ pub fn spawn_dodec<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: 32.0,
+                    size: 64.0,
                     world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
@@ -774,7 +774,7 @@ pub fn spawn_cube<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: 32.0,
+                    size: 64.0,
                     world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()

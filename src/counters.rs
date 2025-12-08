@@ -33,7 +33,7 @@ pub fn make_counter<'a>(
     cmds.with_children(|p| {
         p.spawn((
             Transform::from_xyz(0.0, m / 16.0 + CARD_THICKNESS, 0.0)
-                .looking_at(Vec3::default(), Dir3::Z),
+                .looking_at(Vec3::default(), Dir3::NEG_Z),
             Text3d::new(s),
             Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
             MeshMaterial3d(materials.add(StandardMaterial {
@@ -44,7 +44,7 @@ pub fn make_counter<'a>(
                 ..default()
             })),
             Text3dStyling {
-                size: 32.0,
+                size: 64.0,
                 world_scale: Some(Vec2::splat(m / 2.0)),
                 anchor: TextAnchor::CENTER,
                 ..default()

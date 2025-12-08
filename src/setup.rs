@@ -312,6 +312,36 @@ pub fn setup(
             &mut materials,
         );
         coin.insert(SyncObjectMe::new(&mut rand, &mut count));
+        let mut counter = Shape::Counter(Value(40)).create(
+            Transform::from_xyz(MAT_BAR * 3.0, MAT_BAR * 4.0, MAT_BAR * 3.0),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
+        counter.insert(SyncObjectMe::new(&mut rand, &mut count));
+        let mut counter = Shape::Counter(Value(40)).create(
+            Transform::from_xyz(MAT_BAR * 3.0, MAT_BAR * 4.0, -MAT_BAR * 3.0)
+                .looking_to(Dir3::Z, Dir3::Y),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
+        counter.insert(SyncObjectMe::new(&mut rand, &mut count));
+        let mut counter = Shape::Counter(Value(40)).create(
+            Transform::from_xyz(-MAT_BAR * 3.0, MAT_BAR * 4.0, MAT_BAR * 3.0),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
+        counter.insert(SyncObjectMe::new(&mut rand, &mut count));
+        let mut counter = Shape::Counter(Value(40)).create(
+            Transform::from_xyz(-MAT_BAR * 3.0, MAT_BAR * 4.0, -MAT_BAR * 3.0)
+                .looking_to(Dir3::Z, Dir3::Y),
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+        );
+        counter.insert(SyncObjectMe::new(&mut rand, &mut count));
     }
     commands.spawn((
         Node {
@@ -323,11 +353,6 @@ pub fn setup(
         Visibility::Hidden,
         BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
     ));
-    let mut transform = Transform::from_xyz(0.0, MAT_BAR * 4.0, 0.0);
-    transform.rotate_y(PI);
-    let mut counter =
-        Shape::Counter(Value(0)).create(transform, &mut commands, &mut meshes, &mut materials);
-    counter.insert(SyncObjectMe::new(&mut rand, &mut count));
     #[cfg(feature = "steam")]
     commands.spawn((
         Node {
