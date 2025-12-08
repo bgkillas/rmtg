@@ -1,5 +1,5 @@
 use crate::shapes::Shape;
-use crate::{ANG_DAMPING, GRAVITY, LIN_DAMPING, SLEEP};
+use crate::{ANG_DAMPING, CARD_THICKNESS, GRAVITY, LIN_DAMPING, SLEEP};
 use avian3d::prelude::*;
 use bevy::prelude::*;
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
@@ -32,7 +32,8 @@ pub fn make_counter<'a>(
     ));
     cmds.with_children(|p| {
         p.spawn((
-            Transform::from_xyz(0.0, m / 16.0 + 1.0, 0.0).looking_at(Vec3::default(), Dir3::Z),
+            Transform::from_xyz(0.0, m / 16.0 + CARD_THICKNESS, 0.0)
+                .looking_at(Vec3::default(), Dir3::Z),
             Text3d::new(s),
             Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
             MeshMaterial3d(materials.add(StandardMaterial {
@@ -43,7 +44,8 @@ pub fn make_counter<'a>(
                 ..default()
             })),
             Text3dStyling {
-                size: m / 2.0,
+                size: 32.0,
+                world_scale: Some(Vec2::splat(m / 2.0)),
                 anchor: TextAnchor::CENTER,
                 ..default()
             },

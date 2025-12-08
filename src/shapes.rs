@@ -35,7 +35,7 @@ impl Shape {
             Shape::Tetrahedron => {
                 spawn_tetra(MAT_BAR * 2.0, transform, commands, meshes, materials)
             }
-            Shape::Disc => spawn_coin(MAT_BAR * 4.0, transform, commands, meshes, materials),
+            Shape::Disc => spawn_coin(MAT_BAR * 2.0, transform, commands, meshes, materials),
             Shape::Counter(v) => make_counter(
                 MAT_BAR * 4.0,
                 transform,
@@ -178,7 +178,8 @@ pub fn spawn_ico<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: m / 2.0,
+                    size: 32.0,
+                    world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
                 },
@@ -307,7 +308,8 @@ pub fn spawn_oct<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: m / 2.0,
+                    size: 32.0,
+                    world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
                 },
@@ -439,7 +441,8 @@ pub fn spawn_tetra<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: m / 2.0,
+                    size: 32.0,
+                    world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
                 },
@@ -472,7 +475,6 @@ pub fn spawn_coin<'a>(
         ]),
         transform,
         Shape::Disc,
-        ColliderDensity(1.0 / 32.0),
         RigidBody::Dynamic,
         Restitution::new(BOUNCY).with_combine_rule(CoefficientCombine::Max),
         LinearDamping(LIN_DAMPING),
@@ -507,7 +509,8 @@ pub fn spawn_coin<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: m / 2.0,
+                    size: 32.0,
+                    world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
                 },
@@ -710,7 +713,8 @@ pub fn spawn_dodec<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: m / 2.0,
+                    size: 32.0,
+                    world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
                 },
@@ -770,7 +774,8 @@ pub fn spawn_cube<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: m / 2.0,
+                    size: 32.0,
+                    world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
                 },
