@@ -27,8 +27,8 @@ use std::fs;
 pub const MAT_WIDTH: f32 = 8.0;
 pub const MAT_HEIGHT: f32 = MAT_WIDTH * 9.0 / 16.0;
 pub const MAT_BAR: f32 = MAT_HEIGHT / 64.0;
-pub const T: f32 = MAT_WIDTH;
-pub const W: f32 = MAT_WIDTH * 4.0;
+pub const T: f32 = W / 8.0;
+pub const W: f32 = MAT_WIDTH * 2.0;
 pub const WALL_COLOR: bevy::prelude::Color = bevy::prelude::Color::srgb_u8(103, 73, 40);
 pub const FLOOR_COLOR: bevy::prelude::Color = bevy::prelude::Color::srgb_u8(103, 73, 40);
 pub fn setup(
