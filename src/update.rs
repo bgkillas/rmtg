@@ -1271,8 +1271,8 @@ pub fn cam_translation(
         }
     }
     cam.translation = cam.translation.clamp(
-        Vec3::new(T - W, 1.0, T - W),
-        Vec3::new(W - T, 2.0 * (W - 2.0 * T), W - T),
+        Vec3::new(T - W, CARD_THICKNESS, T - W),
+        Vec3::new(W - T, 2.0 * (W - CARD_THICKNESS * T), W - T),
     );
     if input.pressed(KeyCode::Space) {
         *cam.into_inner() = default_cam_pos(peers.me.unwrap_or_default());

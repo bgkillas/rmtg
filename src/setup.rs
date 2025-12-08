@@ -24,7 +24,7 @@ use std::collections::hash_map::Entry::Vacant;
 use std::env::args;
 use std::f32::consts::PI;
 use std::fs;
-pub const MAT_WIDTH: f32 = 1.0;
+pub const MAT_WIDTH: f32 = 8.0;
 pub const MAT_HEIGHT: f32 = MAT_WIDTH * 9.0 / 16.0;
 pub const MAT_BAR: f32 = MAT_HEIGHT / 64.0;
 pub const T: f32 = MAT_WIDTH;
@@ -257,6 +257,12 @@ pub fn setup(
     ));
     commands.spawn((
         Camera3d::default(),
+        Projection::Perspective(PerspectiveProjection {
+            fov: PI / 3.0,
+            near: CARD_THICKNESS / 32.0,
+            far: W * 2.0,
+            ..default()
+        }),
         Msaa::Sample8,
         default_cam_pos(0),
         Tonemapping::None,

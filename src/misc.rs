@@ -250,7 +250,7 @@ pub fn make_cam(
     meshes: &mut Assets<Mesh>,
 ) {
     commands.spawn((
-        Mesh3d(meshes.add(Sphere::new(128.0))),
+        Mesh3d(meshes.add(Sphere::new(CARD_THICKNESS * 64.0))),
         MeshMaterial3d(materials.add(StandardMaterial {
             alpha_mode: AlphaMode::Opaque,
             unlit: true,
@@ -270,7 +270,7 @@ pub fn make_cur(
     meshes: &mut Assets<Mesh>,
 ) {
     commands.spawn((
-        Mesh3d(meshes.add(Sphere::new(32.0))),
+        Mesh3d(meshes.add(Sphere::new(CARD_THICKNESS * 16.0))),
         MeshMaterial3d(materials.add(StandardMaterial {
             alpha_mode: AlphaMode::Opaque,
             unlit: true,
