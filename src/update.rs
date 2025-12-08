@@ -238,9 +238,14 @@ pub fn follow_mouse(
             let max = max.max(aabb.max.y);
             card.1.translation.y = max + CARD_THICKNESS * 4.0;
         }
-        if let Some(time) =
-            ray.intersect_plane(card.5.translation(), InfinitePlane3d { normal: Dir3::Y })
-        {
+        if let Some(time) = ray.intersect_plane(
+            if card.6.is_some() {
+                card.5.translation()
+            } else {
+                card.1.translation
+            },
+            InfinitePlane3d { normal: Dir3::Y },
+        ) {
             let mut point = ray.get_point(time);
             point.x = point.x.clamp(
                 T - W + (aabb.min.x - card.1.translation.x).abs(),
@@ -502,7 +507,7 @@ pub fn listen_for_mouse(
                 if inhand.is_some() {
                     transform.translation.y += 128.0 * CARD_THICKNESS;
                 } else {
-                    transform.translation.y += 4.0 * CARD_THICKNESS;
+                    transform.translation.y += 8.0 * CARD_THICKNESS;
                 }
                 if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
                     && pile.len() > 1
@@ -589,7 +594,22 @@ pub fn listen_for_mouse(
                         .remove_parent_in_place();
                 }
             } else if input.just_pressed(KeyCode::KeyE) {
-                rotate_right(&mut transform);
+                if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
+                    if !is_reversed(&transform) {
+                        pile.equip();
+                        repaint_face(&mut mats, &mut materials, pile.last(), children);
+                        adjust_meshes(
+                            &pile,
+                            children,
+                            &mut meshes,
+                            &mut query_meshes,
+                            &mut transform,
+                            &mut colliders.get_mut(entity).unwrap().0,
+                        );
+                    }
+                } else {
+                    rotate_right(&mut transform);
+                }
             } else if input.just_pressed(KeyCode::KeyS)
                 && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
                 && pile.len() > 1

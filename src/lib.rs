@@ -296,6 +296,24 @@ pub enum Pile {
     Empty,
 }
 impl Pile {
+    pub fn equip(&mut self) {
+        match self {
+            s @ Pile::Multiple(_) => {
+                let subcard = s.pop();
+                let Pile::Multiple(equiped) = mem::take(s) else {
+                    unreachable!();
+                };
+                *s = Pile::Single(Box::new(Card { subcard, equiped }));
+            }
+            s @ Pile::Single(_) => {
+                let Pile::Single(cards) = mem::take(s) else {
+                    unreachable!();
+                };
+                *s = Pile::Multiple(cards.flatten())
+            }
+            Pile::Empty => {}
+        }
+    }
     pub fn clone_no_image(&self) -> Self {
         match self {
             Pile::Multiple(v) => Pile::Multiple(v.iter().map(|a| a.clone_no_image()).collect()),
@@ -791,8 +809,8 @@ impl Card {
     pub fn flatten(mut self) -> Vec<SubCard> {
         let mut vec = Vec::with_capacity(self.equiped.len() + 1);
         let drain = mem::take(&mut self.equiped);
-        vec.push(self.into());
         vec.extend(drain);
+        vec.push(self.into());
         vec
     }
     pub fn flatten_iter(&self) -> CardIter<'_> {
