@@ -29,7 +29,6 @@ pub fn new_pile(
 ) -> Option<Entity> {
     let size = pile.len() as f32 * CARD_THICKNESS;
     let transform = Transform::from_xyz(v.x, size / 2.0, v.y);
-    println!("{size:?}");
     new_pile_at(
         pile,
         card_stock,

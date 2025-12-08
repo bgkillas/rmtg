@@ -158,7 +158,11 @@ pub fn update_hand(
                 entry.0 = n;
             }
             let idx = entry.0 as f32 - hand.1.count as f32 / 2.0;
-            transform.translation = Vec3::new((idx + 0.5) * CARD_WIDTH / 2.0, idx * 2.0, 0.0);
+            transform.translation = Vec3::new(
+                (idx + 0.5) * CARD_WIDTH / 2.0,
+                idx * CARD_THICKNESS / 2.0,
+                0.0,
+            );
         }
     }
     hand.1.removed.clear();
