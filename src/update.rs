@@ -783,8 +783,8 @@ pub fn listen_for_mouse(
                     let card = pile.get_card(&transform);
                     commands.spawn((
                         Node {
-                            width: Val::Px(CARD_WIDTH),
-                            height: Val::Px(CARD_HEIGHT),
+                            width: Val::Px(500.0),
+                            height: Val::Px(700.0),
                             ..default()
                         },
                         ImageNode::new(card.normal.image().clone()),
@@ -1228,6 +1228,7 @@ pub fn cam_translation(
     menu: Res<Menu>,
     active_input: Res<InputFocus>,
     peers: Res<Peers>,
+    hover_map: Res<HoverMap>,
 ) {
     if matches!(*menu, Menu::Esc)
         || (matches!(*menu, Menu::Side | Menu::Counter) && active_input.get().is_some())
@@ -1266,7 +1267,12 @@ pub fn cam_translation(
             apply(translate, &mut cam)
         }
     }
-    if mouse_motion.delta.y != 0.0 {
+    if mouse_motion.delta.y != 0.0
+        && (!matches!(*menu, Menu::Side | Menu::Counter)
+            || hover_map
+                .values()
+                .any(|a| a.keys().all(|e| e.to_bits() == u32::MAX as u64)))
+    {
         let translate = cam.forward().as_vec3() * scale * mouse_motion.delta.y * 16.0;
         if cam.translation.y + translate.y <= 0.0 {
             cam.translation.y /= 2.0;

@@ -40,11 +40,13 @@ pub fn setup(
     #[cfg(feature = "steam")] mut client: ResMut<Client>,
     mut rand: Single<&mut WyRand, With<GlobalRng>>,
     mut count: ResMut<SyncCount>,
+    mut light: ResMut<AmbientLight>,
     #[cfg(feature = "steam")] send_sleep: Res<SendSleeping>,
     #[cfg(feature = "steam")] give: Res<GiveEnts>,
     #[cfg(feature = "steam")] peers: Res<Peers>,
     #[cfg(feature = "steam")] rempeers: Res<RemPeers>,
 ) {
+    light.brightness = 100.0;
     let mut no_obj = false;
     #[cfg(feature = "steam")]
     {
