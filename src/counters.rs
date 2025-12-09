@@ -11,6 +11,7 @@ pub fn make_counter<'a>(
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
     value: Value,
+    color: Color,
 ) -> EntityCommands<'a> {
     let s = value.0.to_string();
     let mut cmds = commands.spawn((
@@ -24,7 +25,7 @@ pub fn make_counter<'a>(
         GravityScale(GRAVITY),
         Mesh3d(meshes.add(Cuboid::new(m, m / 8.0, m))),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::WHITE,
+            base_color: color,
             unlit: true,
             ..default()
         })),
@@ -33,6 +34,25 @@ pub fn make_counter<'a>(
     cmds.with_children(|p| {
         p.spawn((
             Transform::from_xyz(0.0, m / 16.0 + CARD_THICKNESS, 0.0)
+                .looking_at(Vec3::default(), Dir3::NEG_Z),
+            Text3d::new(s.clone()),
+            Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
+                unlit: true,
+                alpha_mode: AlphaMode::Multiply,
+                base_color: Color::BLACK,
+                ..default()
+            })),
+            Text3dStyling {
+                size: 64.0,
+                world_scale: Some(Vec2::splat(m / 2.0)),
+                anchor: TextAnchor::CENTER,
+                ..default()
+            },
+        ));
+        p.spawn((
+            Transform::from_xyz(0.0, -(m / 16.0 + CARD_THICKNESS), 0.0)
                 .looking_at(Vec3::default(), Dir3::NEG_Z),
             Text3d::new(s),
             Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),

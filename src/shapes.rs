@@ -24,18 +24,23 @@ impl Shape {
         commands: &'a mut Commands,
         meshes: &mut Assets<Mesh>,
         materials: &mut Assets<StandardMaterial>,
+        color: bevy::color::Color,
     ) -> EntityCommands<'a> {
         match self {
-            Shape::Cube => spawn_cube(MAT_BAR * 4.0, transform, commands, meshes, materials),
-            Shape::Icosahedron => spawn_ico(MAT_BAR * 2.0, transform, commands, meshes, materials),
+            Shape::Cube => spawn_cube(MAT_BAR * 4.0, transform, commands, meshes, materials, color),
+            Shape::Icosahedron => {
+                spawn_ico(MAT_BAR * 2.0, transform, commands, meshes, materials, color)
+            }
             Shape::Dodecahedron => {
-                spawn_dodec(MAT_BAR * 2.0, transform, commands, meshes, materials)
+                spawn_dodec(MAT_BAR * 2.0, transform, commands, meshes, materials, color)
             }
-            Shape::Octohedron => spawn_oct(MAT_BAR * 4.0, transform, commands, meshes, materials),
+            Shape::Octohedron => {
+                spawn_oct(MAT_BAR * 4.0, transform, commands, meshes, materials, color)
+            }
             Shape::Tetrahedron => {
-                spawn_tetra(MAT_BAR * 2.0, transform, commands, meshes, materials)
+                spawn_tetra(MAT_BAR * 2.0, transform, commands, meshes, materials, color)
             }
-            Shape::Disc => spawn_coin(MAT_BAR * 2.0, transform, commands, meshes, materials),
+            Shape::Disc => spawn_coin(MAT_BAR * 2.0, transform, commands, meshes, materials, color),
             Shape::Counter(v) => make_counter(
                 MAT_BAR * 4.0,
                 transform,
@@ -43,6 +48,7 @@ impl Shape {
                 meshes,
                 materials,
                 v.clone(),
+                color,
             ),
         }
     }
@@ -53,6 +59,7 @@ pub fn spawn_ico<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    color: bevy::color::Color,
 ) -> EntityCommands<'a> {
     let phi = ((0.5 + 5.0f64.sqrt() / 2.0) * m as f64) as f32;
     let mut verticies: Vec<[f32; 3]> = Vec::with_capacity(12);
@@ -143,7 +150,7 @@ pub fn spawn_ico<'a>(
         GravityScale(GRAVITY),
         Mesh3d(meshes.add(mesh)),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::WHITE,
+            base_color: color,
             unlit: true,
             ..default()
         })),
@@ -179,7 +186,7 @@ pub fn spawn_ico<'a>(
                 })),
                 Text3dStyling {
                     size: 64.0,
-                    world_scale: Some(Vec2::splat(m / 2.0)),
+                    world_scale: Some(Vec2::splat(m * 2.0 / 3.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
                 },
@@ -194,6 +201,7 @@ pub fn spawn_oct<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    color: bevy::color::Color,
 ) -> EntityCommands<'a> {
     let mut verticies: Vec<[f32; 3]> = Vec::with_capacity(6);
     for x in [-m, m] {
@@ -273,7 +281,7 @@ pub fn spawn_oct<'a>(
         GravityScale(GRAVITY),
         Mesh3d(meshes.add(mesh)),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::WHITE,
+            base_color: color,
             unlit: true,
             ..default()
         })),
@@ -324,6 +332,7 @@ pub fn spawn_tetra<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    color: bevy::color::Color,
 ) -> EntityCommands<'a> {
     fn make(m: f32) -> (Mesh, Vec<[f32; 3]>) {
         let mut verticies: Vec<[f32; 3]> = vec![[m, m, m], [m, -m, -m], [-m, m, -m], [-m, -m, m]];
@@ -404,7 +413,7 @@ pub fn spawn_tetra<'a>(
         GravityScale(GRAVITY),
         Mesh3d(meshes.add(mesh)),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::WHITE,
+            base_color: color,
             unlit: true,
             cull_mode: Some(Face::Front),
             ..default()
@@ -442,7 +451,7 @@ pub fn spawn_tetra<'a>(
                 })),
                 Text3dStyling {
                     size: 64.0,
-                    world_scale: Some(Vec2::splat(m / 2.0)),
+                    world_scale: Some(Vec2::splat(m)),
                     anchor: TextAnchor::CENTER,
                     ..default()
                 },
@@ -457,6 +466,7 @@ pub fn spawn_coin<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    color: bevy::color::Color,
 ) -> EntityCommands<'a> {
     let ratio = 8.0;
     let mut ent = commands.spawn((
@@ -483,7 +493,7 @@ pub fn spawn_coin<'a>(
         GravityScale(GRAVITY),
         Mesh3d(meshes.add(Cylinder::new(m, m / ratio))),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::WHITE,
+            base_color: color,
             unlit: true,
             ..default()
         })),
@@ -510,7 +520,7 @@ pub fn spawn_coin<'a>(
                 })),
                 Text3dStyling {
                     size: 64.0,
-                    world_scale: Some(Vec2::splat(m / 2.0)),
+                    world_scale: Some(Vec2::splat(m)),
                     anchor: TextAnchor::CENTER,
                     ..default()
                 },
@@ -528,6 +538,7 @@ pub fn spawn_dodec<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    color: bevy::color::Color,
 ) -> EntityCommands<'a> {
     let phi = 0.5 + 5.0f64.sqrt() / 2.0;
     let phir = (phi.recip() * m as f64) as f32;
@@ -678,7 +689,7 @@ pub fn spawn_dodec<'a>(
         GravityScale(GRAVITY),
         Mesh3d(meshes.add(mesh)),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::WHITE,
+            base_color: color,
             unlit: true,
             ..default()
         })),
@@ -714,7 +725,7 @@ pub fn spawn_dodec<'a>(
                 })),
                 Text3dStyling {
                     size: 64.0,
-                    world_scale: Some(Vec2::splat(m / 2.0)),
+                    world_scale: Some(Vec2::splat(m)),
                     anchor: TextAnchor::CENTER,
                     ..default()
                 },
@@ -730,6 +741,7 @@ pub fn spawn_cube<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    color: bevy::color::Color,
 ) -> EntityCommands<'a> {
     let d = m / 2.0 + EPSILON;
     let mut cube = commands.spawn((
@@ -745,7 +757,7 @@ pub fn spawn_cube<'a>(
         Shape::Cube,
         Mesh3d(meshes.add(Cuboid::from_length(m))),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: bevy::prelude::Color::WHITE,
+            base_color: color,
             unlit: true,
             ..default()
         })),

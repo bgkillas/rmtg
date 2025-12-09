@@ -275,6 +275,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
+            bevy::color::Color::WHITE,
         );
         cube.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut tetra = Shape::Tetrahedron.create(
@@ -282,6 +283,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
+            bevy::color::Color::WHITE,
         );
         tetra.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut ico = Shape::Icosahedron.create(
@@ -289,6 +291,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
+            bevy::color::Color::WHITE,
         );
         ico.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut oct = Shape::Octohedron.create(
@@ -296,6 +299,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
+            bevy::color::Color::WHITE,
         );
         oct.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut dodec = Shape::Dodecahedron.create(
@@ -303,6 +307,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
+            bevy::color::Color::WHITE,
         );
         dodec.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut coin = Shape::Disc.create(
@@ -310,6 +315,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
+            bevy::color::Color::WHITE,
         );
         coin.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut counter = Shape::Counter(Value(40)).create(
@@ -317,6 +323,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
+            bevy::color::Color::WHITE,
         );
         counter.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut counter = Shape::Counter(Value(40)).create(
@@ -325,6 +332,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
+            bevy::color::Color::WHITE,
         );
         counter.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut counter = Shape::Counter(Value(40)).create(
@@ -332,6 +340,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
+            bevy::color::Color::WHITE,
         );
         counter.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut counter = Shape::Counter(Value(40)).create(
@@ -340,6 +349,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
+            bevy::color::Color::WHITE,
         );
         counter.insert(SyncObjectMe::new(&mut rand, &mut count));
     }

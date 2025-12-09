@@ -615,7 +615,13 @@ pub fn apply_sync(
                 sent.del(id);
                 ignore.insert(id);
                 shape
-                    .create(trans.into(), &mut commands, &mut meshes, &mut materials)
+                    .create(
+                        trans.into(),
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        bevy::color::Color::WHITE,
+                    )
                     .insert(id);
             }
             Packet::SetUser(peer, id) => {

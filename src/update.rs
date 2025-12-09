@@ -922,9 +922,10 @@ pub fn listen_for_mouse(
                 && let Shape::Counter(v) = s.into_inner()
             {
                 v.0 -= 1;
-                let ent = children.get(entity).unwrap()[0];
-                let mut text = text3d.get_mut(ent).unwrap();
-                *text.get_single_mut().unwrap() = v.0.to_string();
+                for ent in children.get(entity).unwrap() {
+                    let mut text = text3d.get_mut(*ent).unwrap();
+                    *text.get_single_mut().unwrap() = v.0.to_string();
+                }
                 if let Ok(id) = ids.get(entity) {
                     sync_actions.counter_me.push((*id, v.clone()));
                 } else if let Ok(id) = others_ids.get(entity) {
@@ -936,9 +937,10 @@ pub fn listen_for_mouse(
                     && let Shape::Counter(v) = s.into_inner()
                 {
                     v.0 += 1;
-                    let ent = children.get(entity).unwrap()[0];
-                    let mut text = text3d.get_mut(ent).unwrap();
-                    *text.get_single_mut().unwrap() = v.0.to_string();
+                    for ent in children.get(entity).unwrap() {
+                        let mut text = text3d.get_mut(*ent).unwrap();
+                        *text.get_single_mut().unwrap() = v.0.to_string();
+                    }
                     if let Ok(id) = ids.get(entity) {
                         sync_actions.counter_me.push((*id, v.clone()));
                     } else if let Ok(id) = others_ids.get(entity) {
@@ -1002,6 +1004,8 @@ pub fn listen_for_mouse(
                         .id();
                     active_input.set(ent);
                 }
+            } else if input.just_pressed(KeyCode::KeyF) {
+                transform.rotate_local_z(PI);
             } else if (input.just_pressed(KeyCode::KeyR)
                 || (input.pressed(KeyCode::KeyR)
                     && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])))
@@ -1344,10 +1348,12 @@ pub fn update_search_deck(
                 && let NumStr::Num(n) = value
                 && let Ok((children, v)) = children.get_mut(counter.0)
                 && let Shape::Counter(v) = v.into_inner()
-                && let Ok(mut text) = text3d.get_mut(children[0])
             {
                 v.0 = n.number.real().to_f64().round() as i128;
-                *text.get_single_mut().unwrap() = v.0.to_string();
+                for ent in children {
+                    let mut text = text3d.get_mut(*ent).unwrap();
+                    *text.get_single_mut().unwrap() = v.0.to_string();
+                }
                 if let Ok(id) = ids.get(counter.0) {
                     sync_actions.counter_me.push((*id, v.clone()));
                 } else if let Ok(id) = other_ids.get(counter.0) {
@@ -1589,6 +1595,7 @@ pub fn listen_for_deck(
                         &mut commands,
                         &mut meshes,
                         &mut materials,
+                        bevy::color::Color::WHITE,
                     )
                     .insert(SyncObjectMe::new(&mut rand, &mut count))
                     .id(),
