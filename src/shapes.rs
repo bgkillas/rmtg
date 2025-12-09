@@ -6,7 +6,6 @@ use bevy::render::render_resource::Face;
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 use std::f32::consts::FRAC_PI_2;
 const BOUNCY: f32 = 0.5;
-const EPSILON: f32 = CARD_THICKNESS;
 #[derive(Encode, Decode, Component, Clone, Debug)]
 pub enum Shape {
     Cube,
@@ -17,6 +16,8 @@ pub enum Shape {
     Disc,
     Counter(Value),
 }
+const SIZE: f32 = 4.0 * MAT_BAR;
+pub const WORLD_FONT_SIZE: f32 = 128.0;
 impl Shape {
     pub fn create<'a>(
         &self,
@@ -27,22 +28,14 @@ impl Shape {
         color: bevy::color::Color,
     ) -> EntityCommands<'a> {
         match self {
-            Shape::Cube => spawn_cube(MAT_BAR * 4.0, transform, commands, meshes, materials, color),
-            Shape::Icosahedron => {
-                spawn_ico(MAT_BAR * 2.0, transform, commands, meshes, materials, color)
-            }
-            Shape::Dodecahedron => {
-                spawn_dodec(MAT_BAR * 2.0, transform, commands, meshes, materials, color)
-            }
-            Shape::Octohedron => {
-                spawn_oct(MAT_BAR * 4.0, transform, commands, meshes, materials, color)
-            }
-            Shape::Tetrahedron => {
-                spawn_tetra(MAT_BAR * 2.0, transform, commands, meshes, materials, color)
-            }
-            Shape::Disc => spawn_coin(MAT_BAR * 2.0, transform, commands, meshes, materials, color),
+            Shape::Cube => spawn_cube(SIZE, transform, commands, meshes, materials, color),
+            Shape::Icosahedron => spawn_ico(SIZE, transform, commands, meshes, materials, color),
+            Shape::Dodecahedron => spawn_dodec(SIZE, transform, commands, meshes, materials, color),
+            Shape::Octohedron => spawn_oct(SIZE, transform, commands, meshes, materials, color),
+            Shape::Tetrahedron => spawn_tetra(SIZE, transform, commands, meshes, materials, color),
+            Shape::Disc => spawn_disc(SIZE, transform, commands, meshes, materials, color),
             Shape::Counter(v) => make_counter(
-                MAT_BAR * 4.0,
+                2.0 * MAT_BAR,
                 transform,
                 commands,
                 meshes,
@@ -61,7 +54,10 @@ pub fn spawn_ico<'a>(
     materials: &mut Assets<StandardMaterial>,
     color: bevy::color::Color,
 ) -> EntityCommands<'a> {
-    let phi = ((0.5 + 5.0f64.sqrt() / 2.0) * m as f64) as f32;
+    let phi = 0.5 + 5.0f64.sqrt() / 2.0;
+    let m = m as f64 / (1.0 + phi * phi).sqrt();
+    let phi = (phi * m) as f32;
+    let m = m as f32;
     let mut verticies: Vec<[f32; 3]> = Vec::with_capacity(12);
     for y in [-m, m] {
         for z in [-phi, phi] {
@@ -158,25 +154,25 @@ pub fn spawn_ico<'a>(
     ent.with_children(|parent| {
         for (i, [mut x, mut y, mut z]) in faces.into_iter().enumerate() {
             if x < 0.0 {
-                x -= EPSILON;
+                x -= CARD_THICKNESS;
             } else {
-                x += EPSILON;
+                x += CARD_THICKNESS;
             }
             if y < 0.0 {
-                y -= EPSILON;
+                y -= CARD_THICKNESS;
             } else {
-                y += EPSILON;
+                y += CARD_THICKNESS;
             }
             if z < 0.0 {
-                z -= EPSILON;
+                z -= CARD_THICKNESS;
             } else {
-                z += EPSILON;
+                z += CARD_THICKNESS;
             }
             parent.spawn((
                 Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
                 Text3d::new((i + 1).to_string()),
                 Side(i + 1),
-                Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
+                Mesh3d(meshes.add(Rectangle::new(m, m))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                     unlit: true,
@@ -185,8 +181,8 @@ pub fn spawn_ico<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: 64.0,
-                    world_scale: Some(Vec2::splat(m * 2.0 / 3.0)),
+                    size: WORLD_FONT_SIZE,
+                    world_scale: Some(Vec2::splat(m * 3.0 / 4.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
                 },
@@ -289,25 +285,25 @@ pub fn spawn_oct<'a>(
     ent.with_children(|parent| {
         for (i, [mut x, mut y, mut z]) in faces.into_iter().enumerate() {
             if x < 0.0 {
-                x -= EPSILON;
+                x -= CARD_THICKNESS;
             } else {
-                x += EPSILON;
+                x += CARD_THICKNESS;
             }
             if y < 0.0 {
-                y -= EPSILON;
+                y -= CARD_THICKNESS;
             } else {
-                y += EPSILON;
+                y += CARD_THICKNESS;
             }
             if z < 0.0 {
-                z -= EPSILON;
+                z -= CARD_THICKNESS;
             } else {
-                z += EPSILON;
+                z += CARD_THICKNESS;
             }
             parent.spawn((
                 Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
                 Text3d::new((i + 1).to_string()),
                 Side(i + 1),
-                Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
+                Mesh3d(meshes.add(Rectangle::new(m, m))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                     unlit: true,
@@ -316,7 +312,7 @@ pub fn spawn_oct<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: 64.0,
+                    size: WORLD_FONT_SIZE,
                     world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
@@ -335,6 +331,7 @@ pub fn spawn_tetra<'a>(
     color: bevy::color::Color,
 ) -> EntityCommands<'a> {
     fn make(m: f32) -> (Mesh, Vec<[f32; 3]>) {
+        let m = (m as f64 / 3.0f64.sqrt()) as f32;
         let mut verticies: Vec<[f32; 3]> = vec![[m, m, m], [m, -m, -m], [-m, m, -m], [-m, -m, m]];
         let mut f = Vec::with_capacity(12);
         for (i, a) in verticies.iter().enumerate() {
@@ -422,26 +419,26 @@ pub fn spawn_tetra<'a>(
     ent.with_children(|parent| {
         for (i, [mut x, mut y, mut z]) in faces.into_iter().enumerate() {
             if x > 0.0 {
-                x -= EPSILON;
+                x -= CARD_THICKNESS;
             } else {
-                x += EPSILON;
+                x += CARD_THICKNESS;
             }
             if y > 0.0 {
-                y -= EPSILON;
+                y -= CARD_THICKNESS;
             } else {
-                y += EPSILON;
+                y += CARD_THICKNESS;
             }
             if z > 0.0 {
-                z -= EPSILON;
+                z -= CARD_THICKNESS;
             } else {
-                z += EPSILON;
+                z += CARD_THICKNESS;
             }
             parent.spawn((
                 Transform::from_xyz(x, y, z)
                     .looking_to(Dir3::new(Vec3::new(x, y, z)).unwrap(), Dir3::Z),
                 Text3d::new((i + 1).to_string()),
                 Side(i + 1),
-                Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
+                Mesh3d(meshes.add(Rectangle::new(m, m))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                     unlit: true,
@@ -450,8 +447,8 @@ pub fn spawn_tetra<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: 64.0,
-                    world_scale: Some(Vec2::splat(m)),
+                    size: WORLD_FONT_SIZE,
+                    world_scale: Some(Vec2::splat(m * 0.5)),
                     anchor: TextAnchor::CENTER,
                     ..default()
                 },
@@ -460,7 +457,7 @@ pub fn spawn_tetra<'a>(
     });
     ent
 }
-pub fn spawn_coin<'a>(
+pub fn spawn_disc<'a>(
     m: f32,
     transform: Transform,
     commands: &'a mut Commands,
@@ -480,7 +477,7 @@ pub fn spawn_coin<'a>(
             (
                 Position::default(),
                 Rotation::default(),
-                Collider::cylinder(m + EPSILON, m / (ratio * 16.0)),
+                Collider::cylinder(m + CARD_THICKNESS, m / (ratio * 16.0)),
             ),
         ]),
         transform,
@@ -502,15 +499,15 @@ pub fn spawn_coin<'a>(
         for (i, [mut y]) in [[m / ratio], [-m / ratio]].into_iter().enumerate() {
             let i = 1 - i;
             if y < 0.0 {
-                y -= EPSILON;
+                y -= CARD_THICKNESS;
             } else {
-                y += EPSILON;
+                y += CARD_THICKNESS;
             }
             parent.spawn((
                 Transform::from_xyz(0.0, y, 0.0).looking_at(Vec3::default(), Dir3::Z),
                 Text3d::new(i.to_string()),
                 Side(i),
-                Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
+                Mesh3d(meshes.add(Rectangle::new(m, m))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                     unlit: true,
@@ -519,7 +516,7 @@ pub fn spawn_coin<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: 64.0,
+                    size: WORLD_FONT_SIZE,
                     world_scale: Some(Vec2::splat(m)),
                     anchor: TextAnchor::CENTER,
                     ..default()
@@ -540,6 +537,7 @@ pub fn spawn_dodec<'a>(
     materials: &mut Assets<StandardMaterial>,
     color: bevy::color::Color,
 ) -> EntityCommands<'a> {
+    let m = m / 3.0f32.sqrt();
     let phi = 0.5 + 5.0f64.sqrt() / 2.0;
     let phir = (phi.recip() * m as f64) as f32;
     let phi = (phi * m as f64) as f32;
@@ -697,25 +695,25 @@ pub fn spawn_dodec<'a>(
     ent.with_children(|parent| {
         for (i, [mut x, mut y, mut z]) in faces.into_iter().enumerate() {
             if x < 0.0 {
-                x -= EPSILON;
+                x -= CARD_THICKNESS;
             } else {
-                x += EPSILON;
+                x += CARD_THICKNESS;
             }
             if y < 0.0 {
-                y -= EPSILON;
+                y -= CARD_THICKNESS;
             } else {
-                y += EPSILON;
+                y += CARD_THICKNESS;
             }
             if z < 0.0 {
-                z -= EPSILON;
+                z -= CARD_THICKNESS;
             } else {
-                z += EPSILON;
+                z += CARD_THICKNESS;
             }
             parent.spawn((
                 Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
                 Text3d::new((i + 1).to_string()),
                 Side(i + 1),
-                Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
+                Mesh3d(meshes.add(Rectangle::new(m, m))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                     unlit: true,
@@ -724,7 +722,7 @@ pub fn spawn_dodec<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: 64.0,
+                    size: WORLD_FONT_SIZE,
                     world_scale: Some(Vec2::splat(m)),
                     anchor: TextAnchor::CENTER,
                     ..default()
@@ -743,7 +741,8 @@ pub fn spawn_cube<'a>(
     materials: &mut Assets<StandardMaterial>,
     color: bevy::color::Color,
 ) -> EntityCommands<'a> {
-    let d = m / 2.0 + EPSILON;
+    let m = 2.0 * m / 3.0f32.sqrt();
+    let d = m / 2.0 + CARD_THICKNESS;
     let mut cube = commands.spawn((
         CollisionLayers::new(0b11, LayerMask::ALL),
         Collider::cuboid(m, m, m),
@@ -777,7 +776,7 @@ pub fn spawn_cube<'a>(
                 Transform::from_xyz(x, y, z).looking_at(Vec3::default(), Dir3::Z),
                 Text3d::new(i.to_string()),
                 Side(i),
-                Mesh3d(meshes.add(Rectangle::new(m / 2.0, m / 2.0))),
+                Mesh3d(meshes.add(Rectangle::new(m, m))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                     unlit: true,
@@ -786,7 +785,7 @@ pub fn spawn_cube<'a>(
                     ..default()
                 })),
                 Text3dStyling {
-                    size: 64.0,
+                    size: WORLD_FONT_SIZE,
                     world_scale: Some(Vec2::splat(m / 2.0)),
                     anchor: TextAnchor::CENTER,
                     ..default()
