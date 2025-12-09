@@ -699,7 +699,7 @@ pub fn listen_for_mouse(
                 let top = pile.get_card(&transform);
                 let v = Vec2::new(
                     transform.translation.x,
-                    transform.translation.z - CARD_HEIGHT - 1.0,
+                    transform.translation.z - CARD_HEIGHT - CARD_THICKNESS,
                 );
                 let client = down.client.0.clone();
                 let get_deck = down.get_deck.clone();
