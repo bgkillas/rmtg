@@ -2,6 +2,8 @@ use crate::counters::Value;
 use crate::download::get_from_img;
 use crate::misc::default_cam_pos;
 #[cfg(feature = "steam")]
+use crate::sync::COMPRESSION;
+#[cfg(feature = "steam")]
 use crate::sync::Packet;
 #[cfg(feature = "steam")]
 use crate::sync::SendSleeping;
@@ -11,8 +13,6 @@ use crate::*;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_rand::global::GlobalRng;
-#[cfg(feature = "steam")]
-use bevy_tangled::Compression;
 #[cfg(feature = "steam")]
 use bevy_tangled::{Client, ClientTrait, Reliability};
 use bytes::Bytes;
@@ -77,7 +77,7 @@ pub fn setup(
                         .broadcast(
                             &Packet::SetUser(peer, k),
                             Reliability::Reliable,
-                            Compression::Compressed,
+                            COMPRESSION,
                         )
                         .unwrap();
                     client
@@ -85,7 +85,7 @@ pub fn setup(
                             peer,
                             &Packet::SetUser(client.my_id(), 0),
                             Reliability::Reliable,
-                            Compression::Compressed,
+                            COMPRESSION,
                         )
                         .unwrap();
                 }

@@ -20,6 +20,7 @@ use bitcode::{Decode, Encode};
 use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::sync::atomic::AtomicBool;
+pub const COMPRESSION: Compression = Compression::Compressed;
 #[derive(Resource, Default)]
 pub struct SendSleeping(pub Arc<AtomicBool>);
 pub fn get_sync(
@@ -79,7 +80,7 @@ pub fn get_sync(
                     at,
                 ),
                 Reliability::Reliable,
-                Compression::Compressed,
+                COMPRESSION,
             )
             .unwrap();
     }
@@ -95,7 +96,7 @@ pub fn get_sync(
                     at,
                 ),
                 Reliability::Reliable,
-                Compression::Compressed,
+                COMPRESSION,
             )
             .unwrap();
     }
@@ -107,26 +108,18 @@ pub fn get_sync(
                     user: client.my_id(),
                 }),
                 Reliability::Reliable,
-                Compression::Compressed,
+                COMPRESSION,
             )
             .unwrap();
     }
     for dead in sync_actions.killed.drain(..) {
         client
-            .broadcast(
-                &Packet::Dead(dead),
-                Reliability::Reliable,
-                Compression::Compressed,
-            )
+            .broadcast(&Packet::Dead(dead), Reliability::Reliable, COMPRESSION)
             .unwrap();
     }
     for equip in sync_actions.equip.drain(..) {
         client
-            .broadcast(
-                &Packet::Equip(equip),
-                Reliability::Reliable,
-                Compression::Compressed,
-            )
+            .broadcast(&Packet::Equip(equip), Reliability::Reliable, COMPRESSION)
             .unwrap();
     }
     for equip_me in sync_actions.equip_me.drain(..) {
@@ -137,26 +130,33 @@ pub fn get_sync(
                     user: client.my_id(),
                 }),
                 Reliability::Reliable,
-                Compression::Compressed,
+                COMPRESSION,
             )
             .unwrap();
     }
-    for flip in sync_actions.flip.drain(..) {
+    for (flip, idx) in sync_actions.flip.drain(..) {
+        client
+            .broadcast(&Packet::Flip(flip, idx), Reliability::Reliable, COMPRESSION)
+            .unwrap();
+    }
+    for (flip, idx) in sync_actions.flip_me.drain(..) {
         client
             .broadcast(
-                &Packet::Flip(flip),
+                &Packet::Flip(
+                    SyncObject {
+                        id: flip,
+                        user: client.my_id(),
+                    },
+                    idx,
+                ),
                 Reliability::Reliable,
-                Compression::Compressed,
+                COMPRESSION,
             )
             .unwrap();
     }
     for (id, to) in sync_actions.counter.drain(..) {
         client
-            .broadcast(
-                &Packet::Counter(id, to),
-                Reliability::Reliable,
-                Compression::Compressed,
-            )
+            .broadcast(&Packet::Counter(id, to), Reliability::Reliable, COMPRESSION)
             .unwrap();
     }
     for (id, to) in sync_actions.counter_me.drain(..) {
@@ -170,7 +170,7 @@ pub fn get_sync(
                     to,
                 ),
                 Reliability::Reliable,
-                Compression::Compressed,
+                COMPRESSION,
             )
             .unwrap();
     }
@@ -179,7 +179,7 @@ pub fn get_sync(
             .broadcast(
                 &Packet::Reorder(id, order),
                 Reliability::Reliable,
-                Compression::Compressed,
+                COMPRESSION,
             )
             .unwrap();
     }
@@ -194,7 +194,7 @@ pub fn get_sync(
                     order,
                 ),
                 Reliability::Reliable,
-                Compression::Compressed,
+                COMPRESSION,
             )
             .unwrap();
     }
@@ -203,7 +203,7 @@ pub fn get_sync(
             .broadcast(
                 &Packet::Draw(id, to, start),
                 Reliability::Reliable,
-                Compression::Compressed,
+                COMPRESSION,
             )
             .unwrap();
     }
@@ -219,7 +219,7 @@ pub fn get_sync(
                     start,
                 ),
                 Reliability::Reliable,
-                Compression::Compressed,
+                COMPRESSION,
             )
             .unwrap();
     }
@@ -230,17 +230,13 @@ pub fn get_sync(
         }
         sent.add(from);
         client
-            .broadcast(
-                &Packet::Take(from, to),
-                Reliability::Reliable,
-                Compression::Compressed,
-            )
+            .broadcast(&Packet::Take(from, to), Reliability::Reliable, COMPRESSION)
             .unwrap();
     }
     if !vec.is_empty() {
         let packet = Packet::Pos(vec);
         client
-            .broadcast(&packet, Reliability::Reliable, Compression::Compressed)
+            .broadcast(&packet, Reliability::Reliable, COMPRESSION)
             .unwrap();
         let Packet::Pos(mut vec) = packet else {
             unreachable!()
@@ -277,7 +273,7 @@ pub fn get_sync(
             mouse_input.pressed(MouseButton::Middle),
         );
         client
-            .broadcast(&packet, Reliability::Reliable, Compression::Compressed)
+            .broadcast(&packet, Reliability::Reliable, COMPRESSION)
             .unwrap();
     }
 }
@@ -499,7 +495,7 @@ pub fn apply_sync(
                                 sender,
                                 &Packet::Request(lid),
                                 Reliability::Reliable,
-                                Compression::Compressed,
+                                COMPRESSION,
                             )
                             .unwrap();
                     }
@@ -516,7 +512,7 @@ pub fn apply_sync(
                         .broadcast(
                             &Packet::Received(from.id),
                             Reliability::Reliable,
-                            Compression::Compressed,
+                            COMPRESSION,
                         )
                         .unwrap();
                     if let Some((_, _, _, e, _, inhand, _)) = queryme
@@ -550,7 +546,7 @@ pub fn apply_sync(
                             sender,
                             &Packet::Request(new.id),
                             Reliability::Reliable,
-                            Compression::Compressed,
+                            COMPRESSION,
                         )
                         .unwrap();
                 }
@@ -568,7 +564,7 @@ pub fn apply_sync(
                                     sender,
                                     &Packet::New(lid, c.clone_no_image(), Trans::from(b)),
                                     Reliability::Reliable,
-                                    Compression::Compressed,
+                                    COMPRESSION,
                                 )
                                 .unwrap();
                         } else if let Ok(s) = shape.get(e) {
@@ -577,7 +573,7 @@ pub fn apply_sync(
                                     sender,
                                     &Packet::NewShape(lid, s.clone(), Trans::from(b)),
                                     Reliability::Reliable,
-                                    Compression::Compressed,
+                                    COMPRESSION,
                                 )
                                 .unwrap();
                         }
@@ -611,7 +607,7 @@ pub fn apply_sync(
                         sender,
                         &Packet::Received(lid),
                         Reliability::Reliable,
-                        Compression::Compressed,
+                        COMPRESSION,
                     )
                     .unwrap();
                 let user = sender;
@@ -728,22 +724,47 @@ pub fn apply_sync(
                     }
                 }
             }
-            Packet::Flip(lid) => {
-                let user = sender;
-                let id = SyncObject { user, id: lid };
-                if let Some((transform, children, mut pile)) = query.iter_mut().find_map(
-                    |(a, b, _, _, _, _, _, _, c, d, _, _)| {
-                        if *a == id { Some((b, c, d)) } else { None }
-                    },
-                ) && let Some(pile) = &mut pile
+            Packet::Flip(id, idx) => {
+                if id.user == client.my_id()
+                    && let Some((pile, children)) = queryme.iter_mut().find_map(
+                        |(a, _, p, _, c, _, _)| {
+                            if *a == id.id { Some((p, c)) } else { None }
+                        },
+                    )
+                    && let Some(children) = children
+                    && let Some(mut pile) = pile
                 {
-                    let card = pile.get_mut_card(&transform);
-                    if let Some(alt) = &mut card.alt
-                        && let Some(children) = children
+                    let last = idx == pile.len() - 1;
+                    if let Some(card) = pile.get_mut(idx)
+                        && let Some(alt) = &mut card.alt
                     {
                         mem::swap(&mut card.normal, alt);
-                        repaint_face(&mut mats, &mut materials, card, children);
+                        if last {
+                            repaint_face(&mut mats, &mut materials, card, children);
+                        }
                         card.is_alt = !card.is_alt;
+                    }
+                } else if let Some((children, mut pile, entity)) = query.iter_mut().find_map(
+                    |(a, _, _, _, _, _, e, _, c, d, _, _)| {
+                        if *a == id { Some((c, d, e)) } else { None }
+                    },
+                ) && let Some(pile) = &mut pile
+                    && let Some(children) = children
+                {
+                    let last = idx == pile.len() - 1;
+                    if let Some(card) = pile.get_mut(idx) {
+                        if let Some(alt) = &mut card.alt {
+                            mem::swap(&mut card.normal, alt);
+                            if last {
+                                repaint_face(&mut mats, &mut materials, card, children);
+                            }
+                            card.is_alt = !card.is_alt;
+                        }
+                    } else {
+                        commands.entity(entity).despawn();
+                        client
+                            .send(id.user, &id.id, Reliability::Reliable, COMPRESSION)
+                            .unwrap();
                     }
                 }
             }
@@ -775,7 +796,7 @@ pub fn apply_sync(
                                     id.user,
                                     &Packet::Request(id.id),
                                     Reliability::Reliable,
-                                    Compression::Compressed,
+                                    COMPRESSION,
                                 )
                                 .unwrap();
                             return;
@@ -848,7 +869,7 @@ pub fn apply_sync(
                             base.user,
                             &Packet::Request(base.id),
                             Reliability::Reliable,
-                            Compression::Compressed,
+                            COMPRESSION,
                         )
                         .unwrap();
                     return;
@@ -884,7 +905,7 @@ pub fn apply_sync(
                             base.user,
                             &Packet::Request(base.id),
                             Reliability::Reliable,
-                            Compression::Compressed,
+                            COMPRESSION,
                         )
                         .unwrap();
                     return;
@@ -895,7 +916,7 @@ pub fn apply_sync(
                             base.user,
                             &Packet::Request(base.id),
                             Reliability::Reliable,
-                            Compression::Compressed,
+                            COMPRESSION,
                         )
                         .unwrap();
                     return;
@@ -930,7 +951,7 @@ pub fn apply_sync(
                                     id.user,
                                     &Packet::Request(id.id),
                                     Reliability::Reliable,
-                                    Compression::Compressed,
+                                    COMPRESSION,
                                 )
                                 .unwrap();
                         }
@@ -1172,7 +1193,7 @@ pub fn new_lobby(
                                 .broadcast(
                                     &Packet::SetUser(peer, peer.0 as usize),
                                     Reliability::Reliable,
-                                    Compression::Compressed,
+                                    COMPRESSION,
                                 )
                                 .unwrap();
                             client
@@ -1180,7 +1201,7 @@ pub fn new_lobby(
                                     peer,
                                     &Packet::SetUser(client.my_id(), 0),
                                     Reliability::Reliable,
-                                    Compression::Compressed,
+                                    COMPRESSION,
                                 )
                                 .unwrap();
                             info!("user {peer} has joined");
@@ -1265,7 +1286,8 @@ pub struct SyncActions {
     pub equip_me: Vec<SyncObjectMe>,
     pub draw_me: Vec<(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize)>,
     pub draw: Vec<(SyncObject, Vec<(SyncObjectMe, Trans)>, usize)>,
-    pub flip: Vec<SyncObjectMe>,
+    pub flip: Vec<(SyncObject, usize)>,
+    pub flip_me: Vec<(SyncObjectMe, usize)>,
     pub counter_me: Vec<(SyncObjectMe, Value)>,
     pub counter: Vec<(SyncObject, Value)>,
 }
@@ -1278,7 +1300,7 @@ pub enum Packet {
     Take(SyncObject, SyncObjectMe),
     New(SyncObjectMe, Pile, Trans),
     NewShape(SyncObjectMe, Shape, Trans),
-    Flip(SyncObjectMe),
+    Flip(SyncObject, usize),
     Equip(SyncObject),
     Counter(SyncObject, Value),
     Reorder(SyncObject, Vec<String>),

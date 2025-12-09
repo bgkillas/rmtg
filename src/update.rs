@@ -7,7 +7,7 @@ use crate::misc::{
     repaint_face, spawn_equip,
 };
 use crate::setup::{EscMenu, FontRes, MAT_WIDTH, SideMenu, T, W, Wall};
-use crate::sync::{CameraInd, CursorInd, InOtherHand, Packet, SyncObjectMe, Trans};
+use crate::sync::{COMPRESSION, CameraInd, CursorInd, InOtherHand, Packet, SyncObjectMe, Trans};
 use crate::*;
 use avian3d::math::Vector;
 use bevy::input::mouse::{
@@ -19,7 +19,7 @@ use bevy::window::PrimaryWindow;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalRng;
 use bevy_rich_text3d::Text3d;
-use bevy_tangled::{ClientTrait, Compression, PeerId, Reliability};
+use bevy_tangled::{ClientTrait, PeerId, Reliability};
 use bevy_ui_text_input::{TextInputBuffer, TextInputContents, TextInputMode, TextInputNode};
 use cosmic_text::Edit;
 #[cfg(feature = "calc")]
@@ -727,8 +727,15 @@ pub fn listen_for_mouse(
                     repaint_face(&mut mats, &mut materials, card, children);
                     card.is_alt = !card.is_alt;
                 }
+                let idx = if is_reversed(&transform) {
+                    0
+                } else {
+                    pile.len() - 1
+                };
                 if let Ok(id) = ids.get(entity) {
-                    sync_actions.flip.push(*id);
+                    sync_actions.flip_me.push((*id, idx));
+                } else if let Ok(id) = others_ids.get(entity) {
+                    sync_actions.flip.push((*id, idx));
                 }
             } else if input.any_just_pressed([
                 KeyCode::Digit1,
@@ -1152,7 +1159,7 @@ pub fn update_search(
 }
 pub fn pick_from_list(
     hover_map: Res<HoverMap>,
-    query: Query<&TargetCard>,
+    mut query: Query<(&TargetCard, &mut ImageNode)>,
     search_deck: Single<(Entity, &SearchDeck)>,
     mut decks: Query<(&mut Pile, &mut Transform, &Children)>,
     menu: Res<Menu>,
@@ -1182,6 +1189,7 @@ pub fn pick_from_list(
         others_ids,
         text,
         equipment,
+        input,
     ): (
         Query<&mut Collider>,
         Option<Single<Entity, With<FollowMouse>>>,
@@ -1192,73 +1200,94 @@ pub fn pick_from_list(
         Query<&SyncObject>,
         Single<&TextInputContents>,
         Query<(), With<Equipment>>,
+        Res<ButtonInput<KeyCode>>,
     ),
 ) {
-    if !matches!(*menu, Menu::Side) || !mouse_input.just_pressed(MouseButton::Left) {
+    let left = mouse_input.just_pressed(MouseButton::Left);
+    let swap = input.just_pressed(KeyCode::KeyO);
+    if !matches!(*menu, Menu::Side) || !(left || swap) {
         return;
     }
     for pointer_event in hover_map.values() {
         for entity in pointer_event.keys().copied() {
-            if let Ok(card) = query.get(entity)
+            if let Ok((card, mut image)) = query.get_mut(entity)
                 && let Ok((mut pile, mut trans, children)) = decks.get_mut(search_deck.1.0)
             {
-                if pile.is_equiped() {
-                    return;
-                }
-                commands.entity(entity).despawn();
-                let entity = search_deck.1.0;
-                if let Ok(id) = others_ids.get(entity) {
-                    let myid = SyncObjectMe::new(&mut rand, &mut count);
-                    sync_actions.take_owner.push((*id, myid));
-                }
-                let len = pile.len() as f32 * CARD_THICKNESS;
-                let new = pile.remove(card.0);
-                if !pile.is_empty() {
-                    let card = pile.last();
-                    repaint_face(&mut mats, &mut materials, card, children);
-                    adjust_meshes(
-                        &pile,
-                        children,
-                        &mut meshes,
-                        &mut query_meshes,
-                        &mut trans,
-                        &mut colliders.get_mut(entity).unwrap(),
-                        &equipment,
+                if left {
+                    if pile.is_equiped() {
+                        return;
+                    }
+                    commands.entity(entity).despawn();
+                    let entity = search_deck.1.0;
+                    if let Ok(id) = others_ids.get(entity) {
+                        let myid = SyncObjectMe::new(&mut rand, &mut count);
+                        sync_actions.take_owner.push((*id, myid));
+                    }
+                    let len = pile.len() as f32 * CARD_THICKNESS;
+                    let new = pile.remove(card.0);
+                    if !pile.is_empty() {
+                        let card = pile.last();
+                        repaint_face(&mut mats, &mut materials, card, children);
+                        adjust_meshes(
+                            &pile,
+                            children,
+                            &mut meshes,
+                            &mut query_meshes,
+                            &mut trans,
+                            &mut colliders.get_mut(entity).unwrap(),
+                            &equipment,
+                            &mut commands,
+                        );
+                    }
+                    let mut transform = *trans;
+                    transform.translation.y += len + CARD_THICKNESS * 4.0;
+                    if let Some(e) = &follow {
+                        commands.entity(**e).remove::<FollowMouse>();
+                    }
+                    let id = SyncObjectMe::new(&mut rand, &mut count);
+                    new_pile_at(
+                        Pile::Single(new.into()),
+                        card_base.clone(),
+                        &mut materials,
                         &mut commands,
+                        &mut meshes,
+                        transform,
+                        true,
+                        None,
+                        None,
+                        Some(id),
                     );
+                    if let Ok(lid) = ids.get(entity) {
+                        sync_actions.draw_me.push((
+                            *lid,
+                            vec![(id, Trans::from_transform(&transform))],
+                            card.0 + 1,
+                        ));
+                    } else if let Ok(oid) = others_ids.get(entity) {
+                        sync_actions.draw.push((
+                            *oid,
+                            vec![(id, Trans::from_transform(&transform))],
+                            card.0 + 1,
+                        ));
+                    }
+                    update_search(&mut commands, search_deck.0, &pile, &trans, text.get());
+                } else if swap {
+                    let last = pile.len() - 1 == card.0;
+                    let inner_card = pile.get_mut(card.0).unwrap();
+                    if let Some(alt) = &mut inner_card.alt {
+                        mem::swap(&mut inner_card.normal, alt);
+                        if last {
+                            repaint_face(&mut mats, &mut materials, inner_card, children);
+                        }
+                        inner_card.is_alt = !inner_card.is_alt;
+                    }
+                    if let Ok(id) = ids.get(entity) {
+                        sync_actions.flip_me.push((*id, card.0));
+                    } else if let Ok(id) = others_ids.get(entity) {
+                        sync_actions.flip.push((*id, card.0));
+                    }
+                    image.image = inner_card.normal.image.clone_handle();
                 }
-                let mut transform = *trans;
-                transform.translation.y += len + CARD_THICKNESS * 4.0;
-                if let Some(e) = &follow {
-                    commands.entity(**e).remove::<FollowMouse>();
-                }
-                let id = SyncObjectMe::new(&mut rand, &mut count);
-                new_pile_at(
-                    Pile::Single(new.into()),
-                    card_base.clone(),
-                    &mut materials,
-                    &mut commands,
-                    &mut meshes,
-                    transform,
-                    true,
-                    None,
-                    None,
-                    Some(id),
-                );
-                if let Ok(lid) = ids.get(entity) {
-                    sync_actions.draw_me.push((
-                        *lid,
-                        vec![(id, Trans::from_transform(&transform))],
-                        card.0 + 1,
-                    ));
-                } else if let Ok(oid) = others_ids.get(entity) {
-                    sync_actions.draw.push((
-                        *oid,
-                        vec![(id, Trans::from_transform(&transform))],
-                        card.0 + 1,
-                    ));
-                }
-                update_search(&mut commands, search_deck.0, &pile, &trans, text.get());
             }
         }
     }
@@ -1601,7 +1630,7 @@ pub fn register_deck(
                     id.user,
                     &Packet::Received(id.id),
                     Reliability::Reliable,
-                    Compression::Compressed,
+                    COMPRESSION,
                 )
                 .unwrap();
         }

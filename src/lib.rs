@@ -356,6 +356,20 @@ impl Pile {
             self.last_mut()
         }
     }
+    pub fn get(&self, idx: usize) -> Option<&SubCard> {
+        match self {
+            Pile::Multiple(v) => v.get(idx),
+            Pile::Single(s) => s.get(idx),
+            Pile::Empty => unreachable!(),
+        }
+    }
+    pub fn get_mut(&mut self, idx: usize) -> Option<&mut SubCard> {
+        match self {
+            Pile::Multiple(v) => v.get_mut(idx),
+            Pile::Single(s) => s.get_mut(idx),
+            Pile::Empty => unreachable!(),
+        }
+    }
     pub fn set_single(&mut self) {
         if self.len() == 1 {
             *self = Pile::Multiple(vec![self.pop()])
@@ -865,6 +879,20 @@ impl Card {
             subcard: &mut self.subcard,
             equiped: self.equiped.iter_mut(),
             started: false,
+        }
+    }
+    pub fn get(&self, idx: usize) -> Option<&SubCard> {
+        if idx == 0 {
+            Some(&self.subcard)
+        } else {
+            self.equiped.get(idx - 1)
+        }
+    }
+    pub fn get_mut(&mut self, idx: usize) -> Option<&mut SubCard> {
+        if idx == 0 {
+            Some(&mut self.subcard)
+        } else {
+            self.equiped.get_mut(idx - 1)
         }
     }
 }
