@@ -268,16 +268,15 @@ pub fn spawn_equip(
     materials: &mut Assets<StandardMaterial>,
     meshes: &mut Assets<Mesh>,
 ) {
-    const SCALE: f32 = 0.5;
     commands.entity(ent).with_children(|parent| {
         for (i, c) in pile.iter_equipment().rev().enumerate() {
             let top = i.is_multiple_of(2);
             let transform = Transform::from_xyz(
-                (SCALE * ((i & !1) + 1) as f32 + 1.0) * CARD_WIDTH / 2.0,
+                (EQUIP_SCALE * ((i & !1) + 1) as f32 + 1.0) * CARD_WIDTH / 2.0,
                 0.0,
-                if top { -1.0 } else { 1.0 } * CARD_HEIGHT / 4.0,
+                if top { -EQUIP_SCALE } else { EQUIP_SCALE } * CARD_HEIGHT / 2.0,
             )
-            .with_scale(Vec3::splat(SCALE));
+            .with_scale(Vec3::splat(EQUIP_SCALE));
             parent.spawn((
                 Equipment,
                 transform,

@@ -849,15 +849,42 @@ pub fn listen_for_mouse(
             if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
                 let mut spawn = || {
                     let card = pile.get_card(&transform);
-                    commands.spawn((
-                        Node {
-                            width: Val::Px(500.0),
-                            height: Val::Px(700.0),
-                            ..default()
-                        },
-                        ImageNode::new(card.normal.image().clone()),
-                        ZoomHold(entity.to_bits(), false),
-                    ));
+                    commands
+                        .spawn((
+                            Node {
+                                width: Val::Px(IMAGE_WIDTH),
+                                height: Val::Px(IMAGE_HEIGHT),
+                                ..default()
+                            },
+                            ImageNode::new(card.normal.image().clone()),
+                            ZoomHold(entity.to_bits(), false),
+                        ))
+                        .with_children(|parent| {
+                            if pile.is_equiped() {
+                                for (i, c) in pile.iter_equipment().rev().enumerate() {
+                                    let top = i.is_multiple_of(2);
+                                    parent.spawn((
+                                        Node {
+                                            width: Val::Px(IMAGE_WIDTH * EQUIP_SCALE),
+                                            height: Val::Px(IMAGE_HEIGHT * EQUIP_SCALE),
+                                            position_type: PositionType::Absolute,
+                                            left: Val::Px(
+                                                (EQUIP_SCALE * ((i & !1) + 1) as f32 + 1.5)
+                                                    * IMAGE_WIDTH
+                                                    / 2.0,
+                                            ),
+                                            top: Val::Px(if top {
+                                                0.0
+                                            } else {
+                                                IMAGE_HEIGHT * EQUIP_SCALE
+                                            }),
+                                            ..default()
+                                        },
+                                        ImageNode::new(c.normal.image().clone()),
+                                    ));
+                                }
+                            }
+                        });
                 };
                 if let Some(mut single) = zoom {
                     if single.1.0 != entity.to_bits() {
@@ -1175,6 +1202,9 @@ pub fn pick_from_list(
             if let Ok(card) = query.get(entity)
                 && let Ok((mut pile, mut trans, children)) = decks.get_mut(search_deck.1.0)
             {
+                if pile.is_equiped() {
+                    return;
+                }
                 commands.entity(entity).despawn();
                 let entity = search_deck.1.0;
                 if let Ok(id) = others_ids.get(entity) {
