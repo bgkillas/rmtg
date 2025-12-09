@@ -296,22 +296,33 @@ pub enum Pile {
     Empty,
 }
 impl Pile {
-    pub fn equip(&mut self) {
+    pub fn equip(&mut self) -> bool {
         match self {
             s @ Pile::Multiple(_) => {
                 let subcard = s.pop();
                 let Pile::Multiple(equiped) = mem::take(s) else {
                     unreachable!();
                 };
-                *s = Pile::Single(Box::new(Card { subcard, equiped }));
+                *s = Pile::Single(Box::new(Card {
+                    subcard,
+                    equiped,
+                    power: None,
+                    health: None,
+                    loyalty: None,
+                    misc: None,
+                }));
+                true
             }
             s @ Pile::Single(_) => {
                 let Pile::Single(cards) = mem::take(s) else {
                     unreachable!();
                 };
-                *s = Pile::Multiple(cards.flatten())
+                *s = Pile::Multiple(cards.flatten());
+                false
             }
-            Pile::Empty => {}
+            Pile::Empty => {
+                unreachable!()
+            }
         }
     }
     pub fn clone_no_image(&self) -> Self {
@@ -524,6 +535,13 @@ impl Pile {
         match self {
             Pile::Multiple(v) => v.iter(),
             Pile::Single(s) => slice::from_ref(s.into()).iter(),
+            Pile::Empty => unreachable!(),
+        }
+    }
+    pub fn iter_equipment(&self) -> Iter<'_, SubCard> {
+        match self {
+            Pile::Multiple(_) => unreachable!(),
+            Pile::Single(s) => s.equiped.iter(),
             Pile::Empty => unreachable!(),
         }
     }
@@ -795,12 +813,24 @@ impl SubCard {
 pub struct Card {
     pub subcard: SubCard,
     pub equiped: Vec<SubCard>,
+    #[allow(dead_code)]
+    pub power: Option<i32>,
+    #[allow(dead_code)]
+    pub health: Option<i32>,
+    #[allow(dead_code)]
+    pub loyalty: Option<i32>,
+    #[allow(dead_code)]
+    pub misc: Option<i32>,
 }
 impl Card {
     pub fn clone_no_image(&self) -> Self {
         Self {
             subcard: self.subcard.clone_no_image(),
             equiped: self.equiped.iter().map(|c| c.clone_no_image()).collect(),
+            power: None,
+            health: None,
+            loyalty: None,
+            misc: None,
         }
     }
     pub fn filter(&self, text: &str) -> bool {
@@ -852,6 +882,10 @@ impl From<SubCard> for Card {
         Self {
             subcard: value,
             equiped: Vec::new(),
+            power: None,
+            health: None,
+            loyalty: None,
+            misc: None,
         }
     }
 }
@@ -860,6 +894,10 @@ impl From<SubCard> for Box<Card> {
         Box::new(Card {
             subcard: value,
             equiped: Vec::new(),
+            power: None,
+            health: None,
+            loyalty: None,
+            misc: None,
         })
     }
 }
@@ -948,7 +986,7 @@ impl Clipboard {
 pub struct ReqClient(pub reqwest::Client);
 #[derive(Resource)]
 pub struct Runtime(pub tokio::runtime::Runtime);
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub struct CardBase {
     pub stock: Handle<Mesh>,
     back: Handle<StandardMaterial>,

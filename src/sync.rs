@@ -1,6 +1,8 @@
 use crate::counters::Value;
 use crate::download::add_images;
-use crate::misc::{adjust_meshes, default_cam_pos, make_cam, make_cur, new_pile_at, repaint_face};
+use crate::misc::{
+    Equipment, adjust_meshes, default_cam_pos, make_cam, make_cur, new_pile_at, repaint_face,
+};
 #[cfg(feature = "steam")]
 use crate::setup::SteamInfo;
 use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
@@ -348,7 +350,7 @@ pub fn apply_sync(
             Without<Pile>,
         ),
     >,
-    (search, text, mut shape, mut text3d, mut cams, mut curs, mut peers, cam): (
+    (search, text, mut shape, mut text3d, mut cams, mut curs, mut peers, cam, equipment): (
         Option<Single<(Entity, &SearchDeck)>>,
         Option<Single<&TextInputContents>>,
         Query<&mut Shape>,
@@ -383,6 +385,7 @@ pub fn apply_sync(
                 Without<CameraInd>,
             ),
         >,
+        Query<(), With<Equipment>>,
     ),
 ) {
     if !client.is_connected() {
@@ -817,6 +820,8 @@ pub fn apply_sync(
                     &mut query_meshes,
                     &mut base_transform,
                     &mut colliders.get_mut(base_ent).unwrap(),
+                    &equipment,
+                    &mut commands,
                 );
             }
             Packet::Draw(id, to, start) => {
@@ -845,12 +850,10 @@ pub fn apply_sync(
                         let syncobject = SyncObject { user, id };
                         new_pile_at(
                             Pile::Single(card.into()),
-                            card_base.stock.clone(),
+                            card_base.clone(),
                             &mut materials,
                             &mut commands,
                             &mut meshes,
-                            card_base.back.clone(),
-                            card_base.side.clone(),
                             trans.into(),
                             false,
                             None,
@@ -870,6 +873,8 @@ pub fn apply_sync(
                             &mut query_meshes,
                             &mut transform,
                             &mut colliders.get_mut(entity).unwrap(),
+                            &equipment,
+                            &mut commands,
                         );
                     }
                     if let Some(search) = &search

@@ -16,12 +16,10 @@ pub fn make_material(
 }
 pub fn new_pile(
     pile: Pile,
-    card_stock: Handle<Mesh>,
+    card_base: CardBase,
     materials: &mut Assets<StandardMaterial>,
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
-    card_back: Handle<StandardMaterial>,
-    card_side: Handle<StandardMaterial>,
     rand: &mut Single<&mut WyRand, With<GlobalRng>>,
     v: Vec2,
     count: &mut SyncCount,
@@ -31,12 +29,10 @@ pub fn new_pile(
     let transform = Transform::from_xyz(v.x, size / 2.0, v.y);
     new_pile_at(
         pile,
-        card_stock,
+        card_base,
         materials,
         commands,
         meshes,
-        card_back,
-        card_side,
         transform,
         false,
         None,
@@ -112,12 +108,10 @@ fn topbottom(size: f32, meshes: &mut Assets<Mesh>) -> (Handle<Mesh>, Transform, 
 }
 pub fn new_pile_at<'a>(
     pile: Pile,
-    card_stock: Handle<Mesh>,
+    card_base: CardBase,
     materials: &mut Assets<StandardMaterial>,
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
-    card_back: Handle<StandardMaterial>,
-    card_side: Handle<StandardMaterial>,
     transform: Transform,
     follow_mouse: bool,
     parent: Option<Entity>,
@@ -129,10 +123,7 @@ pub fn new_pile_at<'a>(
     }
     let card = pile.last();
     let top = card.normal.image().clone();
-    let material_handle = make_material(materials, top);
     let size = pile.len() as f32 * CARD_THICKNESS;
-    let (mesh, transform2, transform3) = side(size, meshes);
-    let (mesh2, transform4, transform5) = topbottom(size, meshes);
     let mut ent = commands.spawn((
         pile,
         transform,
@@ -149,30 +140,7 @@ pub fn new_pile_at<'a>(
         } else {
             GRAVITY
         }),
-        children![
-            (
-                Mesh3d(card_stock.clone()),
-                MeshMaterial3d(material_handle),
-                Transform::from_xyz(0.0, size / 2.0, 0.0).looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
-            ),
-            (
-                Mesh3d(card_stock),
-                MeshMaterial3d(card_back),
-                Transform::from_xyz(0.0, -size / 2.0, 0.0).looking_to(Dir3::Y, Dir3::NEG_Z)
-            ),
-            (
-                Mesh3d(mesh.clone()),
-                MeshMaterial3d(card_side.clone()),
-                transform2,
-            ),
-            (Mesh3d(mesh), MeshMaterial3d(card_side.clone()), transform3),
-            (
-                Mesh3d(mesh2.clone()),
-                MeshMaterial3d(card_side.clone()),
-                transform4,
-            ),
-            (Mesh3d(mesh2), MeshMaterial3d(card_side), transform5)
-        ],
+        card_bundle(size, card_base, materials, meshes, top),
     ));
     if let Some(id) = id {
         ent.insert(id);
@@ -186,6 +154,44 @@ pub fn new_pile_at<'a>(
         ent.insert(ChildOf(parent));
     }
     Some(ent)
+}
+pub fn card_bundle(
+    size: f32,
+    card_base: CardBase,
+    materials: &mut Assets<StandardMaterial>,
+    meshes: &mut Assets<Mesh>,
+    top: Handle<Image>,
+) -> impl Bundle {
+    let material_handle = make_material(materials, top);
+    let (mesh, transform2, transform3) = side(size, meshes);
+    let (mesh2, transform4, transform5) = topbottom(size, meshes);
+    let card_stock = card_base.stock;
+    let card_side = card_base.side;
+    let card_back = card_base.back;
+    children![
+        (
+            Mesh3d(card_stock.clone()),
+            MeshMaterial3d(material_handle),
+            Transform::from_xyz(0.0, size / 2.0, 0.0).looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
+        ),
+        (
+            Mesh3d(card_stock),
+            MeshMaterial3d(card_back),
+            Transform::from_xyz(0.0, -size / 2.0, 0.0).looking_to(Dir3::Y, Dir3::NEG_Z)
+        ),
+        (
+            Mesh3d(mesh.clone()),
+            MeshMaterial3d(card_side.clone()),
+            transform2,
+        ),
+        (Mesh3d(mesh), MeshMaterial3d(card_side.clone()), transform3),
+        (
+            Mesh3d(mesh2.clone()),
+            MeshMaterial3d(card_side.clone()),
+            transform4,
+        ),
+        (Mesh3d(mesh2), MeshMaterial3d(card_side), transform5)
+    ]
 }
 pub fn is_reversed(transform: &Transform) -> bool {
     (transform.rotation * Vec3::Y).y < 0.0
@@ -215,6 +221,8 @@ pub fn adjust_meshes(
     >,
     transform: &mut Transform,
     collider: &mut Collider,
+    equipment: &Query<(), With<Equipment>>,
+    commands: &mut Commands,
 ) {
     let size = pile.len() as f32 * CARD_THICKNESS;
     *collider = Collider::cuboid(CARD_WIDTH, size, CARD_HEIGHT);
@@ -239,7 +247,47 @@ pub fn adjust_meshes(
     let (mut bottommesh, mut bottomt) = query.get_mut(children.next().unwrap()).unwrap();
     bottommesh.0 = mesh2;
     *bottomt = t2;
+    for c in children {
+        if equipment.contains(c) {
+            commands.entity(c).despawn();
+        }
+    }
 }
+pub fn spawn_equip(
+    ent: Entity,
+    pile: &Pile,
+    commands: &mut Commands,
+    card_base: CardBase,
+    materials: &mut Assets<StandardMaterial>,
+    meshes: &mut Assets<Mesh>,
+) {
+    const SCALE: f32 = 0.5;
+    commands.entity(ent).with_children(|parent| {
+        for (i, c) in pile.iter_equipment().rev().enumerate() {
+            let top = i.is_multiple_of(2);
+            let transform = Transform::from_xyz(
+                (SCALE * ((i & !1) + 1) as f32 + 1.0) * CARD_WIDTH / 2.0,
+                0.0,
+                if top { -1.0 } else { 1.0 } * CARD_HEIGHT / 4.0,
+            )
+            .with_scale(Vec3::splat(SCALE));
+            parent.spawn((
+                Equipment,
+                transform,
+                InheritedVisibility::default(),
+                card_bundle(
+                    CARD_THICKNESS,
+                    card_base.clone(),
+                    materials,
+                    meshes,
+                    c.normal.image.clone_handle(),
+                ),
+            ));
+        }
+    });
+}
+#[derive(Component)]
+pub struct Equipment;
 pub fn make_cam(
     commands: &mut Commands,
     peer: PeerId,

@@ -3,7 +3,8 @@ use crate::download::{
     Exact, get_alts, get_deck, get_deck_export, spawn_singleton, spawn_singleton_id,
 };
 use crate::misc::{
-    adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile, new_pile_at, repaint_face,
+    Equipment, adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile, new_pile_at,
+    repaint_face, spawn_equip,
 };
 use crate::setup::{EscMenu, FontRes, MAT_WIDTH, SideMenu, T, W, Wall};
 use crate::sync::{CameraInd, CursorInd, InOtherHand, Packet, SyncObjectMe, Trans};
@@ -381,7 +382,7 @@ pub fn listen_for_mouse(
         Option<Single<Entity, With<SideMenu>>>,
         Option<Single<(Entity, &SearchDeck)>>,
     ),
-    (mut rand, text, font, mut text3d, children, mut transform, hover_map): (
+    (mut rand, text, font, mut text3d, children, mut transform, hover_map, equipment): (
         Single<&mut WyRand, With<GlobalRng>>,
         Option<Single<&TextInputContents>>,
         Res<FontRes>,
@@ -389,6 +390,7 @@ pub fn listen_for_mouse(
         Query<&Children, Without<Pile>>,
         Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
         Res<HoverMap>,
+        Query<(), With<Equipment>>,
     ),
 ) {
     if matches!(*menu, Menu::Esc)
@@ -529,6 +531,8 @@ pub fn listen_for_mouse(
                             &mut query_meshes,
                             &mut transform,
                             &mut colliders.get_mut(entity).unwrap().0,
+                            &equipment,
+                            &mut commands,
                         );
                     }
                     let mut transform = *transform;
@@ -539,12 +543,10 @@ pub fn listen_for_mouse(
                     let id = SyncObjectMe::new(&mut rand, &mut count);
                     new_pile_at(
                         Pile::Single(new.into()),
-                        card_base.stock.clone(),
+                        card_base.clone(),
                         &mut materials,
                         &mut commands,
                         &mut meshes,
-                        card_base.back.clone(),
-                        card_base.side.clone(),
                         transform,
                         true,
                         None,
@@ -596,7 +598,7 @@ pub fn listen_for_mouse(
             } else if input.just_pressed(KeyCode::KeyE) {
                 if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
                     if !is_reversed(&transform) {
-                        pile.equip();
+                        let b = pile.equip();
                         repaint_face(&mut mats, &mut materials, pile.last(), children);
                         adjust_meshes(
                             &pile,
@@ -605,7 +607,19 @@ pub fn listen_for_mouse(
                             &mut query_meshes,
                             &mut transform,
                             &mut colliders.get_mut(entity).unwrap().0,
+                            &equipment,
+                            &mut commands,
                         );
+                        if b {
+                            spawn_equip(
+                                entity,
+                                &pile,
+                                &mut commands,
+                                card_base.clone(),
+                                &mut materials,
+                                &mut meshes,
+                            );
+                        }
                     }
                 } else {
                     rotate_right(&mut transform);
@@ -622,12 +636,10 @@ pub fn listen_for_mouse(
                     let id = SyncObjectMe::new(&mut rand, &mut count);
                     new_pile_at(
                         Pile::Single(c.into()),
-                        card_base.stock.clone(),
+                        card_base.clone(),
                         &mut materials,
                         &mut commands,
                         &mut meshes,
-                        card_base.back.clone(),
-                        card_base.side.clone(),
                         transform,
                         false,
                         None,
@@ -750,12 +762,10 @@ pub fn listen_for_mouse(
                         let id = SyncObjectMe::new(&mut rand, &mut count);
                         let mut ent = new_pile_at(
                             Pile::Single(new.into()),
-                            card_base.stock.clone(),
+                            card_base.clone(),
                             &mut materials,
                             &mut commands,
                             &mut meshes,
-                            card_base.back.clone(),
-                            card_base.side.clone(),
                             Transform::default(),
                             false,
                             Some(hand.1),
@@ -800,6 +810,8 @@ pub fn listen_for_mouse(
                             &mut query_meshes,
                             &mut transform,
                             &mut colliders.get_mut(entity).unwrap().0,
+                            &equipment,
+                            &mut commands,
                         );
                     } else {
                         if let Ok(id) = ids.get(entity) {
@@ -1120,7 +1132,17 @@ pub fn pick_from_list(
             Without<Pile>,
         ),
     >,
-    (mut colliders, follow, mut rand, mut count, ids, mut sync_actions, others_ids, text): (
+    (
+        mut colliders,
+        follow,
+        mut rand,
+        mut count,
+        ids,
+        mut sync_actions,
+        others_ids,
+        text,
+        equipment,
+    ): (
         Query<&mut Collider>,
         Option<Single<Entity, With<FollowMouse>>>,
         Single<&mut WyRand, With<GlobalRng>>,
@@ -1129,6 +1151,7 @@ pub fn pick_from_list(
         ResMut<SyncActions>,
         Query<&SyncObject>,
         Single<&TextInputContents>,
+        Query<(), With<Equipment>>,
     ),
 ) {
     if !matches!(*menu, Menu::Side) || !mouse_input.just_pressed(MouseButton::Left) {
@@ -1157,6 +1180,8 @@ pub fn pick_from_list(
                         &mut query_meshes,
                         &mut trans,
                         &mut colliders.get_mut(entity).unwrap(),
+                        &equipment,
+                        &mut commands,
                     );
                 }
                 let mut transform = *trans;
@@ -1167,12 +1192,10 @@ pub fn pick_from_list(
                 let id = SyncObjectMe::new(&mut rand, &mut count);
                 new_pile_at(
                     Pile::Single(new.into()),
-                    card_base.stock.clone(),
+                    card_base.clone(),
                     &mut materials,
                     &mut commands,
                     &mut meshes,
-                    card_base.back.clone(),
-                    card_base.side.clone(),
                     transform,
                     true,
                     None,
@@ -1469,12 +1492,10 @@ pub fn listen_for_deck(
         } else if let Some(ent) = match game_clipboard.clone() {
             GameClipboard::Pile(pile) => new_pile(
                 pile,
-                card_base.stock.clone(),
+                card_base.clone(),
                 &mut materials,
                 &mut commands,
                 &mut meshes,
-                card_base.back.clone(),
-                card_base.side.clone(),
                 &mut rand,
                 v,
                 &mut count,
@@ -1519,12 +1540,10 @@ pub fn register_deck(
         }
         if let Some(ent) = new_pile(
             deck,
-            card_base.stock.clone(),
+            card_base.clone(),
             &mut materials,
             &mut commands,
             &mut meshes,
-            card_base.back.clone(),
-            card_base.side.clone(),
             &mut rand,
             v,
             &mut count,
@@ -1737,6 +1756,7 @@ pub fn pile_merge(
     search_deck: Option<Single<(Entity, &SearchDeck)>>,
     text: Option<Single<&TextInputContents>>,
     mut sync_actions: ResMut<SyncActions>,
+    equipment: Query<(), With<Equipment>>,
 ) {
     if let Ok((e1, p1, t1, _, _, s1, m1)) = piles.get(collision.collider1)
         && let Ok((e2, p2, t2, _, _, s2, m2)) = piles.get(collision.collider2)
@@ -1791,6 +1811,8 @@ pub fn pile_merge(
             &mut query_meshes,
             &mut bottom_transform,
             &mut collider,
+            &equipment,
+            &mut commands,
         );
         if let Some(search_deck) = search_deck {
             if search_deck.1.0 == ent {
