@@ -255,7 +255,6 @@ fn test_get_deck() {
                         .unwrap(),
                     asset_server,
                     deck,
-                    Vec2::default(),
                 )
                 .await
             }))
@@ -576,8 +575,17 @@ impl Pile {
         }
     }
 }
+#[derive(Debug, Clone)]
+enum DeckType {
+    Other(Vec2, SyncObject),
+    Single(Vec2),
+    Token,
+    Deck,
+    Commander,
+    SideBoard,
+}
 #[derive(Resource, Debug, Default, Clone)]
-struct GetDeck(Arc<Mutex<Vec<(Pile, Vec2, Option<SyncObject>)>>>);
+struct GetDeck(Arc<Mutex<Vec<(Pile, DeckType)>>>);
 #[derive(Debug, Default, Clone, Encode, Decode)]
 #[allow(dead_code)]
 struct CardInfo {

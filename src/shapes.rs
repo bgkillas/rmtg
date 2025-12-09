@@ -465,6 +465,7 @@ pub fn spawn_disc<'a>(
     materials: &mut Assets<StandardMaterial>,
     color: bevy::color::Color,
 ) -> EntityCommands<'a> {
+    let m = m * 0.5;
     let ratio = 8.0;
     let mut ent = commands.spawn((
         CollisionLayers::new(0b11, LayerMask::ALL),

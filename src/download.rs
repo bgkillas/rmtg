@@ -76,7 +76,7 @@ pub async fn spawn_singleton_id(
             .0
             .lock()
             .unwrap()
-            .push((Pile::Single(card.0.into()), v, None));
+            .push((Pile::Single(card.0.into()), DeckType::Single(v)));
     }
     None
 }
@@ -97,7 +97,7 @@ pub async fn spawn_singleton(
             .0
             .lock()
             .unwrap()
-            .push((Pile::Single(card.0.into()), v, None));
+            .push((Pile::Single(card.0.into()), DeckType::Single(v)));
     }
     None
 }
@@ -164,7 +164,7 @@ pub async fn get_alts(
         .0
         .lock()
         .unwrap()
-        .push((Pile::Multiple(vec), v, None));
+        .push((Pile::Multiple(vec), DeckType::Single(v)));
     None
 }
 pub async fn add_images(
@@ -185,7 +185,7 @@ pub async fn add_images(
     }))
     .await;
     let v = Vec2::new(transform.translation.x, transform.translation.z);
-    deck.0.lock().unwrap().push((pile, v, Some(id)));
+    deck.0.lock().unwrap().push((pile, DeckType::Other(v, id)));
     None
 }
 #[derive(Encode, Decode)]
@@ -351,7 +351,7 @@ pub async fn get_pile(
     client: reqwest::Client,
     asset_server: AssetServer,
     decks: GetDeck,
-    v: Vec2,
+    deck_type: DeckType,
 ) {
     let pile = iter
         .map(|(p, n)| parse(p, &client, &asset_server, n))
@@ -364,7 +364,7 @@ pub async fn get_pile(
         .flatten()
         .collect();
     let mut decks = decks.0.lock().unwrap();
-    decks.push((Pile::Multiple(pile), v, None));
+    decks.push((Pile::Multiple(pile), deck_type));
 }
 pub struct Exact {
     pub count: usize,
@@ -408,14 +408,13 @@ pub async fn get_deck_export(
         .flatten()
         .collect();
     let mut decks = decks.0.lock().unwrap();
-    decks.push((Pile::Multiple(pile), v, None));
+    decks.push((Pile::Multiple(pile), DeckType::Single(v)));
 }
 pub async fn get_deck(
     url: String,
     client: reqwest::Client,
     asset_server: AssetServer,
     decks: GetDeck,
-    v: Vec2,
 ) {
     let t = client.get(url).send().await;
     if let Ok(res) = t
@@ -430,7 +429,7 @@ pub async fn get_deck(
             client.clone(),
             asset_server.clone(),
             decks.clone(),
-            v + Vec2::new(CARD_WIDTH + CARD_THICKNESS * 2.0, 0.0),
+            DeckType::Commander,
         );
         let main = get_pile(
             board["mainboard"]["cards"]
@@ -439,7 +438,7 @@ pub async fn get_deck(
             client.clone(),
             asset_server.clone(),
             decks.clone(),
-            v,
+            DeckType::Deck,
         );
         let tokens = get_pile(
             json["tokens"]
@@ -454,7 +453,7 @@ pub async fn get_deck(
             client.clone(),
             asset_server.clone(),
             decks.clone(),
-            v - Vec2::new(CARD_WIDTH + CARD_THICKNESS * 2.0, 0.0),
+            DeckType::Token,
         );
         let side = get_pile(
             board["sideboard"]["cards"]
@@ -463,7 +462,7 @@ pub async fn get_deck(
             client.clone(),
             asset_server.clone(),
             decks.clone(),
-            v - Vec2::new(2.0 * CARD_WIDTH + CARD_THICKNESS * 4.0, 0.0),
+            DeckType::SideBoard,
         );
         commanders.await;
         main.await;

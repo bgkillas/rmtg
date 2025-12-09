@@ -8,7 +8,7 @@ use crate::sync::Packet;
 #[cfg(feature = "steam")]
 use crate::sync::SendSleeping;
 use crate::sync::{SyncObjectMe, spawn_hand};
-use crate::update::{CardSpot, GiveEnts};
+use crate::update::{CardSpot, GiveEnts, SpotType};
 use crate::*;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy_framepace::{FramepaceSettings, Limiter};
@@ -148,6 +148,7 @@ pub fn setup(
         transform,
         true,
         PLAYER0,
+        Player(0),
     );
     let mut transform = Transform::from_xyz(MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
     transform.rotate_y(PI);
@@ -158,6 +159,7 @@ pub fn setup(
         transform,
         false,
         PLAYER1,
+        Player(1),
     );
     let transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, MAT_HEIGHT / 2.0);
     make_mat(
@@ -167,6 +169,7 @@ pub fn setup(
         transform,
         false,
         PLAYER2,
+        Player(2),
     );
     let mut transform = Transform::from_xyz(-MAT_WIDTH / 2.0, 0.0, -MAT_HEIGHT / 2.0);
     transform.rotate_y(PI);
@@ -177,6 +180,7 @@ pub fn setup(
         transform,
         true,
         PLAYER3,
+        Player(3),
     );
     spawn_hand(0, &mut commands);
     commands.spawn((
@@ -271,7 +275,7 @@ pub fn setup(
     ));
     if !no_obj {
         let mut cube = Shape::Cube.create(
-            Transform::from_xyz(MAT_WIDTH + CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
+            Transform::from_xyz(MAT_WIDTH + 2.0 * CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
@@ -279,7 +283,7 @@ pub fn setup(
         );
         cube.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut tetra = Shape::Tetrahedron.create(
-            Transform::from_xyz(MAT_WIDTH + CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
+            Transform::from_xyz(MAT_WIDTH + 2.0 * CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
@@ -287,7 +291,7 @@ pub fn setup(
         );
         tetra.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut ico = Shape::Icosahedron.create(
-            Transform::from_xyz(MAT_WIDTH + 2.0 * CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
+            Transform::from_xyz(MAT_WIDTH + 3.0 * CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
@@ -295,7 +299,7 @@ pub fn setup(
         );
         ico.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut oct = Shape::Octohedron.create(
-            Transform::from_xyz(MAT_WIDTH + 2.0 * CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
+            Transform::from_xyz(MAT_WIDTH + 3.0 * CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
@@ -303,7 +307,7 @@ pub fn setup(
         );
         oct.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut dodec = Shape::Dodecahedron.create(
-            Transform::from_xyz(MAT_WIDTH + 3.0 * CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
+            Transform::from_xyz(MAT_WIDTH + 4.0 * CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
@@ -311,7 +315,7 @@ pub fn setup(
         );
         dodec.insert(SyncObjectMe::new(&mut rand, &mut count));
         let mut coin = Shape::Disc.create(
-            Transform::from_xyz(MAT_WIDTH + 3.0 * CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
+            Transform::from_xyz(MAT_WIDTH + 4.0 * CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
@@ -396,6 +400,8 @@ pub struct Wall;
 pub struct Floor;
 #[derive(Component)]
 pub struct Ceiling;
+#[derive(Component, Copy, Clone)]
+pub struct Player(pub usize);
 pub fn make_mat(
     materials: &mut Assets<StandardMaterial>,
     meshes: &mut Assets<Mesh>,
@@ -403,6 +409,7 @@ pub fn make_mat(
     transform: Transform,
     right: bool,
     color: bevy::color::Color,
+    player: Player,
 ) {
     let mat = materials.add(StandardMaterial {
         alpha_mode: AlphaMode::Opaque,
@@ -462,7 +469,15 @@ pub fn make_mat(
                             - CARD_HEIGHT / 2.0
                             - i as f32 * (CARD_HEIGHT + MAT_BAR),
                     ),
-                    CardSpot,
+                    match i {
+                        4 => CardSpot::new(SpotType::CommanderMain),
+                        3 => CardSpot::new(SpotType::CommanderAlt),
+                        2 => CardSpot::new(SpotType::Exile),
+                        1 => CardSpot::new(SpotType::Main),
+                        0 => CardSpot::new(SpotType::Graveyard),
+                        _ => unreachable!(),
+                    },
+                    player,
                 ));
             }
             p.spawn((

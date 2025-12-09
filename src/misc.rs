@@ -4,6 +4,7 @@ use crate::*;
 use bevy_prng::WyRand;
 use bevy_rand::global::GlobalRng;
 use bevy_tangled::PeerId;
+use std::f32::consts::PI;
 pub fn make_material(
     materials: &mut Assets<StandardMaterial>,
     top: Handle<Image>,
@@ -24,9 +25,13 @@ pub fn new_pile(
     v: Vec2,
     count: &mut SyncCount,
     id: Option<SyncObject>,
+    rev: bool,
 ) -> Option<Entity> {
     let size = pile.len() as f32 * CARD_THICKNESS;
-    let transform = Transform::from_xyz(v.x, size / 2.0, v.y);
+    let mut transform = Transform::from_xyz(v.x, size / 2.0, v.y);
+    if rev {
+        transform.rotate_local_z(PI);
+    }
     new_pile_at(
         pile,
         card_base,

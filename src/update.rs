@@ -6,7 +6,7 @@ use crate::misc::{
     Equipment, adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile, new_pile_at,
     repaint_face, spawn_equip,
 };
-use crate::setup::{EscMenu, FontRes, MAT_WIDTH, SideMenu, T, W, Wall};
+use crate::setup::{EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, T, W, Wall};
 use crate::sync::{COMPRESSION, CameraInd, CursorInd, InOtherHand, Packet, SyncObjectMe, Trans};
 use crate::*;
 use avian3d::math::Vector;
@@ -1092,8 +1092,26 @@ fn rotate_right(transform: &mut Mut<Transform>) {
 pub struct CounterMenu(Entity, Value);
 #[derive(Component)]
 pub struct TempDisable;
+pub enum SpotType {
+    CommanderMain,
+    CommanderAlt,
+    Exile,
+    Main,
+    Graveyard,
+}
 #[derive(Component)]
-pub struct CardSpot;
+pub struct CardSpot {
+    spot_type: SpotType,
+    ent: Option<Entity>,
+}
+impl CardSpot {
+    pub fn new(spot_type: SpotType) -> Self {
+        Self {
+            spot_type,
+            ent: None,
+        }
+    }
+}
 pub fn reset_layers(
     mut phys: Query<(Entity, &LinearVelocity, &mut CollisionLayers), With<TempDisable>>,
     mut commands: Commands,
@@ -1557,7 +1575,7 @@ pub fn listen_for_deck(
                     let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap();
                     info!("{id} request received");
                     let url = format!("https://api2.moxfield.com/v3/decks/all/{id}");
-                    get_deck(url, client, asset_server, decks, v).await;
+                    get_deck(url, client, asset_server, decks).await;
                 } else if paste.starts_with("https://scryfall.com/card/") {
                     if paste.chars().filter(|c| *c == '/').count() == 4 {
                         let id = paste.rsplit_once('/').map(|(_, b)| b).unwrap();
@@ -1611,6 +1629,7 @@ pub fn listen_for_deck(
                 v,
                 &mut count,
                 None,
+                false,
             ),
             GameClipboard::Shape(shape) => Some(
                 shape
@@ -1641,15 +1660,81 @@ pub fn register_deck(
     client: Res<Client>,
     mut sent: ResMut<Sent>,
     mut to_move: ResMut<ToMoveUp>,
+    mut spots: Query<(&GlobalTransform, &mut CardSpot, &Player)>,
+    peers: Res<Peers>,
+    mut trans: Query<&mut Transform, With<Pile>>,
 ) {
     let mut decks = decks.get_deck.0.lock().unwrap();
-    for (deck, v, id) in decks.drain(..) {
+    for (deck, deck_type) in decks.drain(..) {
         if deck.is_empty() {
             continue;
         }
+        let id = if let DeckType::Other(_, id) = deck_type {
+            Some(id)
+        } else {
+            None
+        };
         if id.is_none() {
-            info!("deck found of size {} at {} {}", deck.len(), v.x, v.y);
+            info!("deck found of size {} of type {:?}", deck.len(), deck_type);
         }
+        let mut spots = spots
+            .iter_mut()
+            .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0));
+        let mut rev = false;
+        let v = match deck_type {
+            DeckType::Other(v, _) => v,
+            DeckType::Single(v) => v,
+            DeckType::Token => continue,
+            DeckType::Deck => {
+                let spot = spots
+                    .find(|(_, s, _)| matches!(s.spot_type, SpotType::Main))
+                    .unwrap();
+                rev = true;
+                if let Some(ent) = spot.1.ent
+                    && let Ok(mut t) = trans.get_mut(ent)
+                {
+                    if peers.me.unwrap_or(0) / 2 == 0 {
+                        t.translation.x += 2.0 * (CARD_WIDTH + CARD_THICKNESS);
+                    } else {
+                        t.translation.x -= 2.0 * (CARD_WIDTH + CARD_THICKNESS);
+                    }
+                }
+                let trans = spot.0.translation();
+                Vec2::new(trans.x, trans.z)
+            }
+            DeckType::Commander => {
+                let spot = spots
+                    .find(|(_, s, _)| matches!(s.spot_type, SpotType::CommanderMain))
+                    .unwrap();
+                if let Some(ent) = spot.1.ent
+                    && let Ok(mut t) = trans.get_mut(ent)
+                {
+                    if peers.me.unwrap_or(0) / 2 == 0 {
+                        t.translation.x += 2.0 * (CARD_WIDTH + CARD_THICKNESS);
+                    } else {
+                        t.translation.x -= 2.0 * (CARD_WIDTH + CARD_THICKNESS);
+                    }
+                }
+                let trans = spot.0.translation();
+                Vec2::new(trans.x, trans.z)
+            }
+            DeckType::SideBoard => {
+                let spot = spots
+                    .find(|(_, s, _)| matches!(s.spot_type, SpotType::CommanderMain))
+                    .unwrap();
+                if let Some(ent) = spot.1.ent
+                    && let Ok(mut t) = trans.get_mut(ent)
+                {
+                    if peers.me.unwrap_or(0) / 2 == 0 {
+                        t.translation.x += 2.0 * (CARD_WIDTH + CARD_THICKNESS);
+                    } else {
+                        t.translation.x -= 2.0 * (CARD_WIDTH + CARD_THICKNESS);
+                    }
+                }
+                let trans = spot.0.translation();
+                Vec2::new(trans.x + CARD_WIDTH + CARD_THICKNESS, trans.z)
+            }
+        };
         if let Some(ent) = new_pile(
             deck,
             card_base.clone(),
@@ -1660,6 +1745,7 @@ pub fn register_deck(
             v,
             &mut count,
             id,
+            rev,
         ) {
             to_move.0.push(ent);
         }
@@ -1944,7 +2030,7 @@ pub fn pile_merge(
 }
 pub fn set_card_spot(
     spatial: SpatialQuery,
-    query: Query<&GlobalTransform, With<CardSpot>>,
+    query: Query<(&GlobalTransform, &mut CardSpot)>,
     mut transforms: Query<
         (
             &mut Transform,
@@ -1955,14 +2041,22 @@ pub fn set_card_spot(
         (With<SyncObjectMe>, Without<FollowMouse>),
     >,
 ) {
-    for transform in query {
+    for (transform, mut spot) in query {
         let transform = transform.compute_transform();
-        for ent in spatial.shape_intersections(
+        let intersects = spatial.shape_intersections(
             &Collider::cuboid(CARD_WIDTH / 2.0, CARD_THICKNESS / 2.0, CARD_HEIGHT / 2.0),
             transform.translation,
             transform.rotation,
             &SpatialQueryFilter::DEFAULT,
-        ) {
+        );
+        if let Some(ent) = spot.ent {
+            if intersects.contains(&ent) {
+                continue;
+            } else {
+                spot.ent = None;
+            }
+        }
+        for ent in intersects {
             if let Ok((mut t, mut lv, mut av, pile)) = transforms.get_mut(ent) {
                 let mut transform = transform;
                 transform.translation.y = pile.len() as f32 * CARD_THICKNESS / 2.0;
@@ -1975,6 +2069,7 @@ pub fn set_card_spot(
                         t.rotate_local_z(PI);
                     }
                 }
+                spot.ent = Some(ent);
                 continue;
             }
         }
