@@ -27,7 +27,7 @@ use std::fs;
 pub const MAT_WIDTH: f32 = 8.0;
 pub const MAT_HEIGHT: f32 = MAT_WIDTH * 9.0 / 16.0;
 pub const MAT_BAR: f32 = MAT_HEIGHT / 64.0;
-pub const T: f32 = W / 8.0;
+pub const T: f32 = W / 2.0;
 pub const W: f32 = MAT_WIDTH * 2.0;
 pub const WALL_COLOR: bevy::prelude::Color = bevy::prelude::Color::srgb_u8(103, 73, 40);
 pub const FLOOR_COLOR: bevy::prelude::Color = bevy::prelude::Color::srgb_u8(103, 73, 40);
@@ -180,12 +180,12 @@ pub fn setup(
     );
     spawn_hand(0, &mut commands);
     commands.spawn((
-        Transform::from_xyz(0.0, -T, 0.0),
+        Transform::from_xyz(0.0, -T / 2.0, 0.0),
         CollisionLayers::new(0b01, LayerMask::ALL),
-        Collider::cuboid(2.0 * W, 2.0 * T, 2.0 * W),
+        Collider::cuboid(2.0 * W + T, T, 2.0 * W + T),
         RigidBody::Static,
         Floor,
-        Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * T - CARD_THICKNESS, 2.0 * W))),
+        Mesh3d(meshes.add(Cuboid::new(2.0 * W, T - CARD_THICKNESS, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: FLOOR_COLOR,
             unlit: true,
@@ -193,12 +193,12 @@ pub fn setup(
         })),
     ));
     commands.spawn((
-        Transform::from_xyz(0.0, 2.0 * (W - T), 0.0),
+        Transform::from_xyz(0.0, 2.0 * W + T / 2.0, 0.0),
         CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::cuboid(2.0 * W, 2.0 * T, 2.0 * W),
+        Collider::cuboid(2.0 * W + T, T, 2.0 * W + T),
         RigidBody::Static,
         Ceiling,
-        Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * T, 2.0 * W))),
+        Mesh3d(meshes.add(Cuboid::new(2.0 * W, T, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: WALL_COLOR,
             unlit: true,
@@ -206,12 +206,12 @@ pub fn setup(
         })),
     ));
     commands.spawn((
-        Transform::from_xyz(W + T / 2.0, W - T, 0.0),
+        Transform::from_xyz(W + T / 2.0, W, 0.0),
         CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::cuboid(2.0 * T, 2.0 * W, 2.0 * W),
+        Collider::cuboid(T, 2.0 * W + T, 2.0 * W + T),
         RigidBody::Static,
         Wall,
-        Mesh3d(meshes.add(Cuboid::new(2.0 * T, 2.0 * W, 2.0 * W))),
+        Mesh3d(meshes.add(Cuboid::new(T, 2.0 * W, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: WALL_COLOR,
             unlit: true,
@@ -219,12 +219,12 @@ pub fn setup(
         })),
     ));
     commands.spawn((
-        Transform::from_xyz(-(W + T / 2.0), W - T, 0.0),
+        Transform::from_xyz(-(W + T / 2.0), W, 0.0),
         CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::cuboid(2.0 * T, 2.0 * W, 2.0 * W),
+        Collider::cuboid(T, 2.0 * W + T, 2.0 * W + T),
         RigidBody::Static,
         Wall,
-        Mesh3d(meshes.add(Cuboid::new(2.0 * T, 2.0 * W, 2.0 * W))),
+        Mesh3d(meshes.add(Cuboid::new(T, 2.0 * W, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: WALL_COLOR,
             unlit: true,
@@ -232,12 +232,12 @@ pub fn setup(
         })),
     ));
     commands.spawn((
-        Transform::from_xyz(0.0, W - T, W + T / 2.0),
+        Transform::from_xyz(0.0, W, W + T / 2.0),
         CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::cuboid(2.0 * W, 2.0 * W, 2.0 * T),
+        Collider::cuboid(2.0 * W + T, 2.0 * W + T, T),
         RigidBody::Static,
         Wall,
-        Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, 2.0 * T))),
+        Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, T))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: WALL_COLOR,
             unlit: true,
@@ -245,12 +245,12 @@ pub fn setup(
         })),
     ));
     commands.spawn((
-        Transform::from_xyz(0.0, W - T, -(W + T / 2.0)),
+        Transform::from_xyz(0.0, W, -(W + T / 2.0)),
         CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::cuboid(2.0 * W, 2.0 * W, 2.0 * T),
+        Collider::cuboid(2.0 * W + T, 2.0 * W + T, T),
         RigidBody::Static,
         Wall,
-        Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, 2.0 * T))),
+        Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, T))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: WALL_COLOR,
             unlit: true,

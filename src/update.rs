@@ -249,12 +249,12 @@ pub fn follow_mouse(
         ) {
             let mut point = ray.get_point(time);
             point.x = point.x.clamp(
-                T - W + (aabb.min.x - card.1.translation.x).abs(),
-                W - T - (aabb.max.x - card.1.translation.x).abs(),
+                -W + (aabb.min.x - card.1.translation.x).abs(),
+                W - (aabb.max.x - card.1.translation.x).abs(),
             );
             point.z = point.z.clamp(
-                T - W + (aabb.min.z - card.1.translation.z).abs(),
-                W - T - (aabb.max.z - card.1.translation.z).abs(),
+                -W + (aabb.min.z - card.1.translation.z).abs(),
+                W - (aabb.max.z - card.1.translation.z).abs(),
             );
             if child.contains(card.0) {
                 if Collider::cuboid(
@@ -301,7 +301,9 @@ pub fn follow_mouse(
         if let Some(time) =
             ray.intersect_plane(card.5.translation(), InfinitePlane3d { normal: Dir3::Y })
         {
-            let point = ray.get_point(time);
+            let mut point = ray.get_point(time);
+            point.x = point.x.clamp(-W, W);
+            point.z = point.z.clamp(-W, W);
             card.3.0 = (point - card.5.translation()) / time_since.delta_secs();
         }
         commands
@@ -1011,6 +1013,21 @@ pub fn listen_for_mouse(
                         .id();
                     active_input.set(ent);
                 }
+            } else if (input.just_pressed(KeyCode::Backspace)
+                || (input.pressed(KeyCode::Backspace)
+                    && input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])))
+                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+                && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
+            {
+                if ids.contains(entity) {
+                    count.rem(1);
+                }
+                if let Ok(id) = ids.get(entity) {
+                    sync_actions.killed_me.push(*id)
+                } else if let Ok(id) = others_ids.get(entity) {
+                    sync_actions.killed.push(*id);
+                }
+                commands.entity(entity).despawn();
             } else if input.just_pressed(KeyCode::KeyF) {
                 transform.rotate_local_z(PI);
             } else if (input.just_pressed(KeyCode::KeyR)
@@ -1442,8 +1459,8 @@ pub fn cam_translation(
     }
     let epsilon = Vec3::splat(CARD_THICKNESS);
     cam.translation = cam.translation.clamp(
-        Vec3::new(T - W, 0.0, T - W) + epsilon,
-        Vec3::new(W - T, 2.0 * (W - T) - T, W - T) - epsilon,
+        Vec3::new(-W, 0.0, -W) + epsilon,
+        Vec3::new(W, 2.0 * W, W) - epsilon,
     );
     if input.pressed(KeyCode::Space) {
         *cam.into_inner() = default_cam_pos(peers.me.unwrap_or_default());
