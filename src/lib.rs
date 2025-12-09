@@ -21,30 +21,30 @@ use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::sync::{Arc, Mutex};
 use std::{iter, mem};
-pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
-pub const CARD_WIDTH: f32 = CARD_HEIGHT * 5.0 / 7.0;
-pub const CARD_HEIGHT: f32 = (MAT_HEIGHT - MAT_BAR) / 5.0 - MAT_BAR;
-pub const IMAGE_WIDTH: f32 = 500.0;
-pub const IMAGE_HEIGHT: f32 = 700.0;
-pub const EQUIP_SCALE: f32 = 0.5;
-pub const CARD_THICKNESS: f32 = CARD_WIDTH / 256.0;
-pub const START_Y: f32 = MAT_WIDTH;
-pub const GRAVITY: f32 = CARD_HEIGHT;
-pub const LIN_DAMPING: f32 = CARD_THICKNESS;
-pub const ANG_DAMPING: f32 = 0.25;
-pub const PLAYER0: bevy::color::Color = bevy::color::Color::srgb_u8(255, 85, 85);
-pub const PLAYER1: bevy::color::Color = bevy::color::Color::srgb_u8(85, 85, 255);
-pub const PLAYER2: bevy::color::Color = bevy::color::Color::srgb_u8(255, 85, 255);
-pub const PLAYER3: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 85);
-pub const PLAYER4: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 255);
-pub const PLAYER5: bevy::color::Color = bevy::color::Color::srgb_u8(255, 255, 85);
-pub const PLAYER: [bevy::color::Color; 6] = [PLAYER0, PLAYER1, PLAYER2, PLAYER3, PLAYER4, PLAYER5];
+const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+const CARD_WIDTH: f32 = CARD_HEIGHT * 5.0 / 7.0;
+const CARD_HEIGHT: f32 = (MAT_HEIGHT - MAT_BAR) / 5.0 - MAT_BAR;
+const IMAGE_WIDTH: f32 = 500.0;
+const IMAGE_HEIGHT: f32 = 700.0;
+const EQUIP_SCALE: f32 = 0.5;
+const CARD_THICKNESS: f32 = CARD_WIDTH / 256.0;
+const START_Y: f32 = MAT_WIDTH;
+const GRAVITY: f32 = CARD_HEIGHT;
+const LIN_DAMPING: f32 = CARD_THICKNESS;
+const ANG_DAMPING: f32 = 0.25;
+const PLAYER0: bevy::color::Color = bevy::color::Color::srgb_u8(255, 85, 85);
+const PLAYER1: bevy::color::Color = bevy::color::Color::srgb_u8(85, 85, 255);
+const PLAYER2: bevy::color::Color = bevy::color::Color::srgb_u8(255, 85, 255);
+const PLAYER3: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 85);
+const PLAYER4: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 255);
+const PLAYER5: bevy::color::Color = bevy::color::Color::srgb_u8(255, 255, 85);
+const PLAYER: [bevy::color::Color; 6] = [PLAYER0, PLAYER1, PLAYER2, PLAYER3, PLAYER4, PLAYER5];
 mod counters;
 mod download;
 mod misc;
 mod setup;
 mod shapes;
-pub mod sync;
+mod sync;
 mod update;
 use crate::misc::is_reversed;
 use crate::shapes::Shape;
@@ -73,9 +73,10 @@ const APPID: u32 = 4046880;
 const FONT_SIZE: f32 = 16.0;
 const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
-//TODO multi select, in card counters, voice chat, turns
+//TODO multi select, in card counters, voice chat, turns, cards into search
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
-pub fn main() {
+#[cfg(feature = "wasm")]
+fn main() {
     start();
 }
 pub fn start() -> AppExit {
@@ -188,14 +189,14 @@ pub fn start() -> AppExit {
     app.run()
 }
 #[derive(Resource, Default)]
-pub enum Menu {
+enum Menu {
     #[default]
     World,
     Counter,
     Esc,
     Side,
 }
-pub const SLEEP: SleepThreshold = SleepThreshold {
+const SLEEP: SleepThreshold = SleepThreshold {
     linear: 4.0 * CARD_THICKNESS,
     angular: 0.25,
 };
@@ -274,29 +275,28 @@ fn test_get_deck() {
     app.update();
 }
 #[derive(Resource, Default, Debug)]
-pub struct Peers {
-    pub map: Arc<Mutex<HashMap<PeerId, usize>>>,
-    pub me: Option<usize>,
+struct Peers {
+    map: Arc<Mutex<HashMap<PeerId, usize>>>,
+    me: Option<usize>,
 }
 #[derive(Resource, Default, Debug)]
-pub struct RemPeers(pub Arc<Mutex<Vec<PeerId>>>);
+struct RemPeers(Arc<Mutex<Vec<PeerId>>>);
 #[derive(Component, Default, Debug)]
-pub struct InHand(pub usize);
+struct InHand(usize);
 #[derive(Component, Default, Debug)]
-pub struct Hand {
-    pub id: usize,
-    pub count: usize,
-    pub removed: Vec<usize>,
+struct Hand {
+    count: usize,
+    removed: Vec<usize>,
 }
 #[derive(Component, Default, Debug, Clone, Encode, Decode)]
-pub enum Pile {
+enum Pile {
     Multiple(Vec<SubCard>),
     Single(Box<Card>),
     #[default]
     Empty,
 }
 impl Pile {
-    pub fn equip(&mut self) -> bool {
+    fn equip(&mut self) -> bool {
         match self {
             s @ Pile::Multiple(_) => {
                 let subcard = s.pop();
@@ -326,54 +326,55 @@ impl Pile {
             }
         }
     }
-    pub fn is_equiped(&self) -> bool {
+    fn is_equiped(&self) -> bool {
         if let Pile::Single(s) = self {
             !s.equiped.is_empty()
         } else {
             false
         }
     }
-    pub fn clone_no_image(&self) -> Self {
+    fn clone_no_image(&self) -> Self {
         match self {
             Pile::Multiple(v) => Pile::Multiple(v.iter().map(|a| a.clone_no_image()).collect()),
             Pile::Single(s) => Pile::Single(s.clone_no_image().into()),
             Pile::Empty => Pile::Empty,
         }
     }
-    pub fn get_card(&self, transform: &Transform) -> &SubCard {
+    fn get_card(&self, transform: &Transform) -> &SubCard {
         if is_reversed(transform) {
             self.first()
         } else {
             self.last()
         }
     }
-    pub fn get_mut_card(&mut self, transform: &Transform) -> &mut SubCard {
+    fn get_mut_card(&mut self, transform: &Transform) -> &mut SubCard {
         if is_reversed(transform) {
             self.first_mut()
         } else {
             self.last_mut()
         }
     }
-    pub fn get(&self, idx: usize) -> Option<&SubCard> {
+    #[allow(dead_code)]
+    fn get(&self, idx: usize) -> Option<&SubCard> {
         match self {
             Pile::Multiple(v) => v.get(idx),
             Pile::Single(s) => s.get(idx),
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn get_mut(&mut self, idx: usize) -> Option<&mut SubCard> {
+    fn get_mut(&mut self, idx: usize) -> Option<&mut SubCard> {
         match self {
             Pile::Multiple(v) => v.get_mut(idx),
             Pile::Single(s) => s.get_mut(idx),
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn set_single(&mut self) {
+    fn set_single(&mut self) {
         if self.len() == 1 {
             *self = Pile::Multiple(vec![self.pop()])
         }
     }
-    pub fn take_card(&mut self, transform: &Transform) -> SubCard {
+    fn take_card(&mut self, transform: &Transform) -> SubCard {
         let ret = if is_reversed(transform) {
             self.remove(0)
         } else {
@@ -382,28 +383,28 @@ impl Pile {
         self.set_single();
         ret
     }
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         match self {
             Pile::Multiple(v) => v.len(),
             Pile::Single(_) => 1,
             Pile::Empty => 0,
         }
     }
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         match self {
             Pile::Multiple(v) => v.is_empty(),
             Pile::Single(_) => false,
             Pile::Empty => true,
         }
     }
-    pub fn last(&self) -> &SubCard {
+    fn last(&self) -> &SubCard {
         match self {
             Pile::Multiple(v) => v.last().unwrap(),
             Pile::Single(s) => s.into(),
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn pop(&mut self) -> SubCard {
+    fn pop(&mut self) -> SubCard {
         match self {
             Pile::Multiple(v) => {
                 let ret = v.pop().unwrap();
@@ -419,28 +420,28 @@ impl Pile {
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn first(&self) -> &SubCard {
+    fn first(&self) -> &SubCard {
         match self {
             Pile::Multiple(v) => &v[0],
             Pile::Single(s) => s.into(),
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn last_mut(&mut self) -> &mut SubCard {
+    fn last_mut(&mut self) -> &mut SubCard {
         match self {
             Pile::Multiple(v) => v.last_mut().unwrap(),
             Pile::Single(s) => s.into(),
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn first_mut(&mut self) -> &mut SubCard {
+    fn first_mut(&mut self) -> &mut SubCard {
         match self {
             Pile::Multiple(v) => &mut v[0],
             Pile::Single(s) => s.into(),
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn extend(&mut self, other: Self) {
+    fn extend(&mut self, other: Self) {
         match (self, other) {
             (Pile::Multiple(a), Pile::Multiple(b)) => a.extend(b),
             (Pile::Multiple(a), Pile::Single(b)) => a.extend(b.flatten()),
@@ -459,7 +460,7 @@ impl Pile {
             _ => unreachable!(),
         }
     }
-    pub fn extend_start(&mut self, other: Self) {
+    fn extend_start(&mut self, other: Self) {
         match (self, other) {
             (Pile::Multiple(a), Pile::Multiple(b)) => {
                 a.splice(0..0, b);
@@ -482,7 +483,7 @@ impl Pile {
             _ => unreachable!(),
         }
     }
-    pub fn splice_at(&mut self, at: usize, other: Self) {
+    fn splice_at(&mut self, at: usize, other: Self) {
         match (self, other) {
             (Pile::Multiple(a), Pile::Multiple(b)) => {
                 a.splice(at..at, b);
@@ -505,12 +506,12 @@ impl Pile {
             _ => unreachable!(),
         }
     }
-    pub fn shuffle(&mut self, rng: &mut WyRand) {
+    fn shuffle(&mut self, rng: &mut WyRand) {
         if let Pile::Multiple(v) = self {
             v.shuffle(rng)
         }
     }
-    pub fn remove(&mut self, n: usize) -> SubCard {
+    fn remove(&mut self, n: usize) -> SubCard {
         match self {
             Pile::Multiple(v) => {
                 let ret = v.remove(n);
@@ -526,7 +527,7 @@ impl Pile {
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn drain<R>(
+    fn drain<R>(
         &mut self,
         range: R,
     ) -> Either<impl Iterator<Item = SubCard>, impl Iterator<Item = SubCard>>
@@ -553,21 +554,21 @@ impl Pile {
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn iter(&self) -> Either<Iter<'_, SubCard>, CardIter<'_>> {
+    fn iter(&self) -> Either<Iter<'_, SubCard>, CardIter<'_>> {
         match self {
             Pile::Multiple(v) => Either::Left(v.iter()),
             Pile::Single(s) => Either::Right(s.iter()),
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn iter_equipment(&self) -> Iter<'_, SubCard> {
+    fn iter_equipment(&self) -> Iter<'_, SubCard> {
         match self {
             Pile::Multiple(_) => unreachable!(),
             Pile::Single(s) => s.equiped.iter(),
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn iter_mut(&mut self) -> Either<IterMut<'_, SubCard>, CardIterMut<'_>> {
+    fn iter_mut(&mut self) -> Either<IterMut<'_, SubCard>, CardIterMut<'_>> {
         match self {
             Pile::Multiple(v) => Either::Left(v.iter_mut()),
             Pile::Single(s) => Either::Right(s.iter_mut()),
@@ -576,22 +577,22 @@ impl Pile {
     }
 }
 #[derive(Resource, Debug, Default, Clone)]
-pub struct GetDeck(pub Arc<Mutex<Vec<(Pile, Vec2, Option<SyncObject>)>>>);
+struct GetDeck(Arc<Mutex<Vec<(Pile, Vec2, Option<SyncObject>)>>>);
 #[derive(Debug, Default, Clone, Encode, Decode)]
 #[allow(dead_code)]
-pub struct CardInfo {
-    pub name: String,
-    pub mana_cost: Cost,
-    pub card_type: Types,
-    pub text: String,
-    pub color: Color,
-    pub power: u16,
-    pub toughness: u16,
+struct CardInfo {
+    name: String,
+    mana_cost: Cost,
+    card_type: Types,
+    text: String,
+    color: Color,
+    power: u16,
+    toughness: u16,
     #[bitcode(skip)]
     image: UninitImage,
 }
 impl CardInfo {
-    pub fn clone_no_image(&self) -> Self {
+    fn clone_no_image(&self) -> Self {
         Self {
             name: self.name.clone(),
             mana_cost: self.mana_cost,
@@ -630,13 +631,13 @@ impl Default for UninitImage {
     }
 }
 impl CardInfo {
-    pub fn image(&self) -> &Handle<Image> {
+    fn image(&self) -> &Handle<Image> {
         self.image.handle()
     }
 }
 #[allow(dead_code)]
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
-pub enum SuperType {
+enum SuperType {
     Basic,
     Legendary,
     Ongoing,
@@ -647,7 +648,7 @@ pub enum SuperType {
 }
 #[allow(dead_code)]
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
-pub enum SubType {
+enum SubType {
     Equipment,
     Fortification,
     Vehicle,
@@ -675,19 +676,19 @@ pub enum SubType {
 }
 impl Type {
     #[allow(dead_code)]
-    pub fn is_permanent(&self) -> bool {
+    fn is_permanent(&self) -> bool {
         !matches!(self, Self::Instant | Self::Sorcery)
     }
-    pub fn is_none(&self) -> bool {
+    fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
-    pub fn is_some(&self) -> bool {
+    fn is_some(&self) -> bool {
         !self.is_none()
     }
 }
 #[allow(dead_code)]
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
-pub enum Type {
+enum Type {
     Land,
     Creature,
     Artifact,
@@ -702,18 +703,18 @@ pub enum Type {
 }
 #[allow(dead_code)]
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
-pub struct Types {
-    pub super_type: SuperType,
-    pub main_type: Type,
-    pub alt_type: Type,
-    pub creature_type: CreatureType,
-    pub creature_alt_type: CreatureType,
-    pub creature_extra_alt_type: CreatureType,
-    pub sub_type: SubType,
+struct Types {
+    super_type: SuperType,
+    main_type: Type,
+    alt_type: Type,
+    creature_type: CreatureType,
+    creature_alt_type: CreatureType,
+    creature_extra_alt_type: CreatureType,
+    sub_type: SubType,
 }
 impl Types {
     #[allow(dead_code)]
-    pub fn is_permanent(&self) -> bool {
+    fn is_permanent(&self) -> bool {
         self.main_type.is_permanent() || self.alt_type.is_permanent()
     }
 }
@@ -739,15 +740,15 @@ impl From<&str> for Types {
     }
 }
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
-pub struct Color {
-    pub white: bool,
-    pub blue: bool,
-    pub black: bool,
-    pub red: bool,
-    pub green: bool,
+struct Color {
+    white: bool,
+    blue: bool,
+    black: bool,
+    red: bool,
+    green: bool,
 }
 impl Color {
-    pub fn parse<'a>(value: impl Iterator<Item = &'a str>) -> Self {
+    fn parse<'a>(value: impl Iterator<Item = &'a str>) -> Self {
         let mut cost = Self::default();
         for c in value {
             match c {
@@ -763,17 +764,17 @@ impl Color {
     }
 }
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
-pub struct Cost {
-    pub white: u8,
-    pub blue: u8,
-    pub black: u8,
-    pub red: u8,
-    pub green: u8,
-    pub colorless: u8,
-    pub any: u8,
-    pub pay: u8,
-    pub var: u8,
-    pub total: u8,
+struct Cost {
+    white: u8,
+    blue: u8,
+    black: u8,
+    red: u8,
+    green: u8,
+    colorless: u8,
+    any: u8,
+    pay: u8,
+    var: u8,
+    total: u8,
 }
 impl From<&str> for Cost {
     fn from(value: &str) -> Self {
@@ -812,14 +813,14 @@ impl From<&str> for Cost {
     }
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
-pub struct SubCard {
-    pub id: String,
-    pub normal: CardInfo,
-    pub alt: Option<CardInfo>,
-    pub is_alt: bool,
+struct SubCard {
+    id: String,
+    normal: CardInfo,
+    alt: Option<CardInfo>,
+    is_alt: bool,
 }
 impl SubCard {
-    pub fn clone_no_image(&self) -> Self {
+    fn clone_no_image(&self) -> Self {
         Self {
             id: self.id.clone(),
             normal: self.normal.clone_no_image(),
@@ -827,27 +828,27 @@ impl SubCard {
             is_alt: self.is_alt,
         }
     }
-    pub fn filter(&self, text: &str) -> bool {
+    fn filter(&self, text: &str) -> bool {
         self.normal.filter(text) || self.alt.as_ref().map(|a| a.filter(text)).unwrap_or(false)
     }
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
-pub struct Card {
-    pub subcard: SubCard,
-    pub equiped: Vec<SubCard>,
+struct Card {
+    subcard: SubCard,
+    equiped: Vec<SubCard>,
     #[allow(dead_code)]
-    pub power: Option<i32>,
+    power: Option<i32>,
     #[allow(dead_code)]
-    pub health: Option<i32>,
+    health: Option<i32>,
     #[allow(dead_code)]
-    pub loyalty: Option<i32>,
+    loyalty: Option<i32>,
     #[allow(dead_code)]
-    pub misc: Option<i32>,
+    misc: Option<i32>,
     #[allow(dead_code)]
-    pub is_token: bool,
+    is_token: bool,
 }
 impl Card {
-    pub fn clone_no_image(&self) -> Self {
+    fn clone_no_image(&self) -> Self {
         Self {
             subcard: self.subcard.clone_no_image(),
             equiped: self.equiped.iter().map(|c| c.clone_no_image()).collect(),
@@ -858,38 +859,40 @@ impl Card {
             is_token: false,
         }
     }
-    pub fn filter(&self, text: &str) -> bool {
+    #[allow(dead_code)]
+    fn filter(&self, text: &str) -> bool {
         self.subcard.filter(text)
     }
-    pub fn flatten(mut self) -> Vec<SubCard> {
+    fn flatten(mut self) -> Vec<SubCard> {
         let mut vec = Vec::with_capacity(self.equiped.len() + 1);
         let drain = mem::take(&mut self.equiped);
         vec.extend(drain);
         vec.push(self.into());
         vec
     }
-    pub fn iter(&self) -> CardIter<'_> {
+    fn iter(&self) -> CardIter<'_> {
         CardIter {
             subcard: &self.subcard,
             equiped: self.equiped.iter(),
             started: false,
         }
     }
-    pub fn iter_mut(&mut self) -> CardIterMut<'_> {
+    fn iter_mut(&mut self) -> CardIterMut<'_> {
         CardIterMut {
             subcard: &mut self.subcard,
             equiped: self.equiped.iter_mut(),
             started: false,
         }
     }
-    pub fn get(&self, idx: usize) -> Option<&SubCard> {
+    #[allow(dead_code)]
+    fn get(&self, idx: usize) -> Option<&SubCard> {
         if idx == 0 {
             Some(&self.subcard)
         } else {
             self.equiped.get(idx - 1)
         }
     }
-    pub fn get_mut(&mut self, idx: usize) -> Option<&mut SubCard> {
+    fn get_mut(&mut self, idx: usize) -> Option<&mut SubCard> {
         if idx == 0 {
             Some(&mut self.subcard)
         } else {
@@ -897,9 +900,9 @@ impl Card {
         }
     }
 }
-pub struct CardIter<'a> {
-    pub subcard: &'a SubCard,
-    pub equiped: Iter<'a, SubCard>,
+struct CardIter<'a> {
+    subcard: &'a SubCard,
+    equiped: Iter<'a, SubCard>,
     started: bool,
 }
 impl<'a> Iterator for CardIter<'a> {
@@ -936,9 +939,9 @@ impl<'a> ExactSizeIterator for CardIterMut<'a> {
         1 + self.equiped.len()
     }
 }
-pub struct CardIterMut<'a> {
-    pub subcard: *mut SubCard,
-    pub equiped: IterMut<'a, SubCard>,
+struct CardIterMut<'a> {
+    subcard: *mut SubCard,
+    equiped: IterMut<'a, SubCard>,
     started: bool,
 }
 impl<'a> Iterator for CardIterMut<'a> {
@@ -1022,49 +1025,49 @@ impl<'a> From<&'a mut Box<Card>> for &'a mut SubCard {
     }
 }
 impl CardInfo {
-    pub fn filter(&self, text: &str) -> bool {
+    fn filter(&self, text: &str) -> bool {
         self.name
             .to_ascii_lowercase()
             .contains(&text.to_ascii_lowercase()) //TODO
     }
 }
 #[derive(Resource)]
-pub struct Download {
+struct Download {
     client: ReqClient,
     get_deck: GetDeck,
     #[cfg(not(feature = "wasm"))]
     runtime: Runtime,
 }
 #[derive(Resource, Clone)]
-pub enum GameClipboard {
+enum GameClipboard {
     Pile(Pile),
     Shape(Shape),
     None,
 }
 #[derive(Component, Default, Debug)]
-pub struct FollowMouse;
+struct FollowMouse;
 #[derive(Component, Default, Debug)]
-pub struct FollowOtherMouse;
+struct FollowOtherMouse;
 #[derive(Component, Default, Debug)]
-pub struct ZoomHold(pub u64, pub bool);
+struct ZoomHold(u64, bool);
 #[cfg(not(feature = "wasm"))]
 #[derive(Resource)]
-pub struct Clipboard(pub arboard::Clipboard);
+struct Clipboard(arboard::Clipboard);
 #[cfg(feature = "wasm")]
 #[cfg_attr(feature = "wasm", derive(Clone, Copy))]
 #[derive(Resource)]
-pub struct Clipboard;
+struct Clipboard;
 impl Clipboard {
     #[cfg(not(feature = "wasm"))]
-    pub fn get_text(&mut self) -> String {
+    fn get_text(&mut self) -> String {
         self.0.get_text().unwrap_or_default()
     }
     #[cfg(not(feature = "wasm"))]
-    pub fn set_text(&mut self, string: &str) {
+    fn set_text(&mut self, string: &str) {
         self.0.set_text(string).unwrap_or_default()
     }
     #[cfg(feature = "wasm")]
-    pub async fn get_text(&self) -> String {
+    async fn get_text(&self) -> String {
         let window = web_sys::window().unwrap();
         let navigator = window.navigator();
         let clipboard = navigator.clipboard();
@@ -1075,7 +1078,7 @@ impl Clipboard {
             .unwrap_or_default()
     }
     #[cfg(feature = "wasm")]
-    pub async fn set_text(&self, text: &str) {
+    async fn set_text(&self, text: &str) {
         let window = web_sys::window().unwrap();
         let navigator = window.navigator();
         let clipboard = navigator.clipboard();
@@ -1083,17 +1086,17 @@ impl Clipboard {
     }
 }
 #[derive(Resource)]
-pub struct ReqClient(pub reqwest::Client);
+struct ReqClient(reqwest::Client);
 #[derive(Resource)]
-pub struct Runtime(pub tokio::runtime::Runtime);
+struct Runtime(tokio::runtime::Runtime);
 #[derive(Resource, Clone)]
-pub struct CardBase {
-    pub stock: Handle<Mesh>,
+struct CardBase {
+    stock: Handle<Mesh>,
     back: Handle<StandardMaterial>,
     side: Handle<StandardMaterial>,
 }
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
-pub enum CreatureType {
+enum CreatureType {
     TimeLord,
     Advisor,
     Aetherborn,
@@ -1399,7 +1402,7 @@ pub enum CreatureType {
     All,
 }
 #[cfg(feature = "wasm")]
-pub async fn get_image_bytes(url: &str) -> Option<(Vec<u8>, u32, u32)> {
+async fn get_image_bytes(url: &str) -> Option<(Vec<u8>, u32, u32)> {
     let img = HtmlImageElement::new().ok()?;
     img.set_cross_origin(Some("anonymous"));
     img.set_src(url);

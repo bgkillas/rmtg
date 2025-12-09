@@ -460,7 +460,9 @@ pub fn listen_for_mouse(
                         );
                     }
                 }
-            } else if input.just_pressed(KeyCode::Backspace)
+            } else if (input.just_pressed(KeyCode::Backspace)
+                || (input.pressed(KeyCode::Backspace)
+                    && input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])))
                 && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
                 && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
             {
@@ -471,6 +473,10 @@ pub fn listen_for_mouse(
                     sync_actions.killed_me.push(*id)
                 } else if let Ok(id) = others_ids.get(entity) {
                     sync_actions.killed.push(*id);
+                }
+                if let Some(inhand) = inhand {
+                    hand.0.removed.push(inhand.0);
+                    hand.0.count -= 1;
                 }
                 commands.entity(entity).despawn();
                 if let Some(entity) =
@@ -635,6 +641,7 @@ pub fn listen_for_mouse(
                 }
             } else if input.just_pressed(KeyCode::KeyS)
                 && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+                && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
                 && pile.len() > 1
             {
                 let mut start = *transform;
