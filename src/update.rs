@@ -1292,7 +1292,6 @@ pub fn pick_from_list(
         }
     }
 }
-#[allow(dead_code)]
 #[derive(Component)]
 pub struct TargetCard(pub usize);
 #[derive(Component)]
@@ -1367,6 +1366,8 @@ pub fn cam_translation(
     active_input: Res<InputFocus>,
     peers: Res<Peers>,
     hover_map: Res<HoverMap>,
+    camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
+    window: Single<&Window, With<PrimaryWindow>>,
 ) {
     if matches!(*menu, Menu::Esc)
         || (matches!(*menu, Menu::Side | Menu::Counter) && active_input.get().is_some())
@@ -1413,7 +1414,15 @@ pub fn cam_translation(
     {
         let translate = cam.forward().as_vec3() * scale * mouse_motion.delta.y * 16.0;
         if cam.translation.y + translate.y <= 0.0 {
-            cam.translation.y /= 2.0;
+            let (camera, camera_transform) = camera.into_inner();
+            let Ok(ray) = camera.viewport_to_world(camera_transform, window.size() / 2.0) else {
+                return;
+            };
+            if let Some(time) =
+                ray.intersect_plane(Vec3::default(), InfinitePlane3d { normal: Dir3::Y })
+            {
+                cam.translation += ray.direction * (time / 2.0);
+            }
         } else {
             cam.translation += translate;
         }

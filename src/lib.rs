@@ -71,12 +71,11 @@ use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement};
 #[cfg(feature = "steam")]
 const APPID: u32 = 4046880;
 const FONT_SIZE: f32 = 16.0;
-#[allow(dead_code)]
+#[cfg(feature = "steam")]
 const FONT_HEIGHT: f32 = FONT_SIZE;
-#[allow(dead_code)]
+#[cfg(feature = "steam")]
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
-//TODO equip, multi select
-//TODO alt o
+//TODO multi select, in card counters
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 pub fn main() {
     start();
@@ -313,6 +312,7 @@ impl Pile {
                     health: None,
                     loyalty: None,
                     misc: None,
+                    is_token: false,
                 }));
                 true
             }
@@ -845,6 +845,8 @@ pub struct Card {
     pub loyalty: Option<i32>,
     #[allow(dead_code)]
     pub misc: Option<i32>,
+    #[allow(dead_code)]
+    pub is_token: bool,
 }
 impl Card {
     pub fn clone_no_image(&self) -> Self {
@@ -855,6 +857,7 @@ impl Card {
             health: None,
             loyalty: None,
             misc: None,
+            is_token: false,
         }
     }
     pub fn filter(&self, text: &str) -> bool {
@@ -983,6 +986,7 @@ impl From<SubCard> for Card {
             health: None,
             loyalty: None,
             misc: None,
+            is_token: false,
         }
     }
 }
@@ -995,6 +999,7 @@ impl From<SubCard> for Box<Card> {
             health: None,
             loyalty: None,
             misc: None,
+            is_token: false,
         })
     }
 }
