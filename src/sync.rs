@@ -2,6 +2,7 @@ use crate::counters::Value;
 use crate::download::add_images;
 use crate::misc::{
     Equipment, adjust_meshes, default_cam_pos, make_cam, make_cur, new_pile_at, repaint_face,
+    spawn_equip,
 };
 #[cfg(feature = "steam")]
 use crate::setup::SteamInfo;
@@ -114,6 +115,27 @@ pub fn get_sync(
         client
             .broadcast(
                 &Packet::Dead(dead),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
+            .unwrap();
+    }
+    for equip in sync_actions.equip.drain(..) {
+        client
+            .broadcast(
+                &Packet::Equip(equip),
+                Reliability::Reliable,
+                Compression::Compressed,
+            )
+            .unwrap();
+    }
+    for equip_me in sync_actions.equip_me.drain(..) {
+        client
+            .broadcast(
+                &Packet::Equip(SyncObject {
+                    id: equip_me,
+                    user: client.my_id(),
+                }),
                 Reliability::Reliable,
                 Compression::Compressed,
             )
@@ -635,6 +657,74 @@ pub fn apply_sync(
                         && search.1.0 == e
                     {
                         commands.entity(search.0).despawn()
+                    }
+                }
+            }
+            Packet::Equip(id) => {
+                if id.user == client.my_id()
+                    && let Some((pile, entity, children, mut transform)) =
+                        queryme.iter_mut().find_map(|(a, _, p, e, c, _, t)| {
+                            if *a == id.id {
+                                Some((p, e, c, t))
+                            } else {
+                                None
+                            }
+                        })
+                    && let Some(children) = children
+                    && let Some(mut pile) = pile
+                {
+                    let b = pile.equip();
+                    repaint_face(&mut mats, &mut materials, pile.last(), children);
+                    adjust_meshes(
+                        &pile,
+                        children,
+                        &mut meshes,
+                        &mut query_meshes,
+                        &mut transform,
+                        &mut colliders.get_mut(entity).unwrap(),
+                        &equipment,
+                        &mut commands,
+                    );
+                    if b {
+                        spawn_equip(
+                            entity,
+                            &pile,
+                            &mut commands,
+                            card_base.clone(),
+                            &mut materials,
+                            &mut meshes,
+                        );
+                    }
+                } else if let Some((pile, entity, children, mut transform)) =
+                    query.iter_mut().find_map(
+                        |(a, t, _, _, _, _, e, _, c, p, _, _)| {
+                            if *a == id { Some((p, e, c, t)) } else { None }
+                        },
+                    )
+                    && let Some(children) = children
+                    && let Some(mut pile) = pile
+                {
+                    let b = pile.equip();
+                    repaint_face(&mut mats, &mut materials, pile.last(), children);
+                    adjust_meshes(
+                        &pile,
+                        children,
+                        &mut meshes,
+                        &mut query_meshes,
+                        &mut transform,
+                        &mut colliders.get_mut(entity).unwrap(),
+                        &equipment,
+                        &mut commands,
+                    );
+                    if b {
+                        spawn_equip(
+                            entity,
+                            &pile,
+                            &mut commands,
+                            card_base.clone(),
+                            &mut materials,
+                            &mut meshes,
+                        );
                     }
                 }
             }
@@ -1171,6 +1261,8 @@ pub struct SyncActions {
     pub take_owner: Vec<(SyncObject, SyncObjectMe)>,
     pub reorder_me: Vec<(SyncObjectMe, Vec<String>)>,
     pub reorder: Vec<(SyncObject, Vec<String>)>,
+    pub equip: Vec<SyncObject>,
+    pub equip_me: Vec<SyncObjectMe>,
     pub draw_me: Vec<(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize)>,
     pub draw: Vec<(SyncObject, Vec<(SyncObjectMe, Trans)>, usize)>,
     pub flip: Vec<SyncObjectMe>,
@@ -1187,6 +1279,7 @@ pub enum Packet {
     New(SyncObjectMe, Pile, Trans),
     NewShape(SyncObjectMe, Shape, Trans),
     Flip(SyncObjectMe),
+    Equip(SyncObject),
     Counter(SyncObject, Value),
     Reorder(SyncObject, Vec<String>),
     Draw(SyncObject, Vec<(SyncObjectMe, Trans)>, usize),

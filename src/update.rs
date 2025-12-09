@@ -467,7 +467,11 @@ pub fn listen_for_mouse(
                 if ids.contains(entity) {
                     count.rem(1);
                 }
-                sync_actions.killed_me.push(*ids.get(entity).unwrap());
+                if let Ok(id) = ids.get(entity) {
+                    sync_actions.killed_me.push(*id)
+                } else if let Ok(id) = others_ids.get(entity) {
+                    sync_actions.killed.push(*id);
+                }
                 commands.entity(entity).despawn();
                 if let Some(entity) =
                     search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
@@ -599,6 +603,11 @@ pub fn listen_for_mouse(
                 if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
                     if !is_reversed(&transform) {
                         let b = pile.equip();
+                        if let Ok(id) = ids.get(entity) {
+                            sync_actions.equip_me.push(*id)
+                        } else if let Ok(id) = others_ids.get(entity) {
+                            sync_actions.equip.push(*id);
+                        }
                         repaint_face(&mut mats, &mut materials, pile.last(), children);
                         adjust_meshes(
                             &pile,
@@ -663,7 +672,11 @@ pub fn listen_for_mouse(
                 if ids.contains(entity) {
                     count.rem(1);
                 }
-                sync_actions.killed_me.push(*ids.get(entity).unwrap());
+                if let Ok(id) = ids.get(entity) {
+                    sync_actions.killed_me.push(*id)
+                } else if let Ok(id) = others_ids.get(entity) {
+                    sync_actions.killed.push(*id);
+                }
                 commands.entity(entity).despawn();
                 if let Some(entity) =
                     search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })

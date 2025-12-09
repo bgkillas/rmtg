@@ -20,7 +20,7 @@ use std::mem::MaybeUninit;
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::sync::{Arc, Mutex};
-use std::{iter, mem, slice};
+use std::{iter, mem};
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = CARD_HEIGHT * 5.0 / 7.0;
 pub const CARD_HEIGHT: f32 = (MAT_HEIGHT - MAT_BAR) / 5.0 - MAT_BAR;
@@ -325,6 +325,13 @@ impl Pile {
             }
         }
     }
+    pub fn is_equiped(&self) -> bool {
+        if let Pile::Single(s) = self {
+            !s.equiped.is_empty()
+        } else {
+            false
+        }
+    }
     pub fn clone_no_image(&self) -> Self {
         match self {
             Pile::Multiple(v) => Pile::Multiple(v.iter().map(|a| a.clone_no_image()).collect()),
@@ -531,10 +538,10 @@ impl Pile {
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn iter(&self) -> Iter<'_, SubCard> {
+    pub fn iter(&self) -> Either<Iter<'_, SubCard>, CardIter<'_>> {
         match self {
-            Pile::Multiple(v) => v.iter(),
-            Pile::Single(s) => slice::from_ref(s.into()).iter(),
+            Pile::Multiple(v) => Either::Left(v.iter()),
+            Pile::Single(s) => Either::Right(s.iter()),
             Pile::Empty => unreachable!(),
         }
     }
@@ -545,10 +552,10 @@ impl Pile {
             Pile::Empty => unreachable!(),
         }
     }
-    pub fn iter_mut(&mut self) -> IterMut<'_, SubCard> {
+    pub fn iter_mut(&mut self) -> Either<IterMut<'_, SubCard>, CardIterMut<'_>> {
         match self {
-            Pile::Multiple(v) => v.iter_mut(),
-            Pile::Single(s) => slice::from_mut(s.into()).iter_mut(),
+            Pile::Multiple(v) => Either::Left(v.iter_mut()),
+            Pile::Single(s) => Either::Right(s.iter_mut()),
             Pile::Empty => unreachable!(),
         }
     }
@@ -843,10 +850,17 @@ impl Card {
         vec.push(self.into());
         vec
     }
-    pub fn flatten_iter(&self) -> CardIter<'_> {
+    pub fn iter(&self) -> CardIter<'_> {
         CardIter {
             subcard: &self.subcard,
             equiped: self.equiped.iter(),
+            started: false,
+        }
+    }
+    pub fn iter_mut(&mut self) -> CardIterMut<'_> {
+        CardIterMut {
+            subcard: &mut self.subcard,
+            equiped: self.equiped.iter_mut(),
             started: false,
         }
     }
@@ -864,6 +878,58 @@ impl<'a> Iterator for CardIter<'a> {
             Some(self.subcard)
         } else {
             self.equiped.next()
+        }
+    }
+}
+impl<'a> DoubleEndedIterator for CardIter<'a> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let back = self.equiped.next_back();
+        if back.is_some() {
+            back
+        } else if !self.started {
+            self.started = true;
+            Some(self.subcard)
+        } else {
+            None
+        }
+    }
+}
+impl<'a> ExactSizeIterator for CardIter<'a> {
+    fn len(&self) -> usize {
+        1 + self.equiped.len()
+    }
+}
+impl<'a> ExactSizeIterator for CardIterMut<'a> {
+    fn len(&self) -> usize {
+        1 + self.equiped.len()
+    }
+}
+pub struct CardIterMut<'a> {
+    pub subcard: *mut SubCard,
+    pub equiped: IterMut<'a, SubCard>,
+    started: bool,
+}
+impl<'a> Iterator for CardIterMut<'a> {
+    type Item = &'a mut SubCard;
+    fn next(&mut self) -> Option<Self::Item> {
+        if !self.started {
+            self.started = true;
+            unsafe { self.subcard.as_mut() }
+        } else {
+            self.equiped.next()
+        }
+    }
+}
+impl<'a> DoubleEndedIterator for CardIterMut<'a> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let back = self.equiped.next_back();
+        if back.is_some() {
+            back
+        } else if !self.started {
+            self.started = true;
+            unsafe { self.subcard.as_mut() }
+        } else {
+            None
         }
     }
 }

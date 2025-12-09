@@ -118,41 +118,48 @@ pub fn new_pile_at<'a>(
     id: Option<SyncObject>,
     sync_object: Option<SyncObjectMe>,
 ) -> Option<EntityCommands<'a>> {
-    if pile.is_empty() {
-        return None;
+    let ent = {
+        if pile.is_empty() {
+            return None;
+        }
+        let card = pile.last();
+        let top = card.normal.image().clone();
+        let size = pile.len() as f32 * CARD_THICKNESS;
+        let mut ent = commands.spawn((
+            transform,
+            Visibility::default(),
+            RigidBody::Dynamic,
+            LinearDamping(LIN_DAMPING),
+            AngularDamping(ANG_DAMPING),
+            SLEEP,
+            CollisionLayers::new(0b11, LayerMask::ALL),
+            Collider::cuboid(CARD_WIDTH, size, CARD_HEIGHT),
+            CollisionEventsEnabled,
+            GravityScale(if follow_mouse || parent.is_some() {
+                0.0
+            } else {
+                GRAVITY
+            }),
+            card_bundle(size, card_base.clone(), materials, meshes, top),
+        ));
+        if let Some(id) = id {
+            ent.insert(id);
+        } else if let Some(obj) = sync_object {
+            ent.insert(obj);
+        }
+        if follow_mouse {
+            ent.insert(FollowMouse);
+        }
+        if let Some(parent) = parent {
+            ent.insert(ChildOf(parent));
+        }
+        ent.id()
+    };
+    if pile.is_equiped() {
+        spawn_equip(ent, &pile, commands, card_base, materials, meshes);
     }
-    let card = pile.last();
-    let top = card.normal.image().clone();
-    let size = pile.len() as f32 * CARD_THICKNESS;
-    let mut ent = commands.spawn((
-        pile,
-        transform,
-        Visibility::default(),
-        RigidBody::Dynamic,
-        LinearDamping(LIN_DAMPING),
-        AngularDamping(ANG_DAMPING),
-        SLEEP,
-        CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::cuboid(CARD_WIDTH, size, CARD_HEIGHT),
-        CollisionEventsEnabled,
-        GravityScale(if follow_mouse || parent.is_some() {
-            0.0
-        } else {
-            GRAVITY
-        }),
-        card_bundle(size, card_base, materials, meshes, top),
-    ));
-    if let Some(id) = id {
-        ent.insert(id);
-    } else if let Some(obj) = sync_object {
-        ent.insert(obj);
-    }
-    if follow_mouse {
-        ent.insert(FollowMouse);
-    }
-    if let Some(parent) = parent {
-        ent.insert(ChildOf(parent));
-    }
+    let mut ent = commands.entity(ent);
+    ent.insert(pile);
     Some(ent)
 }
 pub fn card_bundle(
