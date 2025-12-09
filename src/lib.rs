@@ -71,9 +71,7 @@ use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement};
 #[cfg(feature = "steam")]
 const APPID: u32 = 4046880;
 const FONT_SIZE: f32 = 16.0;
-#[cfg(feature = "steam")]
 const FONT_HEIGHT: f32 = FONT_SIZE;
-#[cfg(feature = "steam")]
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO multi select, in card counters
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
