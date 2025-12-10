@@ -295,6 +295,13 @@ enum Pile {
     Empty,
 }
 impl Pile {
+    fn new(mut v: Vec<SubCard>) -> Self {
+        if v.len() == 1 {
+            Self::Single(v.remove(0).into())
+        } else {
+            Self::Multiple(v)
+        }
+    }
     fn equip(&mut self) -> bool {
         match self {
             s @ Pile::Multiple(_) => {

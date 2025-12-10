@@ -1092,6 +1092,7 @@ fn rotate_right(transform: &mut Mut<Transform>) {
 pub struct CounterMenu(Entity, Value);
 #[derive(Component)]
 pub struct TempDisable;
+#[derive(Debug)]
 pub enum SpotType {
     CommanderMain,
     CommanderAlt,
@@ -1099,7 +1100,7 @@ pub enum SpotType {
     Main,
     Graveyard,
 }
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct CardSpot {
     spot_type: SpotType,
     ent: Option<Entity>,
@@ -1662,10 +1663,16 @@ pub fn register_deck(
     mut to_move: ResMut<ToMoveUp>,
     mut spots: Query<(&GlobalTransform, &mut CardSpot, &Player)>,
     peers: Res<Peers>,
-    mut trans: Query<&mut Transform, With<Pile>>,
+    mut trans: Query<Entity, With<Pile>>,
+    mut sync_actions: ResMut<SyncActions>,
+    (ids, others_ids, search_deck): (
+        Query<&SyncObjectMe>,
+        Query<&SyncObject>,
+        Option<Single<(Entity, &SearchDeck)>>,
+    ),
 ) {
     let mut decks = decks.get_deck.0.lock().unwrap();
-    for (deck, deck_type) in decks.drain(..) {
+    for (mut deck, deck_type) in decks.drain(..) {
         if deck.is_empty() {
             continue;
         }
@@ -1677,62 +1684,100 @@ pub fn register_deck(
         if id.is_none() {
             info!("deck found of size {} of type {:?}", deck.len(), deck_type);
         }
-        let mut spots = spots
-            .iter_mut()
-            .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0));
         let mut rev = false;
+        let mut rem = |mut spot: (&GlobalTransform, Mut<CardSpot>, &Player)| -> Vec3 {
+            if let Some(ent) = spot.1.ent
+                && let Ok(entity) = trans.get_mut(ent)
+            {
+                spot.1.ent = None;
+                if ids.contains(entity) {
+                    count.rem(1);
+                }
+                if let Ok(id) = ids.get(entity) {
+                    sync_actions.killed_me.push(*id)
+                } else if let Ok(id) = others_ids.get(entity) {
+                    sync_actions.killed.push(*id);
+                }
+                commands.entity(entity).despawn();
+                if let Some(entity) = search_deck
+                    .as_ref()
+                    .and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
+                {
+                    commands.entity(entity).despawn()
+                }
+            }
+            spot.0.translation()
+        };
         let v = match deck_type {
             DeckType::Other(v, _) => v,
             DeckType::Single(v) => v,
             DeckType::Token => continue,
             DeckType::Deck => {
+                deck.shuffle(&mut rand);
                 let spot = spots
+                    .iter_mut()
+                    .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0))
                     .find(|(_, s, _)| matches!(s.spot_type, SpotType::Main))
                     .unwrap();
                 rev = true;
-                if let Some(ent) = spot.1.ent
-                    && let Ok(mut t) = trans.get_mut(ent)
-                {
-                    if peers.me.unwrap_or(0) / 2 == 0 {
-                        t.translation.x += 2.0 * (CARD_WIDTH + CARD_THICKNESS);
-                    } else {
-                        t.translation.x -= 2.0 * (CARD_WIDTH + CARD_THICKNESS);
-                    }
-                }
-                let trans = spot.0.translation();
+                let trans = rem(spot);
+                let spot = spots
+                    .iter_mut()
+                    .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0))
+                    .find(|(_, s, _)| matches!(s.spot_type, SpotType::Exile))
+                    .unwrap();
+                rem(spot);
+                let spot = spots
+                    .iter_mut()
+                    .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0))
+                    .find(|(_, s, _)| matches!(s.spot_type, SpotType::Graveyard))
+                    .unwrap();
+                rem(spot);
                 Vec2::new(trans.x, trans.z)
             }
             DeckType::Commander => {
                 let spot = spots
+                    .iter_mut()
+                    .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0))
                     .find(|(_, s, _)| matches!(s.spot_type, SpotType::CommanderMain))
                     .unwrap();
-                if let Some(ent) = spot.1.ent
-                    && let Ok(mut t) = trans.get_mut(ent)
-                {
-                    if peers.me.unwrap_or(0) / 2 == 0 {
-                        t.translation.x += 2.0 * (CARD_WIDTH + CARD_THICKNESS);
-                    } else {
-                        t.translation.x -= 2.0 * (CARD_WIDTH + CARD_THICKNESS);
+                let trans = rem(spot);
+                let v = {
+                    let spot = spots
+                        .iter_mut()
+                        .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0))
+                        .find(|(_, s, _)| matches!(s.spot_type, SpotType::CommanderAlt))
+                        .unwrap();
+                    let trans = rem(spot);
+                    Vec2::new(trans.x, trans.z)
+                };
+                if deck.len() == 2 {
+                    let top = Pile::Single(deck.pop().into());
+                    if let Some(ent) = new_pile(
+                        top,
+                        card_base.clone(),
+                        &mut materials,
+                        &mut commands,
+                        &mut meshes,
+                        &mut rand,
+                        v,
+                        &mut count,
+                        id,
+                        rev,
+                    ) {
+                        to_move.0.push(ent);
                     }
                 }
-                let trans = spot.0.translation();
                 Vec2::new(trans.x, trans.z)
             }
             DeckType::SideBoard => {
                 let spot = spots
+                    .iter_mut()
+                    .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0))
                     .find(|(_, s, _)| matches!(s.spot_type, SpotType::CommanderMain))
                     .unwrap();
-                if let Some(ent) = spot.1.ent
-                    && let Ok(mut t) = trans.get_mut(ent)
-                {
-                    if peers.me.unwrap_or(0) / 2 == 0 {
-                        t.translation.x += 2.0 * (CARD_WIDTH + CARD_THICKNESS);
-                    } else {
-                        t.translation.x -= 2.0 * (CARD_WIDTH + CARD_THICKNESS);
-                    }
-                }
-                let trans = spot.0.translation();
-                Vec2::new(trans.x + CARD_WIDTH + CARD_THICKNESS, trans.z)
+                let trans = rem(spot);
+                Vec2::new(trans.x + CARD_WIDTH + MAT_BAR, trans.z)
             }
         };
         if let Some(ent) = new_pile(

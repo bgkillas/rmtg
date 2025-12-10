@@ -400,7 +400,7 @@ pub struct Wall;
 pub struct Floor;
 #[derive(Component)]
 pub struct Ceiling;
-#[derive(Component, Copy, Clone)]
+#[derive(Component, Copy, Clone, Debug)]
 pub struct Player(pub usize);
 pub fn make_mat(
     materials: &mut Assets<StandardMaterial>,

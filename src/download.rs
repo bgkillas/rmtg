@@ -164,7 +164,7 @@ pub async fn get_alts(
         .0
         .lock()
         .unwrap()
-        .push((Pile::Multiple(vec), DeckType::Single(v)));
+        .push((Pile::new(vec), DeckType::Single(v)));
     None
 }
 pub async fn add_images(
@@ -364,7 +364,7 @@ pub async fn get_pile(
         .flatten()
         .collect();
     let mut decks = decks.0.lock().unwrap();
-    decks.push((Pile::Multiple(pile), deck_type));
+    decks.push((Pile::new(pile), deck_type));
 }
 pub struct Exact {
     pub count: usize,
@@ -408,7 +408,7 @@ pub async fn get_deck_export(
         .flatten()
         .collect();
     let mut decks = decks.0.lock().unwrap();
-    decks.push((Pile::Multiple(pile), DeckType::Single(v)));
+    decks.push((Pile::new(pile), DeckType::Single(v)));
 }
 pub async fn get_deck(
     url: String,
