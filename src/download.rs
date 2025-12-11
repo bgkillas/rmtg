@@ -176,12 +176,12 @@ pub async fn add_images(
     asset_server: AssetServer,
 ) -> Option<()> {
     join_all(pile.iter_mut().map(|p| async {
-        let bytes = get_bytes(&p.id, &client, &asset_server, true);
-        if let Some(c) = p.back.as_mut() {
-            let bytes = get_bytes(&p.id, &client, &asset_server, false);
+        let bytes = get_bytes(&p.data.id, &client, &asset_server, true);
+        if let Some(c) = p.data.back.as_mut() {
+            let bytes = get_bytes(&p.data.id, &client, &asset_server, false);
             c.image = bytes.await.unwrap()
         }
-        p.face.image = bytes.await.unwrap()
+        p.data.face.image = bytes.await.unwrap()
     }))
     .await;
     let v = Vec2::new(transform.translation.x, transform.translation.z);
@@ -320,27 +320,29 @@ pub async fn parse(
     let (toughness, alt_toughness) = get(value, "toughness", |a| a.as_u16().unwrap_or_default());
     Some((
         SubCard {
-            face: CardInfo {
-                name,
-                mana_cost,
-                card_type,
-                text,
-                color,
-                power,
-                toughness,
-                image,
+            data: CardData {
+                face: CardInfo {
+                    name,
+                    mana_cost,
+                    card_type,
+                    text,
+                    color,
+                    power,
+                    toughness,
+                    image,
+                },
+                back: alt_image.map(|image| CardInfo {
+                    name: alt_name.unwrap(),
+                    mana_cost: alt_mana_cost,
+                    card_type: alt_card_type,
+                    text: alt_text,
+                    color: alt_color,
+                    power: alt_power,
+                    toughness: alt_toughness,
+                    image,
+                }),
+                id: id.to_string(),
             },
-            back: alt_image.map(|image| CardInfo {
-                name: alt_name.unwrap(),
-                mana_cost: alt_mana_cost,
-                card_type: alt_card_type,
-                text: alt_text,
-                color: alt_color,
-                power: alt_power,
-                toughness: alt_toughness,
-                image,
-            }),
-            id: id.to_string(),
             flipped: false,
         },
         n,

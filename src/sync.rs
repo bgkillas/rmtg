@@ -742,7 +742,7 @@ pub fn apply_sync(
                 {
                     let last = idx == pile.len() - 1;
                     if let Some(card) = pile.get_mut(idx)
-                        && card.back.is_some()
+                        && card.data.back.is_some()
                     {
                         card.flipped = !card.flipped;
                         if last {
@@ -758,7 +758,7 @@ pub fn apply_sync(
                 {
                     let last = idx == pile.len() - 1;
                     if let Some(card) = pile.get_mut(idx) {
-                        if card.back.is_some() {
+                        if card.data.back.is_some() {
                             card.flipped = !card.flipped;
                             if last {
                                 repaint_face(&mut mats, &mut materials, card, children);
@@ -778,7 +778,7 @@ pub fn apply_sync(
                         let mut fail = false;
                         if let Pile::Multiple(pile) = pile {
                             for (i, id) in order.into_iter().enumerate() {
-                                if let Some(k) = pile[i..].iter().position(|c| c.id == id) {
+                                if let Some(k) = pile[i..].iter().position(|c| c.data.id == id) {
                                     pile.swap(i, k + i);
                                 } else {
                                     fail = true;

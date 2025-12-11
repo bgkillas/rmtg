@@ -444,11 +444,11 @@ pub fn listen_for_mouse(
                     if let Ok(id) = ids.get(entity) {
                         sync_actions
                             .reorder_me
-                            .push((*id, pile.iter().map(|a| a.id.clone()).collect()));
+                            .push((*id, pile.iter().map(|a| a.data.id.clone()).collect()));
                     } else if let Ok(id) = others_ids.get(entity) {
                         sync_actions
                             .reorder
-                            .push((*id, pile.iter().map(|a| a.id.clone()).collect()));
+                            .push((*id, pile.iter().map(|a| a.data.id.clone()).collect()));
                     }
                     if let Some(entity) =
                         search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
@@ -493,7 +493,7 @@ pub fn listen_for_mouse(
                     *game_clipboard = GameClipboard::Pile(pile.clone());
                 } else if !is_reversed(&transform) {
                     let card = pile.get_card(&transform);
-                    let text = format!("https://scryfall.com/card/{}", card.id);
+                    let text = format!("https://scryfall.com/card/{}", card.data.id);
                     #[cfg(feature = "wasm")]
                     let clipboard = *clipboard;
                     #[cfg(feature = "wasm")]
@@ -713,7 +713,7 @@ pub fn listen_for_mouse(
                 let client = down.client.0.clone();
                 let get_deck = down.get_deck.clone();
                 let asset_server = asset_server.clone();
-                let id = top.id.clone();
+                let id = top.data.id.clone();
                 info!("{}: {id} has requested printings", top.face().name);
                 #[cfg(not(feature = "wasm"))]
                 down.runtime
@@ -731,7 +731,7 @@ pub fn listen_for_mouse(
                     .unwrap_or(true)
             {
                 let card = pile.get_mut_card(&transform);
-                if card.back.is_some() {
+                if card.data.back.is_some() {
                     card.flipped = !card.flipped;
                     repaint_face(&mut mats, &mut materials, card, children);
                 }
@@ -1182,7 +1182,7 @@ pub fn update_search(
         let node = |(i, c): (usize, &SubCard)| {
             parent.spawn((
                 TargetCard(i),
-                ImageNode::new(c.face().image.clone_handle()),
+                ImageNode::new(c.face().clone_image()),
                 Node {
                     aspect_ratio: Some(CARD_WIDTH / CARD_HEIGHT),
                     ..default()
@@ -1320,7 +1320,7 @@ pub fn pick_from_list(
                 } else if swap {
                     let last = pile.len() - 1 == card.0;
                     let inner_card = pile.get_mut(card.0).unwrap();
-                    if inner_card.back.is_some() {
+                    if inner_card.data.back.is_some() {
                         inner_card.flipped = !inner_card.flipped;
                         if last {
                             repaint_face(&mut mats, &mut materials, inner_card, children);
@@ -1331,7 +1331,7 @@ pub fn pick_from_list(
                     } else if let Ok(id) = others_ids.get(entity) {
                         sync_actions.flip.push((*id, card.0));
                     }
-                    image.image = inner_card.face().image.clone_handle();
+                    image.image = inner_card.face().clone_image();
                 }
             }
         }

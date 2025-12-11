@@ -828,36 +828,53 @@ impl From<&str> for Cost {
     }
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
-struct SubCard {
+struct CardData {
     id: String,
     face: CardInfo,
     back: Option<CardInfo>,
-    flipped: bool,
 }
-impl SubCard {
+impl CardData {
     fn clone_no_image(&self) -> Self {
         Self {
             id: self.id.clone(),
             face: self.face.clone_no_image(),
             back: self.back.as_ref().map(|a| a.clone_no_image()),
+        }
+    }
+}
+#[derive(Debug, Default, Clone, Encode, Decode)]
+struct SubCard {
+    data: CardData,
+    flipped: bool,
+}
+impl SubCard {
+    fn clone_no_image(&self) -> Self {
+        Self {
+            data: self.data.clone_no_image(),
             flipped: self.flipped,
         }
     }
     fn filter(&self, text: &str) -> bool {
-        self.face().filter(text) || self.back.as_ref().map(|a| a.filter(text)).unwrap_or(false)
+        self.data.face.filter(text)
+            || self
+                .data
+                .back
+                .as_ref()
+                .map(|a| a.filter(text))
+                .unwrap_or(false)
     }
     fn face(&self) -> &CardInfo {
         if self.flipped {
-            self.back.as_ref().unwrap()
+            self.data.back.as_ref().unwrap()
         } else {
-            &self.face
+            &self.data.face
         }
     }
     fn back(&self) -> Option<&CardInfo> {
         if self.flipped {
-            Some(&self.face)
+            Some(&self.data.face)
         } else {
-            self.back.as_ref()
+            self.data.back.as_ref()
         }
     }
 }

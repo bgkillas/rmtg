@@ -291,7 +291,7 @@ pub fn spawn_equip(
                     card_base.clone(),
                     materials,
                     meshes,
-                    c.face().image.clone_handle(),
+                    c.face().clone_image(),
                 ),
             ));
         }
