@@ -5271,6 +5271,7 @@ dependencies = [
  "lz4_flex",
  "rand",
  "reqwest",
+ "rules",
  "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -5325,6 +5326,15 @@ dependencies = [
  "libc",
  "libm",
  "serde",
+]
+
+[[package]]
+name = "rules"
+version = "0.1.0"
+dependencies = [
+ "bitcode 0.6.7 (git+https://github.com/SoftbearStudios/bitcode?branch=large_c_style_enums)",
+ "proc-macro2",
+ "quote",
 ]
 
 [[package]]
