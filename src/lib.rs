@@ -73,7 +73,7 @@ const APPID: u32 = 4046880;
 const FONT_SIZE: f32 = 16.0;
 const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
-//TODO multi select, in card counters, voice chat, turns, cards into search
+//TODO multi select, in card counters, voice chat, turns, cards into search, tokens
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
 fn main() {
@@ -646,8 +646,8 @@ impl Default for UninitImage {
     }
 }
 impl CardInfo {
-    fn image(&self) -> &Handle<Image> {
-        self.image.handle()
+    fn clone_image(&self) -> Handle<Image> {
+        self.image.clone_handle()
     }
 }
 #[allow(dead_code)]
@@ -830,21 +830,35 @@ impl From<&str> for Cost {
 #[derive(Debug, Default, Clone, Encode, Decode)]
 struct SubCard {
     id: String,
-    normal: CardInfo,
-    alt: Option<CardInfo>,
-    is_alt: bool,
+    face: CardInfo,
+    back: Option<CardInfo>,
+    flipped: bool,
 }
 impl SubCard {
     fn clone_no_image(&self) -> Self {
         Self {
             id: self.id.clone(),
-            normal: self.normal.clone_no_image(),
-            alt: self.alt.as_ref().map(|a| a.clone_no_image()),
-            is_alt: self.is_alt,
+            face: self.face.clone_no_image(),
+            back: self.back.as_ref().map(|a| a.clone_no_image()),
+            flipped: self.flipped,
         }
     }
     fn filter(&self, text: &str) -> bool {
-        self.normal.filter(text) || self.alt.as_ref().map(|a| a.filter(text)).unwrap_or(false)
+        self.face().filter(text) || self.back.as_ref().map(|a| a.filter(text)).unwrap_or(false)
+    }
+    fn face(&self) -> &CardInfo {
+        if self.flipped {
+            self.back.as_ref().unwrap()
+        } else {
+            &self.face
+        }
+    }
+    fn back(&self) -> Option<&CardInfo> {
+        if self.flipped {
+            Some(&self.face)
+        } else {
+            self.back.as_ref()
+        }
     }
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]

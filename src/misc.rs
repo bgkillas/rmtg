@@ -128,7 +128,7 @@ pub fn new_pile_at<'a>(
             return None;
         }
         let card = pile.last();
-        let top = card.normal.image().clone();
+        let top = card.face().clone_image();
         let size = pile.len() as f32 * CARD_THICKNESS;
         let mut ent = commands.spawn((
             transform,
@@ -215,7 +215,7 @@ pub fn repaint_face(
     children: &Children,
 ) {
     mats.get_mut(*children.first().unwrap()).unwrap().0 =
-        make_material(materials, card.normal.image().clone());
+        make_material(materials, card.face().clone_image());
 }
 pub fn adjust_meshes(
     pile: &Pile,
@@ -291,7 +291,7 @@ pub fn spawn_equip(
                     card_base.clone(),
                     materials,
                     meshes,
-                    c.normal.image.clone_handle(),
+                    c.face().image.clone_handle(),
                 ),
             ));
         }

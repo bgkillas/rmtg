@@ -714,7 +714,7 @@ pub fn listen_for_mouse(
                 let get_deck = down.get_deck.clone();
                 let asset_server = asset_server.clone();
                 let id = top.id.clone();
-                info!("{}: {id} has requested printings", top.normal.name);
+                info!("{}: {id} has requested printings", top.face().name);
                 #[cfg(not(feature = "wasm"))]
                 down.runtime
                     .0
@@ -731,10 +731,9 @@ pub fn listen_for_mouse(
                     .unwrap_or(true)
             {
                 let card = pile.get_mut_card(&transform);
-                if let Some(alt) = &mut card.alt {
-                    mem::swap(&mut card.normal, alt);
+                if card.back.is_some() {
+                    card.flipped = !card.flipped;
                     repaint_face(&mut mats, &mut materials, card, children);
-                    card.is_alt = !card.is_alt;
                 }
                 let idx = if is_reversed(&transform) {
                     0
@@ -872,7 +871,7 @@ pub fn listen_for_mouse(
                                 height: Val::Px(IMAGE_HEIGHT),
                                 ..default()
                             },
-                            ImageNode::new(card.normal.image().clone()),
+                            ImageNode::new(card.face().clone_image()),
                             ZoomHold(entity.to_bits(), false),
                         ))
                         .with_children(|parent| {
@@ -896,7 +895,7 @@ pub fn listen_for_mouse(
                                             }),
                                             ..default()
                                         },
-                                        ImageNode::new(c.normal.image().clone()),
+                                        ImageNode::new(c.face().clone_image()),
                                     ));
                                 }
                             }
@@ -908,13 +907,13 @@ pub fn listen_for_mouse(
                             spawn();
                         }
                         commands.entity(single.0).despawn();
-                    } else if input.just_pressed(KeyCode::KeyO)
-                        && let Some(alt) = &pile.get_card(&transform).alt
-                    {
+                    } else if input.just_pressed(KeyCode::KeyO) {
                         let card = pile.get_card(&transform);
-                        single.2.image =
-                            if single.1.1 { &card.normal } else { alt }.image().clone();
-                        single.1.1 = !single.1.1;
+                        if let Some(back) = card.back() {
+                            single.2.image =
+                                if single.1.1 { card.face() } else { back }.clone_image();
+                            single.1.1 = !single.1.1;
+                        }
                     }
                 } else if !is_reversed(&transform) {
                     spawn()
@@ -1183,7 +1182,7 @@ pub fn update_search(
         let node = |(i, c): (usize, &SubCard)| {
             parent.spawn((
                 TargetCard(i),
-                ImageNode::new(c.normal.image.clone_handle()),
+                ImageNode::new(c.face().image.clone_handle()),
                 Node {
                     aspect_ratio: Some(CARD_WIDTH / CARD_HEIGHT),
                     ..default()
@@ -1321,19 +1320,18 @@ pub fn pick_from_list(
                 } else if swap {
                     let last = pile.len() - 1 == card.0;
                     let inner_card = pile.get_mut(card.0).unwrap();
-                    if let Some(alt) = &mut inner_card.alt {
-                        mem::swap(&mut inner_card.normal, alt);
+                    if inner_card.back.is_some() {
+                        inner_card.flipped = !inner_card.flipped;
                         if last {
                             repaint_face(&mut mats, &mut materials, inner_card, children);
                         }
-                        inner_card.is_alt = !inner_card.is_alt;
                     }
                     if let Ok(id) = ids.get(entity) {
                         sync_actions.flip_me.push((*id, card.0));
                     } else if let Ok(id) = others_ids.get(entity) {
                         sync_actions.flip.push((*id, card.0));
                     }
-                    image.image = inner_card.normal.image.clone_handle();
+                    image.image = inner_card.face().image.clone_handle();
                 }
             }
         }

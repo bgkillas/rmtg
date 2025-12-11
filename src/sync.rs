@@ -742,13 +742,12 @@ pub fn apply_sync(
                 {
                     let last = idx == pile.len() - 1;
                     if let Some(card) = pile.get_mut(idx)
-                        && let Some(alt) = &mut card.alt
+                        && card.back.is_some()
                     {
-                        mem::swap(&mut card.normal, alt);
+                        card.flipped = !card.flipped;
                         if last {
                             repaint_face(&mut mats, &mut materials, card, children);
                         }
-                        card.is_alt = !card.is_alt;
                     }
                 } else if let Some((children, mut pile, entity)) = query.iter_mut().find_map(
                     |(a, _, _, _, _, _, e, _, c, d, _, _)| {
@@ -759,12 +758,11 @@ pub fn apply_sync(
                 {
                     let last = idx == pile.len() - 1;
                     if let Some(card) = pile.get_mut(idx) {
-                        if let Some(alt) = &mut card.alt {
-                            mem::swap(&mut card.normal, alt);
+                        if card.back.is_some() {
+                            card.flipped = !card.flipped;
                             if last {
                                 repaint_face(&mut mats, &mut materials, card, children);
                             }
-                            card.is_alt = !card.is_alt;
                         }
                     } else {
                         commands.entity(entity).despawn();
