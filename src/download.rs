@@ -308,7 +308,7 @@ pub async fn parse(
         a.as_str().unwrap_or_default().into()
     });
     let (card_type, alt_card_type) = get(value, "type_line", |a| {
-        a.as_str().unwrap_or_default().into()
+        a.as_str().unwrap_or_default().parse().unwrap()
     });
     let (text, alt_text) = get(value, "oracle_text", |a| {
         a.as_str().unwrap_or_default().to_string()

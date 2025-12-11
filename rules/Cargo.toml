@@ -9,4 +9,3 @@ proc-macro = true
 [dependencies]
 quote = "1.0.42"
 proc-macro2 = "1.0.103"
-bitcode = {git="https://github.com/SoftbearStudios/bitcode", version = "0.6.7", branch = "large_c_style_enums"}

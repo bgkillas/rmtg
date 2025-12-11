@@ -16,12 +16,13 @@ use bevy_tangled::{Client, PeerId};
 use bevy_ui_text_input::TextInputPlugin;
 use rand::RngCore;
 use std::collections::HashMap;
+use std::fmt::{Error, Formatter};
 use std::mem::MaybeUninit;
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use std::{iter, mem};
+use std::{fmt, iter, mem};
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 const CARD_WIDTH: f32 = CARD_HEIGHT * 5.0 / 7.0;
 const CARD_HEIGHT: f32 = (MAT_HEIGHT - MAT_BAR) / 5.0 - MAT_BAR;
@@ -652,45 +653,6 @@ impl CardInfo {
         self.image.clone_handle()
     }
 }
-#[allow(dead_code)]
-#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
-enum SuperType {
-    Basic,
-    Legendary,
-    Ongoing,
-    Snow,
-    World,
-    #[default]
-    None,
-}
-#[allow(dead_code)]
-#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
-enum SubType {
-    Equipment,
-    Fortification,
-    Vehicle,
-    Wall,
-    Aura,
-    Background,
-    Saga,
-    Plains,
-    Island,
-    Swamp,
-    Mountain,
-    Forest,
-    Cave,
-    Desert,
-    Gate,
-    Lair,
-    Locus,
-    Mine,
-    PowerPlant,
-    Sphere,
-    Tower,
-    Urzas,
-    #[default]
-    None,
-}
 impl Type {
     #[allow(dead_code)]
     fn is_permanent(&self) -> bool {
@@ -698,26 +660,10 @@ impl Type {
     }
 }
 #[allow(dead_code)]
-#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
-enum Type {
-    Land,
-    Creature,
-    Artifact,
-    Enchantment,
-    PlanesWalker,
-    Battle,
-    Instant,
-    Sorcery,
-    Kindred,
-    #[default]
-    None,
-}
-#[allow(dead_code)]
 #[derive(Debug, Default, Clone, Encode, Decode)]
 struct Types {
     super_type: Vec<SuperType>,
     main_type: Vec<Type>,
-    creature_type: Vec<CreatureType>,
     sub_type: Vec<SubType>,
 }
 impl Types {
@@ -729,18 +675,20 @@ impl Types {
             .unwrap_or(false)
     }
 }
-impl From<&str> for Types {
-    fn from(value: &str) -> Self {
+impl FromStr for Types {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut ret = Self::default();
-        for word in value.split(' ') {
-            match word {
-                "Land" => ret.main_type.push(Type::Land),
-                "Creature" => ret.main_type.push(Type::Creature),
-                "Artifact" => ret.main_type.push(Type::Artifact),
-                _ => {} //TODO
+        for word in s.split(' ') {
+            if let Ok(super_type) = SuperType::from_str(word) {
+                ret.super_type.push(super_type)
+            } else if let Ok(ty) = Type::from_str(word) {
+                ret.main_type.push(ty)
+            } else if let Ok(sub_type) = SubType::from_str(word) {
+                ret.sub_type.push(sub_type)
             }
         }
-        ret
+        Ok(ret)
     }
 }
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
