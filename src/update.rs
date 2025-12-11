@@ -1236,6 +1236,7 @@ pub fn pick_from_list(
         text,
         equipment,
         input,
+        active_input,
     ): (
         Query<&mut Collider>,
         Option<Single<Entity, With<FollowMouse>>>,
@@ -1247,10 +1248,11 @@ pub fn pick_from_list(
         Single<&TextInputContents>,
         Query<(), With<Equipment>>,
         Res<ButtonInput<KeyCode>>,
+        Res<InputFocus>,
     ),
 ) {
     let left = mouse_input.just_pressed(MouseButton::Left);
-    let swap = input.just_pressed(KeyCode::KeyO);
+    let swap = input.just_pressed(KeyCode::KeyO) && active_input.get().is_none();
     if !matches!(*menu, Menu::Side) || !(left || swap) {
         return;
     }
