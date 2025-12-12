@@ -444,11 +444,11 @@ pub fn listen_for_mouse(
                     if let Ok(id) = ids.get(entity) {
                         sync_actions
                             .reorder_me
-                            .push((*id, pile.iter().map(|a| a.data.id.clone()).collect()));
+                            .push((*id, pile.iter().map(|a| a.data.id).collect()));
                     } else if let Ok(id) = others_ids.get(entity) {
                         sync_actions
                             .reorder
-                            .push((*id, pile.iter().map(|a| a.data.id.clone()).collect()));
+                            .push((*id, pile.iter().map(|a| a.data.id).collect()));
                     }
                     if let Some(entity) =
                         search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
@@ -713,15 +713,21 @@ pub fn listen_for_mouse(
                 let client = down.client.0.clone();
                 let get_deck = down.get_deck.clone();
                 let asset_server = asset_server.clone();
-                let id = top.data.id.clone();
-                info!("{}: {id} has requested printings", top.face().name);
+                let id = top.data.id;
+                info!(
+                    "{}: {} has requested printings",
+                    top.face().name,
+                    Uuid::from_u128(id)
+                );
                 #[cfg(not(feature = "wasm"))]
-                down.runtime
-                    .0
-                    .spawn(async move { get_alts(&id, client, asset_server, get_deck, v).await });
+                down.runtime.0.spawn(async move {
+                    let sid = id.to_string();
+                    get_alts(&sid, client, asset_server, get_deck, v).await
+                });
                 #[cfg(feature = "wasm")]
                 wasm_bindgen_futures::spawn_local(async move {
-                    get_alts(&id, client, asset_server, get_deck, v).await;
+                    let sid = id.to_string();
+                    get_alts(&sid, client, asset_server, get_deck, v).await;
                 })
             } else if input.just_pressed(KeyCode::KeyO)
                 && !is_reversed(&transform)

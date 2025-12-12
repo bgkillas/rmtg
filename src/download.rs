@@ -176,9 +176,10 @@ pub async fn add_images(
     asset_server: AssetServer,
 ) -> Option<()> {
     join_all(pile.iter_mut().map(|p| async {
-        let bytes = get_bytes(&p.data.id, &client, &asset_server, true);
+        let sid = p.data.id();
+        let bytes = get_bytes(&sid, &client, &asset_server, true);
         if let Some(c) = p.data.back.as_mut() {
-            let bytes = get_bytes(&p.data.id, &client, &asset_server, false);
+            let bytes = get_bytes(&sid, &client, &asset_server, false);
             c.image = bytes.await.unwrap()
         }
         p.data.face.image = bytes.await.unwrap()
@@ -304,6 +305,25 @@ pub async fn parse(
         .and_then(|a| a["name"].as_str())
         .unwrap_or_else(|| value["name"].as_str().unwrap())
         .to_string();
+    let id = Uuid::parse_str(id).unwrap().as_u128();
+    //TODO complete on moxfield
+    let tokens = value["all_parts"]
+        .members()
+        .filter_map(|a| {
+            let sid = Uuid::parse_str(a["id"].as_str().unwrap())
+                .unwrap()
+                .as_u128();
+            if sid != id
+                && a["type_line"].as_str().unwrap() != "Card"
+                && !matches!(a["component"].as_str().unwrap(), "meld_part")
+            {
+                Some(sid)
+            } else {
+                None
+            }
+        })
+        .collect();
+    println!("{tokens:?}");
     let (mana_cost, alt_mana_cost) = get(value, "mana_cost", |a| {
         a.as_str().unwrap_or_default().into()
     });
@@ -341,7 +361,8 @@ pub async fn parse(
                     toughness: alt_toughness,
                     image,
                 }),
-                id: id.to_string(),
+                id,
+                tokens,
             },
             flipped: false,
         },

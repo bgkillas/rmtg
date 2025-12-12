@@ -60,6 +60,7 @@ use bitcode::{Decode, Encode};
 use futures::channel::oneshot;
 use itertools::Either;
 use rand::seq::SliceRandom;
+use uuid::Uuid;
 #[cfg(feature = "wasm")]
 use wasm_bindgen::JsCast;
 #[cfg(feature = "wasm")]
@@ -75,7 +76,7 @@ const APPID: u32 = 4046880;
 const FONT_SIZE: f32 = 16.0;
 const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
-//TODO multi select, in card counters, voice chat, turns, cards into search, tokens
+//TODO multi select, in card counters, voice chat, turns, cards into search, tokens, meld, o on both sides up card
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
@@ -766,17 +767,22 @@ impl From<&str> for Cost {
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
 struct CardData {
-    id: String,
+    id: u128,
+    tokens: Vec<u128>,
     face: CardInfo,
     back: Option<CardInfo>,
 }
 impl CardData {
     fn clone_no_image(&self) -> Self {
         Self {
-            id: self.id.clone(),
+            id: self.id,
+            tokens: self.tokens.clone(),
             face: self.face.clone_no_image(),
             back: self.back.as_ref().map(|a| a.clone_no_image()),
         }
+    }
+    fn id(&self) -> String {
+        Uuid::from_u128(self.id).to_string()
     }
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
