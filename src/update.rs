@@ -1,6 +1,7 @@
 use crate::counters::Value;
 use crate::download::{
-    Exact, get_alts, get_deck, get_deck_export, spawn_singleton, spawn_singleton_id,
+    Exact, get_alts, get_deck, get_deck_export, spawn_scryfall_list, spawn_singleton,
+    spawn_singleton_id,
 };
 use crate::misc::{
     Equipment, adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile, new_pile_at,
@@ -714,11 +715,7 @@ pub fn listen_for_mouse(
                 let get_deck = down.get_deck.clone();
                 let asset_server = asset_server.clone();
                 let id = top.data.id;
-                info!(
-                    "{}: {} has requested printings",
-                    top.face().name,
-                    Uuid::from_u128(id)
-                );
+                info!("{}: {} has requested printings", top.face().name, id);
                 #[cfg(not(feature = "wasm"))]
                 down.runtime.0.spawn(async move {
                     let sid = id.to_string();
@@ -728,6 +725,33 @@ pub fn listen_for_mouse(
                 wasm_bindgen_futures::spawn_local(async move {
                     let sid = id.to_string();
                     get_alts(&sid, client, asset_server, get_deck, v).await;
+                })
+            } else if input.just_pressed(KeyCode::KeyT)
+                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+                && input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
+                && !is_reversed(&transform)
+            {
+                let top = pile.get_card(&transform);
+                let v = Vec2::new(
+                    transform.translation.x,
+                    transform.translation.z - CARD_HEIGHT - CARD_THICKNESS,
+                );
+                let client = down.client.0.clone();
+                let get_deck = down.get_deck.clone();
+                let asset_server = asset_server.clone();
+                let ids = top.data.tokens.clone();
+                info!(
+                    "{}: {} has requested tokens {ids:?}",
+                    top.face().name,
+                    top.data.id
+                );
+                #[cfg(not(feature = "wasm"))]
+                down.runtime.0.spawn(async move {
+                    spawn_scryfall_list(ids, client, asset_server, get_deck, v).await
+                });
+                #[cfg(feature = "wasm")]
+                wasm_bindgen_futures::spawn_local(async move {
+                    spawn_scryfall_list(ids, client, asset_server, get_deck, v).await;
                 })
             } else if input.just_pressed(KeyCode::KeyO)
                 && !is_reversed(&transform)

@@ -16,14 +16,14 @@ use bevy_tangled::{Client, PeerId};
 use bevy_ui_text_input::TextInputPlugin;
 use rand::RngCore;
 use std::collections::HashMap;
-use std::fmt::{Error, Formatter};
+use std::fmt::{Debug, Error, Formatter};
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::{fmt, iter, mem};
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
-const CARD_WIDTH: f32 = CARD_HEIGHT * 5.0 / 7.0;
+const CARD_WIDTH: f32 = CARD_HEIGHT * IMAGE_WIDTH / IMAGE_HEIGHT;
 const CARD_HEIGHT: f32 = (MAT_HEIGHT - MAT_BAR) / 5.0 - MAT_BAR;
 const IMAGE_WIDTH: f32 = 500.0;
 const IMAGE_HEIGHT: f32 = 700.0;
@@ -77,8 +77,7 @@ const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO multi select, in card counters
 //TODO voice chat, turns, cards into search
-//TODO tokens, meld, o on both sides up card
-//TODO rooms
+//TODO meld, rooms
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
@@ -757,13 +756,38 @@ impl From<&str> for Cost {
         cost
     }
 }
+#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
+enum Layout {
+    #[default]
+    Normal,
+    Flip,
+    Room,
+}
+#[derive(Default, PartialEq, Clone, Copy, Encode, Decode)]
+struct Id(u128);
+impl FromStr for Id {
+    type Err = uuid::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Uuid::from_str(s).map(|a| Id(a.as_u128()))
+    }
+}
+impl fmt::Display for Id {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", Uuid::from_u128(self.0))
+    }
+}
+impl Debug for Id {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{self}")
+    }
+}
 #[derive(Debug, Default, Clone, Encode, Decode)]
 struct CardData {
-    id: u128,
-    tokens: Vec<u128>,
+    id: Id,
+    tokens: Vec<Id>,
     face: CardInfo,
     back: Option<CardInfo>,
-    layout: bool,
+    layout: Layout,
 }
 impl CardData {
     fn clone_no_image(&self) -> Self {
@@ -774,9 +798,6 @@ impl CardData {
             back: self.back.as_ref().map(|a| a.clone_no_image()),
             layout: self.layout,
         }
-    }
-    fn id(&self) -> String {
-        Uuid::from_u128(self.id).to_string()
     }
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
@@ -815,7 +836,7 @@ impl SubCard {
         }
     }
     fn image_node(&self) -> ImageNode {
-        if self.data.layout && self.flipped {
+        if matches!(self.data.layout, Layout::Flip) && self.flipped {
             ImageNode {
                 image: self.data.face.clone_image(),
                 flip_x: true,
@@ -827,7 +848,7 @@ impl SubCard {
         }
     }
     fn material(&self) -> StandardMaterial {
-        if self.data.layout && self.flipped {
+        if matches!(self.data.layout, Layout::Flip) && self.flipped {
             StandardMaterial {
                 base_color_texture: Some(self.data.face.clone_image()),
                 unlit: true,

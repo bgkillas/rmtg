@@ -60,6 +60,16 @@ pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<I
     let image = parse_bytes(bytes)?;
     Some(asset_server.add(image))
 }
+pub async fn get_by_id(
+    client: &reqwest::Client,
+    asset_server: &AssetServer,
+    url: String,
+) -> Option<(SubCard, usize)> {
+    let res = client.get(url).send().await.ok()?;
+    let res = res.text().await.ok()?;
+    let json = json::parse(&res).ok()?;
+    parse(&json, client, asset_server, 1).await
+}
 pub async fn spawn_singleton_id(
     client: reqwest::Client,
     asset_server: AssetServer,
@@ -67,16 +77,48 @@ pub async fn spawn_singleton_id(
     v: Vec2,
     id: &str,
 ) -> Option<()> {
-    let url = format!("https://api.scryfall.com/cards/{id}");
-    let res = client.get(url).send().await.ok()?;
-    let res = res.text().await.ok()?;
-    let json = json::parse(&res).ok()?;
-    if let Some(card) = parse(&json, &client, &asset_server, 1).await {
+    if let Some(card) = get_by_id(
+        &client,
+        &asset_server,
+        format!("https://api.scryfall.com/cards/{id}"),
+    )
+    .await
+    {
         get_deck
             .0
             .lock()
             .unwrap()
             .push((Pile::Single(card.0.into()), DeckType::Single(v)));
+    }
+    None
+}
+pub async fn spawn_scryfall_list(
+    ids: Vec<Id>,
+    client: reqwest::Client,
+    asset_server: AssetServer,
+    get_deck: GetDeck,
+    v: Vec2,
+) -> Option<()> {
+    let cards: Vec<SubCard> = ids
+        .into_iter()
+        .map(|id| {
+            get_by_id(
+                &client,
+                &asset_server,
+                format!("https://api.scryfall.com/cards/{id}"),
+            )
+        })
+        .collect::<FuturesUnordered<_>>()
+        .filter_map(async |a| a)
+        .map(|(a, _)| a)
+        .collect()
+        .await;
+    if !cards.is_empty() {
+        get_deck
+            .0
+            .lock()
+            .unwrap()
+            .push((Pile::new(cards), DeckType::Single(v)));
     }
     None
 }
@@ -176,7 +218,7 @@ pub async fn add_images(
     asset_server: AssetServer,
 ) -> Option<()> {
     join_all(pile.iter_mut().map(|p| async {
-        let sid = p.data.id();
+        let sid = p.data.id.to_string();
         let bytes = get_bytes(&sid, &client, &asset_server, true);
         if let Some(c) = p.data.back.as_mut() {
             let bytes = get_bytes(&sid, &client, &asset_server, false);
@@ -294,6 +336,7 @@ pub async fn parse(
     if layout {
         alt_image = Some(UninitImage::default());
     }
+    let layout = if layout { Layout::Flip } else { Layout::Normal };
     let alt_name = value["card_faces"]
         .members()
         .nth(1)
@@ -305,15 +348,14 @@ pub async fn parse(
         .and_then(|a| a["name"].as_str())
         .unwrap_or_else(|| value["name"].as_str().unwrap())
         .to_string();
-    let id = Uuid::parse_str(id).unwrap().as_u128();
+    let id: Id = id.parse().unwrap();
     //TODO complete on moxfield
     let tokens = value["all_parts"]
         .members()
         .filter_map(|a| {
-            let sid = Uuid::parse_str(a["id"].as_str().unwrap())
-                .unwrap()
-                .as_u128();
-            if sid != id
+            let sid = a["id"].as_str().unwrap().parse();
+            if let Ok(sid) = sid
+                && sid != id
                 && a["type_line"].as_str().unwrap() != "Card"
                 && !matches!(a["component"].as_str().unwrap(), "meld_part")
             {
