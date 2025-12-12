@@ -284,20 +284,20 @@ pub async fn parse(
         .as_str()
         .or_else(|| value["id"].as_str())?;
     let bytes = get_bytes(id, client, asset_server, true);
-    let alt_image = if double {
+    let layout = value["layout"].as_str() == Some("flip");
+    let mut alt_image = if double && !layout {
         get_bytes(id, client, asset_server, false).await
     } else {
         None
     };
     let image = bytes.await?;
-    let alt_name = value["meld_result"]["name"]
-        .as_str()
-        .or_else(|| {
-            value["card_faces"]
-                .members()
-                .nth(1)
-                .and_then(|a| a["name"].as_str())
-        })
+    if layout {
+        alt_image = Some(UninitImage::default());
+    }
+    let alt_name = value["card_faces"]
+        .members()
+        .nth(1)
+        .and_then(|a| a["name"].as_str())
         .map(|a| a.to_string());
     let name = value["card_faces"]
         .members()
@@ -323,7 +323,6 @@ pub async fn parse(
             }
         })
         .collect();
-    println!("{tokens:?}");
     let (mana_cost, alt_mana_cost) = get(value, "mana_cost", |a| {
         a.as_str().unwrap_or_default().into()
     });
@@ -363,6 +362,7 @@ pub async fn parse(
                 }),
                 id,
                 tokens,
+                layout,
             },
             flipped: false,
         },

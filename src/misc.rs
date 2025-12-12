@@ -5,16 +5,6 @@ use bevy_prng::WyRand;
 use bevy_rand::global::GlobalRng;
 use bevy_tangled::PeerId;
 use std::f32::consts::PI;
-pub fn make_material(
-    materials: &mut Assets<StandardMaterial>,
-    top: Handle<Image>,
-) -> Handle<StandardMaterial> {
-    materials.add(StandardMaterial {
-        base_color_texture: Some(top),
-        unlit: true,
-        ..default()
-    })
-}
 pub fn new_pile(
     pile: Pile,
     card_base: CardBase,
@@ -128,7 +118,6 @@ pub fn new_pile_at<'a>(
             return None;
         }
         let card = pile.last();
-        let top = card.face().clone_image();
         let size = pile.len() as f32 * CARD_THICKNESS;
         let mut ent = commands.spawn((
             transform,
@@ -145,7 +134,7 @@ pub fn new_pile_at<'a>(
             } else {
                 GRAVITY
             }),
-            card_bundle(size, card_base.clone(), materials, meshes, top),
+            card_bundle(size, card_base.clone(), materials, meshes, card),
         ));
         if let Some(id) = id {
             ent.insert(id);
@@ -172,9 +161,9 @@ pub fn card_bundle(
     card_base: CardBase,
     materials: &mut Assets<StandardMaterial>,
     meshes: &mut Assets<Mesh>,
-    top: Handle<Image>,
+    top: &SubCard,
 ) -> impl Bundle {
-    let material_handle = make_material(materials, top);
+    let material_handle = materials.add(top.material());
     let (mesh, transform2, transform3) = side(size, meshes);
     let (mesh2, transform4, transform5) = topbottom(size, meshes);
     let card_stock = card_base.stock;
@@ -214,8 +203,7 @@ pub fn repaint_face(
     card: &SubCard,
     children: &Children,
 ) {
-    mats.get_mut(*children.first().unwrap()).unwrap().0 =
-        make_material(materials, card.face().clone_image());
+    mats.get_mut(*children.first().unwrap()).unwrap().0 = materials.add(card.material());
 }
 pub fn adjust_meshes(
     pile: &Pile,
@@ -286,13 +274,7 @@ pub fn spawn_equip(
                 Equipment,
                 transform,
                 InheritedVisibility::default(),
-                card_bundle(
-                    CARD_THICKNESS,
-                    card_base.clone(),
-                    materials,
-                    meshes,
-                    c.face().clone_image(),
-                ),
+                card_bundle(CARD_THICKNESS, card_base.clone(), materials, meshes, c),
             ));
         }
     });

@@ -877,8 +877,8 @@ pub fn listen_for_mouse(
                                 height: Val::Px(IMAGE_HEIGHT),
                                 ..default()
                             },
-                            ImageNode::new(card.face().clone_image()),
                             ZoomHold(entity.to_bits(), false),
+                            card.image_node(),
                         ))
                         .with_children(|parent| {
                             if pile.is_equiped() {
@@ -901,7 +901,7 @@ pub fn listen_for_mouse(
                                             }),
                                             ..default()
                                         },
-                                        ImageNode::new(c.face().clone_image()),
+                                        c.image_node(),
                                     ));
                                 }
                             }
@@ -914,11 +914,16 @@ pub fn listen_for_mouse(
                         }
                         commands.entity(single.0).despawn();
                     } else if input.just_pressed(KeyCode::KeyO) {
-                        let card = pile.get_card(&transform);
-                        if let Some(back) = card.back() {
-                            single.2.image =
-                                if single.1.1 { card.face() } else { back }.clone_image();
+                        let card = pile.get_mut_card(&transform);
+                        if card.back().is_some() {
                             single.1.1 = !single.1.1;
+                            if single.1.1 {
+                                card.flipped = !card.flipped;
+                                *single.2 = card.image_node();
+                                card.flipped = !card.flipped;
+                            } else {
+                                *single.2 = card.image_node();
+                            }
                         }
                     }
                 } else if !is_reversed(&transform) {
@@ -1188,7 +1193,7 @@ pub fn update_search(
         let node = |(i, c): (usize, &SubCard)| {
             parent.spawn((
                 TargetCard(i),
-                ImageNode::new(c.face().clone_image()),
+                c.image_node(),
                 Node {
                     aspect_ratio: Some(CARD_WIDTH / CARD_HEIGHT),
                     ..default()
@@ -1339,7 +1344,7 @@ pub fn pick_from_list(
                     } else if let Ok(id) = others_ids.get(entity) {
                         sync_actions.flip.push((*id, card.0));
                     }
-                    image.image = inner_card.face().clone_image();
+                    *image = inner_card.image_node();
                 }
             }
         }
@@ -2007,33 +2012,42 @@ pub fn pile_merge(
     mut sync_actions: ResMut<SyncActions>,
     equipment: Query<(), With<Equipment>>,
 ) {
-    if let Ok((e1, p1, t1, _, _, s1, m1)) = piles.get(collision.collider1)
-        && let Ok((e2, p2, t2, _, _, s2, m2)) = piles.get(collision.collider2)
+    if let Ok((e1, _, t1, _, _, s1, m1)) = piles.get(collision.collider1)
+        && let Ok((e2, _, t2, _, _, s2, m2)) = piles.get(collision.collider2)
         && e1 < e2
         && (t1.translation.x - t2.translation.x).abs() < CARD_WIDTH / 2.0
         && (t1.translation.z - t2.translation.z).abs() < CARD_HEIGHT / 2.0
         && is_reversed(t1) == is_reversed(t2)
     {
         let (
-            (ent, mut bottom_pile, mut bottom_transform, children, mut collider, sync, sync_me),
+            (ent, mut bottom_pile, mut bottom_transform, children, mut collider, _, sync_me),
             top_pile,
             top_ent,
             top_sync,
             top_sync_me,
         ) = if t1.translation.y < t2.translation.y {
-            let p2 = p2.clone();
+            if s1.is_some() {
+                return;
+            }
             let s2 = s2.cloned();
             let m2 = m2.cloned();
+            let p2 = mem::replace(
+                piles.get_mut(collision.collider2).unwrap().1.into_inner(),
+                Pile::Empty,
+            );
             (piles.get_mut(collision.collider1).unwrap(), p2, e2, s2, m2)
         } else {
-            let p1 = p1.clone();
+            if s2.is_some() {
+                return;
+            }
             let s1 = s1.cloned();
             let m1 = m1.cloned();
+            let p1 = mem::replace(
+                piles.get_mut(collision.collider1).unwrap().1.into_inner(),
+                Pile::Empty,
+            );
             (piles.get_mut(collision.collider2).unwrap(), p1, e1, s1, m1)
         };
-        if sync.is_some() {
-            return;
-        }
         if let Some(mid) = sync_me {
             let at = if is_reversed(&bottom_transform) {
                 0

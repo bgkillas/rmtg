@@ -17,7 +17,6 @@ use bevy_ui_text_input::TextInputPlugin;
 use rand::RngCore;
 use std::collections::HashMap;
 use std::fmt::{Error, Formatter};
-use std::mem::MaybeUninit;
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::str::FromStr;
@@ -76,7 +75,10 @@ const APPID: u32 = 4046880;
 const FONT_SIZE: f32 = 16.0;
 const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
-//TODO multi select, in card counters, voice chat, turns, cards into search, tokens, meld, o on both sides up card
+//TODO multi select, in card counters
+//TODO voice chat, turns, cards into search
+//TODO tokens, meld, o on both sides up card
+//TODO rooms
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
@@ -291,7 +293,7 @@ struct Hand {
     count: usize,
     removed: Vec<usize>,
 }
-#[derive(Component, Default, Debug, Clone, Encode, Decode)]
+#[derive(Component, Default, Clone, Debug, Encode, Decode)]
 enum Pile {
     Multiple(Vec<SubCard>),
     Single(Box<Card>),
@@ -624,11 +626,11 @@ impl CardInfo {
         }
     }
 }
-#[derive(Debug)]
-struct UninitImage(MaybeUninit<Handle<Image>>);
+#[derive(Debug, Clone, Default)]
+struct UninitImage(Option<Handle<Image>>);
 impl From<Handle<Image>> for UninitImage {
     fn from(value: Handle<Image>) -> Self {
-        Self(MaybeUninit::new(value))
+        Self(Some(value))
     }
 }
 impl UninitImage {
@@ -636,17 +638,7 @@ impl UninitImage {
         self.handle().clone()
     }
     fn handle(&self) -> &Handle<Image> {
-        unsafe { self.0.assume_init_ref() }
-    }
-}
-impl Clone for UninitImage {
-    fn clone(&self) -> Self {
-        unsafe { self.0.assume_init_ref().clone().into() }
-    }
-}
-impl Default for UninitImage {
-    fn default() -> Self {
-        Self(MaybeUninit::uninit())
+        self.0.as_ref().unwrap()
     }
 }
 impl CardInfo {
@@ -771,6 +763,7 @@ struct CardData {
     tokens: Vec<u128>,
     face: CardInfo,
     back: Option<CardInfo>,
+    layout: bool,
 }
 impl CardData {
     fn clone_no_image(&self) -> Self {
@@ -779,6 +772,7 @@ impl CardData {
             tokens: self.tokens.clone(),
             face: self.face.clone_no_image(),
             back: self.back.as_ref().map(|a| a.clone_no_image()),
+            layout: self.layout,
         }
     }
     fn id(&self) -> String {
@@ -818,6 +812,34 @@ impl SubCard {
             Some(&self.data.face)
         } else {
             self.data.back.as_ref()
+        }
+    }
+    fn image_node(&self) -> ImageNode {
+        if self.data.layout && self.flipped {
+            ImageNode {
+                image: self.data.face.clone_image(),
+                flip_x: true,
+                flip_y: true,
+                ..default()
+            }
+        } else {
+            ImageNode::new(self.face().clone_image())
+        }
+    }
+    fn material(&self) -> StandardMaterial {
+        if self.data.layout && self.flipped {
+            StandardMaterial {
+                base_color_texture: Some(self.data.face.clone_image()),
+                unlit: true,
+                uv_transform: StandardMaterial::FLIP_VERTICAL * StandardMaterial::FLIP_HORIZONTAL,
+                ..default()
+            }
+        } else {
+            StandardMaterial {
+                base_color_texture: Some(self.face().clone_image()),
+                unlit: true,
+                ..default()
+            }
         }
     }
 }
