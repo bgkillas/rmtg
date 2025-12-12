@@ -145,13 +145,14 @@ fn swap_pos(
 pub fn update_hand(
     mut hand: Single<(&Transform, &mut Hand, Option<&Children>)>,
     mut card: Query<
-        (&mut InHand, &mut Transform),
+        (&mut InHand, &mut Transform, &Pile),
         (With<InHand>, Without<Hand>, Without<FollowMouse>),
     >,
+    input: Res<ButtonInput<KeyCode>>,
 ) {
     if let Some(children) = hand.2 {
         for child in children.into_iter() {
-            let Ok((mut entry, mut transform)) = card.get_mut(*child) else {
+            let Ok((mut entry, _, _)) = card.get_mut(*child) else {
                 continue;
             };
             if let Some((i, n)) = hand
@@ -167,6 +168,21 @@ pub fn update_hand(
                 hand.1.removed.push(entry.0);
                 entry.0 = n;
             }
+        }
+        if input.just_pressed(KeyCode::KeyS)
+            && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+            && !input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
+        {
+            for child in children.into_iter() {
+                let Ok((mut entry, _, Pile::Single(card))) = card.get_mut(*child) else {
+                    continue;
+                };
+            }
+        }
+        for child in children.into_iter() {
+            let Ok((mut entry, mut transform, _)) = card.get_mut(*child) else {
+                continue;
+            };
             let idx = entry.0 as f32 - hand.1.count as f32 / 2.0;
             transform.translation = Vec3::new(
                 (idx + 0.5) * CARD_WIDTH / 2.0,
