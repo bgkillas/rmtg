@@ -151,8 +151,8 @@ pub fn update_hand(
     input: Res<ButtonInput<KeyCode>>,
 ) {
     if let Some(children) = hand.2 {
-        for child in children.into_iter() {
-            let Ok((mut entry, _, _)) = card.get_mut(*child) else {
+        for child in children.iter() {
+            let Ok((mut entry, _, _)) = card.get_mut(child) else {
                 continue;
             };
             if let Some((i, n)) = hand
@@ -173,14 +173,22 @@ pub fn update_hand(
             && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
             && !input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
         {
-            for child in children.into_iter() {
-                let Ok((mut entry, _, Pile::Single(card))) = card.get_mut(*child) else {
+            let mut order = children
+                .iter()
+                .filter_map(|c| card.get(c).ok())
+                .map(|(e, _, c)| (c.get(0).unwrap().data.face.mana_cost.total, e.0))
+                .collect::<Vec<(u8, usize)>>();
+            order.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
+            for child in children.iter() {
+                let Ok((mut entry, _, _)) = card.get_mut(child) else {
                     continue;
                 };
+                let pos = order.iter().position(|(_, a)| *a == entry.0).unwrap();
+                entry.0 = pos;
             }
         }
-        for child in children.into_iter() {
-            let Ok((mut entry, mut transform, _)) = card.get_mut(*child) else {
+        for child in children.iter() {
+            let Ok((entry, mut transform, _)) = card.get_mut(child) else {
                 continue;
             };
             let idx = entry.0 as f32 - hand.1.count as f32 / 2.0;
