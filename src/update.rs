@@ -423,13 +423,22 @@ pub fn listen_for_mouse(
     if matches!(*menu, Menu::Esc)
         || (matches!(*menu, Menu::Side | Menu::Counter) && active_input.get().is_some())
     {
+        if let Some(single) = zoom {
+            commands.entity(single.0).despawn();
+        }
         return;
     }
     let Some(cursor_position) = window.cursor_position() else {
+        if let Some(single) = zoom {
+            commands.entity(single.0).despawn();
+        }
         return;
     };
     let (camera, camera_transform) = camera.into_inner();
     let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        if let Some(single) = zoom {
+            commands.entity(single.0).despawn();
+        }
         return;
     };
     let hit = pset.p0().cast_ray(

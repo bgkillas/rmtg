@@ -64,10 +64,18 @@ pub async fn get_by_id(
     client: &reqwest::Client,
     asset_server: &AssetServer,
     url: String,
+    cull: bool,
 ) -> Option<(SubCard, usize)> {
     let res = client.get(url).send().await.ok()?;
     let res = res.text().await.ok()?;
     let json = json::parse(&res).ok()?;
+    let layout = json["layout"].as_str();
+    if cull
+        && let Some(layout) = layout
+        && matches!(layout, "double_faced_token" | "token" | "emblem")
+    {
+        return None;
+    }
     parse(&json, client, asset_server, 1).await
 }
 pub async fn spawn_singleton_id(
@@ -81,6 +89,7 @@ pub async fn spawn_singleton_id(
         &client,
         &asset_server,
         format!("https://api.scryfall.com/cards/{id}"),
+        false,
     )
     .await
     {
@@ -106,6 +115,7 @@ pub async fn spawn_scryfall_list(
                 &client,
                 &asset_server,
                 format!("https://api.scryfall.com/cards/{id}"),
+                true,
             )
         })
         .collect::<FuturesUnordered<_>>()
@@ -321,12 +331,13 @@ pub async fn parse(
     asset_server: &AssetServer,
     n: usize,
 ) -> Option<(SubCard, usize)> {
+    let layout = value["layout"].as_str();
     let double = value["card_faces"].members().next().is_some();
     let id = value["scryfall_id"]
         .as_str()
         .or_else(|| value["id"].as_str())?;
     let bytes = get_bytes(id, client, asset_server, true);
-    let layout = value["layout"].as_str() == Some("flip");
+    let layout = layout == Some("flip");
     let mut alt_image = if double && !layout {
         get_bytes(id, client, asset_server, false).await
     } else {
@@ -349,22 +360,6 @@ pub async fn parse(
         .unwrap_or_else(|| value["name"].as_str().unwrap())
         .to_string();
     let id: Id = id.parse().unwrap();
-    //TODO complete on moxfield
-    let tokens = value["all_parts"]
-        .members()
-        .filter_map(|a| {
-            let sid = a["id"].as_str().unwrap().parse();
-            if let Ok(sid) = sid
-                && sid != id
-                && a["type_line"].as_str().unwrap() != "Card"
-                && !matches!(a["component"].as_str().unwrap(), "meld_part")
-            {
-                Some(sid)
-            } else {
-                None
-            }
-        })
-        .collect();
     let (mana_cost, alt_mana_cost) = get(value, "mana_cost", |a| {
         a.as_str().unwrap_or_default().into()
     });
@@ -379,6 +374,27 @@ pub async fn parse(
     });
     let (power, alt_power) = get(value, "power", |a| a.as_u16().unwrap_or_default());
     let (toughness, alt_toughness) = get(value, "toughness", |a| a.as_u16().unwrap_or_default());
+    let full_name = value["name"].as_str().unwrap();
+    let full_card_type = value["type_line"].as_str().unwrap();
+    //TODO complete on moxfield
+    let tokens = value["all_parts"]
+        .members()
+        .filter_map(|a| {
+            let n = a["name"].as_str().unwrap();
+            let ty = a["type_line"].as_str().unwrap();
+            let sid = a["id"].as_str().unwrap().parse();
+            if let Ok(sid) = sid
+                && sid != id
+                && (n != full_name || ty != full_card_type)
+                && a["type_line"].as_str().unwrap() != "Card"
+                && !matches!(a["component"].as_str().unwrap(), "meld_part")
+            {
+                Some(sid)
+            } else {
+                None
+            }
+        })
+        .collect();
     Some((
         SubCard {
             data: CardData {
