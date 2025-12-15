@@ -384,7 +384,7 @@ pub fn listen_for_mouse(
         side,
         search_deck,
     ): (
-        Option<Single<(Entity, &mut ZoomHold, &mut ImageNode)>>,
+        Option<Single<(Entity, &mut ZoomHold, &mut ImageNode, &mut UiTransform)>>,
         ResMut<Download>,
         Res<AssetServer>,
         ResMut<GameClipboard>,
@@ -672,7 +672,7 @@ pub fn listen_for_mouse(
                             );
                         }
                     }
-                } else {
+                } else if zoom.is_none() {
                     rotate_right(&mut transform);
                 }
             } else if input.just_pressed(KeyCode::KeyS)
@@ -732,7 +732,7 @@ pub fn listen_for_mouse(
                         text.as_ref().unwrap().get(),
                     );
                 }
-            } else if input.just_pressed(KeyCode::KeyQ) {
+            } else if input.just_pressed(KeyCode::KeyQ) && zoom.is_none() {
                 rotate_left(&mut transform);
             } else if input.just_pressed(KeyCode::KeyO)
                 && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
@@ -982,6 +982,40 @@ pub fn listen_for_mouse(
                                 *single.2 = card.image_node();
                             }
                         }
+                    } else if input.just_pressed(KeyCode::KeyE) {
+                        single.3.rotation = match single.3.rotation.sin_cos() {
+                            (0.0, 1.0) => Rot2::from_sin_cos(1.0, 0.0),
+                            (1.0, 0.0) => Rot2::from_sin_cos(0.0, -1.0),
+                            (0.0, -1.0) => Rot2::from_sin_cos(-1.0, 0.0),
+                            (-1.0, 0.0) => Rot2::from_sin_cos(0.0, 1.0),
+                            _ => unreachable!(),
+                        };
+                        single.3.translation =
+                            if matches!(single.3.rotation.sin_cos(), (1.0, 0.0) | (-1.0, 0.0)) {
+                                Val2::px(
+                                    (IMAGE_HEIGHT - IMAGE_WIDTH) / 2.0,
+                                    (IMAGE_WIDTH - IMAGE_HEIGHT) / 2.0,
+                                )
+                            } else {
+                                Val2::px(0.0, 0.0)
+                            };
+                    } else if input.just_pressed(KeyCode::KeyQ) {
+                        single.3.rotation = match single.3.rotation.sin_cos() {
+                            (0.0, 1.0) => Rot2::from_sin_cos(-1.0, 0.0),
+                            (-1.0, 0.0) => Rot2::from_sin_cos(0.0, -1.0),
+                            (0.0, -1.0) => Rot2::from_sin_cos(1.0, 0.0),
+                            (1.0, 0.0) => Rot2::from_sin_cos(0.0, 1.0),
+                            _ => unreachable!(),
+                        };
+                        single.3.translation =
+                            if matches!(single.3.rotation.sin_cos(), (1.0, 0.0) | (-1.0, 0.0)) {
+                                Val2::px(
+                                    (IMAGE_HEIGHT - IMAGE_WIDTH) / 2.0,
+                                    (IMAGE_WIDTH - IMAGE_HEIGHT) / 2.0,
+                                )
+                            } else {
+                                Val2::px(0.0, 0.0)
+                            };
                     }
                 } else if !is_reversed(&transform) {
                     spawn()
@@ -1844,7 +1878,7 @@ pub fn register_deck(
                     .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0))
                     .find(|(_, s, _)| matches!(s.spot_type, SpotType::CommanderMain))
                     .unwrap();
-                let trans = rem(spot);
+                let trans = spot.0.translation();
                 Vec2::new(trans.x + CARD_WIDTH + MAT_BAR, trans.z)
             }
         };
