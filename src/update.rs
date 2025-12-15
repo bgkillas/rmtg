@@ -927,6 +927,10 @@ pub fn listen_for_mouse(
             if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
                 let mut spawn = || {
                     let card = pile.get_card(&transform);
+                    let mut transform = UiTransform::default();
+                    if matches!(card.data.layout, Layout::Room) {
+                        ui_rotate_right(&mut transform)
+                    }
                     commands
                         .spawn((
                             Node {
@@ -934,6 +938,7 @@ pub fn listen_for_mouse(
                                 height: Val::Px(IMAGE_HEIGHT),
                                 ..default()
                             },
+                            transform,
                             ZoomHold(entity.to_bits(), false),
                             card.image_node(),
                         ))
@@ -983,39 +988,9 @@ pub fn listen_for_mouse(
                             }
                         }
                     } else if input.just_pressed(KeyCode::KeyE) {
-                        single.3.rotation = match single.3.rotation.sin_cos() {
-                            (0.0, 1.0) => Rot2::from_sin_cos(1.0, 0.0),
-                            (1.0, 0.0) => Rot2::from_sin_cos(0.0, -1.0),
-                            (0.0, -1.0) => Rot2::from_sin_cos(-1.0, 0.0),
-                            (-1.0, 0.0) => Rot2::from_sin_cos(0.0, 1.0),
-                            _ => unreachable!(),
-                        };
-                        single.3.translation =
-                            if matches!(single.3.rotation.sin_cos(), (1.0, 0.0) | (-1.0, 0.0)) {
-                                Val2::px(
-                                    (IMAGE_HEIGHT - IMAGE_WIDTH) / 2.0,
-                                    (IMAGE_WIDTH - IMAGE_HEIGHT) / 2.0,
-                                )
-                            } else {
-                                Val2::px(0.0, 0.0)
-                            };
+                        ui_rotate_right(&mut single.3);
                     } else if input.just_pressed(KeyCode::KeyQ) {
-                        single.3.rotation = match single.3.rotation.sin_cos() {
-                            (0.0, 1.0) => Rot2::from_sin_cos(-1.0, 0.0),
-                            (-1.0, 0.0) => Rot2::from_sin_cos(0.0, -1.0),
-                            (0.0, -1.0) => Rot2::from_sin_cos(1.0, 0.0),
-                            (1.0, 0.0) => Rot2::from_sin_cos(0.0, 1.0),
-                            _ => unreachable!(),
-                        };
-                        single.3.translation =
-                            if matches!(single.3.rotation.sin_cos(), (1.0, 0.0) | (-1.0, 0.0)) {
-                                Val2::px(
-                                    (IMAGE_HEIGHT - IMAGE_WIDTH) / 2.0,
-                                    (IMAGE_WIDTH - IMAGE_HEIGHT) / 2.0,
-                                )
-                            } else {
-                                Val2::px(0.0, 0.0)
-                            };
+                        ui_rotate_left(&mut single.3);
                     }
                 } else if !is_reversed(&transform) {
                     spawn()
@@ -1188,6 +1163,40 @@ fn rotate_right(transform: &mut Mut<Transform>) {
             _ => unreachable!(),
         } - rot,
     );
+}
+fn ui_rotate_right(transform: &mut UiTransform) {
+    transform.rotation = match transform.rotation.sin_cos() {
+        (0.0, 1.0) => Rot2::from_sin_cos(1.0, 0.0),
+        (1.0, 0.0) => Rot2::from_sin_cos(0.0, -1.0),
+        (0.0, -1.0) => Rot2::from_sin_cos(-1.0, 0.0),
+        (-1.0, 0.0) => Rot2::from_sin_cos(0.0, 1.0),
+        _ => unreachable!(),
+    };
+    transform.translation = if matches!(transform.rotation.sin_cos(), (1.0, 0.0) | (-1.0, 0.0)) {
+        Val2::px(
+            (IMAGE_HEIGHT - IMAGE_WIDTH) / 2.0,
+            (IMAGE_WIDTH - IMAGE_HEIGHT) / 2.0,
+        )
+    } else {
+        Val2::px(0.0, 0.0)
+    };
+}
+fn ui_rotate_left(transform: &mut UiTransform) {
+    transform.rotation = match transform.rotation.sin_cos() {
+        (0.0, 1.0) => Rot2::from_sin_cos(-1.0, 0.0),
+        (-1.0, 0.0) => Rot2::from_sin_cos(0.0, -1.0),
+        (0.0, -1.0) => Rot2::from_sin_cos(1.0, 0.0),
+        (1.0, 0.0) => Rot2::from_sin_cos(0.0, 1.0),
+        _ => unreachable!(),
+    };
+    transform.translation = if matches!(transform.rotation.sin_cos(), (1.0, 0.0) | (-1.0, 0.0)) {
+        Val2::px(
+            (IMAGE_HEIGHT - IMAGE_WIDTH) / 2.0,
+            (IMAGE_WIDTH - IMAGE_HEIGHT) / 2.0,
+        )
+    } else {
+        Val2::px(0.0, 0.0)
+    };
 }
 #[derive(Component)]
 pub struct CounterMenu(Entity, Value);

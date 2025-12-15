@@ -347,7 +347,6 @@ pub async fn parse(
     if layout {
         alt_image = Some(UninitImage::default());
     }
-    let layout = if layout { Layout::Flip } else { Layout::Normal };
     let alt_name = value["card_faces"]
         .members()
         .nth(1)
@@ -363,9 +362,16 @@ pub async fn parse(
     let (mana_cost, alt_mana_cost) = get(value, "mana_cost", |a| {
         a.as_str().unwrap_or_default().into()
     });
-    let (card_type, alt_card_type) = get(value, "type_line", |a| {
+    let (card_type, alt_card_type): (Types, Types) = get(value, "type_line", |a| {
         a.as_str().unwrap_or_default().parse().unwrap()
     });
+    let layout = if layout {
+        Layout::Flip
+    } else if card_type.sub_type.contains(&SubType::Room) {
+        Layout::Room
+    } else {
+        Layout::Normal
+    };
     let (text, alt_text) = get(value, "oracle_text", |a| {
         a.as_str().unwrap_or_default().to_string()
     });
