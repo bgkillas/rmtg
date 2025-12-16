@@ -6,7 +6,7 @@ use crate::misc::{
 };
 #[cfg(feature = "steam")]
 use crate::setup::SteamInfo;
-use crate::setup::{MAT_HEIGHT, MAT_WIDTH};
+use crate::setup::{MAT_HEIGHT, MAT_WIDTH, SideMenu};
 use crate::shapes::Shape;
 use crate::update::{GiveEnts, HandIgnore, SearchDeck, update_search};
 use crate::*;
@@ -65,6 +65,7 @@ pub fn get_sync(
             ))
         }
     }
+    //TODO most should just be sent when received instead of put in a vector
     for (base, merge, at) in sync_actions.merge_me.drain(..) {
         client
             .broadcast(
@@ -368,7 +369,19 @@ pub fn apply_sync(
             Without<Pile>,
         ),
     >,
-    (search, text, mut shape, mut text3d, mut cams, mut curs, mut peers, cam, equipment): (
+    (
+        search,
+        text,
+        mut shape,
+        mut text3d,
+        mut cams,
+        mut curs,
+        mut peers,
+        cam,
+        equipment,
+        side,
+        mut menu,
+    ): (
         Option<Single<(Entity, &SearchDeck)>>,
         Option<Single<&TextInputContents>>,
         Query<&mut Shape>,
@@ -404,6 +417,8 @@ pub fn apply_sync(
             ),
         >,
         Query<(), With<Equipment>>,
+        Option<Single<Entity, With<SideMenu>>>,
+        ResMut<Menu>,
     ),
 ) {
     if !client.is_connected() {
@@ -649,7 +664,8 @@ pub fn apply_sync(
                     if let Some(search) = &search
                         && search.1.0 == e
                     {
-                        commands.entity(search.0).despawn()
+                        *menu = Menu::World;
+                        commands.entity(**side.as_ref().unwrap()).despawn();
                     }
                 } else if let Some(e) = query.iter().find_map(
                     |(a, _, _, _, _, _, b, _, _, _, _, _)| if *a == id { Some(b) } else { None },
@@ -658,7 +674,8 @@ pub fn apply_sync(
                     if let Some(search) = &search
                         && search.1.0 == e
                     {
-                        commands.entity(search.0).despawn()
+                        *menu = Menu::World;
+                        commands.entity(**side.as_ref().unwrap()).despawn();
                     }
                 }
             }
@@ -731,6 +748,7 @@ pub fn apply_sync(
                 }
             }
             Packet::Flip(id, idx) => {
+                //TODO flip in search
                 if id.user == client.my_id()
                     && let Some((pile, children)) = queryme.iter_mut().find_map(
                         |(a, _, p, _, c, _, _)| {
@@ -814,6 +832,8 @@ pub fn apply_sync(
                                 pile,
                                 transform,
                                 text.as_ref().unwrap().get(),
+                                &side,
+                                &mut menu,
                             );
                         }
                         let card = pile.last();
@@ -938,6 +958,19 @@ pub fn apply_sync(
                     &equipment,
                     &mut commands,
                 );
+                if let Some(search) = &search
+                    && search.1.0 == base_ent
+                {
+                    update_search(
+                        &mut commands,
+                        search.0,
+                        &base_pile,
+                        &base_transform,
+                        text.as_ref().unwrap().get(),
+                        &side,
+                        &mut menu,
+                    );
+                }
             }
             Packet::Draw(id, to, start) => {
                 let user = sender;
@@ -1001,6 +1034,8 @@ pub fn apply_sync(
                             pile,
                             &transform,
                             text.as_ref().unwrap().get(),
+                            &side,
+                            &mut menu,
                         );
                     }
                 };
@@ -1125,6 +1160,12 @@ pub fn apply_sync(
                         );
                     }
                 }
+            }
+            Packet::Text(_msg) => {
+                todo!()
+            }
+            Packet::Voice(_msg) => {
+                todo!()
             }
         }
     });
@@ -1312,6 +1353,8 @@ pub enum Packet {
     Merge(SyncObject, SyncObject, usize),
     SetUser(PeerId, usize),
     Indicator(Pos, Pos, bool),
+    Text(String),
+    Voice(Vec<u8>),
 }
 #[derive(Encode, Decode, Debug)]
 pub struct Phys {

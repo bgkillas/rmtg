@@ -76,7 +76,7 @@ const FONT_SIZE: f32 = 16.0;
 const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO multi select, in card counters
-//TODO voice/text chat, turns, cards into search
+//TODO turns
 //TODO meld, rooms
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
@@ -166,7 +166,6 @@ pub fn start() -> AppExit {
             (
                 (
                     set_card_spot,
-                    pick_from_list,
                     send_scroll_events,
                     #[cfg(feature = "steam")]
                     display_steam_info,
@@ -178,7 +177,14 @@ pub fn start() -> AppExit {
                     #[cfg(all(feature = "steam", feature = "ip"))]
                     new_lobby,
                     update_search_deck,
-                    (gather_hand, listen_for_mouse, follow_mouse, update_hand).chain(),
+                    (
+                        pick_from_list,
+                        gather_hand,
+                        listen_for_mouse,
+                        follow_mouse,
+                        update_hand,
+                    )
+                        .chain(),
                 ),
                 to_move_up,
                 reset_layers,
@@ -534,6 +540,27 @@ impl Pile {
                     unreachable!()
                 };
                 s.into()
+            }
+            Pile::Empty => unreachable!(),
+        }
+    }
+    #[allow(dead_code)]
+    fn insert(&mut self, n: usize, card: SubCard) {
+        match self {
+            Pile::Multiple(v) => v.insert(n, card),
+            se @ Pile::Single(_) => {
+                let Pile::Single(s) = mem::take(se) else {
+                    unreachable!()
+                };
+                let mut v = s.flatten();
+                if n == 0 {
+                    v.insert(0, card)
+                } else if n == 1 {
+                    v.push(card)
+                } else {
+                    panic!()
+                };
+                *se = Pile::Multiple(v);
             }
             Pile::Empty => unreachable!(),
         }
