@@ -53,7 +53,7 @@ use crate::shapes::Shape;
 use crate::sync::display_steam_info;
 #[cfg(all(feature = "steam", feature = "ip"))]
 use crate::sync::new_lobby;
-use crate::sync::{SendSleeping, Sent, SyncActions, SyncCount, SyncObject, apply_sync, get_sync};
+use crate::sync::{SendSleeping, Sent, SyncCount, SyncObject, apply_sync, get_sync};
 use bitcode::{Decode, Encode};
 #[cfg(feature = "wasm")]
 use futures::channel::oneshot;
@@ -77,7 +77,6 @@ const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO multi select, in card counters
 //TODO turns
-//TODO meld, rooms
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
@@ -151,7 +150,6 @@ pub fn start() -> AppExit {
     .insert_resource(Menu::default())
     .insert_resource(GiveEnts::default())
     .insert_resource(SendSleeping::default())
-    .insert_resource(SyncActions::default())
     .insert_resource(game_clipboard)
     .insert_resource(Download {
         client,
@@ -616,7 +614,7 @@ impl Pile {
 }
 #[derive(Debug, Clone)]
 enum DeckType {
-    Other(Vec2, SyncObject),
+    Other(Transform, SyncObject),
     Single(Vec2),
     Token,
     Deck,

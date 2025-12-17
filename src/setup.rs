@@ -322,40 +322,32 @@ pub fn setup(
             bevy::color::Color::WHITE,
         );
         coin.insert(SyncObjectMe::new(&mut rand, &mut count));
-        let mut counter = Shape::Counter(Value(40)).create(
-            Transform::from_xyz(MAT_BAR * 3.0, MAT_BAR * 4.0, MAT_BAR * 3.0),
-            &mut commands,
-            &mut meshes,
-            &mut materials,
-            bevy::color::Color::WHITE,
-        );
-        counter.insert(SyncObjectMe::new(&mut rand, &mut count));
-        let mut counter = Shape::Counter(Value(40)).create(
-            Transform::from_xyz(MAT_BAR * 3.0, MAT_BAR * 4.0, -MAT_BAR * 3.0)
-                .looking_to(Dir3::Z, Dir3::Y),
-            &mut commands,
-            &mut meshes,
-            &mut materials,
-            bevy::color::Color::WHITE,
-        );
-        counter.insert(SyncObjectMe::new(&mut rand, &mut count));
-        let mut counter = Shape::Counter(Value(40)).create(
-            Transform::from_xyz(-MAT_BAR * 3.0, MAT_BAR * 4.0, MAT_BAR * 3.0),
-            &mut commands,
-            &mut meshes,
-            &mut materials,
-            bevy::color::Color::WHITE,
-        );
-        counter.insert(SyncObjectMe::new(&mut rand, &mut count));
-        let mut counter = Shape::Counter(Value(40)).create(
-            Transform::from_xyz(-MAT_BAR * 3.0, MAT_BAR * 4.0, -MAT_BAR * 3.0)
-                .looking_to(Dir3::Z, Dir3::Y),
-            &mut commands,
-            &mut meshes,
-            &mut materials,
-            bevy::color::Color::WHITE,
-        );
-        counter.insert(SyncObjectMe::new(&mut rand, &mut count));
+        for i in 0..4 {
+            let (x, y) = match i {
+                0 => (MAT_BAR * 3.0, MAT_BAR * 3.0),
+                1 => (MAT_BAR * 3.0, -MAT_BAR * 3.0),
+                2 => (-MAT_BAR * 3.0, MAT_BAR * 3.0),
+                3 => (-MAT_BAR * 3.0, -MAT_BAR * 3.0),
+                _ => unreachable!(),
+            };
+            let mut counter = Shape::Counter(Value(40)).create(
+                Transform::from_xyz(x, MAT_BAR * 4.0, y),
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                bevy::color::Color::WHITE,
+            );
+            counter.insert(SyncObjectMe::new(&mut rand, &mut count));
+            let mut counter = Shape::Turn(i).create(
+                Transform::from_xyz(x * 2.5, MAT_BAR * 4.0, y)
+                    .looking_to(Dir3::Z, if i == 0 { Dir3::NEG_Y } else { Dir3::Y }),
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                bevy::color::Color::WHITE,
+            );
+            counter.insert(SyncObjectMe::new(&mut rand, &mut count));
+        }
     }
     commands.spawn((
         Node {

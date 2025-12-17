@@ -237,8 +237,10 @@ pub async fn add_images(
         p.data.face.image = bytes.await.unwrap()
     }))
     .await;
-    let v = Vec2::new(transform.translation.x, transform.translation.z);
-    deck.0.lock().unwrap().push((pile, DeckType::Other(v, id)));
+    deck.0
+        .lock()
+        .unwrap()
+        .push((pile, DeckType::Other(transform, id)));
     None
 }
 #[derive(Encode, Decode)]
@@ -338,6 +340,7 @@ pub async fn parse(
         .or_else(|| value["id"].as_str())?;
     let bytes = get_bytes(id, client, asset_server, true);
     let layout = layout == Some("flip");
+    //TODO meld
     let mut alt_image = if double && !layout {
         get_bytes(id, client, asset_server, false).await
     } else {

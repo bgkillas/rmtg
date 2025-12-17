@@ -5,10 +5,10 @@ use crate::download::{
 };
 use crate::misc::{
     Equipment, adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile, new_pile_at,
-    repaint_face, spawn_equip,
+    repaint_face, spawn_equip, vec2_to_ground,
 };
 use crate::setup::{EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, T, W, Wall};
-use crate::sync::{COMPRESSION, CameraInd, CursorInd, InOtherHand, Packet, SyncObjectMe, Trans};
+use crate::sync::{CameraInd, CursorInd, InOtherHand, Net, SyncObjectMe, Trans};
 use crate::*;
 use avian3d::math::Vector;
 use bevy::input::mouse::{
@@ -17,10 +17,8 @@ use bevy::input::mouse::{
 use bevy::input_focus::InputFocus;
 use bevy::picking::hover::HoverMap;
 use bevy::window::PrimaryWindow;
-use bevy_prng::WyRand;
-use bevy_rand::global::GlobalRng;
 use bevy_rich_text3d::Text3d;
-use bevy_tangled::{ClientTrait, PeerId, Reliability};
+use bevy_tangled::PeerId;
 use bevy_ui_text_input::{TextInputBuffer, TextInputContents, TextInputMode, TextInputNode};
 use cosmic_text::Edit;
 #[cfg(feature = "calc")]
@@ -56,9 +54,7 @@ pub fn gather_hand(
     mut child: Query<&mut InHand>,
     spatial: SpatialQuery,
     mut commands: Commands,
-    mut sync_actions: ResMut<SyncActions>,
-    mut count: ResMut<SyncCount>,
-    mut rand: Single<&mut WyRand, With<GlobalRng>>,
+    mut net: Net,
 ) {
     let intersections = spatial.shape_intersections(
         &Collider::cuboid(MAT_WIDTH, CARD_HEIGHT, CARD_HEIGHT),
@@ -75,9 +71,7 @@ pub fn gather_hand(
                 commands.entity(entity).remove::<HandIgnore>();
             } else {
                 if let Some(n) = obj {
-                    sync_actions
-                        .take_owner
-                        .push((*n, SyncObjectMe::new(&mut rand, &mut count)))
+                    net.take(entity, *n);
                 }
                 linvel.0 = default();
                 angvel.0 = default();
@@ -372,8 +366,6 @@ pub fn listen_for_mouse(
         down,
         asset_server,
         mut game_clipboard,
-        mut count,
-        mut sync_actions,
         ids,
         others_ids,
         mut query_meshes,
@@ -388,8 +380,6 @@ pub fn listen_for_mouse(
         ResMut<Download>,
         Res<AssetServer>,
         ResMut<GameClipboard>,
-        ResMut<SyncCount>,
-        ResMut<SyncActions>,
         Query<&SyncObjectMe>,
         Query<&SyncObject>,
         Query<
@@ -409,8 +399,7 @@ pub fn listen_for_mouse(
         Option<Single<Entity, With<SideMenu>>>,
         Option<Single<(Entity, &SearchDeck)>>,
     ),
-    (mut rand, text, font, mut text3d, children, mut transform, hover_map, equipment): (
-        Single<&mut WyRand, With<GlobalRng>>,
+    (text, font, mut text3d, children, mut transform, hover_map, equipment, mut net): (
         Option<Single<&TextInputContents>>,
         Res<FontRes>,
         Query<&mut Text3d>,
@@ -418,6 +407,7 @@ pub fn listen_for_mouse(
         Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
         Res<HoverMap>,
         Query<(), With<Equipment>>,
+        Net,
     ),
 ) {
     if matches!(*menu, Menu::Esc)
@@ -458,6 +448,9 @@ pub fn listen_for_mouse(
         };
         if let Ok((mut pile, children, parent, inhand, inother)) = cards.get_mut(entity) {
             if input.just_pressed(KeyCode::KeyF) {
+                if let Ok(id) = others_ids.get(entity) {
+                    net.take(entity, *id);
+                }
                 transform.rotate_local_z(PI);
                 if let Some(entity) =
                     search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
@@ -474,17 +467,13 @@ pub fn listen_for_mouse(
                 }
             } else if input.just_pressed(KeyCode::KeyR) {
                 if pile.len() > 1 {
-                    pile.shuffle(&mut rand);
+                    pile.shuffle(net.rand());
                     let card = pile.last();
                     repaint_face(&mut mats, &mut materials, card, children);
                     if let Ok(id) = ids.get(entity) {
-                        sync_actions
-                            .reorder_me
-                            .push((*id, pile.iter().map(|a| a.data.id).collect()));
+                        net.reorder_me(*id, pile.iter().map(|a| a.data.id).collect());
                     } else if let Ok(id) = others_ids.get(entity) {
-                        sync_actions
-                            .reorder
-                            .push((*id, pile.iter().map(|a| a.data.id).collect()));
+                        net.reorder(*id, pile.iter().map(|a| a.data.id).collect());
                     }
                     if let Some(entity) =
                         search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
@@ -507,13 +496,10 @@ pub fn listen_for_mouse(
                 && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]))
                 || input.just_pressed(KeyCode::Delete)
             {
-                if ids.contains(entity) {
-                    count.rem(1);
-                }
                 if let Ok(id) = ids.get(entity) {
-                    sync_actions.killed_me.push(*id)
+                    net.killed_me(*id)
                 } else if let Ok(id) = others_ids.get(entity) {
-                    sync_actions.killed.push(*id);
+                    net.killed(*id);
                 }
                 if let Some(inhand) = inhand {
                     hand.0.removed.push(inhand.0);
@@ -590,7 +576,7 @@ pub fn listen_for_mouse(
                     if let Some(e) = follow {
                         commands.entity(*e).remove::<FollowMouse>();
                     }
-                    let id = SyncObjectMe::new(&mut rand, &mut count);
+                    let id = net.new_id();
                     new_pile_at(
                         Pile::Single(new.into()),
                         card_base.clone(),
@@ -604,17 +590,17 @@ pub fn listen_for_mouse(
                         Some(id),
                     );
                     if let Ok(lid) = ids.get(entity) {
-                        sync_actions.draw_me.push((
+                        net.draw_me(
                             *lid,
                             vec![(id, Trans::from_transform(&transform))],
                             draw_len,
-                        ));
+                        );
                     } else if let Ok(oid) = others_ids.get(entity) {
-                        sync_actions.draw.push((
+                        net.draw(
                             *oid,
                             vec![(id, Trans::from_transform(&transform))],
                             draw_len,
-                        ));
+                        );
                     }
                     if let Some(entity) =
                         search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
@@ -634,8 +620,7 @@ pub fn listen_for_mouse(
                         commands.entity(*e).remove::<FollowMouse>();
                     }
                     if let Ok(id) = others_ids.get(entity) {
-                        let myid = SyncObjectMe::new(&mut rand, &mut count);
-                        sync_actions.take_owner.push((*id, myid));
+                        net.take(entity, *id);
                     }
                     colliders.get_mut(entity).unwrap().1.0 = 0.0;
                     commands
@@ -652,9 +637,9 @@ pub fn listen_for_mouse(
                     if !is_reversed(&transform) {
                         let b = pile.equip();
                         if let Ok(id) = ids.get(entity) {
-                            sync_actions.equip_me.push(*id)
+                            net.equip_me(*id)
                         } else if let Ok(id) = others_ids.get(entity) {
-                            sync_actions.equip.push(*id);
+                            net.equip(*id);
                         }
                         repaint_face(&mut mats, &mut materials, pile.last(), children);
                         adjust_meshes(
@@ -679,6 +664,9 @@ pub fn listen_for_mouse(
                         }
                     }
                 } else if zoom.is_none() {
+                    if let Ok(id) = others_ids.get(entity) {
+                        net.take(entity, *id);
+                    }
                     rotate_right(&mut transform);
                 }
             } else if input.just_pressed(KeyCode::KeyS)
@@ -691,7 +679,7 @@ pub fn listen_for_mouse(
                 let mut transform = start;
                 let mut vec = Vec::with_capacity(pile.len());
                 for c in pile.drain(..) {
-                    let id = SyncObjectMe::new(&mut rand, &mut count);
+                    let id = net.new_id();
                     new_pile_at(
                         Pile::Single(c.into()),
                         card_base.clone(),
@@ -713,18 +701,15 @@ pub fn listen_for_mouse(
                 }
                 if let Ok(lid) = ids.get(entity) {
                     let len = vec.len();
-                    sync_actions.draw_me.push((*lid, vec, len));
+                    net.draw_me(*lid, vec, len);
                 } else if let Ok(id) = others_ids.get(entity) {
                     let len = vec.len();
-                    sync_actions.draw.push((*id, vec, len));
-                }
-                if ids.contains(entity) {
-                    count.rem(1);
+                    net.draw(*id, vec, len);
                 }
                 if let Ok(id) = ids.get(entity) {
-                    sync_actions.killed_me.push(*id)
+                    net.killed_me(*id)
                 } else if let Ok(id) = others_ids.get(entity) {
-                    sync_actions.killed.push(*id);
+                    net.killed(*id);
                 }
                 commands.entity(entity).despawn();
                 if let Some(entity) =
@@ -741,6 +726,9 @@ pub fn listen_for_mouse(
                     );
                 }
             } else if input.just_pressed(KeyCode::KeyQ) && zoom.is_none() {
+                if let Ok(id) = others_ids.get(entity) {
+                    net.take(entity, *id);
+                }
                 rotate_left(&mut transform);
             } else if input.just_pressed(KeyCode::KeyO)
                 && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
@@ -812,9 +800,9 @@ pub fn listen_for_mouse(
                     pile.len() - 1
                 };
                 if let Ok(id) = ids.get(entity) {
-                    sync_actions.flip_me.push((*id, idx));
+                    net.flip_me(*id, idx);
                 } else if let Ok(id) = others_ids.get(entity) {
-                    sync_actions.flip.push((*id, idx));
+                    net.flip(*id, idx);
                 }
             } else if input.any_just_pressed([
                 KeyCode::Digit1,
@@ -858,7 +846,7 @@ pub fn listen_for_mouse(
                     };
                     for _ in 0..n {
                         let new = pile.take_card(&transform);
-                        let id = SyncObjectMe::new(&mut rand, &mut count);
+                        let id = net.new_id();
                         let mut ent = new_pile_at(
                             Pile::Single(new.into()),
                             card_base.clone(),
@@ -894,12 +882,12 @@ pub fn listen_for_mouse(
                         if !is_reversed(&transform) {
                             vec.reverse();
                         }
-                        sync_actions.draw_me.push((*lid, vec, len));
+                        net.draw_me(*lid, vec, len);
                     } else if let Ok(id) = others_ids.get(entity) {
                         if !is_reversed(&transform) {
                             vec.reverse();
                         }
-                        sync_actions.draw.push((*id, vec, len));
+                        net.draw(*id, vec, len);
                     }
                     if !pile.is_empty() {
                         let card = pile.last();
@@ -916,8 +904,7 @@ pub fn listen_for_mouse(
                         );
                     } else {
                         if let Ok(id) = ids.get(entity) {
-                            sync_actions.killed_me.push(*id);
-                            count.rem(1);
+                            net.killed_me(*id);
                         }
                         commands.entity(entity).despawn();
                     }
@@ -934,7 +921,7 @@ pub fn listen_for_mouse(
                 );
                 *menu = Menu::Side;
             }
-            if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
+            if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) && inother.is_none() {
                 let mut spawn = || {
                     let card = pile.get_card(&transform);
                     let mut transform = UiTransform::default();
@@ -1022,9 +1009,9 @@ pub fn listen_for_mouse(
                     *text.get_single_mut().unwrap() = v.0.to_string();
                 }
                 if let Ok(id) = ids.get(entity) {
-                    sync_actions.counter_me.push((*id, v.clone()));
+                    net.counter_me(*id, v.clone());
                 } else if let Ok(id) = others_ids.get(entity) {
-                    sync_actions.counter.push((*id, v.clone()));
+                    net.counter(*id, v.clone());
                 }
             } else if mouse_input.just_pressed(MouseButton::Left) {
                 if !input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
@@ -1037,17 +1024,16 @@ pub fn listen_for_mouse(
                         *text.get_single_mut().unwrap() = v.0.to_string();
                     }
                     if let Ok(id) = ids.get(entity) {
-                        sync_actions.counter_me.push((*id, v.clone()));
+                        net.counter_me(*id, v.clone());
                     } else if let Ok(id) = others_ids.get(entity) {
-                        sync_actions.counter.push((*id, v.clone()));
+                        net.counter(*id, v.clone());
                     }
                 } else {
                     if let Some(e) = follow {
                         commands.entity(*e).remove::<FollowMouse>();
                     }
                     if let Ok(id) = others_ids.get(entity) {
-                        let myid = SyncObjectMe::new(&mut rand, &mut count);
-                        sync_actions.take_owner.push((*id, myid));
+                        net.take(entity, *id);
                     }
                     phys.0 = 0.0;
                     commands
@@ -1105,16 +1091,16 @@ pub fn listen_for_mouse(
                 && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
                 && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
             {
-                if ids.contains(entity) {
-                    count.rem(1);
-                }
                 if let Ok(id) = ids.get(entity) {
-                    sync_actions.killed_me.push(*id)
+                    net.killed_me(*id)
                 } else if let Ok(id) = others_ids.get(entity) {
-                    sync_actions.killed.push(*id);
+                    net.killed(*id);
                 }
                 commands.entity(entity).despawn();
             } else if input.just_pressed(KeyCode::KeyF) {
+                if let Ok(id) = others_ids.get(entity) {
+                    net.take(entity, *id);
+                }
                 transform.rotate_local_z(PI);
             } else if (input.just_pressed(KeyCode::KeyR)
                 || (input.pressed(KeyCode::KeyR)
@@ -1126,10 +1112,10 @@ pub fn listen_for_mouse(
                     layers.filters = (layers.filters.0 - 0b01).into();
                 }
                 if let Ok(id) = others_ids.get(entity) {
-                    let myid = SyncObjectMe::new(&mut rand, &mut count);
-                    sync_actions.take_owner.push((*id, myid));
+                    net.take(entity, *id);
                 }
                 lv.y = MAT_WIDTH;
+                let rand = net.rand();
                 av.x = if rand.random() { 1.0 } else { -1.0 }
                     * (rand.random_range(32.0..64.0) + av.x.abs());
                 av.y = if rand.random() { 1.0 } else { -1.0 }
@@ -1137,8 +1123,14 @@ pub fn listen_for_mouse(
                 av.z = if rand.random() { 1.0 } else { -1.0 }
                     * (rand.random_range(32.0..64.0) + av.z.abs());
             } else if input.just_pressed(KeyCode::KeyE) {
+                if let Ok(id) = others_ids.get(entity) {
+                    net.take(entity, *id);
+                }
                 rotate_right(&mut transform)
             } else if input.just_pressed(KeyCode::KeyQ) {
+                if let Ok(id) = others_ids.get(entity) {
+                    net.take(entity, *id);
+                }
                 rotate_left(&mut transform)
             }
         } else if let Some(single) = zoom {
@@ -1353,32 +1345,17 @@ pub fn pick_from_list(
             Without<Pile>,
         ),
     >,
-    (
-        mut colliders,
-        follow,
-        mut rand,
-        mut count,
-        ids,
-        mut sync_actions,
-        others_ids,
-        text,
-        equipment,
-        input,
-        active_input,
-        side,
-    ): (
+    (mut colliders, follow, ids, others_ids, text, equipment, input, active_input, side, mut net): (
         Query<&mut Collider>,
         Option<Single<Entity, With<FollowMouse>>>,
-        Single<&mut WyRand, With<GlobalRng>>,
-        ResMut<SyncCount>,
         Query<&SyncObjectMe>,
-        ResMut<SyncActions>,
         Query<&SyncObject>,
         Single<&TextInputContents>,
         Query<(), With<Equipment>>,
         Res<ButtonInput<KeyCode>>,
         Res<InputFocus>,
         Option<Single<Entity, With<SideMenu>>>,
+        Net,
     ),
 ) {
     let left = mouse_input.just_pressed(MouseButton::Left);
@@ -1402,8 +1379,7 @@ pub fn pick_from_list(
                         commands.entity(entity).despawn();
                         let entity = search_deck.1.0;
                         if let Ok(id) = others_ids.get(entity) {
-                            let myid = SyncObjectMe::new(&mut rand, &mut count);
-                            sync_actions.take_owner.push((*id, myid));
+                            net.take(entity, *id);
                         }
                         let len = pile.len() as f32 * CARD_THICKNESS;
                         let new = pile.remove(card.0);
@@ -1428,7 +1404,7 @@ pub fn pick_from_list(
                         if let Some(e) = &follow {
                             commands.entity(**e).remove::<FollowMouse>();
                         }
-                        let id = SyncObjectMe::new(&mut rand, &mut count);
+                        let id = net.new_id();
                         new_pile_at(
                             Pile::Single(new.into()),
                             card_base.clone(),
@@ -1442,17 +1418,17 @@ pub fn pick_from_list(
                             Some(id),
                         );
                         if let Ok(lid) = ids.get(entity) {
-                            sync_actions.draw_me.push((
+                            net.draw_me(
                                 *lid,
                                 vec![(id, Trans::from_transform(&transform))],
                                 card.0 + 1,
-                            ));
+                            );
                         } else if let Ok(oid) = others_ids.get(entity) {
-                            sync_actions.draw.push((
+                            net.draw(
                                 *oid,
                                 vec![(id, Trans::from_transform(&transform))],
                                 card.0 + 1,
-                            ));
+                            );
                         }
                         update_search(
                             &mut commands,
@@ -1474,9 +1450,9 @@ pub fn pick_from_list(
                             }
                         }
                         if let Ok(id) = ids.get(entity) {
-                            sync_actions.flip_me.push((*id, card.0));
+                            net.flip_me(*id, card.0);
                         } else if let Ok(id) = others_ids.get(entity) {
-                            sync_actions.flip.push((*id, card.0));
+                            net.flip(*id, card.0);
                         }
                         *image = inner_card.image_node();
                         return;
@@ -1524,10 +1500,10 @@ pub fn update_search_deck(
     counter: Option<Single<&CounterMenu>>,
     mut text3d: Query<&mut Text3d>,
     mut children: Query<(&Children, &mut Shape)>,
-    mut sync_actions: ResMut<SyncActions>,
     ids: Query<&SyncObjectMe>,
     other_ids: Query<&SyncObject>,
     side: Option<Single<Entity, With<SideMenu>>>,
+    net: Net,
 ) {
     match *menu {
         Menu::Side => {
@@ -1579,9 +1555,9 @@ pub fn update_search_deck(
                     *text.get_single_mut().unwrap() = v.0.to_string();
                 }
                 if let Ok(id) = ids.get(counter.0) {
-                    sync_actions.counter_me.push((*id, v.clone()));
+                    net.counter_me(*id, v.clone());
                 } else if let Ok(id) = other_ids.get(counter.0) {
-                    sync_actions.counter.push((*id, v.clone()));
+                    net.counter(*id, v.clone());
                 }
             }
         }
@@ -1705,11 +1681,10 @@ pub fn listen_for_deck(
     card_base: Res<CardBase>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut commands: Commands,
-    mut rand: Single<&mut WyRand, With<GlobalRng>>,
-    mut count: ResMut<SyncCount>,
     mut to_move: ResMut<ToMoveUp>,
     menu: Res<Menu>,
     active_input: Res<InputFocus>,
+    mut net: Net,
 ) {
     if matches!(*menu, Menu::Esc)
         || (matches!(*menu, Menu::Side | Menu::Counter) && active_input.get().is_some())
@@ -1807,10 +1782,9 @@ pub fn listen_for_deck(
                 &mut materials,
                 &mut commands,
                 &mut meshes,
-                &mut rand,
                 v,
-                &mut count,
                 None,
+                Some(net.new_id()),
                 false,
             ),
             GameClipboard::Shape(shape) => Some(
@@ -1822,7 +1796,7 @@ pub fn listen_for_deck(
                         &mut materials,
                         bevy::color::Color::WHITE,
                     )
-                    .insert(SyncObjectMe::new(&mut rand, &mut count))
+                    .insert(net.new_id())
                     .id(),
             ),
             GameClipboard::None => None,
@@ -1837,19 +1811,16 @@ pub fn register_deck(
     mut materials: ResMut<Assets<StandardMaterial>>,
     card_base: Res<CardBase>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut rand: Single<&mut WyRand, With<GlobalRng>>,
-    mut count: ResMut<SyncCount>,
-    client: Res<Client>,
     mut sent: ResMut<Sent>,
     mut to_move: ResMut<ToMoveUp>,
     mut spots: Query<(&GlobalTransform, &mut CardSpot, &Player)>,
     peers: Res<Peers>,
     mut trans: Query<Entity, With<Pile>>,
-    mut sync_actions: ResMut<SyncActions>,
-    (ids, others_ids, search_deck): (
+    (ids, others_ids, search_deck, mut net): (
         Query<&SyncObjectMe>,
         Query<&SyncObject>,
         Option<Single<(Entity, &SearchDeck)>>,
+        Net,
     ),
 ) {
     let mut decks = decks.get_deck.0.lock().unwrap();
@@ -1857,10 +1828,10 @@ pub fn register_deck(
         if deck.is_empty() {
             continue;
         }
-        let id = if let DeckType::Other(_, id) = deck_type {
-            Some(id)
+        let (id, my_id) = if let DeckType::Other(_, id) = deck_type {
+            (Some(id), None)
         } else {
-            None
+            (None, Some(net.new_id()))
         };
         if id.is_none() {
             info!("deck found of size {} of type {:?}", deck.len(), deck_type);
@@ -1871,13 +1842,10 @@ pub fn register_deck(
                 && let Ok(entity) = trans.get_mut(ent)
             {
                 spot.1.ent = None;
-                if ids.contains(entity) {
-                    count.rem(1);
-                }
                 if let Ok(id) = ids.get(entity) {
-                    sync_actions.killed_me.push(*id)
+                    net.killed_me(*id)
                 } else if let Ok(id) = others_ids.get(entity) {
-                    sync_actions.killed.push(*id);
+                    net.killed(*id);
                 }
                 commands.entity(entity).despawn();
                 if let Some(entity) = search_deck
@@ -1891,10 +1859,9 @@ pub fn register_deck(
         };
         let v = match deck_type {
             DeckType::Other(v, _) => v,
-            DeckType::Single(v) => v,
+            DeckType::Single(v) => vec2_to_ground(&deck, v, rev),
             DeckType::Token => continue,
             DeckType::Deck => {
-                deck.shuffle(&mut rand);
                 let spot = spots
                     .iter_mut()
                     .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0))
@@ -1914,7 +1881,9 @@ pub fn register_deck(
                     .find(|(_, s, _)| matches!(s.spot_type, SpotType::Graveyard))
                     .unwrap();
                 rem(spot);
-                Vec2::new(trans.x, trans.z)
+                deck.shuffle(net.rand());
+                let v = Vec2::new(trans.x, trans.z);
+                vec2_to_ground(&deck, v, rev)
             }
             DeckType::Commander => {
                 let spot = spots
@@ -1940,16 +1909,16 @@ pub fn register_deck(
                         &mut materials,
                         &mut commands,
                         &mut meshes,
-                        &mut rand,
                         v,
-                        &mut count,
                         id,
+                        Some(net.new_id()),
                         rev,
                     ) {
                         to_move.0.push(ent);
                     }
                 }
-                Vec2::new(trans.x, trans.z)
+                let v = Vec2::new(trans.x, trans.z);
+                vec2_to_ground(&deck, v, rev)
             }
             DeckType::SideBoard => {
                 let spot = spots
@@ -1958,33 +1927,27 @@ pub fn register_deck(
                     .find(|(_, s, _)| matches!(s.spot_type, SpotType::CommanderMain))
                     .unwrap();
                 let trans = spot.0.translation();
-                Vec2::new(trans.x + CARD_WIDTH + MAT_BAR, trans.z)
+                let v = Vec2::new(trans.x, trans.z);
+                vec2_to_ground(&deck, v, rev)
             }
         };
-        if let Some(ent) = new_pile(
+        if let Some(ent) = new_pile_at(
             deck,
             card_base.clone(),
             &mut materials,
             &mut commands,
             &mut meshes,
-            &mut rand,
             v,
-            &mut count,
+            false,
+            None,
             id,
-            rev,
+            my_id,
         ) {
-            to_move.0.push(ent);
+            to_move.0.push(ent.id());
         }
         if let Some(id) = id {
             sent.del(id);
-            client
-                .send(
-                    id.user,
-                    &Packet::Received(id.id),
-                    Reliability::Reliable,
-                    COMPRESSION,
-                )
-                .unwrap();
+            net.received(id.user, id.id);
         }
     }
 }
@@ -1999,19 +1962,11 @@ pub fn to_move_up(
 }
 #[derive(Resource, Default)]
 pub struct ToMoveUp(pub Vec<Entity>);
-pub fn give_ents(
-    to_do: Res<GiveEnts>,
-    ents: Query<&SyncObject>,
-    mut sync_actions: ResMut<SyncActions>,
-    mut rand: Single<&mut WyRand, With<GlobalRng>>,
-    mut count: ResMut<SyncCount>,
-) {
+pub fn give_ents(to_do: Res<GiveEnts>, ents: Query<(&SyncObject, Entity)>, mut net: Net) {
     for peer in to_do.0.lock().unwrap().drain(..) {
-        for id in ents {
+        for (id, ent) in ents {
             if id.user == peer {
-                sync_actions
-                    .take_owner
-                    .push((*id, SyncObjectMe::new(&mut rand, &mut count)));
+                net.take(ent, *id);
             }
         }
     }
@@ -2187,9 +2142,8 @@ pub fn pile_merge(
     mut commands: Commands,
     search_deck: Option<Single<(Entity, &SearchDeck)>>,
     text: Option<Single<&TextInputContents>>,
-    mut sync_actions: ResMut<SyncActions>,
     equipment: Query<(), With<Equipment>>,
-    (mut menu, side): (ResMut<Menu>, Option<Single<Entity, With<SideMenu>>>),
+    (mut menu, side, net): (ResMut<Menu>, Option<Single<Entity, With<SideMenu>>>, Net),
 ) {
     if let Ok((e1, _, t1, _, _, s1, m1)) = piles.get(collision.collider1)
         && let Ok((e2, _, t2, _, _, s2, m2)) = piles.get(collision.collider2)
@@ -2234,9 +2188,9 @@ pub fn pile_merge(
                 bottom_pile.len()
             };
             if let Some(id) = top_sync {
-                sync_actions.merge.push((*mid, id, at))
+                net.merge(*mid, id, at)
             } else if let Some(id) = top_sync_me {
-                sync_actions.merge_me.push((*mid, id, at))
+                net.merge_me(*mid, id, at)
             }
         }
         if is_reversed(&bottom_transform) {

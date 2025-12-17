@@ -1,42 +1,30 @@
 use crate::setup::{MAT_WIDTH, Wall};
 use crate::sync::{CameraInd, CursorInd, SyncObjectMe};
 use crate::*;
-use bevy_prng::WyRand;
-use bevy_rand::global::GlobalRng;
 use bevy_tangled::PeerId;
 use std::f32::consts::PI;
+pub fn vec2_to_ground(pile: &Pile, v: Vec2, rev: bool) -> Transform {
+    let size = pile.len() as f32 * CARD_THICKNESS;
+    let mut transform = Transform::from_xyz(v.x, size / 2.0, v.y);
+    if rev {
+        transform.rotate_local_z(PI);
+    }
+    transform
+}
 pub fn new_pile(
     pile: Pile,
     card_base: CardBase,
     materials: &mut Assets<StandardMaterial>,
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
-    rand: &mut Single<&mut WyRand, With<GlobalRng>>,
     v: Vec2,
-    count: &mut SyncCount,
     id: Option<SyncObject>,
+    my_id: Option<SyncObjectMe>,
     rev: bool,
 ) -> Option<Entity> {
-    let size = pile.len() as f32 * CARD_THICKNESS;
-    let mut transform = Transform::from_xyz(v.x, size / 2.0, v.y);
-    if rev {
-        transform.rotate_local_z(PI);
-    }
+    let transform = vec2_to_ground(&pile, v, rev);
     new_pile_at(
-        pile,
-        card_base,
-        materials,
-        commands,
-        meshes,
-        transform,
-        false,
-        None,
-        id,
-        if id.is_none() {
-            Some(SyncObjectMe::new(rand, count))
-        } else {
-            None
-        },
+        pile, card_base, materials, commands, meshes, transform, false, None, id, my_id,
     )
     .map(|a| a.id())
 }

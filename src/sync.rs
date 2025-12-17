@@ -11,6 +11,7 @@ use crate::shapes::Shape;
 use crate::update::{GiveEnts, HandIgnore, SearchDeck, update_search};
 use crate::*;
 use bevy::diagnostic::FrameCount;
+use bevy::ecs::system::SystemParam;
 use bevy::window::PrimaryWindow;
 use bevy_rand::global::GlobalRng;
 use bevy_rich_text3d::Text3d;
@@ -34,13 +35,8 @@ pub fn get_sync(
         Option<&FollowMouse>,
     )>,
     mut count: ResMut<SyncCount>,
-    mut sync_actions: ResMut<SyncActions>,
-    mut sent: ResMut<Sent>,
-    query_take: Query<(Entity, &SyncObject)>,
-    mut commands: Commands,
     client: Res<Client>,
     send_sleep: Res<SendSleeping>,
-    frame: Res<FrameCount>,
     camera: Single<(&Camera, &GlobalTransform), (With<Camera3d>, Without<SyncObjectMe>)>,
     window: Single<&Window, With<PrimaryWindow>>,
     spatial: SpatialQuery,
@@ -52,10 +48,9 @@ pub fn get_sync(
     let send_sleep = send_sleep
         .0
         .swap(false, std::sync::atomic::Ordering::Relaxed);
-    let mut v = 0;
     let mut vec = count.take();
     for (id, transform, vel, ang, in_hand, is_sleep, follow) in query {
-        if send_sleep || (is_sleep.is_none() && frame.0.is_multiple_of(8)) || follow.is_some() {
+        if send_sleep || is_sleep.is_none() || follow.is_some() {
             vec.push((
                 *id,
                 Trans::from(transform),
@@ -64,175 +59,6 @@ pub fn get_sync(
                 follow.is_some(),
             ))
         }
-    }
-    //TODO most should just be sent when received instead of put in a vector
-    for (base, merge, at) in sync_actions.merge_me.drain(..) {
-        client
-            .broadcast(
-                &Packet::Merge(
-                    SyncObject {
-                        id: base,
-                        user: client.my_id(),
-                    },
-                    SyncObject {
-                        id: merge,
-                        user: client.my_id(),
-                    },
-                    at,
-                ),
-                Reliability::Reliable,
-                COMPRESSION,
-            )
-            .unwrap();
-    }
-    for (base, merge, at) in sync_actions.merge.drain(..) {
-        client
-            .broadcast(
-                &Packet::Merge(
-                    SyncObject {
-                        id: base,
-                        user: client.my_id(),
-                    },
-                    merge,
-                    at,
-                ),
-                Reliability::Reliable,
-                COMPRESSION,
-            )
-            .unwrap();
-    }
-    for dead in sync_actions.killed_me.drain(..) {
-        client
-            .broadcast(
-                &Packet::Dead(SyncObject {
-                    id: dead,
-                    user: client.my_id(),
-                }),
-                Reliability::Reliable,
-                COMPRESSION,
-            )
-            .unwrap();
-    }
-    for dead in sync_actions.killed.drain(..) {
-        client
-            .broadcast(&Packet::Dead(dead), Reliability::Reliable, COMPRESSION)
-            .unwrap();
-    }
-    for equip in sync_actions.equip.drain(..) {
-        client
-            .broadcast(&Packet::Equip(equip), Reliability::Reliable, COMPRESSION)
-            .unwrap();
-    }
-    for equip_me in sync_actions.equip_me.drain(..) {
-        client
-            .broadcast(
-                &Packet::Equip(SyncObject {
-                    id: equip_me,
-                    user: client.my_id(),
-                }),
-                Reliability::Reliable,
-                COMPRESSION,
-            )
-            .unwrap();
-    }
-    for (flip, idx) in sync_actions.flip.drain(..) {
-        client
-            .broadcast(&Packet::Flip(flip, idx), Reliability::Reliable, COMPRESSION)
-            .unwrap();
-    }
-    for (flip, idx) in sync_actions.flip_me.drain(..) {
-        client
-            .broadcast(
-                &Packet::Flip(
-                    SyncObject {
-                        id: flip,
-                        user: client.my_id(),
-                    },
-                    idx,
-                ),
-                Reliability::Reliable,
-                COMPRESSION,
-            )
-            .unwrap();
-    }
-    for (id, to) in sync_actions.counter.drain(..) {
-        client
-            .broadcast(&Packet::Counter(id, to), Reliability::Reliable, COMPRESSION)
-            .unwrap();
-    }
-    for (id, to) in sync_actions.counter_me.drain(..) {
-        client
-            .broadcast(
-                &Packet::Counter(
-                    SyncObject {
-                        id,
-                        user: client.my_id(),
-                    },
-                    to,
-                ),
-                Reliability::Reliable,
-                COMPRESSION,
-            )
-            .unwrap();
-    }
-    for (id, order) in sync_actions.reorder.drain(..) {
-        client
-            .broadcast(
-                &Packet::Reorder(id, order),
-                Reliability::Reliable,
-                COMPRESSION,
-            )
-            .unwrap();
-    }
-    for (id, order) in sync_actions.reorder_me.drain(..) {
-        client
-            .broadcast(
-                &Packet::Reorder(
-                    SyncObject {
-                        id,
-                        user: client.my_id(),
-                    },
-                    order,
-                ),
-                Reliability::Reliable,
-                COMPRESSION,
-            )
-            .unwrap();
-    }
-    for (id, to, start) in sync_actions.draw.drain(..) {
-        client
-            .broadcast(
-                &Packet::Draw(id, to, start),
-                Reliability::Reliable,
-                COMPRESSION,
-            )
-            .unwrap();
-    }
-    for (id, to, start) in sync_actions.draw_me.drain(..) {
-        client
-            .broadcast(
-                &Packet::Draw(
-                    SyncObject {
-                        id,
-                        user: client.my_id(),
-                    },
-                    to,
-                    start,
-                ),
-                Reliability::Reliable,
-                COMPRESSION,
-            )
-            .unwrap();
-    }
-    for (from, to) in sync_actions.take_owner.drain(..) {
-        if let Some((entity, _)) = query_take.iter().find(|(_, b)| **b == from) {
-            commands.entity(entity).remove::<SyncObject>().insert(to);
-            v += 1;
-        }
-        sent.add(from);
-        client
-            .broadcast(&Packet::Take(from, to), Reliability::Reliable, COMPRESSION)
-            .unwrap();
     }
     if !vec.is_empty() {
         let packet = Packet::Pos(vec);
@@ -244,10 +70,8 @@ pub fn get_sync(
         };
         vec.clear();
         count.give(vec);
-        count.add(v);
     } else {
         count.give(vec);
-        count.add(v);
     }
     #[cfg(feature = "steam")]
     client.flush();
@@ -660,6 +484,7 @@ pub fn apply_sync(
                         .iter()
                         .find_map(|(a, _, _, e, _, _, _)| if *a == id.id { Some(e) } else { None })
                 {
+                    count.rem(1);
                     commands.entity(e).despawn();
                     if let Some(search) = &search
                         && search.1.0 == e
@@ -914,6 +739,7 @@ pub fn apply_sync(
                     && let Some(pile) = pile
                     && let Some(children) = children
                 {
+                    count.rem(1);
                     (pile, children, ent, transform)
                 } else if let Some((pile, children, ent, transform)) = query.iter_mut().find_map(
                     |(a, t, _, _, _, _, e, _, c, d, _, _)| {
@@ -1167,6 +993,7 @@ pub fn apply_sync(
             Packet::Voice(_msg) => {
                 todo!()
             }
+            Packet::Turn(_player) => {}
         }
     });
     #[cfg(feature = "steam")]
@@ -1318,24 +1145,6 @@ impl Sent {
         self.0.get(key) == Some(&true)
     }
 }
-#[derive(Resource, Default)]
-pub struct SyncActions {
-    pub killed_me: Vec<SyncObjectMe>,
-    pub killed: Vec<SyncObject>,
-    pub merge: Vec<(SyncObjectMe, SyncObject, usize)>,
-    pub merge_me: Vec<(SyncObjectMe, SyncObjectMe, usize)>,
-    pub take_owner: Vec<(SyncObject, SyncObjectMe)>,
-    pub reorder_me: Vec<(SyncObjectMe, Vec<Id>)>,
-    pub reorder: Vec<(SyncObject, Vec<Id>)>,
-    pub equip: Vec<SyncObject>,
-    pub equip_me: Vec<SyncObjectMe>,
-    pub draw_me: Vec<(SyncObjectMe, Vec<(SyncObjectMe, Trans)>, usize)>,
-    pub draw: Vec<(SyncObject, Vec<(SyncObjectMe, Trans)>, usize)>,
-    pub flip: Vec<(SyncObject, usize)>,
-    pub flip_me: Vec<(SyncObjectMe, usize)>,
-    pub counter_me: Vec<(SyncObjectMe, Value)>,
-    pub counter: Vec<(SyncObject, Value)>,
-}
 #[derive(Encode, Decode, Debug)]
 pub enum Packet {
     Pos(Vec<(SyncObjectMe, Trans, Phys, bool, bool)>),
@@ -1355,6 +1164,7 @@ pub enum Packet {
     Indicator(Pos, Pos, bool),
     Text(String),
     Voice(Vec<u8>),
+    Turn(usize),
 }
 #[derive(Encode, Decode, Debug)]
 pub struct Phys {
@@ -1449,3 +1259,117 @@ impl SyncCount {
 }
 #[derive(Component)]
 pub struct InOtherHand;
+#[derive(SystemParam)]
+pub struct Net<'w, 's> {
+    client: Res<'w, Client>,
+    rand: Single<'w, 's, &'static mut WyRand, With<GlobalRng>>,
+    count: ResMut<'w, SyncCount>,
+    commands: Commands<'w, 's>,
+}
+impl<'w, 's> Net<'w, 's> {
+    pub fn rand(&mut self) -> &mut Single<'w, 's, &'static mut WyRand, With<GlobalRng>> {
+        &mut self.rand
+    }
+    pub fn new_id(&mut self) -> SyncObjectMe {
+        SyncObjectMe::new(&mut self.rand, &mut self.count)
+    }
+    pub fn received(&self, user: PeerId, id: SyncObjectMe) {
+        self.client
+            .send(
+                user,
+                &Packet::Received(id),
+                Reliability::Reliable,
+                COMPRESSION,
+            )
+            .unwrap();
+    }
+    pub fn take(&mut self, entity: Entity, id: SyncObject) {
+        let nid = self.new_id();
+        self.client
+            .broadcast(&Packet::Take(id, nid), Reliability::Reliable, COMPRESSION)
+            .unwrap();
+        self.commands
+            .entity(entity)
+            .remove::<SyncObject>()
+            .insert(nid);
+    }
+    pub fn to_global(&self, id: SyncObjectMe) -> SyncObject {
+        SyncObject {
+            user: self.client.my_id(),
+            id,
+        }
+    }
+    pub fn killed_me(&mut self, id: SyncObjectMe) {
+        self.count.rem(1);
+        self.killed(self.to_global(id))
+    }
+    pub fn killed(&self, id: SyncObject) {
+        self.client
+            .broadcast(&Packet::Dead(id), Reliability::Reliable, COMPRESSION)
+            .unwrap();
+    }
+    pub fn merge(&self, base: SyncObjectMe, top: SyncObject, at: usize) {
+        self.client
+            .broadcast(
+                &Packet::Merge(self.to_global(base), top, at),
+                Reliability::Reliable,
+                COMPRESSION,
+            )
+            .unwrap();
+    }
+    pub fn merge_me(&self, base: SyncObjectMe, top: SyncObjectMe, at: usize) {
+        self.merge(base, self.to_global(top), at);
+    }
+    pub fn reorder(&self, id: SyncObject, order: Vec<Id>) {
+        self.client
+            .broadcast(
+                &Packet::Reorder(id, order),
+                Reliability::Reliable,
+                COMPRESSION,
+            )
+            .unwrap();
+    }
+    pub fn reorder_me(&self, id: SyncObjectMe, order: Vec<Id>) {
+        self.reorder(self.to_global(id), order);
+    }
+    pub fn equip(&self, id: SyncObject) {
+        self.client
+            .broadcast(&Packet::Equip(id), Reliability::Reliable, COMPRESSION)
+            .unwrap();
+    }
+    pub fn equip_me(&self, id: SyncObjectMe) {
+        self.equip(self.to_global(id))
+    }
+    pub fn draw(&self, id: SyncObject, to: Vec<(SyncObjectMe, Trans)>, start: usize) {
+        self.client
+            .broadcast(
+                &Packet::Draw(id, to, start),
+                Reliability::Reliable,
+                COMPRESSION,
+            )
+            .unwrap();
+    }
+    pub fn draw_me(&self, id: SyncObjectMe, to: Vec<(SyncObjectMe, Trans)>, start: usize) {
+        self.draw(self.to_global(id), to, start)
+    }
+    pub fn flip(&self, id: SyncObject, at: usize) {
+        self.client
+            .broadcast(&Packet::Flip(id, at), Reliability::Reliable, COMPRESSION)
+            .unwrap();
+    }
+    pub fn flip_me(&self, id: SyncObjectMe, at: usize) {
+        self.flip(self.to_global(id), at)
+    }
+    pub fn counter(&self, id: SyncObject, value: Value) {
+        self.client
+            .broadcast(
+                &Packet::Counter(id, value),
+                Reliability::Reliable,
+                COMPRESSION,
+            )
+            .unwrap();
+    }
+    pub fn counter_me(&self, id: SyncObjectMe, value: Value) {
+        self.counter(self.to_global(id), value)
+    }
+}

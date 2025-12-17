@@ -14,6 +14,7 @@ pub enum Shape {
     Octohedron,
     Tetrahedron,
     Disc,
+    Turn(usize),
     Counter(Value),
 }
 const SIZE: f32 = 4.0 * MAT_BAR;
@@ -33,7 +34,19 @@ impl Shape {
             Shape::Dodecahedron => spawn_dodec(SIZE, transform, commands, meshes, materials, color),
             Shape::Octohedron => spawn_oct(SIZE, transform, commands, meshes, materials, color),
             Shape::Tetrahedron => spawn_tetra(SIZE, transform, commands, meshes, materials, color),
-            Shape::Disc => spawn_disc(SIZE, transform, commands, meshes, materials, color),
+            Shape::Disc => spawn_disc(
+                SIZE, transform, commands, meshes, materials, color, color, None,
+            ),
+            Shape::Turn(n) => spawn_disc(
+                SIZE,
+                transform,
+                commands,
+                meshes,
+                materials,
+                PLAYER[n % PLAYER.len()],
+                color,
+                Some(*n),
+            ),
             Shape::Counter(v) => make_counter(
                 2.0 * MAT_BAR,
                 transform,
@@ -463,7 +476,9 @@ pub fn spawn_disc<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
-    color: bevy::color::Color,
+    top_color: bevy::color::Color,
+    bottom_color: bevy::color::Color,
+    turn: Option<usize>,
 ) -> EntityCommands<'a> {
     let m = m * 0.5;
     let ratio = 8.0;
@@ -482,47 +497,75 @@ pub fn spawn_disc<'a>(
             ),
         ]),
         transform,
-        Shape::Disc,
+        if let Some(n) = turn {
+            Shape::Turn(n)
+        } else {
+            Shape::Disc
+        },
         RigidBody::Dynamic,
         Restitution::new(BOUNCY).with_combine_rule(CoefficientCombine::Max),
         LinearDamping(LIN_DAMPING),
         AngularDamping(ANG_DAMPING),
         SLEEP,
         GravityScale(GRAVITY),
-        Mesh3d(meshes.add(Cylinder::new(m, m / ratio))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: color,
+        Visibility::Visible,
+    ));
+    if top_color == bottom_color {
+        ent.insert(Mesh3d(meshes.add(Cylinder::new(m, m / ratio))));
+        ent.insert(MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: top_color,
             unlit: true,
             ..default()
-        })),
-    ));
+        })));
+    }
     ent.with_children(|parent| {
-        for (i, [mut y]) in [[m / ratio], [-m / ratio]].into_iter().enumerate() {
-            let i = 1 - i;
-            if y < 0.0 {
-                y -= CARD_THICKNESS;
-            } else {
-                y += CARD_THICKNESS;
-            }
+        if top_color != bottom_color {
             parent.spawn((
-                Transform::from_xyz(0.0, y, 0.0).looking_at(Vec3::default(), Dir3::Z),
-                Text3d::new(i.to_string()),
-                Side(i),
-                Mesh3d(meshes.add(Rectangle::new(m, m))),
+                Transform::from_xyz(0.0, 0.25 * m / ratio, 0.0),
+                Mesh3d(meshes.add(Cylinder::new(m, 0.5 * m / ratio))),
                 MeshMaterial3d(materials.add(StandardMaterial {
-                    base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
+                    base_color: bottom_color,
                     unlit: true,
-                    alpha_mode: AlphaMode::Multiply,
-                    base_color: bevy::prelude::Color::BLACK,
                     ..default()
                 })),
-                Text3dStyling {
-                    size: WORLD_FONT_SIZE,
-                    world_scale: Some(Vec2::splat(m)),
-                    anchor: TextAnchor::CENTER,
-                    ..default()
-                },
             ));
+            parent.spawn((
+                Transform::from_xyz(0.0, -0.25 * m / ratio, 0.0),
+                Mesh3d(meshes.add(Cylinder::new(m, 0.5 * m / ratio))),
+                MeshMaterial3d(materials.add(StandardMaterial {
+                    base_color: top_color,
+                    unlit: true,
+                    ..default()
+                })),
+            ));
+        } else {
+            for (i, [mut y]) in [[m / ratio], [-m / ratio]].into_iter().enumerate() {
+                let i = 1 - i;
+                if y < 0.0 {
+                    y -= CARD_THICKNESS;
+                } else {
+                    y += CARD_THICKNESS;
+                }
+                parent.spawn((
+                    Transform::from_xyz(0.0, y, 0.0).looking_at(Vec3::default(), Dir3::Z),
+                    Text3d::new(i.to_string()),
+                    Side(i),
+                    Mesh3d(meshes.add(Rectangle::new(m, m))),
+                    MeshMaterial3d(materials.add(StandardMaterial {
+                        base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
+                        unlit: true,
+                        alpha_mode: AlphaMode::Multiply,
+                        base_color: bevy::prelude::Color::BLACK,
+                        ..default()
+                    })),
+                    Text3dStyling {
+                        size: WORLD_FONT_SIZE,
+                        world_scale: Some(Vec2::splat(m)),
+                        anchor: TextAnchor::CENTER,
+                        ..default()
+                    },
+                ));
+            }
         }
     });
     ent
