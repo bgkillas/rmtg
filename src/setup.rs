@@ -7,14 +7,13 @@ use crate::sync::COMPRESSION;
 use crate::sync::Packet;
 #[cfg(feature = "steam")]
 use crate::sync::SendSleeping;
-use crate::sync::{SyncObjectMe, spawn_hand};
+use crate::sync::{Net, spawn_hand};
 use crate::update::{CardSpot, GiveEnts, SpotType};
 use crate::*;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy_framepace::{FramepaceSettings, Limiter};
-use bevy_rand::global::GlobalRng;
 #[cfg(feature = "steam")]
-use bevy_tangled::{Client, ClientTrait, Reliability};
+use bevy_tangled::{ClientTrait, Reliability};
 use bytes::Bytes;
 #[cfg(feature = "steam")]
 use std::collections::HashMap;
@@ -37,9 +36,7 @@ pub fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut framepace: ResMut<FramepaceSettings>,
-    #[cfg(feature = "steam")] mut client: ResMut<Client>,
-    mut rand: Single<&mut WyRand, With<GlobalRng>>,
-    mut count: ResMut<SyncCount>,
+    mut net: Net,
     mut light: ResMut<AmbientLight>,
     #[cfg(feature = "steam")] send_sleep: Res<SendSleeping>,
     #[cfg(feature = "steam")] give: Res<GiveEnts>,
@@ -57,7 +54,7 @@ pub fn setup(
         let rempeers = rempeers.0.clone();
         let peers1 = peers.map.clone();
         let peers2 = peers1.clone();
-        let _ = client.init_steam(
+        let _ = net.client.init_steam(
             Some(Box::new(move |client, peer| {
                 info!("user {peer} has joined");
                 if client.is_host() {
@@ -72,7 +69,6 @@ pub fn setup(
                             k += 1;
                         }
                     }
-                    peers1.lock().unwrap().insert(peer, k);
                     client
                         .broadcast(
                             &Packet::SetUser(peer, k),
@@ -80,14 +76,17 @@ pub fn setup(
                             COMPRESSION,
                         )
                         .unwrap();
-                    client
-                        .send(
-                            peer,
-                            &Packet::SetUser(client.my_id(), 0),
-                            Reliability::Reliable,
-                            COMPRESSION,
-                        )
-                        .unwrap();
+                    for (k, v) in peers1.lock().unwrap().iter() {
+                        client
+                            .send(
+                                peer,
+                                &Packet::SetUser(*k, *v),
+                                Reliability::Reliable,
+                                COMPRESSION,
+                            )
+                            .unwrap();
+                    }
+                    peers1.lock().unwrap().insert(peer, k);
                 }
                 send.store(true, std::sync::atomic::Ordering::Relaxed);
             })),
@@ -113,7 +112,7 @@ pub fn setup(
         }
         if let Some(lobby) = lobby {
             no_obj = true;
-            client.join_steam(lobby);
+            net.client.join_steam(lobby);
         }
     }
     let font = include_bytes!("../assets/noto.ttf");
@@ -281,7 +280,7 @@ pub fn setup(
             &mut materials,
             bevy::color::Color::WHITE,
         );
-        cube.insert(SyncObjectMe::new(&mut rand, &mut count));
+        cube.insert(net.new_id());
         let mut tetra = Shape::Tetrahedron.create(
             Transform::from_xyz(MAT_WIDTH + 2.0 * CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
             &mut commands,
@@ -289,7 +288,7 @@ pub fn setup(
             &mut materials,
             bevy::color::Color::WHITE,
         );
-        tetra.insert(SyncObjectMe::new(&mut rand, &mut count));
+        tetra.insert(net.new_id());
         let mut ico = Shape::Icosahedron.create(
             Transform::from_xyz(MAT_WIDTH + 3.0 * CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
             &mut commands,
@@ -297,7 +296,7 @@ pub fn setup(
             &mut materials,
             bevy::color::Color::WHITE,
         );
-        ico.insert(SyncObjectMe::new(&mut rand, &mut count));
+        ico.insert(net.new_id());
         let mut oct = Shape::Octohedron.create(
             Transform::from_xyz(MAT_WIDTH + 3.0 * CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
             &mut commands,
@@ -305,7 +304,7 @@ pub fn setup(
             &mut materials,
             bevy::color::Color::WHITE,
         );
-        oct.insert(SyncObjectMe::new(&mut rand, &mut count));
+        oct.insert(net.new_id());
         let mut dodec = Shape::Dodecahedron.create(
             Transform::from_xyz(MAT_WIDTH + 4.0 * CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
             &mut commands,
@@ -313,7 +312,7 @@ pub fn setup(
             &mut materials,
             bevy::color::Color::WHITE,
         );
-        dodec.insert(SyncObjectMe::new(&mut rand, &mut count));
+        dodec.insert(net.new_id());
         let mut coin = Shape::Disc.create(
             Transform::from_xyz(MAT_WIDTH + 4.0 * CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
             &mut commands,
@@ -321,7 +320,7 @@ pub fn setup(
             &mut materials,
             bevy::color::Color::WHITE,
         );
-        coin.insert(SyncObjectMe::new(&mut rand, &mut count));
+        coin.insert(net.new_id());
         for i in 0..4 {
             let (x, y) = match i {
                 0 => (MAT_BAR * 3.0, MAT_BAR * 3.0),
@@ -330,15 +329,15 @@ pub fn setup(
                 3 => (-MAT_BAR * 3.0, -MAT_BAR * 3.0),
                 _ => unreachable!(),
             };
-            let mut counter = Shape::Counter(Value(40)).create(
+            let mut counter = Shape::Counter(Value(40), i).create(
                 Transform::from_xyz(x, MAT_BAR * 4.0, y),
                 &mut commands,
                 &mut meshes,
                 &mut materials,
                 bevy::color::Color::WHITE,
             );
-            counter.insert(SyncObjectMe::new(&mut rand, &mut count));
-            let mut counter = Shape::Turn(i).create(
+            counter.insert(net.new_id());
+            let mut turn = Shape::Turn(i).create(
                 Transform::from_xyz(x * 2.5, MAT_BAR * 4.0, y)
                     .looking_to(Dir3::Z, if i == 0 { Dir3::NEG_Y } else { Dir3::Y }),
                 &mut commands,
@@ -346,7 +345,7 @@ pub fn setup(
                 &mut materials,
                 bevy::color::Color::WHITE,
             );
-            counter.insert(SyncObjectMe::new(&mut rand, &mut count));
+            turn.insert(net.new_id());
         }
     }
     commands.spawn((

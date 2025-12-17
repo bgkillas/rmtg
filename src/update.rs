@@ -393,13 +393,24 @@ pub fn listen_for_mouse(
             ),
         >,
         Option<Single<Entity, With<FollowMouse>>>,
-        Query<&mut Shape>,
+        Query<(&mut Shape, Entity)>,
         ResMut<Menu>,
         ResMut<InputFocus>,
         Option<Single<Entity, With<SideMenu>>>,
         Option<Single<(Entity, &SearchDeck)>>,
     ),
-    (text, font, mut text3d, children, mut transform, hover_map, equipment, mut net): (
+    (
+        text,
+        font,
+        mut text3d,
+        children,
+        mut transforms,
+        hover_map,
+        equipment,
+        mut net,
+        mut turn,
+        peers,
+    ): (
         Option<Single<&TextInputContents>>,
         Res<FontRes>,
         Query<&mut Text3d>,
@@ -408,6 +419,8 @@ pub fn listen_for_mouse(
         Res<HoverMap>,
         Query<(), With<Equipment>>,
         Net,
+        ResMut<Turn>,
+        Res<Peers>,
     ),
 ) {
     if matches!(*menu, Menu::Esc)
@@ -440,7 +453,7 @@ pub fn listen_for_mouse(
     );
     let mut colliders = pset.p1();
     if let Some(RayHitData { entity, .. }) = hit {
-        let Ok(mut transform) = transform.get_mut(entity) else {
+        let Ok(mut transform) = transforms.get_mut(entity) else {
             if let Some(single) = zoom {
                 commands.entity(single.0).despawn();
             }
@@ -467,7 +480,7 @@ pub fn listen_for_mouse(
                 }
             } else if input.just_pressed(KeyCode::KeyR) {
                 if pile.len() > 1 {
-                    pile.shuffle(net.rand());
+                    pile.shuffle(&mut net.rand);
                     let card = pile.last();
                     repaint_face(&mut mats, &mut materials, card, children);
                     if let Ok(id) = ids.get(entity) {
@@ -1000,8 +1013,8 @@ pub fn listen_for_mouse(
                 commands.entity(single.0).despawn();
             }
             if mouse_input.just_pressed(MouseButton::Right)
-                && let Ok(s) = shape.get_mut(entity)
-                && let Shape::Counter(v) = s.into_inner()
+                && let Ok((s, _)) = shape.get_mut(entity)
+                && let Shape::Counter(v, _) = s.into_inner()
             {
                 v.0 -= 1;
                 for ent in children.get(entity).unwrap() {
@@ -1015,8 +1028,8 @@ pub fn listen_for_mouse(
                 }
             } else if mouse_input.just_pressed(MouseButton::Left) {
                 if !input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-                    && let Ok(s) = shape.get_mut(entity)
-                    && let Shape::Counter(v) = s.into_inner()
+                    && let Ok((s, _)) = shape.get_mut(entity)
+                    && let Shape::Counter(v, _) = s.into_inner()
                 {
                     v.0 += 1;
                     for ent in children.get(entity).unwrap() {
@@ -1045,13 +1058,13 @@ pub fn listen_for_mouse(
             } else if input.just_pressed(KeyCode::KeyC)
                 && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
                 && input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
-                && let Ok(shape) = shape.get(entity)
+                && let Ok((shape, _)) = shape.get(entity)
             {
                 *game_clipboard = GameClipboard::Shape(shape.clone());
             } else if input.just_pressed(KeyCode::KeyR)
                 && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-                && let Ok(s) = shape.get(entity)
-                && let Shape::Counter(v) = s
+                && let Ok((s, _)) = shape.get(entity)
+                && let Shape::Counter(v, _) = s
             {
                 #[cfg(feature = "calc")]
                 {
@@ -1101,7 +1114,67 @@ pub fn listen_for_mouse(
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
                 }
-                transform.rotate_local_z(PI);
+                let mut flip = true;
+                if let Ok((Shape::Turn(n), _)) = shape.get(entity) {
+                    let peers = peers.map();
+                    if peers.len() <= 1 {
+                        flip = false
+                    } else if *n == turn.0 {
+                        let next = |n: usize| -> usize {
+                            match n {
+                                0 => 2,
+                                2 => 3,
+                                3 => 1,
+                                1 => 0,
+                                _ => unreachable!(),
+                            }
+                        };
+                        turn.0 = next(turn.0);
+                        while peers.iter().all(|(_, b)| *b != turn.0) {
+                            turn.0 = next(turn.0);
+                        }
+                        let last = shape
+                            .iter()
+                            .find_map(|(s, e)| {
+                                if Shape::Turn(turn.0) == *s {
+                                    Some(e)
+                                } else {
+                                    None
+                                }
+                            })
+                            .unwrap();
+                        if let Ok(id) = others_ids.get(last) {
+                            net.take(last, *id);
+                        }
+                        let mut transform = transforms.get_mut(last).unwrap();
+                        transform.rotate_local_z(PI);
+                        net.turn(turn.0);
+                    } else if peers.iter().any(|(_, b)| b == n) {
+                        let last = shape
+                            .iter()
+                            .find_map(|(s, e)| {
+                                if Shape::Turn(turn.0) == *s {
+                                    Some(e)
+                                } else {
+                                    None
+                                }
+                            })
+                            .unwrap();
+                        if let Ok(id) = others_ids.get(last) {
+                            net.take(last, *id);
+                        }
+                        let mut transform = transforms.get_mut(last).unwrap();
+                        transform.rotate_local_z(PI);
+                        turn.0 = *n;
+                        net.turn(turn.0);
+                    } else {
+                        flip = false;
+                    }
+                }
+                if flip {
+                    let mut transform = transforms.get_mut(entity).unwrap();
+                    transform.rotate_local_z(PI);
+                }
             } else if (input.just_pressed(KeyCode::KeyR)
                 || (input.pressed(KeyCode::KeyR)
                     && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])))
@@ -1115,13 +1188,12 @@ pub fn listen_for_mouse(
                     net.take(entity, *id);
                 }
                 lv.y = MAT_WIDTH;
-                let rand = net.rand();
-                av.x = if rand.random() { 1.0 } else { -1.0 }
-                    * (rand.random_range(32.0..64.0) + av.x.abs());
-                av.y = if rand.random() { 1.0 } else { -1.0 }
-                    * (rand.random_range(32.0..64.0) + av.y.abs());
-                av.z = if rand.random() { 1.0 } else { -1.0 }
-                    * (rand.random_range(32.0..64.0) + av.z.abs());
+                av.x = if net.rand.random() { 1.0 } else { -1.0 }
+                    * (net.rand.random_range(32.0..64.0) + av.x.abs());
+                av.y = if net.rand.random() { 1.0 } else { -1.0 }
+                    * (net.rand.random_range(32.0..64.0) + av.y.abs());
+                av.z = if net.rand.random() { 1.0 } else { -1.0 }
+                    * (net.rand.random_range(32.0..64.0) + av.z.abs());
             } else if input.just_pressed(KeyCode::KeyE) {
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
@@ -1547,7 +1619,7 @@ pub fn update_search_deck(
                 && let Ok(value) = kalc_lib::math::do_math(parsed.0, Options::default(), parsed.1)
                 && let NumStr::Num(n) = value
                 && let Ok((children, v)) = children.get_mut(counter.0)
-                && let Shape::Counter(v) = v.into_inner()
+                && let Shape::Counter(v, _) = v.into_inner()
             {
                 v.0 = n.number.real().to_f64().round() as i128;
                 for ent in children {
@@ -1881,7 +1953,7 @@ pub fn register_deck(
                     .find(|(_, s, _)| matches!(s.spot_type, SpotType::Graveyard))
                     .unwrap();
                 rem(spot);
-                deck.shuffle(net.rand());
+                deck.shuffle(&mut net.rand);
                 let v = Vec2::new(trans.x, trans.z);
                 vec2_to_ground(&deck, v, rev)
             }

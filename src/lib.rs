@@ -20,7 +20,7 @@ use std::fmt::{Debug, Error, Formatter};
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::{fmt, iter, mem};
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 const CARD_WIDTH: f32 = CARD_HEIGHT * IMAGE_WIDTH / IMAGE_HEIGHT;
@@ -76,7 +76,6 @@ const FONT_SIZE: f32 = 16.0;
 const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO multi select, in card counters
-//TODO turns
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
@@ -143,6 +142,7 @@ pub fn start() -> AppExit {
     })
     .insert_resource(clipboard)
     .insert_resource(ToMoveUp::default())
+    .insert_resource(Turn::default())
     .insert_resource(SyncCount::default())
     .insert_resource(Sent::default())
     .insert_resource(Peers::default())
@@ -283,9 +283,16 @@ fn test_get_deck() {
     app.update();
 }
 #[derive(Resource, Default, Debug)]
+struct Turn(usize);
+#[derive(Resource, Default, Debug)]
 struct Peers {
     map: Arc<Mutex<HashMap<PeerId, usize>>>,
     me: Option<usize>,
+}
+impl Peers {
+    fn map(&self) -> MutexGuard<'_, HashMap<PeerId, usize>> {
+        self.map.lock().unwrap()
+    }
 }
 #[derive(Resource, Default, Debug)]
 struct RemPeers(Arc<Mutex<Vec<PeerId>>>);

@@ -205,6 +205,7 @@ pub fn apply_sync(
         equipment,
         side,
         mut menu,
+        mut turn,
     ): (
         Option<Single<(Entity, &SearchDeck)>>,
         Option<Single<&TextInputContents>>,
@@ -243,6 +244,7 @@ pub fn apply_sync(
         Query<(), With<Equipment>>,
         Option<Single<Entity, With<SideMenu>>>,
         ResMut<Menu>,
+        ResMut<Turn>,
     ),
 ) {
     if !client.is_connected() {
@@ -476,7 +478,7 @@ pub fn apply_sync(
                     peers.me = Some(id);
                     *cam = default_cam_pos(peers.me.unwrap_or_default());
                 }
-                peers.map.lock().unwrap().insert(peer, id);
+                peers.map().insert(peer, id);
             }
             Packet::Dead(id) => {
                 if id.user == client.my_id()
@@ -894,7 +896,7 @@ pub fn apply_sync(
                 let mut run = |children: &Children, e: Entity| {
                     let c = children[0];
                     if let (Ok(counter), Ok(mut t)) = (shape.get_mut(e), text3d.get_mut(c)) {
-                        let Shape::Counter(v) = counter.into_inner() else {
+                        let Shape::Counter(v, _) = counter.into_inner() else {
                             unreachable!()
                         };
                         *v = to.clone();
@@ -922,7 +924,7 @@ pub fn apply_sync(
                     return;
                 }
                 ind = true;
-                if let Some(id) = peers.map.lock().unwrap().get(&sender) {
+                if let Some(id) = peers.map().get(&sender) {
                     if let Some(mut t) = cams
                         .iter_mut()
                         .find_map(|(a, t)| if a.0 == sender { Some(t) } else { None })
@@ -993,7 +995,7 @@ pub fn apply_sync(
             Packet::Voice(_msg) => {
                 todo!()
             }
-            Packet::Turn(_player) => {}
+            Packet::Turn(player) => turn.0 = player,
         }
     });
     #[cfg(feature = "steam")]
@@ -1045,6 +1047,7 @@ pub fn new_lobby(
         if input.just_pressed(KeyCode::KeyN) {
             info!("hosting steam");
             peers.me = Some(0);
+            peers.map().insert(client.my_id(), 0);
             #[cfg(feature = "steam")]
             client.host_steam().unwrap();
         } else if input.just_pressed(KeyCode::KeyM) {
@@ -1060,7 +1063,6 @@ pub fn new_lobby(
                 client
                     .host_ip_runtime(
                         Some(Box::new(move |client, peer| {
-                            peers.lock().unwrap().insert(peer, peer.0 as usize);
                             client
                                 .broadcast(
                                     &Packet::SetUser(peer, peer.0 as usize),
@@ -1068,14 +1070,17 @@ pub fn new_lobby(
                                     COMPRESSION,
                                 )
                                 .unwrap();
-                            client
-                                .send(
-                                    peer,
-                                    &Packet::SetUser(client.my_id(), 0),
-                                    Reliability::Reliable,
-                                    COMPRESSION,
-                                )
-                                .unwrap();
+                            for (k, v) in peers.lock().unwrap().iter() {
+                                client
+                                    .send(
+                                        peer,
+                                        &Packet::SetUser(*k, *v),
+                                        Reliability::Reliable,
+                                        COMPRESSION,
+                                    )
+                                    .unwrap();
+                            }
+                            peers.lock().unwrap().insert(peer, peer.0 as usize);
                             info!("user {peer} has joined");
                             send.store(true, std::sync::atomic::Ordering::Relaxed);
                         })),
@@ -1261,15 +1266,12 @@ impl SyncCount {
 pub struct InOtherHand;
 #[derive(SystemParam)]
 pub struct Net<'w, 's> {
-    client: Res<'w, Client>,
-    rand: Single<'w, 's, &'static mut WyRand, With<GlobalRng>>,
-    count: ResMut<'w, SyncCount>,
+    pub client: ResMut<'w, Client>,
+    pub rand: Single<'w, 's, &'static mut WyRand, With<GlobalRng>>,
+    pub count: ResMut<'w, SyncCount>,
     commands: Commands<'w, 's>,
 }
 impl<'w, 's> Net<'w, 's> {
-    pub fn rand(&mut self) -> &mut Single<'w, 's, &'static mut WyRand, With<GlobalRng>> {
-        &mut self.rand
-    }
     pub fn new_id(&mut self) -> SyncObjectMe {
         SyncObjectMe::new(&mut self.rand, &mut self.count)
     }
@@ -1371,5 +1373,10 @@ impl<'w, 's> Net<'w, 's> {
     }
     pub fn counter_me(&self, id: SyncObjectMe, value: Value) {
         self.counter(self.to_global(id), value)
+    }
+    pub fn turn(&self, n: usize) {
+        self.client
+            .broadcast(&Packet::Turn(n), Reliability::Reliable, COMPRESSION)
+            .unwrap();
     }
 }

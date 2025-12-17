@@ -12,6 +12,7 @@ pub fn make_counter<'a>(
     materials: &mut Assets<StandardMaterial>,
     value: Value,
     color: Color,
+    player: usize,
 ) -> EntityCommands<'a> {
     let m = 2.0 * m;
     let s = value.0.to_string();
@@ -30,7 +31,7 @@ pub fn make_counter<'a>(
             unlit: true,
             ..default()
         })),
-        Shape::Counter(value),
+        Shape::Counter(value, player),
     ));
     cmds.with_children(|p| {
         p.spawn((
@@ -52,27 +53,8 @@ pub fn make_counter<'a>(
                 ..default()
             },
         ));
-        p.spawn((
-            Transform::from_xyz(0.0, -(m / 16.0 + CARD_THICKNESS), 0.0)
-                .looking_at(Vec3::default(), Dir3::NEG_Z),
-            Text3d::new(s),
-            Mesh3d(meshes.add(Rectangle::new(m, m))),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
-                unlit: true,
-                alpha_mode: AlphaMode::Multiply,
-                base_color: Color::BLACK,
-                ..default()
-            })),
-            Text3dStyling {
-                size: WORLD_FONT_SIZE,
-                world_scale: Some(Vec2::splat(m / 2.0)),
-                anchor: TextAnchor::CENTER,
-                ..default()
-            },
-        ));
     });
     cmds
 }
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, Debug, Clone, PartialEq)]
 pub struct Value(pub i128);

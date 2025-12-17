@@ -6,7 +6,7 @@ use bevy::render::render_resource::Face;
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 use std::f32::consts::FRAC_PI_2;
 const BOUNCY: f32 = 0.5;
-#[derive(Encode, Decode, Component, Clone, Debug)]
+#[derive(Encode, Decode, Component, Clone, Debug, PartialEq)]
 pub enum Shape {
     Cube,
     Icosahedron,
@@ -15,7 +15,7 @@ pub enum Shape {
     Tetrahedron,
     Disc,
     Turn(usize),
-    Counter(Value),
+    Counter(Value, usize),
 }
 const SIZE: f32 = 4.0 * MAT_BAR;
 pub const WORLD_FONT_SIZE: f32 = 128.0;
@@ -47,7 +47,7 @@ impl Shape {
                 color,
                 Some(*n),
             ),
-            Shape::Counter(v) => make_counter(
+            Shape::Counter(v, i) => make_counter(
                 2.0 * MAT_BAR,
                 transform,
                 commands,
@@ -55,6 +55,7 @@ impl Shape {
                 materials,
                 v.clone(),
                 color,
+                *i,
             ),
         }
     }
