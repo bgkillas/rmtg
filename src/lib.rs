@@ -3,7 +3,7 @@ use crate::update::{
     GiveEnts, ToMoveUp, cam_rotation, cam_translation, esc_menu, follow_mouse, gather_hand,
     give_ents, listen_for_deck, listen_for_mouse, on_scroll_handler, pick_from_list, pile_merge,
     register_deck, rem_peers, reset_layers, send_scroll_events, set_card_spot, to_move_up,
-    update_hand, update_search_deck,
+    turn_keybinds, update_hand, update_search_deck,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -77,6 +77,8 @@ const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO multi select, in card counters
 //TODO have ip connect not use peerid for player id
+//TODO spawn stuff touching the floor
+//TODO flip life counters on connect
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
@@ -164,6 +166,7 @@ pub fn start() -> AppExit {
         (
             (
                 (
+                    turn_keybinds,
                     set_card_spot,
                     send_scroll_events,
                     #[cfg(feature = "steam")]

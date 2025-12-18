@@ -1114,107 +1114,94 @@ pub fn listen_for_mouse(
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
                 }
-                if let Ok((Shape::Turn(n), _)) = shape.get(entity) {
-                    let mut flip = true;
-                    let mut up = false;
-                    let peers = peers.map();
-                    if peers.len() <= 1 {
-                        flip = false
-                    } else if *n == turn.0 {
-                        let next = |n: usize| -> usize {
-                            match n {
-                                0 => 2,
-                                2 => 3,
-                                3 => 1,
-                                1 => 0,
-                                _ => unreachable!(),
-                            }
-                        };
-                        turn.0 = next(turn.0);
-                        while peers.iter().all(|(_, b)| *b != turn.0)
-                            || shape
+                let s = shape.get(entity);
+                match s.map(|(a, _)| a.clone()) {
+                    Ok(Shape::Turn(n)) => {
+                        let mut flip = true;
+                        let mut up = false;
+                        let peers = peers.map();
+                        if peers.len() <= 1 {
+                            flip = false
+                        } else if n == turn.0 {
+                            next_turn(
+                                others_ids,
+                                &mut shape,
+                                &mut transforms,
+                                &mut net,
+                                &mut turn,
+                                entity,
+                                &mut flip,
+                                &peers,
+                            );
+                        } else if peers.iter().any(|(_, b)| *b == n)
+                            && shape
                                 .iter()
                                 .find_map(|(s, e)| {
                                     if let Shape::Counter(_, v) = s
-                                        && *v == turn.0
+                                        && *v == n
                                     {
                                         Some(e)
                                     } else {
                                         None
                                     }
                                 })
-                                .map(|ent| is_reversed(transforms.get(ent).unwrap()))
-                                .unwrap_or(true)
+                                .map(|ent| !is_reversed(transforms.get(ent).unwrap()))
+                                .unwrap_or(false)
                         {
-                            turn.0 = next(turn.0);
-                        }
-                        let last = shape
-                            .iter()
-                            .find_map(|(s, e)| {
-                                if Shape::Turn(turn.0) == *s {
-                                    Some(e)
-                                } else {
-                                    None
-                                }
-                            })
-                            .unwrap();
-                        if last == entity {
-                            flip = false
+                            to_turn(
+                                others_ids,
+                                &mut shape,
+                                &mut transforms,
+                                &mut net,
+                                &mut turn,
+                                n,
+                            );
+                            up = true
                         } else {
-                            if let Ok(id) = others_ids.get(last) {
-                                net.take(last, *id);
-                            }
-                            let mut transform = transforms.get_mut(last).unwrap();
-                            //TODO have X be pass turn probably
-                            transform.rotation = Quat::default();
-                            net.turn(turn.0);
+                            flip = false;
                         }
-                    } else if peers.iter().any(|(_, b)| b == n)
-                        && shape
-                            .iter()
-                            .find_map(|(s, e)| {
-                                if let Shape::Counter(_, v) = s
-                                    && v == n
+                        if flip {
+                            let mut transform = transforms.get_mut(entity).unwrap();
+                            transform.rotation = Quat::default();
+                            *transform = transform
+                                .looking_to(Dir3::Z, if up { Dir3::Y } else { Dir3::NEG_Y });
+                        }
+                    }
+                    Ok(Shape::Counter(_, n)) if n == turn.0 => {
+                        //TODO freezes on no counter
+                        let mut flip = true;
+                        next_turn(
+                            others_ids,
+                            &mut shape,
+                            &mut transforms,
+                            &mut net,
+                            &mut turn,
+                            entity,
+                            &mut flip,
+                            &peers.map(),
+                        );
+                        let mut transform = transforms.get_mut(entity).unwrap();
+                        transform.rotate_local_z(PI);
+                        if flip
+                            && let Some(entity) = shape.iter().find_map(|(s, e)| {
+                                if let Shape::Turn(v) = s
+                                    && *v == n
                                 {
                                     Some(e)
                                 } else {
                                     None
                                 }
                             })
-                            .map(|ent| !is_reversed(transforms.get(ent).unwrap()))
-                            .unwrap_or(false)
-                    {
-                        let last = shape
-                            .iter()
-                            .find_map(|(s, e)| {
-                                if Shape::Turn(turn.0) == *s {
-                                    Some(e)
-                                } else {
-                                    None
-                                }
-                            })
-                            .unwrap();
-                        if let Ok(id) = others_ids.get(last) {
-                            net.take(last, *id);
+                        {
+                            let mut transform = transforms.get_mut(entity).unwrap();
+                            transform.rotation = Quat::default();
+                            *transform = transform.looking_to(Dir3::Z, Dir3::NEG_Y);
                         }
-                        let mut transform = transforms.get_mut(last).unwrap();
-                        transform.rotation = Quat::default();
-                        *transform = transform.looking_to(Dir3::Z, Dir3::NEG_Y);
-                        turn.0 = *n;
-                        net.turn(turn.0);
-                        up = true
-                    } else {
-                        flip = false;
                     }
-                    if flip {
+                    _ => {
                         let mut transform = transforms.get_mut(entity).unwrap();
-                        transform.rotation = Quat::default();
-                        *transform =
-                            transform.looking_to(Dir3::Z, if up { Dir3::Y } else { Dir3::NEG_Y });
+                        transform.rotate_local_z(PI);
                     }
-                } else {
-                    let mut transform = transforms.get_mut(entity).unwrap();
-                    transform.rotate_local_z(PI);
                 }
             } else if (input.just_pressed(KeyCode::KeyR)
                 || (input.pressed(KeyCode::KeyR)
@@ -1251,6 +1238,171 @@ pub fn listen_for_mouse(
         }
     } else if let Some(single) = zoom {
         commands.entity(single.0).despawn();
+    }
+}
+pub fn turn_keybinds(
+    others_ids: Query<&SyncObject>,
+    mut shape: Query<(&mut Shape, Entity)>,
+    mut transforms: Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
+    mut net: Net,
+    mut turn: ResMut<Turn>,
+    peers: Res<Peers>,
+    input: Res<ButtonInput<KeyCode>>,
+) {
+    if input.just_pressed(KeyCode::KeyX) {
+        let mut flip = true;
+        let mut up = false;
+        let map = peers.map();
+        if map.len() <= 1 {
+            return;
+        }
+        let Some(me) = peers.me else { return };
+        let Some(entity) = shape.iter().find_map(|(s, e)| {
+            if let Shape::Turn(v) = s
+                && *v == me
+            {
+                Some(e)
+            } else {
+                None
+            }
+        }) else {
+            return;
+        };
+        if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
+            if me == turn.0 {
+                return;
+            }
+            to_turn(
+                others_ids,
+                &mut shape,
+                &mut transforms,
+                &mut net,
+                &mut turn,
+                me,
+            );
+            up = true
+        } else {
+            if me != turn.0
+                || shape
+                    .iter()
+                    .find_map(|(s, e)| {
+                        if let Shape::Counter(_, v) = s
+                            && *v == me
+                        {
+                            Some(e)
+                        } else {
+                            None
+                        }
+                    })
+                    .map(|ent| is_reversed(transforms.get(ent).unwrap()))
+                    .unwrap_or(true)
+            {
+                return;
+            }
+            next_turn(
+                others_ids,
+                &mut shape,
+                &mut transforms,
+                &mut net,
+                &mut turn,
+                entity,
+                &mut flip,
+                &map,
+            );
+        }
+        if flip {
+            if let Ok(id) = others_ids.get(entity) {
+                net.take(entity, *id);
+            }
+            let mut transform = transforms.get_mut(entity).unwrap();
+            transform.rotation = Quat::default();
+            *transform = transform.looking_to(Dir3::Z, if up { Dir3::Y } else { Dir3::NEG_Y });
+        }
+    }
+}
+fn to_turn(
+    others_ids: Query<&SyncObject>,
+    shape: &mut Query<(&mut Shape, Entity)>,
+    transforms: &mut Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
+    net: &mut Net,
+    turn: &mut ResMut<Turn>,
+    n: usize,
+) {
+    let last = shape
+        .iter()
+        .find_map(|(s, e)| {
+            if Shape::Turn(turn.0) == *s {
+                Some(e)
+            } else {
+                None
+            }
+        })
+        .unwrap();
+    if let Ok(id) = others_ids.get(last) {
+        net.take(last, *id);
+    }
+    let mut transform = transforms.get_mut(last).unwrap();
+    transform.rotation = Quat::default();
+    *transform = transform.looking_to(Dir3::Z, Dir3::NEG_Y);
+    turn.0 = n;
+    net.turn(turn.0);
+}
+fn next_turn(
+    others_ids: Query<&SyncObject>,
+    shape: &mut Query<(&mut Shape, Entity)>,
+    transforms: &mut Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
+    net: &mut Net,
+    turn: &mut ResMut<Turn>,
+    entity: Entity,
+    flip: &mut bool,
+    peers: &MutexGuard<HashMap<PeerId, usize>>,
+) {
+    let next = |n: usize| -> usize {
+        match n {
+            0 => 2,
+            2 => 3,
+            3 => 1,
+            1 => 0,
+            _ => unreachable!(),
+        }
+    };
+    turn.0 = next(turn.0);
+    while peers.iter().all(|(_, b)| *b != turn.0)
+        || shape
+            .iter()
+            .find_map(|(s, e)| {
+                if let Shape::Counter(_, v) = s
+                    && *v == turn.0
+                {
+                    Some(e)
+                } else {
+                    None
+                }
+            })
+            .map(|ent| is_reversed(transforms.get(ent).unwrap()))
+            .unwrap_or(true)
+    {
+        turn.0 = next(turn.0);
+    }
+    let last = shape
+        .iter()
+        .find_map(|(s, e)| {
+            if Shape::Turn(turn.0) == *s {
+                Some(e)
+            } else {
+                None
+            }
+        })
+        .unwrap();
+    if last == entity {
+        *flip = false
+    } else {
+        if let Ok(id) = others_ids.get(last) {
+            net.take(last, *id);
+        }
+        let mut transform = transforms.get_mut(last).unwrap();
+        transform.rotation = Quat::default();
+        net.turn(turn.0);
     }
 }
 fn rotate_left(transform: &mut Mut<Transform>) {

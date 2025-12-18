@@ -485,18 +485,22 @@ pub fn spawn_disc<'a>(
     let ratio = 8.0;
     let mut ent = commands.spawn((
         CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::compound(vec![
-            (
-                Position::default(),
-                Rotation::default(),
-                Collider::cylinder(m, m / ratio),
-            ),
-            (
-                Position::default(),
-                Rotation::default(),
-                Collider::cylinder(m + CARD_THICKNESS, m / (ratio * 16.0)),
-            ),
-        ]),
+        if turn.is_none() {
+            Collider::compound(vec![
+                (
+                    Position::default(),
+                    Rotation::default(),
+                    Collider::cylinder(m, m / ratio),
+                ),
+                (
+                    Position::default(),
+                    Rotation::default(),
+                    Collider::cylinder(m + CARD_THICKNESS, m / (ratio * 16.0)),
+                ),
+            ])
+        } else {
+            Collider::cylinder(m, m / ratio)
+        },
         transform,
         if let Some(n) = turn {
             Shape::Turn(n)
@@ -511,7 +515,7 @@ pub fn spawn_disc<'a>(
         GravityScale(GRAVITY),
         Visibility::Visible,
     ));
-    if top_color == bottom_color {
+    if turn.is_none() {
         ent.insert(Mesh3d(meshes.add(Cylinder::new(m, m / ratio))));
         ent.insert(MeshMaterial3d(materials.add(StandardMaterial {
             base_color: top_color,
@@ -520,7 +524,7 @@ pub fn spawn_disc<'a>(
         })));
     }
     ent.with_children(|parent| {
-        if top_color != bottom_color {
+        if turn.is_some() {
             parent.spawn((
                 Transform::from_xyz(0.0, 0.25 * m / ratio, 0.0),
                 Mesh3d(meshes.add(Cylinder::new(m, 0.5 * m / ratio))),
