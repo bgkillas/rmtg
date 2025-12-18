@@ -40,6 +40,7 @@ pub fn setup(
     mut light: ResMut<AmbientLight>,
     #[cfg(feature = "steam")] send_sleep: Res<SendSleeping>,
     #[cfg(feature = "steam")] give: Res<GiveEnts>,
+    #[cfg(feature = "steam")] flip_counter: Res<FlipCounter>,
     #[cfg(feature = "steam")] peers: Res<Peers>,
     #[cfg(feature = "steam")] rempeers: Res<RemPeers>,
 ) {
@@ -54,6 +55,8 @@ pub fn setup(
         let rempeers = rempeers.0.clone();
         let peers1 = peers.map.clone();
         let peers2 = peers1.clone();
+        let flip1 = flip_counter.0.clone();
+        let flip2 = flip1.clone();
         let _ = net.client.init_steam(
             Some(Box::new(move |client, peer| {
                 info!("user {peer} has joined");
@@ -87,14 +90,18 @@ pub fn setup(
                             .unwrap();
                     }
                     peers1.lock().unwrap().insert(peer, k);
+                    flip1.lock().unwrap().push((k, true));
                 }
                 send.store(true, std::sync::atomic::Ordering::Relaxed);
             })),
             Some(Box::new(move |client, peer| {
                 info!("user {peer} has left");
-                peers2.lock().unwrap().remove(&peer);
+                let k = peers2.lock().unwrap().remove(&peer);
                 rempeers.lock().unwrap().push(peer);
                 if client.is_host() {
+                    if let Some(k) = k {
+                        flip2.lock().unwrap().push((k, false));
+                    }
                     give.lock().unwrap().push(peer);
                     let mut who = who2.lock().unwrap();
                     who.retain(|_, p| *p != peer)

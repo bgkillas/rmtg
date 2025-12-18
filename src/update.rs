@@ -2253,6 +2253,33 @@ pub fn give_ents(to_do: Res<GiveEnts>, ents: Query<(&SyncObject, Entity)>, mut n
 }
 #[derive(Resource, Default)]
 pub struct GiveEnts(pub Arc<Mutex<Vec<PeerId>>>);
+#[derive(Resource, Default)]
+pub struct FlipCounter(pub Arc<Mutex<Vec<(usize, bool)>>>);
+pub fn flip_ents(
+    to_do: Res<FlipCounter>,
+    mut ents: Query<(&Shape, &mut Transform, Entity, Option<&SyncObject>)>,
+    mut net: Net,
+) {
+    for (id, up) in to_do.0.lock().unwrap().drain(..) {
+        if let Some((mut t, ent, sync)) = ents.iter_mut().find_map(|(s, t, e, i)| {
+            if let Shape::Counter(_, v) = s
+                && *v == id
+            {
+                Some((t, e, i))
+            } else {
+                None
+            }
+        }) {
+            if let Some(id) = sync {
+                net.take(ent, *id);
+            }
+            if up == is_reversed(&t) {
+                //TODO if !up and turn == id then next_turn
+                t.rotate_local_z(PI)
+            }
+        }
+    }
+}
 pub fn on_scroll_handler(
     mut scroll: On<Scroll>,
     mut query: Query<(&mut ScrollPosition, &Node, &ComputedNode)>,

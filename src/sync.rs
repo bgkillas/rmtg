@@ -1039,6 +1039,7 @@ pub fn new_lobby(
     mut client: ResMut<Client>,
     down: Res<Download>,
     #[cfg(feature = "ip")] send_sleep: Res<SendSleeping>,
+    #[cfg(feature = "ip")] flip_counter: Res<FlipCounter>,
     #[cfg(feature = "ip")] give: Res<GiveEnts>,
     mut peers: ResMut<Peers>,
     #[cfg(feature = "ip")] rempeers: Res<RemPeers>,
@@ -1055,6 +1056,8 @@ pub fn new_lobby(
             peers.me = Some(0);
             #[cfg(feature = "ip")]
             {
+                let flip1 = flip_counter.0.clone();
+                let flip2 = flip1.clone();
                 let send = send_sleep.0.clone();
                 let give = give.0.clone();
                 let rempeers = rempeers.0.clone();
@@ -1081,12 +1084,15 @@ pub fn new_lobby(
                                     .unwrap();
                             }
                             peers.lock().unwrap().insert(peer, peer.0 as usize);
+                            flip1.lock().unwrap().push((peer.0 as usize, true));
                             info!("user {peer} has joined");
                             send.store(true, std::sync::atomic::Ordering::Relaxed);
                         })),
                         Some(Box::new(move |_, peer| {
                             info!("user {peer} has left");
-                            peers2.lock().unwrap().remove(&peer);
+                            if let Some(id) = peers2.lock().unwrap().remove(&peer) {
+                                flip2.lock().unwrap().push((id, false));
+                            }
                             rempeers.lock().unwrap().push(peer);
                             give.lock().unwrap().push(peer);
                         })),
