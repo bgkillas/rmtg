@@ -12,7 +12,6 @@ use futures::stream::FuturesUnordered;
 use image::imageops::FilterType;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
-use json::iterators::Members;
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::fs;
 use std::io::Cursor;
@@ -153,11 +152,12 @@ pub async fn spawn_singleton(
     None
 }
 pub async fn process_data(
-    json: Members<'_>,
-    client: reqwest::Client,
-    asset_server: AssetServer,
+    json: Vec<JsonValue>,
+    client: &reqwest::Client,
+    asset_server: &AssetServer,
 ) -> Vec<SubCard> {
-    json.map(async |a| parse(a, &client, &asset_server))
+    json.iter()
+        .map(async |a| parse(a, client, asset_server))
         .collect::<FuturesUnordered<_>>()
         .filter_map(async |a| a.await)
         .collect::<Vec<SubCard>>()
@@ -185,27 +185,27 @@ pub async fn get_alts(
     let mut json = json::parse(&res).ok()?;
     let size = json["total_cards"].as_usize()?;
     let mut futures = Vec::new();
-    futures.push(
-        process_data(
-            json["data"].members().clone(),
-            client.clone(),
-            asset_server.clone(),
-        )
-        .await,
-    );
-    while json["has_more"].as_bool()? {
+    loop {
+        futures.push(process_data(
+            json["data"].members().cloned().collect(),
+            &client,
+            &asset_server,
+        ));
+        if !json["has_more"].as_bool()? {
+            break;
+        }
         let url = json["next_page"].as_str()?;
         let res = client.get(url).send().await.ok()?;
         let res = res.text().await.ok()?;
         json = json::parse(&res).ok()?;
-        futures
-            .push(process_data(json["data"].members(), client.clone(), asset_server.clone()).await);
     }
     let mut vec = Vec::with_capacity(size);
     vec.extend(
         futures
-            /*.collect::<Vec<Vec<SubCard>>>()
-            .await*/
+            .into_iter()
+            .collect::<FuturesUnordered<_>>()
+            .collect::<Vec<Vec<SubCard>>>()
+            .await
             .into_iter()
             .flatten(),
     );
@@ -329,6 +329,7 @@ pub async fn parse(
     client: &reqwest::Client,
     asset_server: &AssetServer,
 ) -> Option<SubCard> {
+    //TODO split into moxfield/scryfall
     async fn parse(
         value: &JsonValue,
         client: &reqwest::Client,
@@ -386,17 +387,14 @@ pub async fn parse(
         let (toughness, alt_toughness) =
             get(value, "toughness", |a| a.as_u16().unwrap_or_default());
         let full_name = value["name"].as_str().unwrap();
-        let full_card_type = value["type_line"].as_str().unwrap();
-        //TODO complete on moxfield
         let tokens = value["all_parts"]
             .members()
             .filter_map(|a| {
                 let n = a["name"].as_str().unwrap();
-                let ty = a["type_line"].as_str().unwrap();
                 let sid = a["id"].as_str().unwrap().parse();
                 if let Ok(sid) = sid
                     && sid != id
-                    && (n != full_name || ty != full_card_type)
+                    && n != full_name
                     && a["type_line"].as_str().unwrap() != "Card"
                     && !matches!(
                         a["component"].as_str().unwrap(),
@@ -463,13 +461,13 @@ async fn parse_count(
 }
 pub async fn get_pile(
     iter: impl Iterator<Item = (&JsonValue, usize)>,
-    client: reqwest::Client,
-    asset_server: AssetServer,
-    decks: GetDeck,
+    client: &reqwest::Client,
+    asset_server: &AssetServer,
+    decks: &GetDeck,
     deck_type: DeckType,
 ) {
     let pile = iter
-        .map(|(p, n)| parse_count(p, &client, &asset_server, n))
+        .map(|(p, n)| parse_count(p, client, asset_server, n))
         .collect::<FuturesUnordered<_>>()
         .filter_map(async |a| a)
         .map(|(a, n)| vec![a; n])
@@ -541,18 +539,18 @@ pub async fn get_deck(
             board["commanders"]["cards"]
                 .entries()
                 .map(|(_, c)| (&c["card"], c["quantity"].as_usize().unwrap())),
-            client.clone(),
-            asset_server.clone(),
-            decks.clone(),
+            &client,
+            &asset_server,
+            &decks,
             DeckType::Commander,
         );
         let main = get_pile(
             board["mainboard"]["cards"]
                 .entries()
                 .map(|(_, c)| (&c["card"], c["quantity"].as_usize().unwrap())),
-            client.clone(),
-            asset_server.clone(),
-            decks.clone(),
+            &client,
+            &asset_server,
+            &decks,
             DeckType::Deck,
         );
         let tokens = get_pile(
@@ -565,18 +563,18 @@ pub async fn get_deck(
                     )
                 })
                 .map(|a| (a, 1)),
-            client.clone(),
-            asset_server.clone(),
-            decks.clone(),
+            &client,
+            &asset_server,
+            &decks,
             DeckType::Token,
         );
         let side = get_pile(
             board["sideboard"]["cards"]
                 .entries()
                 .map(|(_, c)| (&c["card"], c["quantity"].as_usize().unwrap())),
-            client.clone(),
-            asset_server.clone(),
-            decks.clone(),
+            &client,
+            &asset_server,
+            &decks,
             DeckType::SideBoard,
         );
         commanders.await;
