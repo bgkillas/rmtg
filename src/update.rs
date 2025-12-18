@@ -1571,6 +1571,7 @@ pub fn update_search(
     side: &Option<Single<Entity, With<SideMenu>>>,
     menu: &mut Menu,
 ) {
+    //TODO this could be used less
     if pile.is_empty() {
         *menu = Menu::World;
         commands.entity(**side.as_ref().unwrap()).despawn();

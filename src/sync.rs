@@ -576,13 +576,15 @@ pub fn apply_sync(
                 }
             }
             Packet::Flip(id, idx) => {
-                //TODO flip in search
                 if id.user == client.my_id()
-                    && let Some((pile, children)) = queryme.iter_mut().find_map(
-                        |(a, _, p, _, c, _, _)| {
-                            if *a == id.id { Some((p, c)) } else { None }
-                        },
-                    )
+                    && let Some((pile, children, entity, transform)) =
+                        queryme.iter_mut().find_map(|(a, _, p, e, c, _, t)| {
+                            if *a == id.id {
+                                Some((p, c, e, t))
+                            } else {
+                                None
+                            }
+                        })
                     && let Some(children) = children
                     && let Some(mut pile) = pile
                 {
@@ -594,12 +596,28 @@ pub fn apply_sync(
                         if last {
                             repaint_face(&mut mats, &mut materials, card, children);
                         }
+                        if let Some(entity) = search
+                            .as_ref()
+                            .and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
+                        {
+                            update_search(
+                                &mut commands,
+                                entity,
+                                &pile,
+                                &transform,
+                                text.as_ref().unwrap().get(),
+                                &side,
+                                &mut menu,
+                            );
+                        }
                     }
-                } else if let Some((children, mut pile, entity)) = query.iter_mut().find_map(
-                    |(a, _, _, _, _, _, e, _, c, d, _, _)| {
-                        if *a == id { Some((c, d, e)) } else { None }
-                    },
-                ) && let Some(pile) = &mut pile
+                } else if let Some((children, mut pile, entity, transform)) =
+                    query.iter_mut().find_map(
+                        |(a, t, _, _, _, _, e, _, c, d, _, _)| {
+                            if *a == id { Some((c, d, e, t)) } else { None }
+                        },
+                    )
+                    && let Some(pile) = &mut pile
                     && let Some(children) = children
                 {
                     let last = idx == pile.len() - 1;
@@ -609,11 +627,30 @@ pub fn apply_sync(
                             if last {
                                 repaint_face(&mut mats, &mut materials, card, children);
                             }
+                            if let Some(entity) = search
+                                .as_ref()
+                                .and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
+                            {
+                                update_search(
+                                    &mut commands,
+                                    entity,
+                                    pile,
+                                    &transform,
+                                    text.as_ref().unwrap().get(),
+                                    &side,
+                                    &mut menu,
+                                );
+                            }
                         }
                     } else {
                         commands.entity(entity).despawn();
                         client
-                            .send(id.user, &id.id, Reliability::Reliable, COMPRESSION)
+                            .send(
+                                id.user,
+                                &Packet::Request(id.id),
+                                Reliability::Reliable,
+                                COMPRESSION,
+                            )
                             .unwrap();
                     }
                 }
