@@ -1120,7 +1120,15 @@ pub fn listen_for_mouse(
                         let mut flip = true;
                         let mut up = false;
                         let peers = peers.map();
-                        if peers.len() <= 1 {
+                        if peers.len() <= 1
+                            || shape.iter().all(|(s, e)| {
+                                if let Shape::Counter(_, _) = s {
+                                    is_reversed(transforms.get(e).unwrap())
+                                } else {
+                                    true
+                                }
+                            })
+                        {
                             flip = false
                         } else if n == turn.0 {
                             next_turn(
@@ -1167,8 +1175,7 @@ pub fn listen_for_mouse(
                                 .looking_to(Dir3::Z, if up { Dir3::Y } else { Dir3::NEG_Y });
                         }
                     }
-                    Ok(Shape::Counter(_, n)) if n == turn.0 => {
-                        //TODO freezes on no counter
+                    Ok(Shape::Counter(_, n)) if n == turn.0 && !is_reversed(&transform) => {
                         let mut flip = true;
                         next_turn(
                             others_ids,
@@ -1253,7 +1260,15 @@ pub fn turn_keybinds(
         let mut flip = true;
         let mut up = false;
         let map = peers.map();
-        if map.len() <= 1 {
+        if map.len() <= 1
+            || shape.iter().all(|(s, e)| {
+                if let Shape::Counter(_, _) = s {
+                    is_reversed(transforms.get(e).unwrap())
+                } else {
+                    true
+                }
+            })
+        {
             return;
         }
         let Some(me) = peers.me else { return };
