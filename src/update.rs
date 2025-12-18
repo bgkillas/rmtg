@@ -1114,8 +1114,9 @@ pub fn listen_for_mouse(
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
                 }
-                let mut flip = true;
                 if let Ok((Shape::Turn(n), _)) = shape.get(entity) {
+                    let mut flip = true;
+                    let mut up = false;
                     let peers = peers.map();
                     if peers.len() <= 1 {
                         flip = false
@@ -1130,7 +1131,21 @@ pub fn listen_for_mouse(
                             }
                         };
                         turn.0 = next(turn.0);
-                        while peers.iter().all(|(_, b)| *b != turn.0) {
+                        while peers.iter().all(|(_, b)| *b != turn.0)
+                            || shape
+                                .iter()
+                                .find_map(|(s, e)| {
+                                    if let Shape::Counter(_, v) = s
+                                        && *v == turn.0
+                                    {
+                                        Some(e)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .map(|ent| is_reversed(transforms.get(ent).unwrap()))
+                                .unwrap_or(true)
+                        {
                             turn.0 = next(turn.0);
                         }
                         let last = shape
@@ -1143,13 +1158,32 @@ pub fn listen_for_mouse(
                                 }
                             })
                             .unwrap();
-                        if let Ok(id) = others_ids.get(last) {
-                            net.take(last, *id);
+                        if last == entity {
+                            flip = false
+                        } else {
+                            if let Ok(id) = others_ids.get(last) {
+                                net.take(last, *id);
+                            }
+                            let mut transform = transforms.get_mut(last).unwrap();
+                            //TODO have X be pass turn probably
+                            transform.rotation = Quat::default();
+                            net.turn(turn.0);
                         }
-                        let mut transform = transforms.get_mut(last).unwrap();
-                        transform.rotate_local_z(PI);
-                        net.turn(turn.0);
-                    } else if peers.iter().any(|(_, b)| b == n) {
+                    } else if peers.iter().any(|(_, b)| b == n)
+                        && shape
+                            .iter()
+                            .find_map(|(s, e)| {
+                                if let Shape::Counter(_, v) = s
+                                    && v == n
+                                {
+                                    Some(e)
+                                } else {
+                                    None
+                                }
+                            })
+                            .map(|ent| !is_reversed(transforms.get(ent).unwrap()))
+                            .unwrap_or(false)
+                    {
                         let last = shape
                             .iter()
                             .find_map(|(s, e)| {
@@ -1164,14 +1198,21 @@ pub fn listen_for_mouse(
                             net.take(last, *id);
                         }
                         let mut transform = transforms.get_mut(last).unwrap();
-                        transform.rotate_local_z(PI);
+                        transform.rotation = Quat::default();
+                        *transform = transform.looking_to(Dir3::Z, Dir3::NEG_Y);
                         turn.0 = *n;
                         net.turn(turn.0);
+                        up = true
                     } else {
                         flip = false;
                     }
-                }
-                if flip {
+                    if flip {
+                        let mut transform = transforms.get_mut(entity).unwrap();
+                        transform.rotation = Quat::default();
+                        *transform =
+                            transform.looking_to(Dir3::Z, if up { Dir3::Y } else { Dir3::NEG_Y });
+                    }
+                } else {
                     let mut transform = transforms.get_mut(entity).unwrap();
                     transform.rotate_local_z(PI);
                 }

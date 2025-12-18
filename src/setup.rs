@@ -330,7 +330,8 @@ pub fn setup(
                 _ => unreachable!(),
             };
             let mut counter = Shape::Counter(Value(40), i).create(
-                Transform::from_xyz(x, MAT_BAR * 4.0, y),
+                Transform::from_xyz(x, MAT_BAR * 4.0, y)
+                    .looking_to(Dir3::Z, if i == 0 { Dir3::Y } else { Dir3::NEG_Y }),
                 &mut commands,
                 &mut meshes,
                 &mut materials,
@@ -339,7 +340,7 @@ pub fn setup(
             counter.insert(net.new_id());
             let mut turn = Shape::Turn(i).create(
                 Transform::from_xyz(x * 2.5, MAT_BAR * 4.0, y)
-                    .looking_to(Dir3::Z, if i == 0 { Dir3::NEG_Y } else { Dir3::Y }),
+                    .looking_to(Dir3::Z, if i == 0 { Dir3::Y } else { Dir3::NEG_Y }),
                 &mut commands,
                 &mut meshes,
                 &mut materials,

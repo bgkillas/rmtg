@@ -525,7 +525,7 @@ pub fn spawn_disc<'a>(
                 Transform::from_xyz(0.0, 0.25 * m / ratio, 0.0),
                 Mesh3d(meshes.add(Cylinder::new(m, 0.5 * m / ratio))),
                 MeshMaterial3d(materials.add(StandardMaterial {
-                    base_color: bottom_color,
+                    base_color: top_color,
                     unlit: true,
                     ..default()
                 })),
@@ -534,7 +534,7 @@ pub fn spawn_disc<'a>(
                 Transform::from_xyz(0.0, -0.25 * m / ratio, 0.0),
                 Mesh3d(meshes.add(Cylinder::new(m, 0.5 * m / ratio))),
                 MeshMaterial3d(materials.add(StandardMaterial {
-                    base_color: top_color,
+                    base_color: bottom_color,
                     unlit: true,
                     ..default()
                 })),
