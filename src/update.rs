@@ -423,7 +423,6 @@ pub fn listen_for_mouse(
         Res<Peers>,
     ),
 ) {
-    println!("{:?}", peers.map());
     if matches!(*menu, Menu::Esc)
         || (matches!(*menu, Menu::Side | Menu::Counter) && active_input.get().is_some())
     {
@@ -2258,25 +2257,61 @@ pub struct GiveEnts(pub Arc<Mutex<Vec<PeerId>>>);
 pub struct FlipCounter(pub Arc<Mutex<Vec<(usize, bool)>>>);
 pub fn flip_ents(
     to_do: Res<FlipCounter>,
-    mut ents: Query<(&Shape, &mut Transform, Entity, Option<&SyncObject>)>,
+    others_ids: Query<&SyncObject>,
+    mut shape: Query<(&mut Shape, Entity)>,
+    mut transforms: Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
     mut net: Net,
+    mut turn: ResMut<Turn>,
+    peers: Res<Peers>,
 ) {
     for (id, up) in to_do.0.lock().unwrap().drain(..) {
-        if let Some((mut t, ent, sync)) = ents.iter_mut().find_map(|(s, t, e, i)| {
+        if let Some(ent) = shape.iter().find_map(|(s, e)| {
             if let Shape::Counter(_, v) = s
                 && *v == id
             {
-                Some((t, e, i))
+                Some(e)
             } else {
                 None
             }
         }) {
-            if let Some(id) = sync {
+            if let Ok(id) = others_ids.get(ent) {
                 net.take(ent, *id);
             }
+            let mut t = transforms.get_mut(ent).unwrap();
             if up == is_reversed(&t) {
-                //TODO if !up and turn == id then next_turn
-                t.rotate_local_z(PI)
+                t.rotate_local_z(PI);
+                if !up && turn.0 == id {
+                    let map = peers.map();
+                    if let Some(ent) = shape.iter().find_map(|(s, e)| {
+                        if let Shape::Turn(v) = s
+                            && *v == id
+                        {
+                            Some(e)
+                        } else {
+                            None
+                        }
+                    }) {
+                        let mut flip = true;
+                        next_turn(
+                            others_ids,
+                            &mut shape,
+                            &mut transforms,
+                            &mut net,
+                            &mut turn,
+                            ent,
+                            &mut flip,
+                            &map,
+                        );
+                        if flip {
+                            if let Ok(id) = others_ids.get(ent) {
+                                net.take(ent, *id);
+                            }
+                            let mut transform = transforms.get_mut(ent).unwrap();
+                            transform.rotation = Quat::default();
+                            *transform = transform.looking_to(Dir3::Z, Dir3::NEG_Y);
+                        }
+                    }
+                }
             }
         }
     }
