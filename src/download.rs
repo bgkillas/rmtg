@@ -49,6 +49,7 @@ pub fn generate_mips(image: &mut Image) {
         &MipmapGeneratorSettings {
             anisotropic_filtering: 1,
             filter_type: FilterType::Lanczos3,
+            minimum_mip_resolution: 64,
             ..default()
         },
         &mut 0,
