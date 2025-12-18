@@ -423,6 +423,7 @@ pub fn listen_for_mouse(
         Res<Peers>,
     ),
 ) {
+    println!("{:?}", peers.map());
     if matches!(*menu, Menu::Esc)
         || (matches!(*menu, Menu::Side | Menu::Counter) && active_input.get().is_some())
     {

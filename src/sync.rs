@@ -15,9 +15,10 @@ use bevy::ecs::system::SystemParam;
 use bevy::window::PrimaryWindow;
 use bevy_rand::global::GlobalRng;
 use bevy_rich_text3d::Text3d;
-use bevy_tangled::{ClientTrait, Compression, PeerId, Reliability};
+use bevy_tangled::{ClientTrait, ClientTypeRef, Compression, PeerId, Reliability};
 use bevy_ui_text_input::TextInputContents;
 use bitcode::{Decode, Encode};
+use std::collections::hash_map::Entry::Vacant;
 use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::sync::atomic::AtomicBool;
@@ -1033,6 +1034,70 @@ pub fn spawn_hand(me: usize, commands: &mut Commands) {
     };
     commands.spawn((transform, Hand::default()));
 }
+pub fn on_join(
+    client: ClientTypeRef,
+    peer: PeerId,
+    peers: &Arc<Mutex<HashMap<PeerId, usize>>>,
+    flip: &Arc<Mutex<Vec<(usize, bool)>>>,
+    send: &Arc<AtomicBool>,
+    who: &Arc<Mutex<HashMap<usize, PeerId>>>,
+) {
+    info!("user {peer} has joined");
+    if client.is_host() {
+        let mut k = 1;
+        {
+            let mut who = who.lock().unwrap();
+            loop {
+                if let Vacant(e) = who.entry(k) {
+                    e.insert(peer);
+                    break;
+                }
+                k += 1;
+            }
+        }
+        client
+            .broadcast(
+                &Packet::SetUser(peer, k),
+                Reliability::Reliable,
+                COMPRESSION,
+            )
+            .unwrap();
+        for (k, v) in peers.lock().unwrap().iter() {
+            client
+                .send(
+                    peer,
+                    &Packet::SetUser(*k, *v),
+                    Reliability::Reliable,
+                    COMPRESSION,
+                )
+                .unwrap();
+        }
+        peers.lock().unwrap().insert(peer, k);
+        flip.lock().unwrap().push((k, true));
+    }
+    send.store(true, std::sync::atomic::Ordering::Relaxed);
+}
+pub fn on_leave(
+    client: ClientTypeRef,
+    peer: PeerId,
+    peers: &Arc<Mutex<HashMap<PeerId, usize>>>,
+    flip: &Arc<Mutex<Vec<(usize, bool)>>>,
+    who: &Arc<Mutex<HashMap<usize, PeerId>>>,
+    rempeers: &Arc<Mutex<Vec<PeerId>>>,
+    give: &Arc<Mutex<Vec<PeerId>>>,
+) {
+    info!("user {peer} has left");
+    let k = peers.lock().unwrap().remove(&peer);
+    rempeers.lock().unwrap().push(peer);
+    if client.is_host() {
+        if let Some(k) = k {
+            flip.lock().unwrap().push((k, false));
+        }
+        give.lock().unwrap().push(peer);
+        let mut who = who.lock().unwrap();
+        who.retain(|_, p| *p != peer)
+    }
+}
 #[cfg(all(feature = "steam", feature = "ip"))]
 pub fn new_lobby(
     input: Res<ButtonInput<KeyCode>>,
@@ -1054,47 +1119,25 @@ pub fn new_lobby(
         } else if input.just_pressed(KeyCode::KeyM) {
             info!("hosting ip");
             peers.me = Some(0);
+            peers.map().insert(client.my_id(), 0);
             #[cfg(feature = "ip")]
             {
-                let flip1 = flip_counter.0.clone();
-                let flip2 = flip1.clone();
+                let flip = flip_counter.0.clone();
+                let flip2 = flip.clone();
                 let send = send_sleep.0.clone();
                 let give = give.0.clone();
                 let rempeers = rempeers.0.clone();
                 let peers = peers.map.clone();
                 let peers2 = peers.clone();
+                let who = Arc::new(Mutex::new(HashMap::new()));
+                let who2 = who.clone();
                 client
                     .host_ip_runtime(
                         Some(Box::new(move |client, peer| {
-                            client
-                                .broadcast(
-                                    &Packet::SetUser(peer, peer.0 as usize),
-                                    Reliability::Reliable,
-                                    COMPRESSION,
-                                )
-                                .unwrap();
-                            for (k, v) in peers.lock().unwrap().iter() {
-                                client
-                                    .send(
-                                        peer,
-                                        &Packet::SetUser(*k, *v),
-                                        Reliability::Reliable,
-                                        COMPRESSION,
-                                    )
-                                    .unwrap();
-                            }
-                            peers.lock().unwrap().insert(peer, peer.0 as usize);
-                            flip1.lock().unwrap().push((peer.0 as usize, true));
-                            info!("user {peer} has joined");
-                            send.store(true, std::sync::atomic::Ordering::Relaxed);
+                            on_join(client, peer, &peers, &flip, &send, &who);
                         })),
-                        Some(Box::new(move |_, peer| {
-                            info!("user {peer} has left");
-                            if let Some(id) = peers2.lock().unwrap().remove(&peer) {
-                                flip2.lock().unwrap().push((id, false));
-                            }
-                            rempeers.lock().unwrap().push(peer);
-                            give.lock().unwrap().push(peer);
+                        Some(Box::new(move |client, peer| {
+                            on_leave(client, peer, &peers2, &flip2, &who2, &rempeers, &give);
                         })),
                         &down.runtime.0,
                     )
@@ -1104,20 +1147,23 @@ pub fn new_lobby(
             info!("joining ip");
             #[cfg(feature = "ip")]
             {
+                let flip = flip_counter.0.clone();
+                let flip2 = flip.clone();
                 let send = send_sleep.0.clone();
+                let give = give.0.clone();
                 let rempeers = rempeers.0.clone();
                 let peers = peers.map.clone();
+                let peers2 = peers.clone();
+                let who = Arc::new(Mutex::new(HashMap::new()));
+                let who2 = who.clone();
                 client
                     .join_ip_runtime(
                         "127.0.0.1".parse().unwrap(),
-                        Some(Box::new(move |_, peer| {
-                            info!("user {peer} has joined");
-                            send.store(true, std::sync::atomic::Ordering::Relaxed);
+                        Some(Box::new(move |client, peer| {
+                            on_join(client, peer, &peers, &flip, &send, &who);
                         })),
-                        Some(Box::new(move |_, peer| {
-                            info!("user {peer} has left");
-                            peers.lock().unwrap().remove(&peer);
-                            rempeers.lock().unwrap().push(peer);
+                        Some(Box::new(move |client, peer| {
+                            on_leave(client, peer, &peers2, &flip2, &who2, &rempeers, &give);
                         })),
                         &down.runtime.0,
                     )

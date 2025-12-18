@@ -76,7 +76,6 @@ const FONT_SIZE: f32 = 16.0;
 const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO multi select, in card counters
-//TODO have ip connect not use peerid for player id
 //TODO spawn stuff touching the floor
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]

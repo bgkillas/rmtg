@@ -2,23 +2,15 @@ use crate::counters::Value;
 use crate::download::get_from_img;
 use crate::misc::default_cam_pos;
 #[cfg(feature = "steam")]
-use crate::sync::COMPRESSION;
-#[cfg(feature = "steam")]
-use crate::sync::Packet;
-#[cfg(feature = "steam")]
 use crate::sync::SendSleeping;
-use crate::sync::{Net, spawn_hand};
+use crate::sync::{Net, on_join, on_leave, spawn_hand};
 use crate::update::{CardSpot, GiveEnts, SpotType};
 use crate::*;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy_framepace::{FramepaceSettings, Limiter};
-#[cfg(feature = "steam")]
-use bevy_tangled::{ClientTrait, Reliability};
 use bytes::Bytes;
 #[cfg(feature = "steam")]
 use std::collections::HashMap;
-#[cfg(feature = "steam")]
-use std::collections::hash_map::Entry::Vacant;
 #[cfg(feature = "steam")]
 use std::env::args;
 use std::f32::consts::PI;
@@ -53,59 +45,16 @@ pub fn setup(
         let send = send_sleep.0.clone();
         let give = give.0.clone();
         let rempeers = rempeers.0.clone();
-        let peers1 = peers.map.clone();
-        let peers2 = peers1.clone();
-        let flip1 = flip_counter.0.clone();
-        let flip2 = flip1.clone();
+        let peers = peers.map.clone();
+        let peers2 = peers.clone();
+        let flip = flip_counter.0.clone();
+        let flip2 = flip.clone();
         let _ = net.client.init_steam(
             Some(Box::new(move |client, peer| {
-                info!("user {peer} has joined");
-                if client.is_host() {
-                    let mut k = 1;
-                    {
-                        let mut who = who.lock().unwrap();
-                        loop {
-                            if let Vacant(e) = who.entry(k) {
-                                e.insert(peer);
-                                break;
-                            }
-                            k += 1;
-                        }
-                    }
-                    client
-                        .broadcast(
-                            &Packet::SetUser(peer, k),
-                            Reliability::Reliable,
-                            COMPRESSION,
-                        )
-                        .unwrap();
-                    for (k, v) in peers1.lock().unwrap().iter() {
-                        client
-                            .send(
-                                peer,
-                                &Packet::SetUser(*k, *v),
-                                Reliability::Reliable,
-                                COMPRESSION,
-                            )
-                            .unwrap();
-                    }
-                    peers1.lock().unwrap().insert(peer, k);
-                    flip1.lock().unwrap().push((k, true));
-                }
-                send.store(true, std::sync::atomic::Ordering::Relaxed);
+                on_join(client, peer, &peers, &flip, &send, &who);
             })),
             Some(Box::new(move |client, peer| {
-                info!("user {peer} has left");
-                let k = peers2.lock().unwrap().remove(&peer);
-                rempeers.lock().unwrap().push(peer);
-                if client.is_host() {
-                    if let Some(k) = k {
-                        flip2.lock().unwrap().push((k, false));
-                    }
-                    give.lock().unwrap().push(peer);
-                    let mut who = who2.lock().unwrap();
-                    who.retain(|_, p| *p != peer)
-                }
+                on_leave(client, peer, &peers2, &flip2, &who2, &rempeers, &give);
             })),
         );
         let mut next = false;
