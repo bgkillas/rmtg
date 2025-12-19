@@ -74,13 +74,15 @@ pub fn get_sync(
     } else {
         count.give(vec);
     }
-    #[cfg(feature = "steam")]
-    client.flush();
     let Some(cursor_position) = window.cursor_position() else {
+        #[cfg(feature = "steam")]
+        client.flush();
         return;
     };
     let (camera, camera_transform) = camera.into_inner();
     let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        #[cfg(feature = "steam")]
+        client.flush();
         return;
     };
     let hit = spatial.cast_ray(
@@ -102,6 +104,8 @@ pub fn get_sync(
             .broadcast(&packet, Reliability::Reliable, COMPRESSION)
             .unwrap();
     }
+    #[cfg(feature = "steam")]
+    client.flush();
 }
 #[cfg(feature = "steam")]
 pub fn display_steam_info(

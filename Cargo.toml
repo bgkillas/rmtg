@@ -88,6 +88,7 @@ bevy={version="0.17.3", default-features = false, features = [
   "debug",
   "zstd_rust",
   "track_location",
+  #"bevy_dev_tools",
 ]}
 itertools="0.14.0"
 arboard={version="3.6.1", features = ["wayland-data-control"], optional = true}

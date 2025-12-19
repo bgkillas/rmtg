@@ -1250,6 +1250,18 @@ pub fn listen_for_mouse(
         commands.entity(single.0).despawn();
     }
 }
+pub fn text_keybinds(
+    mut active_input: ResMut<InputFocus>,
+    text: Single<&Children, With<TextMenu>>,
+    menu: Res<Menu>,
+    input: Res<ButtonInput<KeyCode>>,
+) {
+    if !matches!(*menu, Menu::World) || !input.just_pressed(KeyCode::Enter) {
+        return;
+    }
+    let ent = text.get(0).unwrap();
+    active_input.set(*ent);
+}
 pub fn turn_keybinds(
     others_ids: Query<&SyncObject>,
     mut shape: Query<(&mut Shape, Entity)>,
@@ -1522,8 +1534,8 @@ pub fn reset_layers(
 pub fn esc_menu(
     mut commands: Commands,
     input: Res<ButtonInput<KeyCode>>,
-    ents: Query<&mut Visibility, (With<EscMenu>, Without<TextMenu>)>,
-    other_ents: Query<&mut Visibility, (With<TextMenu>, Without<EscMenu>)>,
+    mut ents: Single<&mut Visibility, (With<EscMenu>, Without<TextMenu>)>,
+    mut other_ents: Single<&mut Visibility, (With<TextMenu>, Without<EscMenu>)>,
     mut menu: ResMut<Menu>,
     side: Option<Single<Entity, With<SideMenu>>>,
     counter: Option<Single<Entity, With<CounterMenu>>>,
@@ -1549,12 +1561,8 @@ pub fn esc_menu(
             *menu = Menu::Esc;
             (Visibility::Visible, Visibility::Hidden)
         };
-        for mut visibility in ents {
-            *visibility = new;
-        }
-        for mut visibility in other_ents {
-            *visibility = old;
-        }
+        **ents = new;
+        **other_ents = old;
     }
     if mouse_input.just_pressed(MouseButton::Left) {
         for pointer_event in hover_map.values() {

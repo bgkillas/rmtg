@@ -29,6 +29,7 @@ pub fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut framepace: ResMut<FramepaceSettings>,
+    //mut fps: ResMut<FpsOverlayConfig>,
     mut net: Net,
     mut light: ResMut<AmbientLight>,
     #[cfg(feature = "steam")] send_sleep: Res<SendSleeping>,
@@ -74,6 +75,7 @@ pub fn setup(
     }
     let font = include_bytes!("../assets/noto.ttf");
     let font = asset_server.add(Font::try_from_bytes(font.to_vec()).unwrap());
+    //fps.text_config.font = font.clone();
     commands.insert_resource(FontRes(font.clone()));
     let _ = fs::create_dir("./cache");
     framepace.limiter = Limiter::from_framerate(60.0);
@@ -327,7 +329,8 @@ pub fn setup(
         .with_child((
             Node {
                 width: Val::Percent(100.0),
-                bottom: Val::Percent(100.0),
+                bottom: Val::Percent(0.0),
+                position_type: PositionType::Absolute,
                 height: Val::Px(FONT_HEIGHT * 1.5),
                 ..default()
             },
@@ -342,6 +345,7 @@ pub fn setup(
                 font_size: FONT_SIZE,
                 ..default()
             },
+            Visibility::Inherited,
             TextInputContents::default(),
             TextInputBuffer::default(),
         ));

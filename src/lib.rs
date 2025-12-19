@@ -3,10 +3,11 @@ use crate::update::{
     FlipCounter, GiveEnts, ToMoveUp, cam_rotation, cam_translation, esc_menu, flip_ents,
     follow_mouse, gather_hand, give_ents, listen_for_deck, listen_for_mouse, on_scroll_handler,
     pick_from_list, pile_merge, register_deck, rem_peers, reset_layers, send_scroll_events,
-    set_card_spot, to_move_up, turn_keybinds, update_hand, update_search_deck,
+    set_card_spot, text_keybinds, to_move_up, turn_keybinds, update_hand, update_search_deck,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
+//use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin};
 use bevy::prelude::*;
 use bevy_framepace::FramepacePlugin;
 use bevy_prng::WyRand;
@@ -130,6 +131,7 @@ pub fn start() -> AppExit {
         EntropyPlugin::<WyRand>::default(),
         Text3dPlugin::default(),
         TextInputPlugin,
+        //FpsOverlayPlugin::default(),
     ))
     .insert_gizmo_config(
         PhysicsGizmos {
@@ -168,6 +170,7 @@ pub fn start() -> AppExit {
                 give_ents,
                 flip_ents,
                 (
+                    text_keybinds,
                     turn_keybinds,
                     set_card_spot,
                     send_scroll_events,
