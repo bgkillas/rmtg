@@ -220,7 +220,7 @@ pub fn adjust_meshes(
     top.translation.y -= delta;
     let (_, mut bottom) = query.get_mut(children.next().unwrap()).unwrap();
     bottom.translation.y += delta;
-    transform.translation.y -= delta / 2.0;
+    transform.translation.y -= delta;
     let (mesh, t1, t2) = side(size, meshes);
     let (mut leftmesh, mut leftt) = query.get_mut(children.next().unwrap()).unwrap();
     leftmesh.0 = mesh.clone();

@@ -7,7 +7,7 @@ use crate::misc::{
     Equipment, adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile, new_pile_at,
     repaint_face, spawn_equip, vec2_to_ground,
 };
-use crate::setup::{EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, T, W, Wall};
+use crate::setup::{EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, W, Wall};
 use crate::sync::{CameraInd, CursorInd, InOtherHand, Net, SyncObjectMe, Trans};
 use crate::*;
 use avian3d::math::Vector;
@@ -688,8 +688,9 @@ pub fn listen_for_mouse(
                 && pile.len() > 1
             {
                 let mut start = *transform;
-                start.translation.y -= pile.len() as f32 * CARD_THICKNESS;
+                start.translation.y = CARD_THICKNESS / 2.0;
                 let mut transform = start;
+                transform.rotation = Quat::default();
                 let mut vec = Vec::with_capacity(pile.len());
                 for c in pile.drain(..) {
                     let id = net.new_id();
@@ -706,7 +707,7 @@ pub fn listen_for_mouse(
                         Some(id),
                     );
                     transform.translation.x += CARD_WIDTH + CARD_THICKNESS * 2.0;
-                    if transform.translation.x >= W - T - CARD_WIDTH - CARD_THICKNESS * 2.0 {
+                    if transform.translation.x >= W - CARD_WIDTH - CARD_THICKNESS * 2.0 {
                         transform.translation.x = start.translation.x;
                         transform.translation.z += CARD_HEIGHT + CARD_THICKNESS * 2.0;
                     }

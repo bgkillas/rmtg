@@ -210,11 +210,13 @@ pub async fn get_alts(
             .into_iter()
             .flatten(),
     );
-    get_deck
-        .0
-        .lock()
-        .unwrap()
-        .push((Pile::new(vec), DeckType::Single(v)));
+    if !vec.is_empty() {
+        get_deck
+            .0
+            .lock()
+            .unwrap()
+            .push((Pile::new(vec), DeckType::Single(v)));
+    }
     None
 }
 pub async fn add_images(
@@ -235,10 +237,12 @@ pub async fn add_images(
         p.data.face.image = bytes.await.unwrap()
     }))
     .await;
-    deck.0
-        .lock()
-        .unwrap()
-        .push((pile, DeckType::Other(transform, id)));
+    if !pile.is_empty() {
+        deck.0
+            .lock()
+            .unwrap()
+            .push((pile, DeckType::Other(transform, id)));
+    }
     None
 }
 #[derive(Encode, Decode)]

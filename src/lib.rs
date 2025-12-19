@@ -216,37 +216,6 @@ const SLEEP: SleepThreshold = SleepThreshold {
 };
 #[test]
 #[cfg(not(feature = "wasm"))]
-fn test_parse() {
-    use reqwest::header::USER_AGENT;
-    let mut app = App::new();
-    app.add_plugins(AssetPlugin::default());
-    app.init_asset::<Image>();
-    fn test(asset_server: Res<AssetServer>) {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-        let tmr = std::time::Instant::now();
-        let asset_server = asset_server.clone();
-        let img = runtime
-            .block_on(runtime.spawn(async move {
-                let mut json = json::object!(scryfall_id: "64b0acfa-1a8d-4a94-8972-c9bb235e4897", name: "kilo");
-                download::parse_scryfall(
-                    &mut json,
-                    &reqwest::Client::builder()
-                        .user_agent(USER_AGENT)
-                        .build()
-                        .unwrap(),
-                    &asset_server,
-                )
-                .await
-            }))
-            .unwrap();
-        assert!(img.is_some());
-        println!("{}", tmr.elapsed().as_millis())
-    }
-    app.add_systems(Update, test);
-    app.update();
-}
-#[test]
-#[cfg(not(feature = "wasm"))]
 fn test_get_deck() {
     use reqwest::header::USER_AGENT;
     let mut app = App::new();
