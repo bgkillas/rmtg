@@ -335,7 +335,6 @@ pub async fn parse_moxfield(
     asset_server: &AssetServer,
     base: &JsonValue,
 ) -> Option<SubCard> {
-    //TODO meld
     pub async fn parse(
         value: &JsonValue,
         client: &reqwest::Client,
@@ -419,6 +418,16 @@ pub async fn parse_moxfield(
             },
             flipped: false,
         })
+    }
+    if !value["meld_result"].is_null() {
+        let id = value["scryfall_id"].as_str().unwrap();
+        return get_by_id(
+            client,
+            asset_server,
+            format!("https://api.scryfall.com/cards/{id}"),
+            false,
+        )
+        .await;
     }
     let mut c = parse(value, client, asset_server).await?;
     let id = value["uniqueCardId"].as_str()?;
@@ -696,7 +705,7 @@ pub async fn get_deck(
             DeckType::SideBoard,
         );
         commanders.await;
-        main.await;
         side.await;
+        main.await;
     }
 }
