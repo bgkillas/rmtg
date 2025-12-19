@@ -627,7 +627,6 @@ impl Pile {
 enum DeckType {
     Other(Transform, SyncObject),
     Single(Vec2),
-    Token,
     Deck,
     Commander,
     SideBoard,

@@ -782,19 +782,21 @@ pub fn listen_for_mouse(
                 let get_deck = down.get_deck.clone();
                 let asset_server = asset_server.clone();
                 let ids = top.data.tokens.clone();
-                info!(
-                    "{}: {} has requested tokens {ids:?}",
-                    top.face().name,
-                    top.data.id
-                );
-                #[cfg(not(feature = "wasm"))]
-                down.runtime.0.spawn(async move {
-                    spawn_scryfall_list(ids, client, asset_server, get_deck, v).await
-                });
-                #[cfg(feature = "wasm")]
-                wasm_bindgen_futures::spawn_local(async move {
-                    spawn_scryfall_list(ids, client, asset_server, get_deck, v).await;
-                })
+                if !ids.is_empty() {
+                    info!(
+                        "{}: {} has requested tokens {ids:?}",
+                        top.face().name,
+                        top.data.id
+                    );
+                    #[cfg(not(feature = "wasm"))]
+                    down.runtime.0.spawn(async move {
+                        spawn_scryfall_list(ids, client, asset_server, get_deck, v).await
+                    });
+                    #[cfg(feature = "wasm")]
+                    wasm_bindgen_futures::spawn_local(async move {
+                        spawn_scryfall_list(ids, client, asset_server, get_deck, v).await;
+                    })
+                }
             } else if input.just_pressed(KeyCode::KeyO)
                 && !is_reversed(&transform)
                 && zoom
@@ -2141,7 +2143,6 @@ pub fn register_deck(
         let v = match deck_type {
             DeckType::Other(v, _) => v,
             DeckType::Single(v) => vec2_to_ground(&deck, v, rev),
-            DeckType::Token => continue,
             DeckType::Deck => {
                 let spot = spots
                     .iter_mut()
