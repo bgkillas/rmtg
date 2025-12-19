@@ -2167,6 +2167,46 @@ pub fn register_deck(
                 let v = Vec2::new(trans.x, trans.z);
                 vec2_to_ground(&deck, v, rev)
             }
+            DeckType::CommanderAlt => {
+                let spot = spots
+                    .iter_mut()
+                    .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0))
+                    .find(|(_, s, _)| matches!(s.spot_type, SpotType::CommanderAlt))
+                    .unwrap();
+                let trans = rem(spot);
+                let v = Vec2::new(trans.x, trans.z);
+                vec2_to_ground(&deck, v, rev)
+            }
+            DeckType::Companion => {
+                let spot = spots
+                    .iter_mut()
+                    .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0))
+                    .find(|(_, s, _)| matches!(s.spot_type, SpotType::CommanderAlt))
+                    .unwrap();
+                let trans = spot.0.translation();
+                let v = Vec2::new(trans.x + CARD_WIDTH + MAT_BAR, trans.z);
+                vec2_to_ground(&deck, v, rev)
+            }
+            DeckType::Attraction => {
+                let spot = spots
+                    .iter_mut()
+                    .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0))
+                    .find(|(_, s, _)| matches!(s.spot_type, SpotType::Exile))
+                    .unwrap();
+                let trans = spot.0.translation();
+                let v = Vec2::new(trans.x + CARD_WIDTH + MAT_BAR, trans.z);
+                vec2_to_ground(&deck, v, rev)
+            }
+            DeckType::Sticker => {
+                let spot = spots
+                    .iter_mut()
+                    .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0))
+                    .find(|(_, s, _)| matches!(s.spot_type, SpotType::Main))
+                    .unwrap();
+                let trans = spot.0.translation();
+                let v = Vec2::new(trans.x + CARD_WIDTH + MAT_BAR, trans.z);
+                vec2_to_ground(&deck, v, rev)
+            }
             DeckType::Commander => {
                 let spot = spots
                     .iter_mut()
@@ -2174,31 +2214,6 @@ pub fn register_deck(
                     .find(|(_, s, _)| matches!(s.spot_type, SpotType::CommanderMain))
                     .unwrap();
                 let trans = rem(spot);
-                let v = {
-                    let spot = spots
-                        .iter_mut()
-                        .filter(|(_, _, p)| p.0 == peers.me.unwrap_or(0))
-                        .find(|(_, s, _)| matches!(s.spot_type, SpotType::CommanderAlt))
-                        .unwrap();
-                    let trans = rem(spot);
-                    Vec2::new(trans.x, trans.z)
-                };
-                if deck.len() == 2 {
-                    let top = Pile::Single(deck.pop().into());
-                    if let Some(ent) = new_pile(
-                        top,
-                        card_base.clone(),
-                        &mut materials,
-                        &mut commands,
-                        &mut meshes,
-                        v,
-                        id,
-                        Some(net.new_id()),
-                        rev,
-                    ) {
-                        to_move.0.push(ent);
-                    }
-                }
                 let v = Vec2::new(trans.x, trans.z);
                 vec2_to_ground(&deck, v, rev)
             }
@@ -2209,7 +2224,7 @@ pub fn register_deck(
                     .find(|(_, s, _)| matches!(s.spot_type, SpotType::CommanderMain))
                     .unwrap();
                 let trans = spot.0.translation();
-                let v = Vec2::new(trans.x, trans.z);
+                let v = Vec2::new(trans.x + CARD_WIDTH + MAT_BAR, trans.z);
                 vec2_to_ground(&deck, v, rev)
             }
         };

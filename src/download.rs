@@ -8,7 +8,7 @@ use bitcode::{decode, encode};
 use bytes::Bytes;
 use futures::StreamExt;
 use futures::future::join_all;
-use futures::stream::FuturesUnordered;
+use futures::stream::{FuturesOrdered, FuturesUnordered};
 use image::imageops::FilterType;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
@@ -419,17 +419,18 @@ pub async fn parse_moxfield(
             flipped: false,
         })
     }
-    if !value["meld_result"].is_null() {
+    let mut c = if !value["meld_result"].is_null() {
         let id = value["scryfall_id"].as_str().unwrap();
-        return get_by_id(
+        get_by_id(
             client,
             asset_server,
             format!("https://api.scryfall.com/cards/{id}"),
             false,
         )
-        .await;
-    }
-    let mut c = parse(value, client, asset_server).await?;
+        .await?
+    } else {
+        parse(value, client, asset_server).await?
+    };
     let id = value["uniqueCardId"].as_str()?;
     let tokens = &base["cardsToTokens"][id];
     if !tokens.is_null() {
@@ -598,14 +599,17 @@ async fn parse_count(
         .map(|a| (a, n))
 }
 pub async fn get_pile(
-    iter: impl Iterator<Item = (&JsonValue, usize)>,
+    value: &JsonValue,
     client: &reqwest::Client,
     asset_server: &AssetServer,
     decks: &GetDeck,
     base: &JsonValue,
     deck_type: DeckType,
 ) {
-    let pile = iter
+    let iter = value
+        .entries()
+        .map(|(_, c)| (&c["card"], c["quantity"].as_usize().unwrap()));
+    let pile: Vec<SubCard> = iter
         .map(|(p, n)| parse_count(p, client, asset_server, base, n))
         .collect::<FuturesUnordered<_>>()
         .filter_map(async |a| a)
@@ -615,8 +619,42 @@ pub async fn get_pile(
         .into_iter()
         .flatten()
         .collect();
-    let mut decks = decks.0.lock().unwrap();
-    decks.push((Pile::new(pile), deck_type));
+    if !pile.is_empty() {
+        let mut decks = decks.0.lock().unwrap();
+        decks.push((Pile::new(pile), deck_type));
+    }
+}
+pub async fn get_pile_ordered(
+    value: &JsonValue,
+    client: &reqwest::Client,
+    asset_server: &AssetServer,
+    decks: &GetDeck,
+    base: &JsonValue,
+    deck_type: DeckType,
+) {
+    let iter = value
+        .entries()
+        .map(|(_, c)| (&c["card"], c["quantity"].as_usize().unwrap()));
+    let mut pile: Vec<SubCard> = iter
+        .map(|(p, n)| parse_count(p, client, asset_server, base, n))
+        .collect::<FuturesOrdered<_>>()
+        .filter_map(async |a| a)
+        .map(|(a, n)| vec![a; n])
+        .collect::<Vec<Vec<SubCard>>>()
+        .await
+        .into_iter()
+        .flatten()
+        .collect();
+    if !pile.is_empty() {
+        let mut decks = decks.0.lock().unwrap();
+        if matches!(deck_type, DeckType::Commander) && pile.len() == 2 {
+            decks.push((
+                Pile::Single(pile.pop().unwrap().into()),
+                DeckType::CommanderAlt,
+            ));
+        }
+        decks.push((Pile::new(pile), deck_type));
+    }
 }
 pub struct Exact {
     pub count: usize,
@@ -642,7 +680,7 @@ pub async fn get_deck_export(
     decks: GetDeck,
     v: Vec2,
 ) {
-    let pile = export
+    let pile: Vec<SubCard> = export
         .into_iter()
         .map(|a| get_exact(a, &client))
         .collect::<FuturesUnordered<_>>()
@@ -659,8 +697,10 @@ pub async fn get_deck_export(
         .into_iter()
         .flatten()
         .collect();
-    let mut decks = decks.0.lock().unwrap();
-    decks.push((Pile::new(pile), DeckType::Single(v)));
+    if !pile.is_empty() {
+        let mut decks = decks.0.lock().unwrap();
+        decks.push((Pile::new(pile), DeckType::Single(v)));
+    }
 }
 pub async fn get_deck(
     url: String,
@@ -674,10 +714,8 @@ pub async fn get_deck(
         && let Ok(json) = json::parse(&text)
     {
         let board = &json["boards"];
-        let commanders = get_pile(
-            board["commanders"]["cards"]
-                .entries()
-                .map(|(_, c)| (&c["card"], c["quantity"].as_usize().unwrap())),
+        let commanders = get_pile_ordered(
+            &board["commanders"]["cards"],
             &client,
             &asset_server,
             &decks,
@@ -685,9 +723,7 @@ pub async fn get_deck(
             DeckType::Commander,
         );
         let main = get_pile(
-            board["mainboard"]["cards"]
-                .entries()
-                .map(|(_, c)| (&c["card"], c["quantity"].as_usize().unwrap())),
+            &board["mainboard"]["cards"],
             &client,
             &asset_server,
             &decks,
@@ -695,16 +731,50 @@ pub async fn get_deck(
             DeckType::Deck,
         );
         let side = get_pile(
-            board["sideboard"]["cards"]
-                .entries()
-                .map(|(_, c)| (&c["card"], c["quantity"].as_usize().unwrap())),
+            &board["sideboard"]["cards"],
             &client,
             &asset_server,
             &decks,
             &json,
             DeckType::SideBoard,
         );
+        let comp = get_pile(
+            &board["companions"]["cards"],
+            &client,
+            &asset_server,
+            &decks,
+            &json,
+            DeckType::Companion,
+        );
+        let spell = get_pile(
+            &board["signatureSpells"]["cards"],
+            &client,
+            &asset_server,
+            &decks,
+            &json,
+            DeckType::CommanderAlt,
+        );
+        let attractions = get_pile(
+            &board["attractions"]["cards"],
+            &client,
+            &asset_server,
+            &decks,
+            &json,
+            DeckType::Attraction,
+        );
+        let stickers = get_pile(
+            &board["stickers"]["cards"],
+            &client,
+            &asset_server,
+            &decks,
+            &json,
+            DeckType::Sticker,
+        );
         commanders.await;
+        comp.await;
+        spell.await;
+        stickers.await;
+        attractions.await;
         side.await;
         main.await;
     }

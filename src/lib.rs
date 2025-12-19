@@ -15,6 +15,7 @@ use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
 use bevy_tangled::{Client, PeerId};
 use bevy_ui_text_input::TextInputPlugin;
 use rand::RngCore;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::{Debug, Error, Formatter};
 use std::ops::{Bound, RangeBounds};
@@ -227,14 +228,13 @@ fn test_parse() {
         let img = runtime
             .block_on(runtime.spawn(async move {
                 let mut json = json::object!(scryfall_id: "64b0acfa-1a8d-4a94-8972-c9bb235e4897", name: "kilo");
-                download::parse(
+                download::parse_scryfall(
                     &mut json,
                     &reqwest::Client::builder()
                         .user_agent(USER_AGENT)
                         .build()
                         .unwrap(),
                     &asset_server,
-                    1
                 )
                 .await
             }))
@@ -315,6 +315,15 @@ enum Pile {
     Empty,
 }
 impl Pile {
+    #[allow(dead_code)]
+    fn sort_by<F>(&mut self, sort: F)
+    where
+        F: FnMut(&SubCard, &SubCard) -> Ordering,
+    {
+        if let Pile::Multiple(v) = self {
+            v.sort_by(sort)
+        }
+    }
     fn new(mut v: Vec<SubCard>) -> Self {
         if v.len() == 1 {
             Self::Single(v.remove(0).into())
@@ -630,6 +639,10 @@ enum DeckType {
     Deck,
     Commander,
     SideBoard,
+    CommanderAlt,
+    Companion,
+    Sticker,
+    Attraction,
 }
 #[derive(Resource, Debug, Default, Clone)]
 struct GetDeck(Arc<Mutex<Vec<(Pile, DeckType)>>>);
