@@ -8,6 +8,7 @@ use crate::update::{CardSpot, GiveEnts, SpotType};
 use crate::*;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy_framepace::{FramepaceSettings, Limiter};
+use bevy_ui_text_input::{TextInputBuffer, TextInputContents, TextInputMode, TextInputNode};
 use bytes::Bytes;
 #[cfg(feature = "steam")]
 use std::collections::HashMap;
@@ -311,7 +312,40 @@ pub fn setup(
             turn.insert(net.new_id());
         }
     }
-    commands.spawn((
+    commands
+        .spawn((
+            Node {
+                width: Val::Percent(25.0),
+                height: Val::Percent(25.0),
+                top: Val::Percent(75.0),
+                ..default()
+            },
+            TextMenu,
+            Visibility::Visible,
+            BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 64)),
+        ))
+        .with_child((
+            Node {
+                width: Val::Percent(100.0),
+                bottom: Val::Percent(100.0),
+                height: Val::Px(FONT_HEIGHT * 1.5),
+                ..default()
+            },
+            TextInputNode {
+                mode: TextInputMode::SingleLine,
+                clear_on_submit: true,
+                unfocus_on_submit: false,
+                ..default()
+            },
+            TextFont {
+                font: font.clone(),
+                font_size: FONT_SIZE,
+                ..default()
+            },
+            TextInputContents::default(),
+            TextInputBuffer::default(),
+        ));
+    let mut ent = commands.spawn((
         Node {
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
@@ -322,7 +356,7 @@ pub fn setup(
         BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
     ));
     #[cfg(feature = "steam")]
-    commands.spawn((
+    ent.with_child((
         Node {
             width: Val::Px(0.0),
             height: Val::Px(0.0),
@@ -330,8 +364,7 @@ pub fn setup(
         },
         Text(String::new()),
         SteamInfo,
-        EscMenu,
-        Visibility::Hidden,
+        Visibility::Inherited,
         TextFont {
             font,
             font_size: FONT_SIZE,
@@ -343,6 +376,8 @@ pub fn setup(
 pub struct FontRes(pub Handle<Font>);
 #[derive(Component)]
 pub struct EscMenu;
+#[derive(Component)]
+pub struct TextMenu;
 #[derive(Component)]
 pub struct SideMenu;
 #[cfg(feature = "steam")]

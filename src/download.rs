@@ -333,241 +333,168 @@ where
         (f(&value[index]), Default::default())
     }
 }
+pub async fn parse(
+    id: &str,
+    tokens: Vec<Id>,
+    back: Option<CardInfo>,
+    value: &JsonValue,
+    client: &reqwest::Client,
+    asset_server: &AssetServer,
+) -> Option<SubCard> {
+    let layout = value["layout"].as_str();
+    let double = value["card_faces"].members().next().is_some();
+    let bytes = get_bytes(id, client, asset_server, true);
+    let layout = layout == Some("flip");
+    let mut alt_image = if double && !layout {
+        get_bytes(id, client, asset_server, false).await
+    } else {
+        None
+    };
+    let image = bytes.await?;
+    if layout {
+        alt_image = Some(UninitImage::default());
+    }
+    let alt_name = value["card_faces"]
+        .members()
+        .nth(1)
+        .and_then(|a| a["name"].as_str())
+        .map(|a| a.to_string())
+        .unwrap_or_default();
+    let name = value["card_faces"]
+        .members()
+        .next()
+        .and_then(|a| a["name"].as_str())
+        .unwrap_or_else(|| value["name"].as_str().unwrap())
+        .to_string();
+    let id: Id = id.parse().unwrap();
+    let (mana_cost, alt_mana_cost) = get(value, "mana_cost", double, |a| {
+        a.as_str().unwrap_or_default().into()
+    });
+    let (card_type, alt_card_type): (Types, Types) = get(value, "type_line", double, |a| {
+        a.as_str().unwrap_or_default().parse().unwrap()
+    });
+    let layout = if layout {
+        Layout::Flip
+    } else if card_type.sub_type.contains(&SubType::Room) {
+        Layout::Room
+    } else {
+        Layout::Normal
+    };
+    let (text, alt_text) = get(value, "oracle_text", double, |a| {
+        a.as_str().unwrap_or_default().to_string()
+    });
+    let (color, alt_color) = get(value, "colors", double, |a| {
+        Color::parse(a.members().map(|a| a.as_str().unwrap()))
+    });
+    let (power, alt_power) = get(value, "power", double, |a| a.as_u16().unwrap_or_default());
+    let (toughness, alt_toughness) = get(value, "toughness", double, |a| {
+        a.as_u16().unwrap_or_default()
+    });
+    Some(SubCard {
+        data: CardData {
+            face: CardInfo {
+                name,
+                mana_cost,
+                card_type,
+                text,
+                color,
+                power,
+                toughness,
+                image,
+            },
+            back: back.or(alt_image.map(|image| CardInfo {
+                name: alt_name,
+                mana_cost: alt_mana_cost,
+                card_type: alt_card_type,
+                text: alt_text,
+                color: alt_color,
+                power: alt_power,
+                toughness: alt_toughness,
+                image,
+            })),
+            id,
+            tokens,
+            layout,
+        },
+        flipped: false,
+    })
+}
 pub async fn parse_moxfield(
     value: &JsonValue,
     client: &reqwest::Client,
     asset_server: &AssetServer,
     base: &JsonValue,
 ) -> Option<SubCard> {
-    pub async fn parse(
-        value: &JsonValue,
-        client: &reqwest::Client,
-        asset_server: &AssetServer,
-    ) -> Option<SubCard> {
-        let layout = value["layout"].as_str();
-        let double = value["card_faces"].members().next().is_some();
-        let id = value["scryfall_id"].as_str()?;
-        let bytes = get_bytes(id, client, asset_server, true);
-        let layout = layout == Some("flip");
-        let mut alt_image = if double && !layout {
-            get_bytes(id, client, asset_server, false).await
-        } else {
-            None
-        };
-        let image = bytes.await?;
-        if layout {
-            alt_image = Some(UninitImage::default());
-        }
-        let alt_name = value["card_faces"]
-            .members()
-            .nth(1)
-            .and_then(|a| a["name"].as_str())
-            .map(|a| a.to_string())
-            .unwrap_or_default();
-        let name = value["card_faces"]
-            .members()
-            .next()
-            .and_then(|a| a["name"].as_str())
-            .unwrap_or_else(|| value["name"].as_str().unwrap())
-            .to_string();
-        let id: Id = id.parse().unwrap();
-        let (mana_cost, alt_mana_cost) = get(value, "mana_cost", double, |a| {
-            a.as_str().unwrap_or_default().into()
-        });
-        let (card_type, alt_card_type): (Types, Types) = get(value, "type_line", double, |a| {
-            a.as_str().unwrap_or_default().parse().unwrap()
-        });
-        let layout = if layout {
-            Layout::Flip
-        } else if card_type.sub_type.contains(&SubType::Room) {
-            Layout::Room
-        } else {
-            Layout::Normal
-        };
-        let (text, alt_text) = get(value, "oracle_text", double, |a| {
-            a.as_str().unwrap_or_default().to_string()
-        });
-        let (color, alt_color) = get(value, "colors", double, |a| {
-            Color::parse(a.members().map(|a| a.as_str().unwrap()))
-        });
-        let (power, alt_power) = get(value, "power", double, |a| a.as_u16().unwrap_or_default());
-        let (toughness, alt_toughness) = get(value, "toughness", double, |a| {
-            a.as_u16().unwrap_or_default()
-        });
-        Some(SubCard {
-            data: CardData {
-                face: CardInfo {
-                    name,
-                    mana_cost,
-                    card_type,
-                    text,
-                    color,
-                    power,
-                    toughness,
-                    image,
-                },
-                back: alt_image.map(|image| CardInfo {
-                    name: alt_name,
-                    mana_cost: alt_mana_cost,
-                    card_type: alt_card_type,
-                    text: alt_text,
-                    color: alt_color,
-                    power: alt_power,
-                    toughness: alt_toughness,
-                    image,
-                }),
-                id,
-                tokens: Vec::new(),
-                layout,
-            },
-            flipped: false,
+    let id = value["uniqueCardId"].as_str()?;
+    let tokens = &base["cardsToTokens"][id];
+    let tokens = tokens
+        .members()
+        .filter_map(|json| {
+            let id = json.as_str().unwrap();
+            let inner = &base["tokenMappings"][id];
+            if matches!(
+                inner["layout"].as_str().unwrap_or(""),
+                "double_faced_token" | "token" | "emblem"
+            ) {
+                inner["scryfall_id"].as_str().unwrap().parse().ok()
+            } else {
+                None
+            }
         })
-    }
-    let mut c = if !value["meld_result"].is_null() {
+        .collect();
+    if !value["meld_result"].is_null() {
         let id = value["scryfall_id"].as_str().unwrap();
-        get_by_id(
+        let mut c = get_by_id(
             client,
             asset_server,
             format!("https://api.scryfall.com/cards/{id}"),
             false,
         )
-        .await?
+        .await?;
+        c.data.tokens = tokens;
+        Some(c)
     } else {
-        parse(value, client, asset_server).await?
-    };
-    let id = value["uniqueCardId"].as_str()?;
-    let tokens = &base["cardsToTokens"][id];
-    if !tokens.is_null() {
-        c.data.tokens = tokens
-            .members()
-            .filter_map(|json| {
-                let id = json.as_str().unwrap();
-                let inner = &base["tokenMappings"][id];
-                if matches!(
-                    inner["layout"].as_str().unwrap_or(""),
-                    "double_faced_token" | "token" | "emblem"
-                ) {
-                    inner["scryfall_id"].as_str().unwrap().parse().ok()
-                } else {
-                    None
-                }
-            })
-            .collect()
+        parse(
+            value["scryfall_id"].as_str()?,
+            tokens,
+            None,
+            value,
+            client,
+            asset_server,
+        )
+        .await
     }
-    Some(c)
+}
+fn get_tokens(value: &JsonValue, id: Id, name: &str) -> Vec<Id> {
+    value["all_parts"]
+        .members()
+        .filter_map(|a| {
+            let n = a["name"].as_str().unwrap();
+            let sid = a["id"].as_str().unwrap().parse();
+            if let Ok(sid) = sid
+                && sid != id
+                && n != name
+                && a["type_line"].as_str().unwrap() != "Card"
+                && !matches!(
+                    a["component"].as_str().unwrap(),
+                    "meld_part" | "meld_result"
+                )
+            {
+                Some(sid)
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 pub async fn parse_scryfall(
     value: &JsonValue,
     client: &reqwest::Client,
     asset_server: &AssetServer,
 ) -> Option<SubCard> {
-    async fn parse(
-        value: &JsonValue,
-        client: &reqwest::Client,
-        asset_server: &AssetServer,
-    ) -> Option<SubCard> {
-        let layout = value["layout"].as_str();
-        let double = value["card_faces"].members().next().is_some();
-        let id = value["id"].as_str()?;
-        let bytes = get_bytes(id, client, asset_server, true);
-        let layout = layout == Some("flip");
-        let mut alt_image = if double && !layout {
-            get_bytes(id, client, asset_server, false).await
-        } else {
-            None
-        };
-        let image = bytes.await?;
-        if layout {
-            alt_image = Some(UninitImage::default());
-        }
-        let alt_name = value["card_faces"]
-            .members()
-            .nth(1)
-            .and_then(|a| a["name"].as_str())
-            .map(|a| a.to_string())
-            .unwrap_or_default();
-        let name = value["card_faces"]
-            .members()
-            .next()
-            .and_then(|a| a["name"].as_str())
-            .unwrap_or_else(|| value["name"].as_str().unwrap())
-            .to_string();
-        let id: Id = id.parse().unwrap();
-        let (mana_cost, alt_mana_cost) = get(value, "mana_cost", double, |a| {
-            a.as_str().unwrap_or_default().into()
-        });
-        let (card_type, alt_card_type): (Types, Types) = get(value, "type_line", double, |a| {
-            a.as_str().unwrap_or_default().parse().unwrap()
-        });
-        let layout = if layout {
-            Layout::Flip
-        } else if card_type.sub_type.contains(&SubType::Room) {
-            Layout::Room
-        } else {
-            Layout::Normal
-        };
-        let (text, alt_text) = get(value, "oracle_text", double, |a| {
-            a.as_str().unwrap_or_default().to_string()
-        });
-        let (color, alt_color) = get(value, "colors", double, |a| {
-            Color::parse(a.members().map(|a| a.as_str().unwrap()))
-        });
-        let (power, alt_power) = get(value, "power", double, |a| a.as_u16().unwrap_or_default());
-        let (toughness, alt_toughness) = get(value, "toughness", double, |a| {
-            a.as_u16().unwrap_or_default()
-        });
-        let full_name = value["name"].as_str().unwrap();
-        let tokens = value["all_parts"]
-            .members()
-            .filter_map(|a| {
-                let n = a["name"].as_str().unwrap();
-                let sid = a["id"].as_str().unwrap().parse();
-                if let Ok(sid) = sid
-                    && sid != id
-                    && n != full_name
-                    && a["type_line"].as_str().unwrap() != "Card"
-                    && !matches!(
-                        a["component"].as_str().unwrap(),
-                        "meld_part" | "meld_result"
-                    )
-                {
-                    Some(sid)
-                } else {
-                    None
-                }
-            })
-            .collect();
-        Some(SubCard {
-            data: CardData {
-                face: CardInfo {
-                    name,
-                    mana_cost,
-                    card_type,
-                    text,
-                    color,
-                    power,
-                    toughness,
-                    image,
-                },
-                back: alt_image.map(|image| CardInfo {
-                    name: alt_name,
-                    mana_cost: alt_mana_cost,
-                    card_type: alt_card_type,
-                    text: alt_text,
-                    color: alt_color,
-                    power: alt_power,
-                    toughness: alt_toughness,
-                    image,
-                }),
-                id,
-                tokens,
-                layout,
-            },
-            flipped: false,
-        })
-    }
-    let mut c = parse(value, client, asset_server).await?;
-    if let Some(json) = value["all_parts"]
+    let id = value["id"].as_str()?;
+    let tokens = get_tokens(value, id.parse().unwrap(), value["name"].as_str()?);
+    let back = if let Some(json) = value["all_parts"]
         .members()
         .find(|a| a["component"].as_str().unwrap() == "meld_result")
     {
@@ -576,10 +503,13 @@ pub async fn parse_scryfall(
         let res = client.get(url).send().await.ok()?;
         let res = res.text().await.ok()?;
         let json = json::parse(&res).ok()?;
-        let meld = parse(&json, client, asset_server).await?;
-        c.data.back = Some(meld.data.face)
-    }
-    Some(c)
+        let tokens = get_tokens(&json, id.parse().unwrap(), json["name"].as_str()?);
+        let meld = parse(id, tokens, None, &json, client, asset_server).await?;
+        Some(meld.data.face)
+    } else {
+        None
+    };
+    parse(id, tokens, back, value, client, asset_server).await
 }
 async fn parse_scryfall_count(
     value: &JsonValue,

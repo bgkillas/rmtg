@@ -7,7 +7,7 @@ use crate::misc::{
     Equipment, adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile, new_pile_at,
     repaint_face, spawn_equip, vec2_to_ground,
 };
-use crate::setup::{EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, W, Wall};
+use crate::setup::{EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, TextMenu, W, Wall};
 use crate::sync::{CameraInd, CursorInd, InOtherHand, Net, SyncObjectMe, Trans};
 use crate::*;
 use avian3d::math::Vector;
@@ -1080,7 +1080,7 @@ pub fn listen_for_mouse(
                             CounterMenu(entity, v.clone()),
                             Node {
                                 width: Val::Percent(20.0),
-                                height: Val::Px(FONT_HEIGHT * 2.0 * 1.5),
+                                height: Val::Px(FONT_HEIGHT * 1.5),
                                 ..default()
                             },
                             BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
@@ -1092,7 +1092,7 @@ pub fn listen_for_mouse(
                             },
                             TextFont {
                                 font: font.0.clone(),
-                                font_size: FONT_SIZE * 2.0,
+                                font_size: FONT_SIZE,
                                 ..default()
                             },
                             TextInputContents::default(),
@@ -1522,7 +1522,8 @@ pub fn reset_layers(
 pub fn esc_menu(
     mut commands: Commands,
     input: Res<ButtonInput<KeyCode>>,
-    ents: Query<&mut Visibility, With<EscMenu>>,
+    ents: Query<&mut Visibility, (With<EscMenu>, Without<TextMenu>)>,
+    other_ents: Query<&mut Visibility, (With<TextMenu>, Without<EscMenu>)>,
     mut menu: ResMut<Menu>,
     side: Option<Single<Entity, With<SideMenu>>>,
     counter: Option<Single<Entity, With<CounterMenu>>>,
@@ -1540,15 +1541,19 @@ pub fn esc_menu(
         if let Some(e) = counter {
             commands.entity(*e).despawn()
         }
-        let new = if matches!(*menu, Menu::Esc | Menu::Side | Menu::Counter) {
+        let (new, old) = if matches!(*menu, Menu::Esc | Menu::Side | Menu::Counter) {
             *menu = Menu::World;
-            Visibility::Hidden
+            (Visibility::Hidden, Visibility::Visible)
         } else {
+            active_input.clear();
             *menu = Menu::Esc;
-            Visibility::Visible
+            (Visibility::Visible, Visibility::Hidden)
         };
         for mut visibility in ents {
             *visibility = new;
+        }
+        for mut visibility in other_ents {
+            *visibility = old;
         }
     }
     if mouse_input.just_pressed(MouseButton::Left) {
