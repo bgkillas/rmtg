@@ -6,9 +6,9 @@ use crate::misc::{
 };
 #[cfg(feature = "steam")]
 use crate::setup::SteamInfo;
-use crate::setup::{MAT_HEIGHT, MAT_WIDTH, SideMenu};
+use crate::setup::{FontRes, MAT_HEIGHT, MAT_WIDTH, SideMenu, TextChat};
 use crate::shapes::Shape;
-use crate::update::{GiveEnts, HandIgnore, SearchDeck, update_search};
+use crate::update::{GiveEnts, HandIgnore, SearchDeck, spawn_msg, update_search};
 use crate::*;
 use bevy::diagnostic::FrameCount;
 use bevy::ecs::system::SystemParam;
@@ -188,16 +188,20 @@ pub fn apply_sync(
     mut count: ResMut<SyncCount>,
     mut client: ResMut<Client>,
     mut colliders: Query<&mut Collider>,
-    mut query_meshes: Query<
-        (&mut Mesh3d, &mut Transform),
-        (
-            Without<Children>,
-            With<ChildOf>,
-            Without<InHand>,
-            Without<Shape>,
-            Without<Pile>,
-        ),
-    >,
+    (mut query_meshes, chat, font): (
+        Query<
+            (&mut Mesh3d, &mut Transform),
+            (
+                Without<Children>,
+                With<ChildOf>,
+                Without<InHand>,
+                Without<Shape>,
+                Without<Pile>,
+            ),
+        >,
+        Single<Entity, With<TextChat>>,
+        Res<FontRes>,
+    ),
     (
         search,
         text,
@@ -1048,8 +1052,8 @@ pub fn apply_sync(
                     }
                 }
             }
-            Packet::Text(_msg) => {
-                todo!()
+            Packet::Text(msg) => {
+                spawn_msg(*chat, msg, &mut commands, font.0.clone());
             }
             Packet::Voice(_msg) => {
                 todo!()

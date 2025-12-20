@@ -127,20 +127,20 @@ pub fn start() -> AppExit {
                 ..default()
             }),
         PhysicsPlugins::default(),
-        PhysicsDebugPlugin,
+        //PhysicsDebugPlugin,
         FramepacePlugin,
         EntropyPlugin::<WyRand>::default(),
         Text3dPlugin::default(),
         TextInputPlugin,
         //FpsOverlayPlugin::default(),
     ))
-    .insert_gizmo_config(
+    /*.insert_gizmo_config(
         PhysicsGizmos {
             axis_lengths: None,
             ..default()
         },
         GizmoConfig::default(),
-    )
+    )*/
     .insert_resource(LoadFonts {
         font_embedded: vec![include_bytes!("../assets/noto.ttf")],
         ..default()
@@ -219,47 +219,6 @@ const SLEEP: SleepThreshold = SleepThreshold {
     linear: 4.0 * CARD_THICKNESS,
     angular: 0.25,
 };
-#[test]
-#[cfg(not(feature = "wasm"))]
-fn test_get_deck() {
-    use reqwest::header::USER_AGENT;
-    let mut app = App::new();
-    app.add_plugins(AssetPlugin::default());
-    app.init_asset::<Image>();
-    fn test(asset_server: Res<AssetServer>) {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-        let tmr = std::time::Instant::now();
-        let asset_server = asset_server.clone();
-        let decks = GetDeck::default();
-        let deck = decks.clone();
-        runtime
-            .block_on(runtime.spawn(async move {
-                download::get_deck(
-                    "https://api2.moxfield.com/v3/decks/all/_HGo1kgcB0i-4Iq0vR-LZA".to_string(),
-                    reqwest::Client::builder()
-                        .user_agent(USER_AGENT)
-                        .build()
-                        .unwrap(),
-                    asset_server,
-                    deck,
-                )
-                .await
-            }))
-            .unwrap();
-        let deck = decks.0.lock().unwrap();
-        assert_eq!(deck.len(), 4);
-        println!(
-            "{} {} {} {} {}",
-            tmr.elapsed().as_millis(),
-            deck[0].0.len(),
-            deck[1].0.len(),
-            deck[2].0.len(),
-            deck[3].0.len()
-        );
-    }
-    app.add_systems(Update, test);
-    app.update();
-}
 #[derive(Resource, Default, Debug)]
 struct Turn(usize);
 #[derive(Resource, Default, Debug)]

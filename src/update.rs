@@ -7,7 +7,9 @@ use crate::misc::{
     Equipment, adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile, new_pile_at,
     repaint_face, spawn_equip, vec2_to_ground,
 };
-use crate::setup::{EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, TextMenu, W, Wall};
+use crate::setup::{
+    EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, TextChat, TextInput, TextMenu, W, Wall,
+};
 use crate::sync::{CameraInd, CursorInd, InOtherHand, Net, SyncObjectMe, Trans};
 use crate::*;
 use avian3d::math::Vector;
@@ -1252,25 +1254,50 @@ pub fn listen_for_mouse(
         commands.entity(single.0).despawn();
     }
 }
-pub fn text_send(mut msg: MessageReader<SubmitText>, mut net: Net) {
+pub fn text_send(
+    mut msg: MessageReader<SubmitText>,
+    mut net: Net,
+    chat: Single<Entity, With<TextChat>>,
+    mut commands: Commands,
+    font: Res<FontRes>,
+) {
     for msg in msg.read() {
         if msg.text.is_empty() {
             return;
         }
-        net.text(msg.text.clone())
+        net.text(msg.text.clone());
+        spawn_msg(*chat, msg.text.clone(), &mut commands, font.0.clone());
     }
+}
+pub fn spawn_msg(entity: Entity, msg: String, commands: &mut Commands, font: Handle<Font>) {
+    commands.entity(entity).with_child((
+        Node {
+            width: Val::Percent(100.0),
+            ..default()
+        },
+        Text(msg),
+        Visibility::Inherited,
+        TextFont {
+            font,
+            font_size: FONT_SIZE,
+            ..default()
+        },
+    ));
+    /*commands.trigger(Scroll {
+        entity,
+        delta: Vec2::new(0.0, FONT_HEIGHT),
+    });*/
 }
 pub fn text_keybinds(
     mut active_input: ResMut<InputFocus>,
-    text: Single<&Children, With<TextMenu>>,
+    text: Single<Entity, With<TextInput>>,
     menu: Res<Menu>,
     input: Res<ButtonInput<KeyCode>>,
 ) {
     if !matches!(*menu, Menu::World) || !input.just_pressed(KeyCode::Enter) {
         return;
     }
-    let ent = text.first().unwrap();
-    active_input.set(*ent);
+    active_input.set(*text);
 }
 pub fn turn_keybinds(
     others_ids: Query<&SyncObject>,
@@ -2366,26 +2393,26 @@ pub fn on_scroll_handler(
     };
     let max_offset = (computed.content_size() - computed.size()) * computed.inverse_scale_factor();
     let delta = &mut scroll.delta;
-    if node.overflow.x == OverflowAxis::Scroll && delta.x != 0. {
-        let max = if delta.x > 0. {
+    if node.overflow.x == OverflowAxis::Scroll && delta.x != 0.0 {
+        let max = if delta.x > 0.0 {
             scroll_position.x >= max_offset.x
         } else {
-            scroll_position.x <= 0.
+            scroll_position.x <= 0.0
         };
         if !max {
             scroll_position.x += delta.x;
-            delta.x = 0.;
+            delta.x = 0.0;
         }
     }
-    if node.overflow.y == OverflowAxis::Scroll && delta.y != 0. {
-        let max = if delta.y > 0. {
+    if node.overflow.y == OverflowAxis::Scroll && delta.y != 0.0 {
+        let max = if delta.y > 0.0 {
             scroll_position.y >= max_offset.y
         } else {
-            scroll_position.y <= 0.
+            scroll_position.y <= 0.0
         };
         if !max {
             scroll_position.y += delta.y;
-            delta.y = 0.;
+            delta.y = 0.0;
         }
     }
     if *delta == Vec2::ZERO {

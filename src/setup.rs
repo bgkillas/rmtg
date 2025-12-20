@@ -147,10 +147,11 @@ pub fn setup(
         Collider::cuboid(2.0 * W + T, T, 2.0 * W + T),
         RigidBody::Static,
         Floor,
-        Mesh3d(meshes.add(Cuboid::new(2.0 * W, T - CARD_THICKNESS, 2.0 * W))),
+        Mesh3d(meshes.add(Cuboid::new(2.0 * W, T, 2.0 * W))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: FLOOR_COLOR,
             unlit: true,
+            depth_bias: f32::NEG_INFINITY,
             ..default()
         })),
     ));
@@ -314,35 +315,18 @@ pub fn setup(
             turn.insert(net.new_id());
         }
     }
-    commands
-        .spawn((
-            Node {
-                width: Val::Percent(25.0),
-                height: Val::Percent(25.0),
-                top: Val::Percent(75.0),
-                ..default()
-            },
-            TextMenu,
-            Visibility::Visible,
-            BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 64)),
-        ))
-        .with_children(|parent| {
-            parent.spawn((
-                Node {
-                    width: Val::Percent(100.0),
-                    top: Val::Percent(0.0),
-                    position_type: PositionType::Absolute,
-                    bottom: Val::Px(FONT_HEIGHT * 1.5),
-                    overflow: Overflow::scroll_y(),
-                    display: Display::Grid,
-                    grid_template_columns: vec![RepeatedGridTrack::percent(1, 100.0)],
-                    align_content: AlignContent::Start,
-                    ..default()
-                },
-                BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 64)),
-                Visibility::Inherited,
-            ));
-            parent.spawn((
+    commands.spawn((
+        Node {
+            width: Val::Percent(25.0),
+            height: Val::Percent(25.0),
+            top: Val::Percent(75.0),
+            ..default()
+        },
+        TextMenu,
+        Visibility::Visible,
+        BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 64)),
+        children![
+            (
                 Node {
                     width: Val::Percent(100.0),
                     bottom: Val::Percent(0.0),
@@ -361,11 +345,29 @@ pub fn setup(
                     font_size: FONT_SIZE,
                     ..default()
                 },
+                TextInput,
                 Visibility::Inherited,
                 TextInputContents::default(),
                 TextInputBuffer::default(),
-            ));
-        });
+            ),
+            (
+                Node {
+                    width: Val::Percent(100.0),
+                    top: Val::Percent(0.0),
+                    position_type: PositionType::Absolute,
+                    bottom: Val::Px(FONT_HEIGHT * 1.5),
+                    overflow: Overflow::scroll_y(),
+                    display: Display::Grid,
+                    grid_template_columns: vec![RepeatedGridTrack::percent(1, 100.0)],
+                    align_content: AlignContent::Start,
+                    ..default()
+                },
+                TextChat,
+                BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 64)),
+                Visibility::Inherited,
+            ),
+        ],
+    ));
     let mut ent = commands.spawn((
         Node {
             width: Val::Percent(100.0),
@@ -399,6 +401,10 @@ pub struct FontRes(pub Handle<Font>);
 pub struct EscMenu;
 #[derive(Component)]
 pub struct TextMenu;
+#[derive(Component)]
+pub struct TextChat;
+#[derive(Component)]
+pub struct TextInput;
 #[derive(Component)]
 pub struct SideMenu;
 #[cfg(feature = "steam")]
