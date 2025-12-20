@@ -256,6 +256,7 @@ pub fn apply_sync(
         return;
     }
     let mut cam = cam.into_inner();
+    let mut new = HashMap::new();
     let mut ind = false;
     let mut ignore = HashSet::new();
     client.recv(|client, packet| {
@@ -460,20 +461,34 @@ pub fn apply_sync(
                 let id = SyncObject { user, id: lid };
                 sent.del(id);
                 ignore.insert(id);
-                shape
-                    .create(
-                        trans.into(),
-                        &mut commands,
-                        &mut meshes,
-                        &mut materials,
-                        bevy::color::Color::WHITE,
-                    )
-                    .insert(id);
+                new.insert(
+                    id,
+                    shape
+                        .create(
+                            trans.into(),
+                            &mut commands,
+                            &mut meshes,
+                            &mut materials,
+                            bevy::color::Color::WHITE,
+                        )
+                        .insert(id)
+                        .id(),
+                );
             }
             Packet::SetUser(peer, id) => {
                 if peer == client.my_id() {
-                    for (_, _, _, e, _, _, _) in queryme.iter() {
+                    for (id, _, _, e, _, _, _) in queryme.iter() {
                         if shape.contains(e) {
+                            client
+                                .broadcast(
+                                    &Packet::Dead(SyncObject {
+                                        user: client.my_id(),
+                                        id: *id,
+                                    }),
+                                    Reliability::Reliable,
+                                    COMPRESSION,
+                                )
+                                .unwrap();
                             commands.entity(e).despawn()
                         }
                     }
@@ -509,6 +524,8 @@ pub fn apply_sync(
                         *menu = Menu::World;
                         commands.entity(**side.as_ref().unwrap()).despawn();
                     }
+                } else if let Some(ent) = new.get(&id) {
+                    commands.entity(*ent).despawn();
                 }
             }
             Packet::Equip(id) => {
@@ -1149,6 +1166,8 @@ pub fn new_lobby(
     #[cfg(feature = "ip")] give: Res<GiveEnts>,
     mut peers: ResMut<Peers>,
     #[cfg(feature = "ip")] rempeers: Res<RemPeers>,
+    shapes: Query<Entity, (With<Shape>, With<SyncObjectMe>)>,
+    mut commands: Commands,
 ) {
     if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft]) {
         if input.just_pressed(KeyCode::KeyN) {
@@ -1185,6 +1204,9 @@ pub fn new_lobby(
                     .unwrap();
             }
         } else if input.just_pressed(KeyCode::KeyK) {
+            for e in shapes {
+                commands.entity(e).despawn()
+            }
             info!("joining ip");
             #[cfg(feature = "ip")]
             {
@@ -1393,6 +1415,11 @@ impl<'w, 's> Net<'w, 's> {
             user: self.client.my_id(),
             id,
         }
+    }
+    pub fn text(&mut self, msg: String) {
+        self.client
+            .broadcast(&Packet::Text(msg), Reliability::Reliable, COMPRESSION)
+            .unwrap();
     }
     pub fn killed_me(&mut self, id: SyncObjectMe) {
         self.count.rem(1);

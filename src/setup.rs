@@ -326,29 +326,46 @@ pub fn setup(
             Visibility::Visible,
             BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 64)),
         ))
-        .with_child((
-            Node {
-                width: Val::Percent(100.0),
-                bottom: Val::Percent(0.0),
-                position_type: PositionType::Absolute,
-                height: Val::Px(FONT_HEIGHT * 1.5),
-                ..default()
-            },
-            TextInputNode {
-                mode: TextInputMode::SingleLine,
-                clear_on_submit: true,
-                unfocus_on_submit: false,
-                ..default()
-            },
-            TextFont {
-                font: font.clone(),
-                font_size: FONT_SIZE,
-                ..default()
-            },
-            Visibility::Inherited,
-            TextInputContents::default(),
-            TextInputBuffer::default(),
-        ));
+        .with_children(|parent| {
+            parent.spawn((
+                Node {
+                    width: Val::Percent(100.0),
+                    top: Val::Percent(0.0),
+                    position_type: PositionType::Absolute,
+                    bottom: Val::Px(FONT_HEIGHT * 1.5),
+                    overflow: Overflow::scroll_y(),
+                    display: Display::Grid,
+                    grid_template_columns: vec![RepeatedGridTrack::percent(1, 100.0)],
+                    align_content: AlignContent::Start,
+                    ..default()
+                },
+                BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 64)),
+                Visibility::Inherited,
+            ));
+            parent.spawn((
+                Node {
+                    width: Val::Percent(100.0),
+                    bottom: Val::Percent(0.0),
+                    position_type: PositionType::Absolute,
+                    height: Val::Px(FONT_HEIGHT * 1.5),
+                    ..default()
+                },
+                TextInputNode {
+                    mode: TextInputMode::SingleLine,
+                    clear_on_submit: true,
+                    unfocus_on_submit: false,
+                    ..default()
+                },
+                TextFont {
+                    font: font.clone(),
+                    font_size: FONT_SIZE,
+                    ..default()
+                },
+                Visibility::Inherited,
+                TextInputContents::default(),
+                TextInputBuffer::default(),
+            ));
+        });
     let mut ent = commands.spawn((
         Node {
             width: Val::Percent(100.0),

@@ -19,7 +19,9 @@ use bevy::picking::hover::HoverMap;
 use bevy::window::PrimaryWindow;
 use bevy_rich_text3d::Text3d;
 use bevy_tangled::PeerId;
-use bevy_ui_text_input::{TextInputBuffer, TextInputContents, TextInputMode, TextInputNode};
+use bevy_ui_text_input::{
+    SubmitText, TextInputBuffer, TextInputContents, TextInputMode, TextInputNode,
+};
 use cosmic_text::Edit;
 #[cfg(feature = "calc")]
 use kalc_lib::complex::NumStr;
@@ -170,7 +172,7 @@ pub fn update_hand(
             let mut order = children
                 .iter()
                 .filter_map(|c| card.get(c).ok())
-                .map(|(e, _, c)| (c.get(0).unwrap().data.face.mana_cost.total, e.0))
+                .map(|(e, _, c)| (c.first().data.face.mana_cost.total, e.0))
                 .collect::<Vec<(u8, usize)>>();
             order.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
             for child in children.iter() {
@@ -1250,6 +1252,14 @@ pub fn listen_for_mouse(
         commands.entity(single.0).despawn();
     }
 }
+pub fn text_send(mut msg: MessageReader<SubmitText>, mut net: Net) {
+    for msg in msg.read() {
+        if msg.text.is_empty() {
+            return;
+        }
+        net.text(msg.text.clone())
+    }
+}
 pub fn text_keybinds(
     mut active_input: ResMut<InputFocus>,
     text: Single<&Children, With<TextMenu>>,
@@ -1259,7 +1269,7 @@ pub fn text_keybinds(
     if !matches!(*menu, Menu::World) || !input.just_pressed(KeyCode::Enter) {
         return;
     }
-    let ent = text.get(0).unwrap();
+    let ent = text.first().unwrap();
     active_input.set(*ent);
 }
 pub fn turn_keybinds(
