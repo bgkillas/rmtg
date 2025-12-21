@@ -154,6 +154,7 @@ pub fn setup(
             depth_bias: f32::NEG_INFINITY,
             ..default()
         })),
+        DebugRender::none(),
     ));
     commands.spawn((
         Transform::from_xyz(0.0, 2.0 * W + T / 2.0, 0.0),
@@ -167,59 +168,33 @@ pub fn setup(
             unlit: true,
             ..default()
         })),
+        DebugRender::none(),
     ));
-    commands.spawn((
-        Transform::from_xyz(W + T / 2.0, W, 0.0),
-        CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::cuboid(T, 2.0 * W + T, 2.0 * W + T),
-        RigidBody::Static,
-        Wall,
-        Mesh3d(meshes.add(Cuboid::new(T, 2.0 * W, 2.0 * W))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: WALL_COLOR,
-            unlit: true,
-            ..default()
-        })),
-    ));
-    commands.spawn((
-        Transform::from_xyz(-(W + T / 2.0), W, 0.0),
-        CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::cuboid(T, 2.0 * W + T, 2.0 * W + T),
-        RigidBody::Static,
-        Wall,
-        Mesh3d(meshes.add(Cuboid::new(T, 2.0 * W, 2.0 * W))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: WALL_COLOR,
-            unlit: true,
-            ..default()
-        })),
-    ));
-    commands.spawn((
-        Transform::from_xyz(0.0, W, W + T / 2.0),
-        CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::cuboid(2.0 * W + T, 2.0 * W + T, T),
-        RigidBody::Static,
-        Wall,
-        Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, T))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: WALL_COLOR,
-            unlit: true,
-            ..default()
-        })),
-    ));
-    commands.spawn((
-        Transform::from_xyz(0.0, W, -(W + T / 2.0)),
-        CollisionLayers::new(0b11, LayerMask::ALL),
-        Collider::cuboid(2.0 * W + T, 2.0 * W + T, T),
-        RigidBody::Static,
-        Wall,
-        Mesh3d(meshes.add(Cuboid::new(2.0 * W, 2.0 * W, T))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: WALL_COLOR,
-            unlit: true,
-            ..default()
-        })),
-    ));
+    for i in 0..4 {
+        let s = W + T / 2.0;
+        let d = 2.0 * W + T;
+        let (x, y, cx, cy) = match i {
+            0 => (s, 0.0, T, d),
+            1 => (-s, 0.0, T, d),
+            2 => (0.0, s, d, T),
+            3 => (0.0, -s, d, T),
+            _ => unreachable!(),
+        };
+        commands.spawn((
+            Transform::from_xyz(x, W, y),
+            CollisionLayers::new(0b11, LayerMask::ALL),
+            Collider::cuboid(cx, 2.0 * W + T, cy),
+            RigidBody::Static,
+            Wall,
+            Mesh3d(meshes.add(Cuboid::new(cx, 2.0 * W + T, cy))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: WALL_COLOR,
+                unlit: true,
+                ..default()
+            })),
+            DebugRender::none(),
+        ));
+    }
     commands.spawn((
         Camera3d::default(),
         Projection::Perspective(PerspectiveProjection {
@@ -363,7 +338,6 @@ pub fn setup(
                     ..default()
                 },
                 TextChat,
-                BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 64)),
                 Visibility::Inherited,
             ),
         ],

@@ -127,20 +127,20 @@ pub fn start() -> AppExit {
                 ..default()
             }),
         PhysicsPlugins::default(),
-        //PhysicsDebugPlugin,
+        PhysicsDebugPlugin,
         FramepacePlugin,
         EntropyPlugin::<WyRand>::default(),
         Text3dPlugin::default(),
         TextInputPlugin,
         //FpsOverlayPlugin::default(),
     ))
-    /*.insert_gizmo_config(
+    .insert_gizmo_config(
         PhysicsGizmos {
             axis_lengths: None,
             ..default()
         },
         GizmoConfig::default(),
-    )*/
+    )
     .insert_resource(LoadFonts {
         font_embedded: vec![include_bytes!("../assets/noto.ttf")],
         ..default()
