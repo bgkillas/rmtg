@@ -420,7 +420,7 @@ pub fn listen_for_mouse(
         mut turn,
         peers,
     ): (
-        Option<Single<&TextInputContents>>,
+        Option<Single<&TextInputContents, With<SearchText>>>,
         Res<FontRes>,
         Query<&mut Text3d>,
         Query<&Children, Without<Pile>>,
@@ -1548,6 +1548,8 @@ fn ui_rotate_left(transform: &mut UiTransform) {
 pub struct CounterMenu(Entity, Value);
 #[derive(Component)]
 pub struct TempDisable;
+#[derive(Component)]
+pub struct SearchText;
 #[derive(Debug)]
 pub enum SpotType {
     CommanderMain,
@@ -1696,7 +1698,7 @@ pub fn pick_from_list(
         Option<Single<Entity, With<FollowMouse>>>,
         Query<&SyncObjectMe>,
         Query<&SyncObject>,
-        Single<&TextInputContents>,
+        Single<&TextInputContents, With<SearchText>>,
         Query<(), With<Equipment>>,
         Res<ButtonInput<KeyCode>>,
         Res<InputFocus>,
@@ -2507,6 +2509,7 @@ pub fn search(
                     height: Val::Px(FONT_HEIGHT * 1.5),
                     ..default()
                 },
+                SearchText,
             ))
             .id();
         active_input.set(id);
@@ -2568,7 +2571,7 @@ pub fn pile_merge(
     >,
     mut commands: Commands,
     search_deck: Option<Single<(Entity, &SearchDeck)>>,
-    text: Option<Single<&TextInputContents>>,
+    text: Option<Single<&TextInputContents, With<SearchText>>>,
     equipment: Query<(), With<Equipment>>,
     (mut menu, side, net): (ResMut<Menu>, Option<Single<Entity, With<SideMenu>>>, Net),
 ) {
