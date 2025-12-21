@@ -8,7 +8,7 @@ use crate::misc::{
 use crate::setup::SteamInfo;
 use crate::setup::{FontRes, MAT_HEIGHT, MAT_WIDTH, SideMenu, TextChat};
 use crate::shapes::Shape;
-use crate::update::{GiveEnts, HandIgnore, SearchDeck, spawn_msg, update_search};
+use crate::update::{GiveEnts, HandIgnore, SearchDeck, SearchText, spawn_msg, update_search};
 use crate::*;
 use bevy::diagnostic::FrameCount;
 use bevy::ecs::system::SystemParam;
@@ -217,7 +217,7 @@ pub fn apply_sync(
         mut turn,
     ): (
         Option<Single<(Entity, &SearchDeck)>>,
-        Option<Single<&TextInputContents>>,
+        Option<Single<&TextInputContents, With<SearchText>>>,
         Query<&mut Shape>,
         Query<&mut Text3d>,
         Query<

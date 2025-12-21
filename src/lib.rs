@@ -81,10 +81,6 @@ const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO multi select, in card counters
 //TODO spawn stuff touching the floor
 //TODO cards may dupe
-//TODO flip cards on spawn
-//TODO taking cards while searching
-//TODO taking cards in search
-//TODO upside down
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
