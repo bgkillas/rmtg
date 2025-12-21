@@ -59,6 +59,7 @@ pub fn gather_hand(
     spatial: SpatialQuery,
     mut commands: Commands,
     mut net: Net,
+    peers: Res<Peers>,
 ) {
     let intersections = spatial.shape_intersections(
         &Collider::cuboid(MAT_WIDTH, CARD_HEIGHT, CARD_HEIGHT),
@@ -90,6 +91,10 @@ pub fn gather_hand(
                     commands.entity(hand.2).add_child(entity);
                 }
                 trans.rotation = Quat::default();
+                if peers.me.is_some_and(|i| i == 1 || i == 3) {
+                    rotate_right(&mut trans);
+                    rotate_right(&mut trans);
+                }
             }
         }
     }
@@ -873,7 +878,14 @@ pub fn listen_for_mouse(
                             &mut materials,
                             &mut commands,
                             &mut meshes,
-                            Transform::default(),
+                            Transform::default().looking_to(
+                                if peers.me.is_some_and(|i| i == 1 || i == 3) {
+                                    Dir3::Z
+                                } else {
+                                    Dir3::NEG_Z
+                                },
+                                Dir3::Y,
+                            ),
                             false,
                             Some(hand.1),
                             None,
@@ -1472,7 +1484,7 @@ fn next_turn(
         net.turn(turn.0);
     }
 }
-fn rotate_left(transform: &mut Mut<Transform>) {
+fn rotate_left(transform: &mut Transform) {
     let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
     let n = (2.0 * rot / PI).round() as isize;
     transform.rotate_y(
@@ -1485,7 +1497,7 @@ fn rotate_left(transform: &mut Mut<Transform>) {
         } - rot,
     );
 }
-fn rotate_right(transform: &mut Mut<Transform>) {
+fn rotate_right(transform: &mut Transform) {
     let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
     let n = (2.0 * rot / PI).round() as isize;
     transform.rotate_y(
@@ -2191,7 +2203,7 @@ pub fn register_deck(
             }
             spot.0.translation()
         };
-        let v = match deck_type {
+        let mut v = match deck_type {
             DeckType::Other(v, _) => v,
             DeckType::Single(v) => vec2_to_ground(&deck, v, rev),
             DeckType::Deck => {
@@ -2279,6 +2291,10 @@ pub fn register_deck(
                 vec2_to_ground(&deck, v, rev)
             }
         };
+        if v.translation.z.is_sign_negative() {
+            rotate_right(&mut v);
+            rotate_right(&mut v)
+        }
         if let Some(ent) = new_pile_at(
             deck,
             card_base.clone(),
