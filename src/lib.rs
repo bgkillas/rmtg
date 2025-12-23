@@ -1418,16 +1418,16 @@ fn get_pairs(text: &str) -> Vec<(bool, SearchKey, &str, Order)> {
 }
 fn get_key(key: &str) -> Option<SearchKey> {
     Some(match key {
-        "name" => SearchKey::Name,
-        "cmc" => SearchKey::Cmc,
-        "type" => SearchKey::Type,
-        "supertype" => SearchKey::SuperType,
-        "maintype" => SearchKey::MainType,
-        "subtype" => SearchKey::SubType,
-        "text" => SearchKey::Text,
-        "color" => SearchKey::Color,
-        "power" => SearchKey::Power,
-        "toughness" => SearchKey::Toughness,
+        "name" | "n" => SearchKey::Name,
+        "cmc" | "cost" => SearchKey::Cmc,
+        "type" | "t" => SearchKey::Type,
+        "super_type" | "ut" => SearchKey::SuperType,
+        "main_type" | "mt" => SearchKey::MainType,
+        "sub_type" | "st" => SearchKey::SubType,
+        "text" | "o" => SearchKey::Text,
+        "color" | "c" => SearchKey::Color,
+        "power" | "p" => SearchKey::Power,
+        "toughness" | "h" => SearchKey::Toughness,
         _ => return None,
     })
 }
@@ -1464,7 +1464,7 @@ struct FollowOtherMouse;
 #[derive(Component, Default, Debug)]
 struct ZoomHold(u64, bool);
 #[cfg(not(feature = "wasm"))]
-#[derive(Resource)]
+#[derive(Resource, Deref, DerefMut)]
 struct Clipboard(arboard::Clipboard);
 #[cfg(feature = "wasm")]
 #[cfg_attr(feature = "wasm", derive(Clone, Copy))]
@@ -1498,9 +1498,9 @@ impl Clipboard {
         let _ = JsFuture::from(clipboard.write_text(text)).await;
     }
 }
-#[derive(Resource)]
+#[derive(Resource, Deref, DerefMut)]
 struct ReqClient(reqwest::Client);
-#[derive(Resource)]
+#[derive(Resource, Deref, DerefMut)]
 struct Runtime(tokio::runtime::Runtime);
 #[derive(Resource, Clone)]
 struct CardBase {
