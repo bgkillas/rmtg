@@ -651,22 +651,22 @@ struct SuperTypes(pub Vec<SuperType>);
 struct MainTypes(pub Vec<Type>);
 #[derive(Debug, Default, Clone, Encode, Decode, Eq, PartialEq, Deref, DerefMut)]
 struct SubTypes(pub Vec<SubType>);
+fn subset<T: PartialEq>(a: &[T], b: &[T]) -> bool {
+    b.iter().all(|t| a.contains(t))
+}
 impl PartialOrd for Types {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        fn subset<T: PartialEq>(a: &[T], b: &[T]) -> bool {
-            b.iter().all(|t| a.contains(t))
-        }
-        if self == other {
-            Some(Ordering::Equal)
-        } else if subset(&self.super_type, &other.super_type)
+        let left = subset(&self.super_type, &other.super_type)
             && subset(&self.main_type, &other.main_type)
-            && subset(&self.sub_type, &other.sub_type)
-        {
-            Some(Ordering::Greater)
-        } else if subset(&other.super_type, &self.super_type)
+            && subset(&self.sub_type, &other.sub_type);
+        let right = subset(&other.super_type, &self.super_type)
             && subset(&other.main_type, &self.main_type)
-            && subset(&other.sub_type, &self.sub_type)
-        {
+            && subset(&other.sub_type, &self.sub_type);
+        if left && right {
+            Some(Ordering::Equal)
+        } else if left {
+            Some(Ordering::Greater)
+        } else if right {
             Some(Ordering::Less)
         } else {
             None
@@ -675,14 +675,13 @@ impl PartialOrd for Types {
 }
 impl PartialOrd for SuperTypes {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        fn subset<T: PartialEq>(a: &[T], b: &[T]) -> bool {
-            b.iter().all(|t| a.contains(t))
-        }
-        if self == other {
+        let left = subset(self, other);
+        let right = subset(other, self);
+        if left && right {
             Some(Ordering::Equal)
-        } else if subset(self, other) {
+        } else if left {
             Some(Ordering::Greater)
-        } else if subset(other, self) {
+        } else if right {
             Some(Ordering::Less)
         } else {
             None
@@ -691,14 +690,13 @@ impl PartialOrd for SuperTypes {
 }
 impl PartialOrd for MainTypes {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        fn subset<T: PartialEq>(a: &[T], b: &[T]) -> bool {
-            b.iter().all(|t| a.contains(t))
-        }
-        if self == other {
+        let left = subset(self, other);
+        let right = subset(other, self);
+        if left && right {
             Some(Ordering::Equal)
-        } else if subset(self, other) {
+        } else if left {
             Some(Ordering::Greater)
-        } else if subset(other, self) {
+        } else if right {
             Some(Ordering::Less)
         } else {
             None
@@ -707,14 +705,13 @@ impl PartialOrd for MainTypes {
 }
 impl PartialOrd for SubTypes {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        fn subset<T: PartialEq>(a: &[T], b: &[T]) -> bool {
-            b.iter().all(|t| a.contains(t))
-        }
-        if self == other {
+        let left = subset(self, other);
+        let right = subset(other, self);
+        if left && right {
             Some(Ordering::Equal)
-        } else if subset(self, other) {
+        } else if left {
             Some(Ordering::Greater)
-        } else if subset(other, self) {
+        } else if right {
             Some(Ordering::Less)
         } else {
             None
@@ -839,7 +836,7 @@ impl PartialOrd for Color {
             Some(Ordering::Equal)
         } else if subset(self, other) {
             Some(Ordering::Greater)
-        } else if subset(other, other) {
+        } else if subset(other, self) {
             Some(Ordering::Less)
         } else {
             None
