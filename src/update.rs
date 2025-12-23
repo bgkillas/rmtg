@@ -78,8 +78,8 @@ pub fn gather_hand(
                 if let Some(n) = obj {
                     net.take(entity, *n);
                 }
-                linvel.0 = default();
-                angvel.0 = default();
+                *linvel = default();
+                *angvel = default();
                 grav.0 = 0.0;
                 let entry = place_pos(&mut hand, trans.translation.x, &mut child);
                 commands
@@ -1835,9 +1835,9 @@ pub fn pick_from_list(
         }
     }
 }
-#[derive(Component)]
+#[derive(Component, Deref, DerefMut)]
 pub struct TargetCard(pub usize);
-#[derive(Component)]
+#[derive(Component, Deref, DerefMut)]
 pub struct SearchDeck(pub Entity);
 pub fn update_search_deck(
     mut commands: Commands,
@@ -2326,7 +2326,7 @@ pub fn to_move_up(
         move_up(ent, &mut ents, &mut pset);
     }
 }
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Deref, DerefMut)]
 pub struct ToMoveUp(pub Vec<Entity>);
 pub fn give_ents(to_do: Res<GiveEnts>, ents: Query<(&SyncObject, Entity)>, mut net: Net) {
     for peer in to_do.0.lock().unwrap().drain(..) {
@@ -2337,9 +2337,9 @@ pub fn give_ents(to_do: Res<GiveEnts>, ents: Query<(&SyncObject, Entity)>, mut n
         }
     }
 }
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Deref, DerefMut)]
 pub struct GiveEnts(pub Arc<Mutex<Vec<PeerId>>>);
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Deref, DerefMut)]
 pub struct FlipCounter(pub Arc<Mutex<Vec<(usize, bool)>>>);
 pub fn flip_ents(
     to_do: Res<FlipCounter>,

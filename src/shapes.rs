@@ -576,7 +576,7 @@ pub fn spawn_disc<'a>(
     ent
 }
 #[allow(dead_code)]
-#[derive(Component)]
+#[derive(Component, Deref, DerefMut)]
 pub struct Side(pub usize);
 pub fn spawn_dodec<'a>(
     m: f32,

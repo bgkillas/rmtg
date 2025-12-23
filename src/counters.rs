@@ -15,7 +15,7 @@ pub fn make_counter<'a>(
     player: usize,
 ) -> EntityCommands<'a> {
     let m = 2.0 * m;
-    let s = value.0.to_string();
+    let s = value.to_string();
     let mut cmds = commands.spawn((
         transform,
         Collider::cuboid(m, m / 8.0, m),
@@ -56,5 +56,5 @@ pub fn make_counter<'a>(
     });
     cmds
 }
-#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+#[derive(Encode, Decode, Debug, Clone, PartialEq, Deref, DerefMut)]
 pub struct Value(pub i128);

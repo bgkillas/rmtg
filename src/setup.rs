@@ -369,7 +369,7 @@ pub fn setup(
         },
     ));
 }
-#[derive(Resource)]
+#[derive(Resource, Deref, DerefMut)]
 pub struct FontRes(pub Handle<Font>);
 #[derive(Component)]
 pub struct EscMenu;
@@ -390,7 +390,7 @@ pub struct Wall;
 pub struct Floor;
 #[derive(Component)]
 pub struct Ceiling;
-#[derive(Component, Copy, Clone, Debug)]
+#[derive(Component, Copy, Clone, Debug, Deref, DerefMut)]
 pub struct Player(pub usize);
 pub fn make_mat(
     materials: &mut Assets<StandardMaterial>,

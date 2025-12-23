@@ -23,7 +23,7 @@ use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::sync::atomic::AtomicBool;
 pub const COMPRESSION: Compression = Compression::Compressed;
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Deref, DerefMut)]
 pub struct SendSleeping(pub Arc<AtomicBool>);
 pub fn get_sync(
     query: Query<(
@@ -1064,7 +1064,7 @@ pub fn apply_sync(
     #[cfg(feature = "steam")]
     client.flush();
 }
-#[derive(Component)]
+#[derive(Component, Deref, DerefMut)]
 pub struct CameraInd(pub PeerId);
 #[derive(Component)]
 pub struct CursorInd(pub PeerId, pub bool);
@@ -1237,7 +1237,7 @@ pub fn new_lobby(
         }
     }
 }
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Deref, DerefMut)]
 pub struct Sent(pub HashMap<SyncObject, bool>);
 impl Sent {
     pub fn add(&mut self, key: SyncObject) -> bool {

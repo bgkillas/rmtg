@@ -220,7 +220,7 @@ const SLEEP: SleepThreshold = SleepThreshold {
     linear: 4.0 * CARD_THICKNESS,
     angular: 0.25,
 };
-#[derive(Resource, Default, Debug)]
+#[derive(Resource, Default, Debug, Deref, DerefMut)]
 struct Turn(usize);
 #[derive(Resource, Default, Debug)]
 struct Peers {
@@ -232,9 +232,9 @@ impl Peers {
         self.map.lock().unwrap()
     }
 }
-#[derive(Resource, Default, Debug)]
+#[derive(Resource, Default, Debug, Deref, DerefMut)]
 struct RemPeers(Arc<Mutex<Vec<PeerId>>>);
-#[derive(Component, Default, Debug)]
+#[derive(Component, Default, Debug, Deref, DerefMut)]
 struct InHand(usize);
 #[derive(Component, Default, Debug)]
 struct Hand {
@@ -578,7 +578,7 @@ enum DeckType {
     Sticker,
     Attraction,
 }
-#[derive(Resource, Debug, Default, Clone)]
+#[derive(Resource, Debug, Default, Clone, Deref, DerefMut)]
 struct GetDeck(Arc<Mutex<Vec<(Pile, DeckType)>>>);
 #[derive(Debug, Default, Clone, Encode, Decode)]
 #[allow(dead_code)]
@@ -607,7 +607,7 @@ impl CardInfo {
         }
     }
 }
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Deref, DerefMut)]
 struct UninitImage(Option<Handle<Image>>);
 impl From<Handle<Image>> for UninitImage {
     fn from(value: Handle<Image>) -> Self {
@@ -634,11 +634,92 @@ impl Type {
     }
 }
 #[allow(dead_code)]
-#[derive(Debug, Default, Clone, Encode, Decode)]
+#[derive(Debug, Default, Clone, Encode, Decode, Eq, PartialEq)]
 struct Types {
-    super_type: Vec<SuperType>,
-    main_type: Vec<Type>,
-    sub_type: Vec<SubType>,
+    super_type: SuperTypes,
+    main_type: MainTypes,
+    sub_type: SubTypes,
+}
+impl Types {
+    pub fn len(&self) -> usize {
+        self.super_type.len() + self.main_type.len() + self.sub_type.len()
+    }
+}
+#[derive(Debug, Default, Clone, Encode, Decode, Eq, PartialEq, Deref, DerefMut)]
+struct SuperTypes(pub Vec<SuperType>);
+#[derive(Debug, Default, Clone, Encode, Decode, Eq, PartialEq, Deref, DerefMut)]
+struct MainTypes(pub Vec<Type>);
+#[derive(Debug, Default, Clone, Encode, Decode, Eq, PartialEq, Deref, DerefMut)]
+struct SubTypes(pub Vec<SubType>);
+impl PartialOrd for Types {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        fn subset<T: PartialEq>(a: &[T], b: &[T]) -> bool {
+            b.iter().all(|t| a.contains(t))
+        }
+        if self == other {
+            Some(Ordering::Equal)
+        } else if subset(&self.super_type, &other.super_type)
+            && subset(&self.main_type, &other.main_type)
+            && subset(&self.sub_type, &other.sub_type)
+        {
+            Some(Ordering::Greater)
+        } else if subset(&other.super_type, &self.super_type)
+            && subset(&other.main_type, &self.main_type)
+            && subset(&other.sub_type, &self.sub_type)
+        {
+            Some(Ordering::Less)
+        } else {
+            None
+        }
+    }
+}
+impl PartialOrd for SuperTypes {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        fn subset<T: PartialEq>(a: &[T], b: &[T]) -> bool {
+            b.iter().all(|t| a.contains(t))
+        }
+        if self == other {
+            Some(Ordering::Equal)
+        } else if subset(self, other) {
+            Some(Ordering::Greater)
+        } else if subset(other, self) {
+            Some(Ordering::Less)
+        } else {
+            None
+        }
+    }
+}
+impl PartialOrd for MainTypes {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        fn subset<T: PartialEq>(a: &[T], b: &[T]) -> bool {
+            b.iter().all(|t| a.contains(t))
+        }
+        if self == other {
+            Some(Ordering::Equal)
+        } else if subset(self, other) {
+            Some(Ordering::Greater)
+        } else if subset(other, self) {
+            Some(Ordering::Less)
+        } else {
+            None
+        }
+    }
+}
+impl PartialOrd for SubTypes {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        fn subset<T: PartialEq>(a: &[T], b: &[T]) -> bool {
+            b.iter().all(|t| a.contains(t))
+        }
+        if self == other {
+            Some(Ordering::Equal)
+        } else if subset(self, other) {
+            Some(Ordering::Greater)
+        } else if subset(other, self) {
+            Some(Ordering::Less)
+        } else {
+            None
+        }
+    }
 }
 impl Types {
     #[allow(dead_code)]
@@ -665,13 +746,66 @@ impl FromStr for Types {
         Ok(ret)
     }
 }
-#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
+impl FromStr for SuperTypes {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut ret = Self::default();
+        for word in s.split(' ') {
+            if let Ok(super_type) = SuperType::from_str(word) {
+                ret.push(super_type)
+            }
+        }
+        Ok(ret)
+    }
+}
+impl FromStr for MainTypes {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut ret = Self::default();
+        for word in s.split(' ') {
+            if let Ok(main_type) = Type::from_str(word) {
+                ret.push(main_type)
+            }
+        }
+        Ok(ret)
+    }
+}
+impl FromStr for SubTypes {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut ret = Self::default();
+        for word in s.split(' ') {
+            if let Ok(sub_type) = SubType::from_str(word) {
+                ret.push(sub_type)
+            }
+        }
+        Ok(ret)
+    }
+}
+#[derive(Debug, Default, Clone, Copy, Encode, Decode, PartialEq)]
 struct Color {
     white: bool,
     blue: bool,
     black: bool,
     red: bool,
     green: bool,
+}
+impl FromStr for Color {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut cost = Self::default();
+        for c in s.chars() {
+            match c {
+                'w' => cost.white = true,
+                'u' => cost.blue = true,
+                'b' => cost.black = true,
+                'r' => cost.red = true,
+                'g' => cost.green = true,
+                _ => return Err(()),
+            }
+        }
+        Ok(cost)
+    }
 }
 impl Color {
     fn parse<'a>(value: impl Iterator<Item = &'a str>) -> Self {
@@ -687,6 +821,50 @@ impl Color {
             }
         }
         cost
+    }
+}
+impl PartialOrd for Color {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        fn contains(a: bool, b: bool) -> bool {
+            if b { a } else { true }
+        }
+        fn subset(a: &Color, b: &Color) -> bool {
+            contains(a.white, b.white)
+                && contains(a.blue, b.blue)
+                && contains(a.black, b.black)
+                && contains(a.red, b.red)
+                && contains(a.green, b.green)
+        }
+        if self == other {
+            Some(Ordering::Equal)
+        } else if subset(self, other) {
+            Some(Ordering::Greater)
+        } else if subset(other, other) {
+            Some(Ordering::Less)
+        } else {
+            None
+        }
+    }
+}
+impl Color {
+    pub fn len(&self) -> usize {
+        let mut n = 0;
+        if self.white {
+            n += 1
+        };
+        if self.blue {
+            n += 1
+        };
+        if self.black {
+            n += 1
+        };
+        if self.red {
+            n += 1
+        };
+        if self.green {
+            n += 1
+        };
+        n
     }
 }
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
@@ -1040,10 +1218,231 @@ impl<'a> From<&'a mut Box<Card>> for &'a mut SubCard {
 }
 impl CardInfo {
     fn filter(&self, text: &str) -> bool {
-        self.name
-            .to_ascii_lowercase()
-            .contains(&text.to_ascii_lowercase()) //TODO
+        let text = text.to_ascii_lowercase();
+        let text = text.trim();
+        let pairs = get_pairs(text);
+        pairs
+            .into_iter()
+            .all(|(n, k, v, o)| self.filter_pair(n, k, v, o))
     }
+    fn filter_pair(&self, negate: bool, key: SearchKey, value: &str, ordering: Order) -> bool {
+        let res = match key {
+            SearchKey::Name => self.name.to_ascii_lowercase().contains(value),
+            SearchKey::Cmc => {
+                if let Ok(v) = value.parse() {
+                    self.mana_cost.total.cmp(&v) == ordering
+                } else {
+                    return false;
+                }
+            }
+            SearchKey::Type => {
+                if let Ok(count) = value.parse::<usize>() {
+                    self.card_type.len() == count
+                } else if let Ok(types) = value.parse()
+                    && let Some(order) = self.card_type.partial_cmp(&types)
+                {
+                    order == ordering
+                } else {
+                    return false;
+                }
+            }
+            SearchKey::SuperType => {
+                if let Ok(count) = value.parse::<usize>() {
+                    self.card_type.super_type.len() == count
+                } else if let Ok(types) = value.parse()
+                    && let Some(order) = self.card_type.super_type.partial_cmp(&types)
+                {
+                    order == ordering
+                } else {
+                    return false;
+                }
+            }
+            SearchKey::MainType => {
+                if let Ok(count) = value.parse::<usize>() {
+                    self.card_type.main_type.len() == count
+                } else if let Ok(types) = value.parse()
+                    && let Some(order) = self.card_type.main_type.partial_cmp(&types)
+                {
+                    order == ordering
+                } else {
+                    return false;
+                }
+            }
+            SearchKey::SubType => {
+                if let Ok(count) = value.parse::<usize>() {
+                    self.card_type.sub_type.len() == count
+                } else if let Ok(types) = value.parse()
+                    && let Some(order) = self.card_type.sub_type.partial_cmp(&types)
+                {
+                    order == ordering
+                } else {
+                    return false;
+                }
+            }
+            SearchKey::Text => self.text.to_ascii_lowercase().contains(value),
+            SearchKey::Color => {
+                if let Ok(count) = value.parse::<usize>() {
+                    self.color.len() == count
+                } else if let Ok(types) = value.parse()
+                    && let Some(order) = self.color.partial_cmp(&types)
+                {
+                    order == ordering
+                } else {
+                    return false;
+                }
+            }
+            SearchKey::Power => {
+                if let Ok(v) = value.parse() {
+                    self.power.cmp(&v) == ordering
+                } else {
+                    return false;
+                }
+            }
+            SearchKey::Toughness => {
+                if let Ok(v) = value.parse() {
+                    self.toughness.cmp(&v) == ordering
+                } else {
+                    return false;
+                }
+            }
+        };
+        if negate { !res } else { res }
+    }
+}
+#[derive(Debug)]
+enum Order {
+    Greater,
+    Less,
+    Equal,
+    GreaterEqual,
+    LessEqual,
+}
+impl PartialEq<Order> for Ordering {
+    fn eq(&self, other: &Order) -> bool {
+        match other {
+            Order::Greater => matches!(self, Ordering::Greater),
+            Order::Less => matches!(self, Ordering::Less),
+            Order::Equal => matches!(self, Ordering::Equal),
+            Order::GreaterEqual => matches!(self, Ordering::Greater | Ordering::Equal),
+            Order::LessEqual => matches!(self, Ordering::Less | Ordering::Equal),
+        }
+    }
+}
+fn get_pairs(text: &str) -> Vec<(bool, SearchKey, &str, Order)> {
+    let mut quotes = false;
+    let mut quoted = false;
+    let mut order = None;
+    let mut k = 0;
+    let mut v = 0;
+    let mut pairs = Vec::new();
+    let mut key = None;
+    let mut negate = false;
+    for (i, c) in text.char_indices() {
+        match c {
+            '!' => negate = true,
+            '\"' => {
+                quoted = true;
+                quotes = !quotes;
+            }
+            '=' if !quotes => {
+                v = i + 1;
+                if order.is_none() {
+                    key = get_key(&text[if negate { k + 1 } else { k }..i]);
+                    if key.is_some() {
+                        order = Some(Order::Equal)
+                    }
+                } else if matches!(order, Some(Order::Greater)) {
+                    order = Some(Order::GreaterEqual)
+                } else if matches!(order, Some(Order::Less)) {
+                    order = Some(Order::LessEqual)
+                }
+            }
+            '<' if !quotes => {
+                v = i + 1;
+                if order.is_none() {
+                    key = get_key(&text[if negate { k + 1 } else { k }..i]);
+                    if key.is_some() {
+                        order = Some(Order::Less)
+                    }
+                }
+            }
+            '>' if !quotes => {
+                v = i + 1;
+                if order.is_none() {
+                    key = get_key(&text[if negate { k + 1 } else { k }..i]);
+                    if key.is_some() {
+                        order = Some(Order::Greater)
+                    }
+                }
+            }
+            ' ' if !quotes => {
+                if let Some(order) = order
+                    && let Some(key) = key
+                {
+                    pairs.push((
+                        negate,
+                        key,
+                        if quoted {
+                            &text[v + 1..i - 1]
+                        } else {
+                            &text[v..i]
+                        },
+                        order,
+                    ));
+                    k = i + 1;
+                }
+                order = None;
+                quoted = false;
+                negate = false;
+            }
+            _ => {}
+        }
+    }
+    if let Some(order) = order
+        && let Some(key) = key
+    {
+        pairs.push((
+            negate,
+            key,
+            if quoted {
+                &text[v + 1..text.len() - 1]
+            } else {
+                &text[v..]
+            },
+            order,
+        ));
+    } else {
+        pairs.push((false, SearchKey::Name, &text[k..], Order::Equal));
+    }
+    pairs
+}
+fn get_key(key: &str) -> Option<SearchKey> {
+    Some(match key {
+        "name" => SearchKey::Name,
+        "cmc" => SearchKey::Cmc,
+        "type" => SearchKey::Type,
+        "supertype" => SearchKey::SuperType,
+        "maintype" => SearchKey::MainType,
+        "subtype" => SearchKey::SubType,
+        "text" => SearchKey::Text,
+        "color" => SearchKey::Color,
+        "power" => SearchKey::Power,
+        "toughness" => SearchKey::Toughness,
+        _ => return None,
+    })
+}
+#[derive(Debug, Clone, Copy)]
+enum SearchKey {
+    Name,
+    Cmc,
+    Type,
+    SuperType,
+    MainType,
+    SubType,
+    Text,
+    Color,
+    Power,
+    Toughness,
 }
 #[derive(Resource)]
 struct Download {
