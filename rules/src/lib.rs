@@ -89,11 +89,11 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
         vec!["Undercity".to_string()],
         vec!["Siege".to_string()],
     ];
-    let idents = types.iter().flatten().map(|s| ident(s));
+    let idents: Vec<_> = types.iter().flatten().map(|s| ident(s)).collect();
     let matchs = types.iter().flatten().map(|s| match_arms(s));
     let matchs_to = types.iter().flatten().map(|s| match_arms_to(s));
     let super_types = ["Basic", "Legendary", "Ongoing", "Snow", "World"];
-    let sidents = super_types.iter().map(|s| ident(s));
+    let sidents: Vec<_> = super_types.iter().map(|s| ident(s)).collect();
     let smatchs = super_types.iter().map(|s| match_arms(s));
     let smatchs_to = super_types.iter().map(|s| match_arms_to(s));
     let types = [
@@ -113,7 +113,7 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
         "Sorcery",
         "Kindred",
     ];
-    let nidents = types.iter().map(|s| ident(s));
+    let nidents: Vec<_> = types.iter().map(|s| ident(s)).collect();
     let nmatchs = types.iter().map(|s| match_arms(s));
     let nmatchs_to = types.iter().map(|s| match_arms_to(s));
     quote! {
@@ -121,6 +121,7 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
         pub enum SubType {
             #( #idents, )*
         }
+        pub const SUBTYPES: &[SubType] = &[#( SubType::#idents, )*];
         impl FromStr for SubType {
             type Err = ();
             fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -141,6 +142,7 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
         pub enum Type {
             #( #nidents, )*
         }
+        pub const TYPES: &[Type] = &[#( Type::#nidents, )*];
         impl FromStr for Type {
             type Err = ();
             fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -161,6 +163,7 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
         pub enum SuperType {
             #( #sidents, )*
         }
+        pub const SUPERTYPES: &[SuperType] = &[#( SuperType::#sidents, )*];
         impl FromStr for SuperType {
             type Err = ();
             fn from_str(s: &str) -> Result<Self, Self::Err> {
