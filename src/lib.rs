@@ -181,8 +181,8 @@ pub fn start() -> AppExit {
                     display_steam_info,
                     listen_for_deck,
                     register_deck,
-                    cam_translation,
                     cam_rotation,
+                    cam_translation,
                     esc_menu,
                     #[cfg(all(feature = "steam", feature = "ip"))]
                     new_lobby,

@@ -1993,9 +1993,10 @@ pub fn cam_translation(
 pub fn cam_rotation(
     mouse_button: Res<ButtonInput<MouseButton>>,
     mouse_motion: Res<AccumulatedMouseMotion>,
-    mut cam: Single<&mut Transform, With<Camera3d>>,
+    mut cam: Single<(&mut Transform, &Camera, &GlobalTransform), With<Camera3d>>,
     menu: Res<Menu>,
     hover_map: Res<HoverMap>,
+    window: Single<&Window, With<PrimaryWindow>>,
 ) {
     if matches!(*menu, Menu::Esc)
         || (matches!(*menu, Menu::Side | Menu::Counter)
@@ -2006,14 +2007,23 @@ pub fn cam_rotation(
         return;
     }
     if mouse_button.pressed(MouseButton::Right) && mouse_motion.delta != Vec2::ZERO {
+        let Ok(ray) = cam.1.viewport_to_world(cam.2, window.size() / 2.0) else {
+            return;
+        };
         let delta_yaw = -mouse_motion.delta.x * 0.001;
         let delta_pitch = -mouse_motion.delta.y * 0.001;
-        let (yaw, pitch, roll) = cam.rotation.to_euler(EulerRot::YXZ);
+        let (yaw, pitch, roll) = cam.0.rotation.to_euler(EulerRot::YXZ);
         let yaw = yaw + delta_yaw;
         let pitch = (pitch + delta_pitch)
             .max((-PI / 2.0).next_up())
-            .min((PI / 2.0).next_down());
-        cam.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, roll);
+            .min(-PI / 12.0);
+        cam.0.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, roll);
+        let Some(time) = ray.intersect_plane(Vec3::default(), InfinitePlane3d { normal: Dir3::Y })
+        else {
+            return;
+        };
+        let orig = ray.origin + ray.direction * time;
+        cam.0.translation = orig - cam.0.rotation * Dir3::NEG_Z * time;
     }
 }
 pub fn listen_for_deck(
