@@ -9,6 +9,9 @@ use crate::update::{
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
 //use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin};
+use bevy::ecs::system::SystemParam;
+use bevy::input_focus::InputFocus;
+use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;
 use bevy_framepace::FramepacePlugin;
 use bevy_prng::WyRand;
@@ -215,6 +218,22 @@ enum Menu {
     Counter,
     Esc,
     Side,
+}
+#[derive(SystemParam)]
+pub struct Focus<'w> {
+    menu: ResMut<'w, Menu>,
+    active_input: ResMut<'w, InputFocus>,
+    hover_map: Res<'w, HoverMap>,
+}
+impl<'w> Focus<'w> {
+    pub fn key_lock(&self) -> bool {
+        self.active_input.0.is_some() || matches!(*self.menu, Menu::Esc)
+    }
+    pub fn mouse_lock(&self) -> bool {
+        self.hover_map
+            .values()
+            .all(|a| a.keys().all(|e| e.to_bits() != u32::MAX as u64))
+    }
 }
 const SLEEP: SleepThreshold = SleepThreshold {
     linear: 4.0 * CARD_THICKNESS,

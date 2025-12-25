@@ -380,8 +380,6 @@ pub fn listen_for_mouse(
         mut query_meshes,
         follow,
         mut shape,
-        mut menu,
-        mut active_input,
         side,
         search_deck,
     ): (
@@ -403,8 +401,6 @@ pub fn listen_for_mouse(
         >,
         Option<Single<Entity, With<FollowMouse>>>,
         Query<(&mut Shape, Entity)>,
-        ResMut<Menu>,
-        ResMut<InputFocus>,
         Option<Single<Entity, With<SideMenu>>>,
         Option<Single<(Entity, &SearchDeck)>>,
     ),
@@ -414,27 +410,25 @@ pub fn listen_for_mouse(
         mut text3d,
         children,
         mut transforms,
-        hover_map,
         equipment,
         mut net,
         mut turn,
         peers,
+        mut focus,
     ): (
         Option<Single<&TextInputContents, With<SearchText>>>,
         Res<FontRes>,
         Query<&mut Text3d>,
         Query<&Children, Without<Pile>>,
         Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
-        Res<HoverMap>,
         Query<(), With<Equipment>>,
         Net,
         ResMut<Turn>,
         Res<Peers>,
+        Focus,
     ),
 ) {
-    if matches!(*menu, Menu::Esc)
-        || (matches!(*menu, Menu::Side | Menu::Counter) && active_input.get().is_some())
-    {
+    if focus.key_lock() {
         if let Some(single) = zoom {
             commands.entity(single.0).despawn();
         }
@@ -484,7 +478,7 @@ pub fn listen_for_mouse(
                         &transform,
                         text.as_ref().unwrap().get(),
                         &side,
-                        &mut menu,
+                        &mut focus.menu,
                     );
                 }
             } else if input.just_pressed(KeyCode::KeyR) {
@@ -507,7 +501,7 @@ pub fn listen_for_mouse(
                             &transform,
                             text.as_ref().unwrap().get(),
                             &side,
-                            &mut menu,
+                            &mut focus.menu,
                         );
                     }
                 }
@@ -529,7 +523,7 @@ pub fn listen_for_mouse(
                 }
                 commands.entity(entity).despawn();
                 if search_deck.is_some_and(|s| s.1.0 == entity) {
-                    *menu = Menu::World;
+                    *focus.menu = Menu::World;
                     commands.entity(**side.as_ref().unwrap()).despawn();
                 }
             } else if input.just_pressed(KeyCode::KeyC)
@@ -550,11 +544,7 @@ pub fn listen_for_mouse(
                     clipboard.set_text(&text);
                 }
             } else if mouse_input.just_pressed(MouseButton::Left) {
-                if matches!(*menu, Menu::Side | Menu::Counter)
-                    && hover_map
-                        .values()
-                        .all(|a| a.keys().all(|e| e.to_bits() != u32::MAX as u64))
-                {
+                if focus.mouse_lock() {
                     return;
                 }
                 if inother.is_some() {
@@ -634,7 +624,7 @@ pub fn listen_for_mouse(
                             &transform,
                             text.as_ref().unwrap().get(),
                             &side,
-                            &mut menu,
+                            &mut focus.menu,
                         );
                     }
                 } else {
@@ -745,7 +735,7 @@ pub fn listen_for_mouse(
                         &transform,
                         text.as_ref().unwrap().get(),
                         &side,
-                        &mut menu,
+                        &mut focus.menu,
                     );
                 }
             } else if input.just_pressed(KeyCode::KeyQ) && zoom.is_none() {
@@ -907,7 +897,7 @@ pub fn listen_for_mouse(
                             &transform,
                             text.as_ref().unwrap().get(),
                             &side,
-                            &mut menu,
+                            &mut focus.menu,
                         );
                     }
                     if let Ok(lid) = ids.get(entity) {
@@ -948,10 +938,10 @@ pub fn listen_for_mouse(
                     &transform,
                     &side,
                     &mut commands,
-                    &mut active_input,
+                    &mut focus.active_input,
                     font.0.clone(),
                 );
-                *menu = Menu::Side;
+                *focus.menu = Menu::Side;
             }
             if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) && inother.is_none() {
                 let mut spawn = || {
@@ -1087,7 +1077,7 @@ pub fn listen_for_mouse(
             {
                 #[cfg(feature = "calc")]
                 {
-                    *menu = Menu::Counter;
+                    *focus.menu = Menu::Counter;
                     let mut input_buffer = TextInputBuffer::default();
                     let editor = &mut input_buffer.editor;
                     editor.insert_string("n", None);
@@ -1115,7 +1105,7 @@ pub fn listen_for_mouse(
                             input_buffer,
                         ))
                         .id();
-                    active_input.set(ent);
+                    focus.active_input.set(ent);
                 }
             } else if (input.just_pressed(KeyCode::Backspace)
                 || (input.pressed(KeyCode::Backspace)
@@ -1676,7 +1666,6 @@ pub fn pick_from_list(
     mut query: Query<(&TargetCard, &mut ImageNode)>,
     search_deck: Single<(Entity, &SearchDeck)>,
     mut decks: Query<(&mut Pile, &mut Transform, &Children)>,
-    mut menu: ResMut<Menu>,
     mouse_input: Res<ButtonInput<MouseButton>>,
     mut commands: Commands,
     card_base: Res<CardBase>,
@@ -1693,7 +1682,7 @@ pub fn pick_from_list(
             Without<Pile>,
         ),
     >,
-    (mut colliders, follow, ids, others_ids, text, equipment, input, active_input, side, mut net): (
+    (mut colliders, follow, ids, others_ids, text, equipment, input, side, mut net, mut focus): (
         Query<&mut Collider>,
         Option<Single<Entity, With<FollowMouse>>>,
         Query<&SyncObjectMe>,
@@ -1701,16 +1690,14 @@ pub fn pick_from_list(
         Single<&TextInputContents, With<SearchText>>,
         Query<(), With<Equipment>>,
         Res<ButtonInput<KeyCode>>,
-        Res<InputFocus>,
         Option<Single<Entity, With<SideMenu>>>,
         Net,
+        Focus,
     ),
 ) {
     let left = mouse_input.just_pressed(MouseButton::Left);
-    let swap = input.just_pressed(KeyCode::KeyO) && active_input.get().is_none();
-    if !matches!(*menu, Menu::Side)
-        || !(left || swap || (follow.is_some() && !mouse_input.pressed(MouseButton::Left)))
-    {
+    let swap = input.just_pressed(KeyCode::KeyO) && !focus.key_lock();
+    if !matches!(*focus.menu, Menu::Side) || !(left || swap || follow.is_some()) {
         return;
     }
     for pointer_event in hover_map.values() {
@@ -1785,7 +1772,7 @@ pub fn pick_from_list(
                             &trans,
                             text.get(),
                             &side,
-                            &mut menu,
+                            &mut focus.menu,
                         );
                         return;
                     } else if swap {
@@ -1828,7 +1815,7 @@ pub fn pick_from_list(
                         &trans,
                         text.get(),
                         &side,
-                        &mut menu,
+                        &mut focus.menu,
                     );
                 }
             }
@@ -1916,16 +1903,12 @@ pub fn cam_translation(
     input: Res<ButtonInput<KeyCode>>,
     mouse_motion: Res<AccumulatedMouseScroll>,
     mut cam: Single<&mut Transform, With<Camera3d>>,
-    menu: Res<Menu>,
-    active_input: Res<InputFocus>,
     peers: Res<Peers>,
-    hover_map: Res<HoverMap>,
     camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
     window: Single<&Window, With<PrimaryWindow>>,
+    focus: Focus,
 ) {
-    if matches!(*menu, Menu::Esc)
-        || (matches!(*menu, Menu::Side | Menu::Counter) && active_input.get().is_some())
-    {
+    if focus.key_lock() {
         return;
     }
     let scale = if input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
@@ -1960,12 +1943,7 @@ pub fn cam_translation(
             apply(translate, &mut cam)
         }
     }
-    if mouse_motion.delta.y != 0.0
-        && (!matches!(*menu, Menu::Side | Menu::Counter)
-            || hover_map
-                .values()
-                .any(|a| a.keys().all(|e| e.to_bits() == u32::MAX as u64)))
-    {
+    if mouse_motion.delta.y != 0.0 && !focus.mouse_lock() {
         let translate = cam.forward().as_vec3() * scale * mouse_motion.delta.y * 16.0;
         if cam.translation.y + translate.y <= 0.0 {
             let (camera, camera_transform) = camera.into_inner();
@@ -1994,16 +1972,10 @@ pub fn cam_rotation(
     mouse_button: Res<ButtonInput<MouseButton>>,
     mouse_motion: Res<AccumulatedMouseMotion>,
     mut cam: Single<(&mut Transform, &Camera, &GlobalTransform), With<Camera3d>>,
-    menu: Res<Menu>,
-    hover_map: Res<HoverMap>,
     window: Single<&Window, With<PrimaryWindow>>,
+    focus: Focus,
 ) {
-    if matches!(*menu, Menu::Esc)
-        || (matches!(*menu, Menu::Side | Menu::Counter)
-            && hover_map
-                .values()
-                .all(|a| a.keys().all(|e| e.to_bits() != u32::MAX as u64)))
-    {
+    if focus.mouse_lock() {
         return;
     }
     if mouse_button.pressed(MouseButton::Right) && mouse_motion.delta != Vec2::ZERO {
@@ -2040,13 +2012,10 @@ pub fn listen_for_deck(
     mut meshes: ResMut<Assets<Mesh>>,
     mut commands: Commands,
     mut to_move: ResMut<ToMoveUp>,
-    menu: Res<Menu>,
-    active_input: Res<InputFocus>,
     mut net: Net,
+    focus: Focus,
 ) {
-    if matches!(*menu, Menu::Esc)
-        || (matches!(*menu, Menu::Side | Menu::Counter) && active_input.get().is_some())
-    {
+    if focus.key_lock() {
         return;
     }
     if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
