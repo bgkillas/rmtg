@@ -211,7 +211,7 @@ pub fn start() -> AppExit {
     .add_observer(pile_merge);
     app.run()
 }
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Debug)]
 enum Menu {
     #[default]
     World,
@@ -227,7 +227,10 @@ pub struct Focus<'w> {
 }
 impl<'w> Focus<'w> {
     pub fn key_lock(&self) -> bool {
-        self.active_input.0.is_some() || matches!(*self.menu, Menu::Esc)
+        self.active_input
+            .0
+            .is_some_and(|e| e.to_bits() != u32::MAX as u64)
+            || matches!(*self.menu, Menu::Esc)
     }
     pub fn mouse_lock(&self) -> bool {
         self.hover_map
