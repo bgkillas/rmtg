@@ -1436,7 +1436,7 @@ fn next_turn(
         }
     };
     turn.0 = next(turn.0);
-    while peers.iter().all(|(_, b)| *b != turn.0)
+    while (!peers.is_empty() && peers.iter().all(|(_, b)| *b != turn.0))
         || shape
             .iter()
             .find_map(|(s, e)| {
