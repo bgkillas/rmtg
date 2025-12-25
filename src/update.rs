@@ -776,10 +776,12 @@ pub fn listen_for_mouse(
                 && !is_reversed(&transform)
             {
                 let top = pile.get_card(&transform);
-                let v = Vec2::new(
-                    transform.translation.x,
-                    transform.translation.z - CARD_HEIGHT - CARD_THICKNESS,
-                );
+                let mut v = Vec2::new(transform.translation.x, transform.translation.z);
+                if v.y.is_sign_positive() {
+                    v.y -= CARD_HEIGHT + CARD_THICKNESS
+                } else {
+                    v.y += CARD_HEIGHT + CARD_THICKNESS
+                }
                 let client = down.client.0.clone();
                 let get_deck = down.get_deck.clone();
                 let asset_server = asset_server.clone();
