@@ -1285,10 +1285,10 @@ pub fn spawn_msg(entity: Entity, msg: String, commands: &mut Commands, font: Han
             ..default()
         },
     ));
-    /*commands.trigger(Scroll {
+    commands.trigger(Scroll {
         entity,
-        delta: Vec2::new(0.0, FONT_HEIGHT),
-    });*/
+        delta: Vec2::new(0.0, f32::INFINITY),
+    });
 }
 pub fn text_keybinds(
     mut active_input: ResMut<InputFocus>,
@@ -2398,6 +2398,7 @@ pub fn on_scroll_handler(
         };
         if !max {
             scroll_position.x += delta.x;
+            scroll_position.x = scroll_position.x.min(max_offset.x).max(0.0);
             delta.x = 0.0;
         }
     }
@@ -2409,6 +2410,7 @@ pub fn on_scroll_handler(
         };
         if !max {
             scroll_position.y += delta.y;
+            scroll_position.y = scroll_position.y.min(max_offset.y).max(0.0);
             delta.y = 0.0;
         }
     }
