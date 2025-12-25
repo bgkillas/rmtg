@@ -705,10 +705,10 @@ pub fn listen_for_mouse(
                         None,
                         Some(id),
                     );
-                    transform.translation.x += CARD_WIDTH + CARD_THICKNESS * 2.0;
-                    if transform.translation.x >= W - CARD_WIDTH - CARD_THICKNESS * 2.0 {
+                    transform.translation.x += CARD_WIDTH + CARD_THICKNESS;
+                    if transform.translation.x >= W - CARD_WIDTH - CARD_THICKNESS {
                         transform.translation.x = start.translation.x;
-                        transform.translation.z += CARD_HEIGHT + CARD_THICKNESS * 2.0;
+                        transform.translation.z += CARD_HEIGHT + CARD_THICKNESS;
                     }
                     vec.push((id, Trans::from_transform(&transform)));
                 }
@@ -947,7 +947,10 @@ pub fn listen_for_mouse(
                 );
                 *focus.menu = Menu::Side;
             }
-            if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) && inother.is_none() {
+            if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
+                && inother.is_none()
+                && !pile.is_empty()
+            {
                 let mut spawn = || {
                     let card = pile.get_card(&transform);
                     let mut transform = UiTransform::default();
@@ -2560,9 +2563,11 @@ pub fn pile_merge(
     equipment: Query<(), With<Equipment>>,
     (mut menu, side, net): (ResMut<Menu>, Option<Single<Entity, With<SideMenu>>>, Net),
 ) {
-    if let Ok((e1, _, t1, _, _, s1, m1)) = piles.get(collision.collider1)
-        && let Ok((e2, _, t2, _, _, s2, m2)) = piles.get(collision.collider2)
+    if let Ok((e1, p1, t1, _, _, s1, m1)) = piles.get(collision.collider1)
+        && let Ok((e2, p2, t2, _, _, s2, m2)) = piles.get(collision.collider2)
         && e1 < e2
+        && !p1.is_empty()
+        && !p2.is_empty()
         && (t1.translation.x - t2.translation.x).abs() < CARD_WIDTH / 2.0
         && (t1.translation.z - t2.translation.z).abs() < CARD_HEIGHT / 2.0
         && is_reversed(t1) == is_reversed(t2)
