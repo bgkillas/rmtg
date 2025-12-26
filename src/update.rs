@@ -1279,23 +1279,33 @@ pub fn text_send(
     }
 }
 pub fn spawn_msg(entity: Entity, msg: String, commands: &mut Commands, font: Handle<Font>) {
-    commands.entity(entity).with_child((
-        Node {
-            width: Val::Percent(100.0),
-            ..default()
-        },
-        Text(msg),
-        Visibility::Inherited,
-        TextFont {
-            font,
-            font_size: FONT_SIZE,
-            ..default()
-        },
-    ));
-    commands.trigger(Scroll {
-        entity,
-        delta: Vec2::new(0.0, f32::INFINITY),
-    });
+    commands
+        .entity(entity)
+        .with_child((
+            Node {
+                width: Val::Percent(100.0),
+                ..default()
+            },
+            Text(msg),
+            Visibility::Inherited,
+            TextFont {
+                font,
+                font_size: FONT_SIZE,
+                ..default()
+            },
+        ))
+        .insert(ScrollToBottom);
+}
+#[derive(Component)]
+pub struct ScrollToBottom;
+pub fn scroll_to_bottom(mut commands: Commands, query: Query<Entity, With<ScrollToBottom>>) {
+    for entity in &query {
+        commands.trigger(Scroll {
+            entity,
+            delta: Vec2::new(0.0, f32::INFINITY),
+        });
+        commands.entity(entity).remove::<ScrollToBottom>();
+    }
 }
 pub fn text_keybinds(
     mut active_input: ResMut<InputFocus>,

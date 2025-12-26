@@ -87,7 +87,7 @@ bevy={version="0.17.3", default-features = false, features = [
   "wayland",
   "debug",
   "zstd_rust",
-  "track_location",
+  #"track_location",
   #"bevy_dev_tools",
 ]}
 itertools="0.14.0"

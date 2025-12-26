@@ -2,9 +2,9 @@ use crate::setup::{MAT_BAR, MAT_HEIGHT, MAT_WIDTH, setup};
 use crate::update::{
     FlipCounter, GiveEnts, ToMoveUp, cam_rotation, cam_translation, esc_menu, flip_ents,
     follow_mouse, gather_hand, give_ents, listen_for_deck, listen_for_mouse, on_scroll_handler,
-    pick_from_list, pile_merge, register_deck, rem_peers, reset_layers, send_scroll_events,
-    set_card_spot, text_keybinds, text_send, to_move_up, turn_keybinds, update_hand,
-    update_search_deck,
+    pick_from_list, pile_merge, register_deck, rem_peers, reset_layers, scroll_to_bottom,
+    send_scroll_events, set_card_spot, text_keybinds, text_send, to_move_up, turn_keybinds,
+    update_hand, update_search_deck,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -13,6 +13,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::input_focus::InputFocus;
 use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;
+use bevy::ui::UiSystems;
 use bevy_framepace::FramepacePlugin;
 use bevy_prng::WyRand;
 use bevy_rand::prelude::EntropyPlugin;
@@ -23,7 +24,6 @@ use rand::RngCore;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::{Debug, Error, Formatter};
-use std::mem::swap;
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::str::FromStr;
@@ -205,6 +205,7 @@ pub fn start() -> AppExit {
             )
                 .chain(),
             rem_peers,
+            scroll_to_bottom.after(UiSystems::Layout),
         ),
     )
     .add_systems(PreUpdate, (get_sync, apply_sync).chain())
@@ -338,7 +339,7 @@ impl Pile {
         let Pile::Single(s) = self else {
             unreachable!()
         };
-        swap(s, &mut top);
+        mem::swap(s, &mut top);
         s.equiped.splice(0..0, top.flatten());
     }
     fn clone_no_image(&self) -> Self {
