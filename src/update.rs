@@ -1980,8 +1980,8 @@ pub fn cam_translation(
     }
     if mouse_motion.delta.y != 0.0 && !focus.mouse_lock() {
         let mut translate = cam.forward().as_vec3() * scale * mouse_motion.delta.y * 16.0;
-        if mouse_motion.unit == MouseScrollUnit::Line {
-            translate *= 128.0;
+        if mouse_motion.unit != MouseScrollUnit::Line {
+            translate /= 4.0;
         }
         if cam.translation.y + translate.y <= 0.0 {
             let (camera, camera_transform) = camera.into_inner();
