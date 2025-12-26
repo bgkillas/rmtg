@@ -837,7 +837,7 @@ pub fn apply_sync(
                     return;
                 }
                 let mut equip = false;
-                if top_pile.is_equiped() {
+                if top_pile.is_modified() {
                     base_pile.merge(top_pile);
                     equip = true;
                 } else {

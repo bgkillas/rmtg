@@ -185,8 +185,7 @@ pub fn start() -> AppExit {
                     display_steam_info,
                     listen_for_deck,
                     register_deck,
-                    cam_rotation,
-                    cam_translation,
+                    (cam_rotation, cam_translation).chain(),
                     esc_menu,
                     #[cfg(all(feature = "steam", feature = "ip"))]
                     new_lobby,
@@ -325,6 +324,13 @@ impl Pile {
     fn is_equiped(&self) -> bool {
         if let Pile::Single(s) = self {
             !s.equiped.is_empty()
+        } else {
+            false
+        }
+    }
+    fn is_modified(&self) -> bool {
+        if let Pile::Single(s) = self {
+            s.is_modified()
         } else {
             false
         }
@@ -1070,16 +1076,19 @@ struct Modified {
 struct Card {
     subcard: SubCard,
     equiped: Vec<SubCard>,
-    #[allow(dead_code)]
     modified: Option<Modified>,
-    #[allow(dead_code)]
     loyalty: Option<i32>,
-    #[allow(dead_code)]
     misc: Option<i32>,
     #[allow(dead_code)]
     is_token: bool,
 }
 impl Card {
+    fn is_modified(&self) -> bool {
+        !self.equiped.is_empty()
+            || self.modified.is_some()
+            || self.loyalty.is_some()
+            || self.misc.is_some()
+    }
     fn clone_no_image(&self) -> Self {
         Self {
             subcard: self.subcard.clone_no_image(),

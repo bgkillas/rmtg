@@ -526,6 +526,12 @@ pub fn listen_for_mouse(
                     *focus.menu = Menu::World;
                     commands.entity(**side.as_ref().unwrap()).despawn();
                 }
+            } else if input.just_pressed(KeyCode::KeyM)
+                && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
+                && let Pile::Single(c) = &mut *pile
+            {
+                c.loyalty = Some(0);
+                todo!()
             } else if input.just_pressed(KeyCode::KeyC)
                 && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
             {
@@ -1961,7 +1967,10 @@ pub fn cam_translation(
         }
     }
     if mouse_motion.delta.y != 0.0 && !focus.mouse_lock() {
-        let translate = cam.forward().as_vec3() * scale * mouse_motion.delta.y * 16.0;
+        let mut translate = cam.forward().as_vec3() * scale * mouse_motion.delta.y * 16.0;
+        if mouse_motion.unit == MouseScrollUnit::Line {
+            translate *= 128.0;
+        }
         if cam.translation.y + translate.y <= 0.0 {
             let (camera, camera_transform) = camera.into_inner();
             let Ok(ray) = camera.viewport_to_world(camera_transform, window.size() / 2.0) else {
@@ -2629,7 +2638,7 @@ pub fn pile_merge(
             }
         }
         let mut equip = false;
-        if top_pile.is_equiped() {
+        if top_pile.is_modified() {
             bottom_pile.merge(top_pile);
             equip = true;
         } else if is_reversed(&bottom_transform) {
