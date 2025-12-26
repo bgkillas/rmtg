@@ -23,6 +23,7 @@ use rand::RngCore;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::{Debug, Error, Formatter};
+use std::mem::swap;
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::str::FromStr;
@@ -116,11 +117,11 @@ pub fn start() -> AppExit {
     let get_deck = GetDeck::default();
     let game_clipboard = GameClipboard::None;
     let mut app = App::new();
-    app.add_plugins(Client::new(
-        #[cfg(feature = "steam")]
-        APPID,
-    ));
     app.add_plugins((
+        Client::new(
+            #[cfg(feature = "steam")]
+            APPID,
+        ),
         DefaultPlugins
             .set(WindowPlugin {
                 primary_window: app_window,
@@ -297,8 +298,7 @@ impl Pile {
                 *s = Pile::Single(Box::new(Card {
                     subcard,
                     equiped,
-                    power: None,
-                    health: None,
+                    modified: None,
                     loyalty: None,
                     misc: None,
                     is_token: false,
@@ -306,10 +306,14 @@ impl Pile {
                 true
             }
             s @ Pile::Single(_) => {
-                let Pile::Single(cards) = mem::take(s) else {
-                    unreachable!();
-                };
-                *s = Pile::Multiple(cards.flatten());
+                if let Pile::Single(c) = &s
+                    && !c.equiped.is_empty()
+                {
+                    let Pile::Single(cards) = mem::take(s) else {
+                        unreachable!();
+                    };
+                    *s = Pile::Multiple(cards.flatten());
+                }
                 false
             }
             Pile::Empty => {
@@ -323,6 +327,19 @@ impl Pile {
         } else {
             false
         }
+    }
+    fn merge(&mut self, to: Self) {
+        let Pile::Single(mut top) = to else {
+            unreachable!()
+        };
+        if !self.is_equiped() {
+            self.equip();
+        }
+        let Pile::Single(s) = self else {
+            unreachable!()
+        };
+        swap(s, &mut top);
+        s.equiped.splice(0..0, top.flatten());
     }
     fn clone_no_image(&self) -> Self {
         match self {
@@ -1044,13 +1061,16 @@ impl SubCard {
     }
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
+struct Modified {
+    main: (i32, i32),
+    counter: Option<(i32, i32)>,
+}
+#[derive(Debug, Default, Clone, Encode, Decode)]
 struct Card {
     subcard: SubCard,
     equiped: Vec<SubCard>,
     #[allow(dead_code)]
-    power: Option<i32>,
-    #[allow(dead_code)]
-    health: Option<i32>,
+    modified: Option<Modified>,
     #[allow(dead_code)]
     loyalty: Option<i32>,
     #[allow(dead_code)]
@@ -1063,8 +1083,7 @@ impl Card {
         Self {
             subcard: self.subcard.clone_no_image(),
             equiped: self.equiped.iter().map(|c| c.clone_no_image()).collect(),
-            power: None,
-            health: None,
+            modified: None,
             loyalty: None,
             misc: None,
             is_token: false,
@@ -1194,8 +1213,7 @@ impl From<SubCard> for Card {
         Self {
             subcard: value,
             equiped: Vec::new(),
-            power: None,
-            health: None,
+            modified: None,
             loyalty: None,
             misc: None,
             is_token: false,
@@ -1207,9 +1225,8 @@ impl From<SubCard> for Box<Card> {
         Box::new(Card {
             subcard: value,
             equiped: Vec::new(),
-            power: None,
-            health: None,
             loyalty: None,
+            modified: None,
             misc: None,
             is_token: false,
         })

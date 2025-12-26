@@ -1,8 +1,8 @@
 use crate::counters::Value;
 use crate::download::add_images;
 use crate::misc::{
-    Equipment, adjust_meshes, default_cam_pos, make_cam, make_cur, new_pile_at, repaint_face,
-    spawn_equip,
+    Counter, Equipment, adjust_meshes, default_cam_pos, make_cam, make_cur, new_pile_at,
+    repaint_face, spawn_equip,
 };
 #[cfg(feature = "steam")]
 use crate::setup::SteamInfo;
@@ -250,7 +250,7 @@ pub fn apply_sync(
                 Without<CameraInd>,
             ),
         >,
-        Query<(), With<Equipment>>,
+        Query<(), Or<(With<Equipment>, With<Counter>)>>,
         Option<Single<Entity, With<SideMenu>>>,
         ResMut<Menu>,
         ResMut<Turn>,
@@ -836,7 +836,13 @@ pub fn apply_sync(
                         .unwrap();
                     return;
                 }
-                base_pile.splice_at(at, top_pile);
+                let mut equip = false;
+                if top_pile.is_equiped() {
+                    base_pile.merge(top_pile);
+                    equip = true;
+                } else {
+                    base_pile.splice_at(at, top_pile);
+                }
                 let card = base_pile.last();
                 repaint_face(&mut mats, &mut materials, card, base_children);
                 adjust_meshes(
@@ -849,6 +855,16 @@ pub fn apply_sync(
                     &equipment,
                     &mut commands,
                 );
+                if equip {
+                    spawn_equip(
+                        base_ent,
+                        &base_pile,
+                        &mut commands,
+                        card_base.clone(),
+                        &mut materials,
+                        &mut meshes,
+                    );
+                }
                 if let Some(search) = &search
                     && search.1.0 == base_ent
                 {

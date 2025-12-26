@@ -4,8 +4,8 @@ use crate::download::{
     spawn_singleton_id,
 };
 use crate::misc::{
-    Equipment, adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile, new_pile_at,
-    repaint_face, spawn_equip, vec2_to_ground,
+    Counter, Equipment, adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile,
+    new_pile_at, repaint_face, spawn_equip, vec2_to_ground,
 };
 use crate::setup::{
     EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, TextChat, TextInput, TextMenu, W, Wall,
@@ -421,7 +421,7 @@ pub fn listen_for_mouse(
         Query<&mut Text3d>,
         Query<&Children, Without<Pile>>,
         Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
-        Query<(), With<Equipment>>,
+        Query<(), Or<(With<Equipment>, With<Counter>)>>,
         Net,
         ResMut<Turn>,
         Res<Peers>,
@@ -1695,7 +1695,7 @@ pub fn pick_from_list(
         Query<&SyncObjectMe>,
         Query<&SyncObject>,
         Single<&TextInputContents, With<SearchText>>,
-        Query<(), With<Equipment>>,
+        Query<(), Or<(With<Equipment>, With<Counter>)>>,
         Res<ButtonInput<KeyCode>>,
         Option<Single<Entity, With<SideMenu>>>,
         Net,
@@ -2560,8 +2560,13 @@ pub fn pile_merge(
     mut commands: Commands,
     search_deck: Option<Single<(Entity, &SearchDeck)>>,
     text: Option<Single<&TextInputContents, With<SearchText>>>,
-    equipment: Query<(), With<Equipment>>,
-    (mut menu, side, net): (ResMut<Menu>, Option<Single<Entity, With<SideMenu>>>, Net),
+    equipment: Query<(), Or<(With<Equipment>, With<Counter>)>>,
+    (mut menu, side, net, card_base): (
+        ResMut<Menu>,
+        Option<Single<Entity, With<SideMenu>>>,
+        Net,
+        Res<CardBase>,
+    ),
 ) {
     if let Ok((e1, p1, t1, _, _, s1, m1)) = piles.get(collision.collider1)
         && let Ok((e2, p2, t2, _, _, s2, m2)) = piles.get(collision.collider2)
@@ -2613,7 +2618,11 @@ pub fn pile_merge(
                 net.merge_me(*mid, id, at)
             }
         }
-        if is_reversed(&bottom_transform) {
+        let mut equip = false;
+        if top_pile.is_equiped() {
+            bottom_pile.merge(top_pile);
+            equip = true;
+        } else if is_reversed(&bottom_transform) {
             bottom_pile.extend_start(top_pile);
         } else {
             bottom_pile.extend(top_pile);
@@ -2630,6 +2639,16 @@ pub fn pile_merge(
             &equipment,
             &mut commands,
         );
+        if equip {
+            spawn_equip(
+                ent,
+                &bottom_pile,
+                &mut commands,
+                card_base.clone(),
+                &mut materials,
+                &mut meshes,
+            );
+        }
         if let Some(search_deck) = search_deck {
             if search_deck.1.0 == ent {
                 update_search(

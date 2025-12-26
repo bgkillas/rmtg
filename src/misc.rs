@@ -209,7 +209,7 @@ pub fn adjust_meshes(
     >,
     transform: &mut Transform,
     collider: &mut Collider,
-    equipment: &Query<(), With<Equipment>>,
+    equipment: &Query<(), Or<(With<Equipment>, With<Counter>)>>,
     commands: &mut Commands,
 ) {
     let size = pile.len() as f32 * CARD_THICKNESS;
@@ -269,6 +269,9 @@ pub fn spawn_equip(
 }
 #[derive(Component)]
 pub struct Equipment;
+//TODO
+#[derive(Component)]
+pub struct Counter;
 pub fn make_cam(
     commands: &mut Commands,
     peer: PeerId,
