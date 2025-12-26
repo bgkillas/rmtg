@@ -531,7 +531,7 @@ pub fn listen_for_mouse(
                 && let Pile::Single(c) = &mut *pile
             {
                 c.loyalty = Some(0);
-                todo!()
+                //TODO
             } else if input.just_pressed(KeyCode::KeyC)
                 && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
             {
@@ -1271,7 +1271,7 @@ pub fn listen_for_mouse(
 }
 pub fn text_send(
     mut msg: MessageReader<SubmitText>,
-    mut net: Net,
+    net: Net,
     chat: Single<Entity, With<TextChat>>,
     mut commands: Commands,
     font: Res<FontRes>,
@@ -1323,6 +1323,18 @@ pub fn text_keybinds(
         return;
     }
     active_input.set(*text);
+}
+#[derive(Default, Debug, Resource, Deref, DerefMut)]
+pub struct VoiceActive(pub bool);
+pub fn voice_keybinds(input: Res<ButtonInput<KeyCode>>, mut active: ResMut<VoiceActive>) {
+    **active = input.just_pressed(KeyCode::KeyB);
+}
+pub fn voice_chat(active: Res<VoiceActive>, net: Net) {
+    if !**active {
+        return;
+    }
+    net.voice(Vec::new());
+    //TODO
 }
 pub fn turn_keybinds(
     others_ids: Query<&SyncObject>,

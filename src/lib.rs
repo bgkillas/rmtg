@@ -1,10 +1,10 @@
 use crate::setup::{MAT_BAR, MAT_HEIGHT, MAT_WIDTH, setup};
 use crate::update::{
-    FlipCounter, GiveEnts, ToMoveUp, cam_rotation, cam_translation, esc_menu, flip_ents,
-    follow_mouse, gather_hand, give_ents, listen_for_deck, listen_for_mouse, on_scroll_handler,
-    pick_from_list, pile_merge, register_deck, rem_peers, reset_layers, scroll_to_bottom,
-    send_scroll_events, set_card_spot, text_keybinds, text_send, to_move_up, turn_keybinds,
-    update_hand, update_search_deck,
+    FlipCounter, GiveEnts, ToMoveUp, VoiceActive, cam_rotation, cam_translation, esc_menu,
+    flip_ents, follow_mouse, gather_hand, give_ents, listen_for_deck, listen_for_mouse,
+    on_scroll_handler, pick_from_list, pile_merge, register_deck, rem_peers, reset_layers,
+    scroll_to_bottom, send_scroll_events, set_card_spot, text_keybinds, text_send, to_move_up,
+    turn_keybinds, update_hand, update_search_deck, voice_chat, voice_keybinds,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -161,6 +161,7 @@ pub fn start() -> AppExit {
     .insert_resource(GiveEnts::default())
     .insert_resource(FlipCounter::default())
     .insert_resource(SendSleeping::default())
+    .insert_resource(VoiceActive::default())
     .insert_resource(game_clipboard)
     .insert_resource(Download {
         client,
@@ -177,6 +178,8 @@ pub fn start() -> AppExit {
                 flip_ents,
                 (
                     text_send,
+                    voice_keybinds,
+                    voice_chat,
                     text_keybinds,
                     turn_keybinds,
                     set_card_spot,

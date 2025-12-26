@@ -22,7 +22,7 @@ use std::collections::hash_map::Entry::Vacant;
 use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::sync::atomic::AtomicBool;
-pub const COMPRESSION: Compression = Compression::Compressed;
+pub const COMPRESSION: Compression = Compression::Uncompressed;
 #[derive(Resource, Default, Deref, DerefMut)]
 pub struct SendSleeping(pub Arc<AtomicBool>);
 pub fn get_sync(
@@ -1072,7 +1072,7 @@ pub fn apply_sync(
                 spawn_msg(*chat, msg, &mut commands, font.0.clone());
             }
             Packet::Voice(_msg) => {
-                todo!()
+                //TODO
             }
             Packet::Turn(player) => turn.0 = player,
         }
@@ -1434,9 +1434,14 @@ impl<'w, 's> Net<'w, 's> {
             id,
         }
     }
-    pub fn text(&mut self, msg: String) {
+    pub fn text(&self, msg: String) {
         self.client
             .broadcast(&Packet::Text(msg), Reliability::Reliable, COMPRESSION)
+            .unwrap();
+    }
+    pub fn voice(&self, msg: Vec<u8>) {
+        self.client
+            .broadcast(&Packet::Voice(msg), Reliability::Reliable, COMPRESSION)
             .unwrap();
     }
     pub fn killed_me(&mut self, id: SyncObjectMe) {
