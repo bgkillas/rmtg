@@ -924,7 +924,6 @@ struct Cost {
     any: u8,
     pay: u8,
     var: u8,
-    total: u8,
 }
 impl From<&str> for Cost {
     fn from(value: &str) -> Self {
@@ -934,7 +933,6 @@ impl From<&str> for Cost {
         }
         let value = &value[1..value.len() - 1];
         for c in value.split("}{") {
-            cost.total += 1;
             for c in c.split('/') {
                 match c {
                     "W" => cost.white += 1,
@@ -943,23 +941,18 @@ impl From<&str> for Cost {
                     "R" => cost.red += 1,
                     "G" => cost.green += 1,
                     "C" => cost.colorless += 1,
-                    "P" => {
-                        cost.total -= 1;
-                        cost.pay += 1
-                    }
-                    "X" => {
-                        cost.total -= 1;
-                        cost.var += 1
-                    }
-                    c => {
-                        cost.total -= 1;
-                        cost.total += c.parse::<u8>().unwrap();
-                        cost.any += c.parse::<u8>().unwrap()
-                    }
+                    "P" => cost.pay += 1,
+                    "X" => cost.var += 1,
+                    c => cost.any += c.parse::<u8>().unwrap(),
                 }
             }
         }
         cost
+    }
+}
+impl Cost {
+    pub fn total(&self) -> u8 {
+        self.white + self.blue + self.black + self.red + self.green + self.colorless + self.any
     }
 }
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
@@ -1279,7 +1272,7 @@ impl CardInfo {
             SearchKey::Name => self.name.to_ascii_lowercase().contains(value),
             SearchKey::Cmc => {
                 if let Ok(v) = value.parse() {
-                    self.mana_cost.total.cmp(&v) == ordering
+                    self.mana_cost.total().cmp(&v) == ordering
                 } else {
                     return false;
                 }

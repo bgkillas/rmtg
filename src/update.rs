@@ -179,7 +179,7 @@ pub fn update_hand(
             let mut order = children
                 .iter()
                 .filter_map(|c| card.get(c).ok())
-                .map(|(e, _, c)| (c.first().data.face.mana_cost.total, e.0))
+                .map(|(e, _, c)| (c.first().data.face.mana_cost.total(), e.0))
                 .collect::<Vec<(u8, usize)>>();
             order.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
             for child in children.iter() {
