@@ -120,7 +120,10 @@ pub fn start() -> AppExit {
     app.add_plugins((
         Client::new(
             #[cfg(feature = "steam")]
-            APPID,
+            std::env::var("AppId")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(APPID),
         ),
         DefaultPlugins
             .set(WindowPlugin {
