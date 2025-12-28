@@ -222,6 +222,7 @@ pub fn follow_mouse(
             &Collider,
             &GlobalTransform,
             Option<&ChildOf>,
+            Option<&Pile>,
         ),
         (With<FollowMouse>, Without<Hand>),
     >,
@@ -313,8 +314,9 @@ pub fn follow_mouse(
             }
             card.1.translation = point;
         }
-    } else if let Some(time) =
-        ray.intersect_plane(card.5.translation(), InfinitePlane3d { normal: Dir3::Y })
+    } else if card.7.is_some_and(|s| s.len() == 1)
+        && let Some(time) =
+            ray.intersect_plane(card.5.translation(), InfinitePlane3d { normal: Dir3::Y })
         && Collider::cuboid(
             MAT_WIDTH + CARD_THICKNESS,
             CARD_HEIGHT + CARD_THICKNESS,
