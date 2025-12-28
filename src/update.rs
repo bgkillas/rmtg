@@ -2180,7 +2180,6 @@ pub fn register_deck(
     mut materials: ResMut<Assets<StandardMaterial>>,
     card_base: Res<CardBase>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut sent: ResMut<Sent>,
     mut to_move: ResMut<ToMoveUp>,
     mut spots: Query<(&GlobalTransform, &mut CardSpot, &Player)>,
     peers: Res<Peers>,
@@ -2333,7 +2332,7 @@ pub fn register_deck(
             to_move.0.push(ent.id());
         }
         if let Some(id) = id {
-            sent.del(id);
+            net.sent.del(id);
             net.received(id.user, id.id);
         }
     }

@@ -1402,6 +1402,7 @@ pub struct Net<'w, 's> {
     pub client: ResMut<'w, Client>,
     pub rand: Single<'w, 's, &'static mut WyRand, With<GlobalRng>>,
     pub count: ResMut<'w, SyncCount>,
+    pub sent: ResMut<'w, Sent>,
     commands: Commands<'w, 's>,
 }
 impl<'w, 's> Net<'w, 's> {
@@ -1419,6 +1420,7 @@ impl<'w, 's> Net<'w, 's> {
             .unwrap();
     }
     pub fn take(&mut self, entity: Entity, id: SyncObject) {
+        self.sent.add(id);
         let nid = self.new_id();
         self.client
             .broadcast(&Packet::Take(id, nid), Reliability::Reliable, COMPRESSION)
