@@ -1732,7 +1732,9 @@ pub fn pick_from_list(
 ) {
     let left = mouse_input.just_pressed(MouseButton::Left);
     let swap = input.just_pressed(KeyCode::KeyO) && !focus.key_lock();
-    if !matches!(*focus.menu, Menu::Side) || !(left || swap || follow.is_some()) {
+    if !matches!(*focus.menu, Menu::Side)
+        || !(left || swap || (follow.is_some() && !mouse_input.pressed(MouseButton::Left)))
+    {
         return;
     }
     for pointer_event in hover_map.values() {
