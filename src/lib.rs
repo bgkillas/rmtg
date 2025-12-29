@@ -1728,5 +1728,12 @@ impl Keybind {
             Key::KeyCode(key) => keyboard.just_pressed(key),
             Key::Mouse(button) => mouse.just_pressed(button),
         }) && self.modifiers.iter().all(|m| m.pressed(keyboard))
+            && keyboard.get_pressed().all(|k| {
+                if let Ok(m) = k.try_into() {
+                    self.modifiers.contains(m)
+                } else {
+                    true
+                }
+            })
     }
 }
