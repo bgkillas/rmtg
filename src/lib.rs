@@ -24,6 +24,7 @@ use rand::RngCore;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::{Debug, Error, Formatter};
+use std::hash::Hash;
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::str::FromStr;
@@ -62,6 +63,7 @@ use crate::sync::display_steam_info;
 use crate::sync::new_lobby;
 use crate::sync::{SendSleeping, Sent, SyncCount, SyncObject, apply_sync, get_sync};
 use bitcode::{Decode, Encode};
+use enumset::{EnumSet, EnumSetType};
 #[cfg(feature = "wasm")]
 use futures::channel::oneshot;
 use itertools::Either;
@@ -164,6 +166,7 @@ pub fn start() -> AppExit {
     .insert_resource(FlipCounter::default())
     .insert_resource(SendSleeping::default())
     .insert_resource(VoiceActive::default())
+    .insert_resource(KeybindsList::default())
     .insert_resource(game_clipboard)
     .insert_resource(Download {
         client,
@@ -1574,4 +1577,156 @@ async fn get_image_bytes(url: &str) -> Option<(Vec<u8>, u32, u32)> {
         .ok()?
         .data();
     Some((data.0, img.width(), img.height()))
+}
+#[allow(dead_code)]
+#[derive(SystemParam)]
+struct Keybinds<'w> {
+    keyboard: Res<'w, ButtonInput<KeyCode>>,
+    mouse: Res<'w, ButtonInput<MouseButton>>,
+    keybinds: ResMut<'w, KeybindsList>,
+}
+#[allow(dead_code)]
+impl Keybinds<'_> {
+    pub fn todo(&self) -> bool {
+        self.keybinds.todo.pressed(&self.keyboard, &self.mouse)
+    }
+    pub fn set_todo(&mut self) -> bool {
+        if let Some(new) = Keybind::new_from(&self.keyboard, &self.mouse) {
+            self.keybinds.todo = new;
+            true
+        } else {
+            false
+        }
+    }
+}
+#[allow(dead_code)]
+#[derive(Resource)]
+struct KeybindsList {
+    todo: Keybind,
+}
+impl Default for KeybindsList {
+    fn default() -> Self {
+        Self {
+            todo: KeyCode::Equal.into(),
+        }
+    }
+}
+#[allow(dead_code)]
+enum Key {
+    KeyCode(KeyCode),
+    Mouse(MouseButton),
+}
+impl From<KeyCode> for Key {
+    fn from(value: KeyCode) -> Self {
+        Self::KeyCode(value)
+    }
+}
+impl From<MouseButton> for Key {
+    fn from(value: MouseButton) -> Self {
+        Self::Mouse(value)
+    }
+}
+#[allow(dead_code)]
+#[derive(EnumSetType)]
+enum Modifier {
+    Alt,
+    Control,
+    Shift,
+    Super,
+}
+#[allow(dead_code)]
+impl Modifier {
+    pub fn pressed(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
+        keyboard.any_pressed(match self {
+            Modifier::Alt => [KeyCode::AltLeft, KeyCode::AltRight],
+            Modifier::Control => [KeyCode::ControlLeft, KeyCode::ControlRight],
+            Modifier::Shift => [KeyCode::ShiftLeft, KeyCode::ShiftRight],
+            Modifier::Super => [KeyCode::SuperLeft, KeyCode::SuperRight],
+        })
+    }
+}
+impl TryFrom<&KeyCode> for Modifier {
+    type Error = ();
+    fn try_from(value: &KeyCode) -> Result<Self, Self::Error> {
+        Ok(match value {
+            KeyCode::AltLeft | KeyCode::AltRight => Modifier::Alt,
+            KeyCode::ControlLeft | KeyCode::ControlRight => Modifier::Control,
+            KeyCode::ShiftLeft | KeyCode::ShiftRight => Modifier::Shift,
+            KeyCode::SuperLeft | KeyCode::SuperRight => Modifier::Super,
+            _ => return Err(()),
+        })
+    }
+}
+#[allow(dead_code)]
+struct Keybind {
+    modifiers: EnumSet<Modifier>,
+    key: Key,
+}
+impl From<KeyCode> for Keybind {
+    fn from(value: KeyCode) -> Self {
+        Self {
+            modifiers: default(),
+            key: value.into(),
+        }
+    }
+}
+impl From<MouseButton> for Keybind {
+    fn from(value: MouseButton) -> Self {
+        Self {
+            modifiers: default(),
+            key: value.into(),
+        }
+    }
+}
+#[allow(dead_code)]
+impl Keybind {
+    pub fn new_from(
+        keyboard: &ButtonInput<KeyCode>,
+        mouse: &ButtonInput<MouseButton>,
+    ) -> Option<Self> {
+        let mut modifiers = EnumSet::empty();
+        for modifier in keyboard.get_pressed().flat_map(|k| k.try_into().ok()) {
+            modifiers.insert(modifier);
+        }
+        let mut mouse_pressed = mouse.get_just_pressed();
+        let mouse = mouse_pressed.next();
+        let mut keyboard_pressed = keyboard.get_just_pressed();
+        let keyboard = keyboard_pressed.next();
+        if let Some(key) = mouse.copied() {
+            if mouse_pressed.next().is_some() {
+                return None;
+            }
+            Some(Self {
+                modifiers,
+                key: key.into(),
+            })
+        } else if let Some(key) = keyboard.copied() {
+            if keyboard_pressed.next().is_some() {
+                return None;
+            }
+            Some(Self {
+                modifiers,
+                key: key.into(),
+            })
+        } else {
+            None
+        }
+    }
+    pub fn new<const N: usize>(list: [Modifier; N], key: Key) -> Self {
+        let mut modifiers = EnumSet::empty();
+        for modifier in list {
+            modifiers.insert(modifier);
+        }
+        Self { modifiers, key }
+    }
+    pub fn pressed(
+        &self,
+        keyboard: &ButtonInput<KeyCode>,
+        mouse: &ButtonInput<MouseButton>,
+    ) -> bool {
+        (match self.key {
+            Key::KeyCode(key) => keyboard.just_pressed(key),
+            Key::Mouse(button) => mouse.just_pressed(button),
+        }) && self.modifiers.iter().all(|m| m.pressed(keyboard))
+    }
 }

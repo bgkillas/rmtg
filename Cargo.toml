@@ -90,6 +90,7 @@ bevy={version="0.17.3", default-features = false, features = [
   #"track_location",
   #"bevy_dev_tools",
 ]}
+enumset = "1.1.10"
 itertools="0.14.0"
 arboard={version="3.6.1", features = ["wayland-data-control"], optional = true}
 reqwest={version="0.12.28", features = ["rustls-tls"], default-features = false}
