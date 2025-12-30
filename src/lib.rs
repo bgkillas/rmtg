@@ -63,7 +63,8 @@ use crate::sync::display_steam_info;
 use crate::sync::new_lobby;
 use crate::sync::{SendSleeping, Sent, SyncCount, SyncObject, apply_sync, get_sync};
 use bitcode::{Decode, Encode};
-use enumset::{EnumSet, EnumSetType};
+use enum_map::{Enum, EnumMap, enum_map};
+use enumset::{EnumSet, EnumSetType, enum_set};
 #[cfg(feature = "wasm")]
 use futures::channel::oneshot;
 use itertools::Either;
@@ -1587,12 +1588,12 @@ struct Keybinds<'w> {
 }
 #[allow(dead_code)]
 impl Keybinds<'_> {
-    pub fn todo(&self) -> bool {
-        self.keybinds.todo.pressed(&self.keyboard, &self.mouse)
+    pub fn pressed(&self, keybind: KeybindKey) -> bool {
+        self.keybinds[keybind].pressed(&self.keyboard, &self.mouse)
     }
-    pub fn set_todo(&mut self) -> bool {
+    pub fn set(&mut self, keybind: KeybindKey) -> bool {
         if let Some(new) = Keybind::new_from(&self.keyboard, &self.mouse) {
-            self.keybinds.todo = new;
+            self.keybinds[keybind] = new;
             true
         } else {
             false
@@ -1600,15 +1601,18 @@ impl Keybinds<'_> {
     }
 }
 #[allow(dead_code)]
-#[derive(Resource)]
-struct KeybindsList {
-    todo: Keybind,
+#[derive(Enum)]
+enum KeybindKey {
+    Todo,
 }
+#[allow(dead_code)]
+#[derive(Resource, Deref, DerefMut)]
+struct KeybindsList(EnumMap<KeybindKey, Keybind>);
 impl Default for KeybindsList {
     fn default() -> Self {
-        Self {
-            todo: KeyCode::Equal.into(),
-        }
+        Self(enum_map! {
+            KeybindKey::Todo => Keybind::new(enum_set!(Modifier::Alt), KeyCode::KeyA.into())
+        })
     }
 }
 #[allow(dead_code)]
@@ -1690,7 +1694,9 @@ impl Keybind {
         }
         let mut mouse_pressed = mouse.get_just_pressed();
         let mouse = mouse_pressed.next();
-        let mut keyboard_pressed = keyboard.get_just_pressed();
+        let mut keyboard_pressed = keyboard
+            .get_just_pressed()
+            .filter(|k| Modifier::try_from(*k).is_err());
         let keyboard = keyboard_pressed.next();
         if let Some(key) = mouse.copied() {
             if mouse_pressed.next().is_some() {
@@ -1712,11 +1718,7 @@ impl Keybind {
             None
         }
     }
-    pub fn new<const N: usize>(list: [Modifier; N], key: Key) -> Self {
-        let mut modifiers = EnumSet::empty();
-        for modifier in list {
-            modifiers.insert(modifier);
-        }
+    pub fn new(modifiers: EnumSet<Modifier>, key: Key) -> Self {
         Self { modifiers, key }
     }
     pub fn pressed(
