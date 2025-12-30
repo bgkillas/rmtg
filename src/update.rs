@@ -151,7 +151,7 @@ pub fn update_hand(
         (&mut InHand, &mut Transform, &Pile),
         (With<InHand>, Without<Hand>, Without<FollowMouse>),
     >,
-    input: Res<ButtonInput<KeyCode>>,
+    keybinds: Keybinds,
 ) {
     if let Some(children) = hand.2 {
         for child in children.iter() {
@@ -172,10 +172,7 @@ pub fn update_hand(
                 entry.0 = n;
             }
         }
-        if input.just_pressed(KeyCode::KeyS)
-            && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-            && !input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
-        {
+        if keybinds.just_pressed(Keybind::SortHand) {
             let mut order = children
                 .iter()
                 .filter_map(|c| card.get(c).ok())
@@ -205,7 +202,7 @@ pub fn update_hand(
     hand.1.removed.clear();
 }
 pub fn follow_mouse(
-    mouse_input: Res<ButtonInput<MouseButton>>,
+    keybinds: Keybinds,
     camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
     window: Single<&Window, With<PrimaryWindow>>,
     cards: Query<(&Collider, &Transform), (Without<FollowMouse>, Without<Hand>)>,
@@ -238,7 +235,7 @@ pub fn follow_mouse(
         return;
     };
     if matches!(*menu, Menu::World | Menu::Side | Menu::Counter)
-        && mouse_input.pressed(MouseButton::Left)
+        && keybinds.pressed(Keybind::Select)
     {
         card.3.y = 0.0;
         let aabb = card.4.aabb(card.1.translation, card.1.rotation);
@@ -345,7 +342,7 @@ pub fn follow_mouse(
     }
 }
 pub fn listen_for_mouse(
-    mouse_input: Res<ButtonInput<MouseButton>>,
+    keybinds: Keybinds,
     camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
     window: Single<&Window, With<PrimaryWindow>>,
     mut pset: ParamSet<(
@@ -369,7 +366,6 @@ pub fn listen_for_mouse(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     card_base: Res<CardBase>,
-    input: Res<ButtonInput<KeyCode>>,
     #[cfg(not(feature = "wasm"))] mut clipboard: ResMut<Clipboard>,
     #[cfg(feature = "wasm")] clipboard: Res<Clipboard>,
     (
@@ -465,7 +461,7 @@ pub fn listen_for_mouse(
             return;
         };
         if let Ok((mut pile, children, parent, inhand, inother)) = cards.get_mut(entity) {
-            if input.just_pressed(KeyCode::KeyF) {
+            if keybinds.just_pressed(Keybind::Flip) {
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
                 }
@@ -483,7 +479,7 @@ pub fn listen_for_mouse(
                         &mut focus.menu,
                     );
                 }
-            } else if input.just_pressed(KeyCode::KeyR) {
+            } else if keybinds.just_pressed(Keybind::Shuffle) {
                 if pile.len() > 1 {
                     pile.shuffle(&mut net.rand);
                     let card = pile.last();
@@ -507,13 +503,7 @@ pub fn listen_for_mouse(
                         );
                     }
                 }
-            } else if ((input.just_pressed(KeyCode::Backspace)
-                || (input.pressed(KeyCode::Backspace)
-                    && input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])))
-                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-                && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]))
-                || input.just_pressed(KeyCode::Delete)
-            {
+            } else if keybinds.just_pressed(Keybind::Remove) {
                 if let Ok(id) = ids.get(entity) {
                     net.killed_me(*id)
                 } else if let Ok(id) = others_ids.get(entity) {
@@ -528,30 +518,25 @@ pub fn listen_for_mouse(
                     *focus.menu = Menu::World;
                     commands.entity(**side.as_ref().unwrap()).despawn();
                 }
-            } else if input.just_pressed(KeyCode::KeyM)
-                && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
+            } else if keybinds.just_pressed(Keybind::Modify)
                 && let Pile::Single(c) = &mut *pile
             {
                 c.loyalty = Some(0);
                 //TODO
-            } else if input.just_pressed(KeyCode::KeyC)
-                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-            {
-                if input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
-                    *game_clipboard = GameClipboard::Pile(pile.clone());
-                } else if !is_reversed(&transform) {
-                    let card = pile.get_card(&transform);
-                    let text = format!("https://scryfall.com/card/{}", card.data.id);
-                    #[cfg(feature = "wasm")]
-                    let clipboard = *clipboard;
-                    #[cfg(feature = "wasm")]
-                    wasm_bindgen_futures::spawn_local(async move {
-                        clipboard.set_text(&text).await;
-                    });
-                    #[cfg(not(feature = "wasm"))]
-                    clipboard.set_text(&text);
-                }
-            } else if mouse_input.just_pressed(MouseButton::Left) {
+            } else if keybinds.just_pressed(Keybind::Copy) && !is_reversed(&transform) {
+                let card = pile.get_card(&transform);
+                let text = format!("https://scryfall.com/card/{}", card.data.id);
+                #[cfg(feature = "wasm")]
+                let clipboard = *clipboard;
+                #[cfg(feature = "wasm")]
+                wasm_bindgen_futures::spawn_local(async move {
+                    clipboard.set_text(&text).await;
+                });
+                #[cfg(not(feature = "wasm"))]
+                clipboard.set_text(&text);
+            } else if keybinds.just_pressed(Keybind::CopyObject) {
+                *game_clipboard = GameClipboard::Pile(pile.clone());
+            } else if keybinds.just_pressed(Keybind::PickCard) && pile.len() > 1 {
                 if focus.mouse_lock() {
                     return;
                 }
@@ -567,133 +552,136 @@ pub fn listen_for_mouse(
                 } else {
                     transform.translation.y += 8.0 * CARD_THICKNESS;
                 }
-                if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-                    && pile.len() > 1
+                let len = pile.len() as f32 * CARD_THICKNESS;
+                let draw_len = if is_reversed(&transform) {
+                    1
+                } else {
+                    pile.len()
+                };
+                let new = pile.take_card(&transform);
+                if !pile.is_empty() {
+                    let card = pile.last();
+                    repaint_face(&mut mats, &mut materials, card, children);
+                    adjust_meshes(
+                        &pile,
+                        children,
+                        &mut meshes,
+                        &mut query_meshes,
+                        &mut transform,
+                        &mut colliders.get_mut(entity).unwrap().0,
+                        &equipment,
+                        &mut commands,
+                    );
+                }
+                let mut transform = *transform;
+                transform.translation.y += len + CARD_THICKNESS * 4.0;
+                if let Some(e) = follow {
+                    commands.entity(*e).remove::<FollowMouse>();
+                }
+                let id = net.new_id();
+                new_pile_at(
+                    Pile::Single(new.into()),
+                    card_base.clone(),
+                    &mut materials,
+                    &mut commands,
+                    &mut meshes,
+                    transform,
+                    true,
+                    None,
+                    None,
+                    Some(id),
+                );
+                if let Ok(lid) = ids.get(entity) {
+                    net.draw_me(
+                        *lid,
+                        vec![(id, Trans::from_transform(&transform))],
+                        draw_len,
+                    );
+                } else if let Ok(oid) = others_ids.get(entity) {
+                    net.draw(
+                        *oid,
+                        vec![(id, Trans::from_transform(&transform))],
+                        draw_len,
+                    );
+                }
+                if let Some(entity) =
+                    search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
                 {
-                    let len = pile.len() as f32 * CARD_THICKNESS;
-                    let draw_len = if is_reversed(&transform) {
-                        1
-                    } else {
-                        pile.len()
-                    };
-                    let new = pile.take_card(&transform);
-                    if !pile.is_empty() {
-                        let card = pile.last();
-                        repaint_face(&mut mats, &mut materials, card, children);
-                        adjust_meshes(
-                            &pile,
-                            children,
-                            &mut meshes,
-                            &mut query_meshes,
-                            &mut transform,
-                            &mut colliders.get_mut(entity).unwrap().0,
-                            &equipment,
-                            &mut commands,
-                        );
-                    }
-                    let mut transform = *transform;
-                    transform.translation.y += len + CARD_THICKNESS * 4.0;
-                    if let Some(e) = follow {
-                        commands.entity(*e).remove::<FollowMouse>();
-                    }
-                    let id = net.new_id();
-                    new_pile_at(
-                        Pile::Single(new.into()),
+                    update_search(
+                        &mut commands,
+                        entity,
+                        &pile,
+                        &transform,
+                        text.as_ref().unwrap().get(),
+                        &side,
+                        &mut focus.menu,
+                    );
+                }
+            } else if keybinds.just_pressed(Keybind::Select) {
+                if focus.mouse_lock() {
+                    return;
+                }
+                if inother.is_some() {
+                    let mut ent = commands.entity(entity);
+                    ent.remove::<InOtherHand>();
+                    ent.remove::<SleepingDisabled>();
+                    repaint_face(&mut mats, &mut materials, pile.first(), children);
+                    colliders.get_mut(entity).unwrap().1.0 = GRAVITY;
+                }
+                if inhand.is_some() {
+                    transform.translation.y += 128.0 * CARD_THICKNESS;
+                } else {
+                    transform.translation.y += 8.0 * CARD_THICKNESS;
+                }
+                if let Some(e) = follow {
+                    commands.entity(*e).remove::<FollowMouse>();
+                }
+                if let Ok(id) = others_ids.get(entity) {
+                    net.take(entity, *id);
+                }
+                colliders.get_mut(entity).unwrap().1.0 = 0.0;
+                commands
+                    .entity(entity)
+                    .insert(FollowMouse)
+                    .insert(SleepingDisabled)
+                    .remove::<InOtherHand>()
+                    .remove::<FollowOtherMouse>()
+                    .remove::<RigidBodyDisabled>()
+                    .remove_parent_in_place();
+            } else if keybinds.just_pressed(Keybind::Equip) && !is_reversed(&transform) {
+                let b = pile.equip();
+                if let Ok(id) = ids.get(entity) {
+                    net.equip_me(*id)
+                } else if let Ok(id) = others_ids.get(entity) {
+                    net.equip(*id);
+                }
+                repaint_face(&mut mats, &mut materials, pile.last(), children);
+                adjust_meshes(
+                    &pile,
+                    children,
+                    &mut meshes,
+                    &mut query_meshes,
+                    &mut transform,
+                    &mut colliders.get_mut(entity).unwrap().0,
+                    &equipment,
+                    &mut commands,
+                );
+                if b {
+                    spawn_equip(
+                        entity,
+                        &pile,
+                        &mut commands,
                         card_base.clone(),
                         &mut materials,
-                        &mut commands,
                         &mut meshes,
-                        transform,
-                        true,
-                        None,
-                        None,
-                        Some(id),
                     );
-                    if let Ok(lid) = ids.get(entity) {
-                        net.draw_me(
-                            *lid,
-                            vec![(id, Trans::from_transform(&transform))],
-                            draw_len,
-                        );
-                    } else if let Ok(oid) = others_ids.get(entity) {
-                        net.draw(
-                            *oid,
-                            vec![(id, Trans::from_transform(&transform))],
-                            draw_len,
-                        );
-                    }
-                    if let Some(entity) =
-                        search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
-                    {
-                        update_search(
-                            &mut commands,
-                            entity,
-                            &pile,
-                            &transform,
-                            text.as_ref().unwrap().get(),
-                            &side,
-                            &mut focus.menu,
-                        );
-                    }
-                } else {
-                    if let Some(e) = follow {
-                        commands.entity(*e).remove::<FollowMouse>();
-                    }
-                    if let Ok(id) = others_ids.get(entity) {
-                        net.take(entity, *id);
-                    }
-                    colliders.get_mut(entity).unwrap().1.0 = 0.0;
-                    commands
-                        .entity(entity)
-                        .insert(FollowMouse)
-                        .insert(SleepingDisabled)
-                        .remove::<InOtherHand>()
-                        .remove::<FollowOtherMouse>()
-                        .remove::<RigidBodyDisabled>()
-                        .remove_parent_in_place();
                 }
-            } else if input.just_pressed(KeyCode::KeyE) {
-                if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
-                    if !is_reversed(&transform) {
-                        let b = pile.equip();
-                        if let Ok(id) = ids.get(entity) {
-                            net.equip_me(*id)
-                        } else if let Ok(id) = others_ids.get(entity) {
-                            net.equip(*id);
-                        }
-                        repaint_face(&mut mats, &mut materials, pile.last(), children);
-                        adjust_meshes(
-                            &pile,
-                            children,
-                            &mut meshes,
-                            &mut query_meshes,
-                            &mut transform,
-                            &mut colliders.get_mut(entity).unwrap().0,
-                            &equipment,
-                            &mut commands,
-                        );
-                        if b {
-                            spawn_equip(
-                                entity,
-                                &pile,
-                                &mut commands,
-                                card_base.clone(),
-                                &mut materials,
-                                &mut meshes,
-                            );
-                        }
-                    }
-                } else if zoom.is_none() {
-                    if let Ok(id) = others_ids.get(entity) {
-                        net.take(entity, *id);
-                    }
-                    rotate_right(&mut transform);
+            } else if keybinds.just_pressed(Keybind::RotateRight) && zoom.is_none() {
+                if let Ok(id) = others_ids.get(entity) {
+                    net.take(entity, *id);
                 }
-            } else if input.just_pressed(KeyCode::KeyS)
-                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-                && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
-                && pile.len() > 1
-            {
+                rotate_right(&mut transform);
+            } else if keybinds.just_pressed(Keybind::Spread) && pile.len() > 1 {
                 let mut start = *transform;
                 start.translation.y = CARD_THICKNESS / 2.0;
                 let mut transform = start;
@@ -746,16 +734,12 @@ pub fn listen_for_mouse(
                         &mut focus.menu,
                     );
                 }
-            } else if input.just_pressed(KeyCode::KeyQ) && zoom.is_none() {
+            } else if keybinds.just_pressed(Keybind::RotateLeft) && zoom.is_none() {
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
                 }
                 rotate_left(&mut transform);
-            } else if input.just_pressed(KeyCode::KeyO)
-                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-                && input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
-                && !is_reversed(&transform)
-            {
+            } else if keybinds.just_pressed(Keybind::Printings) && !is_reversed(&transform) {
                 let top = pile.get_card(&transform);
                 let mut v = Vec2::new(transform.translation.x, transform.translation.z);
                 if v.y.is_sign_positive() {
@@ -778,11 +762,7 @@ pub fn listen_for_mouse(
                     let sid = id.to_string();
                     get_alts(&sid, client, asset_server, get_deck, v).await;
                 })
-            } else if input.just_pressed(KeyCode::KeyT)
-                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-                && input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
-                && !is_reversed(&transform)
-            {
+            } else if keybinds.just_pressed(Keybind::Tokens) && !is_reversed(&transform) {
                 let top = pile.get_card(&transform);
                 let mut v = Vec2::new(transform.translation.x, transform.translation.z);
                 if v.y.is_sign_positive() {
@@ -809,7 +789,7 @@ pub fn listen_for_mouse(
                         spawn_scryfall_list(ids, client, asset_server, get_deck, v).await;
                     })
                 }
-            } else if input.just_pressed(KeyCode::KeyO)
+            } else if keybinds.just_pressed(Keybind::Transform)
                 && !is_reversed(&transform)
                 && zoom
                     .as_ref()
@@ -831,7 +811,7 @@ pub fn listen_for_mouse(
                 } else if let Ok(id) = others_ids.get(entity) {
                     net.flip(*id, idx);
                 }
-            } else if input.any_just_pressed([
+            } else if keybinds.keyboard.any_just_pressed([
                 KeyCode::Digit1,
                 KeyCode::Digit2,
                 KeyCode::Digit3,
@@ -847,7 +827,7 @@ pub fn listen_for_mouse(
                     macro_rules! get {
                         ($(($a:expr, $b:expr)),*) => {
                             $(
-                                if input.just_pressed($a){
+                                if keybinds.keyboard.just_pressed($a){
                                     n = $b
                                 }
                             )*
@@ -943,7 +923,7 @@ pub fn listen_for_mouse(
                         commands.entity(entity).despawn();
                     }
                 }
-            } else if input.just_pressed(KeyCode::KeyZ) {
+            } else if keybinds.just_pressed(Keybind::Search) {
                 search(
                     entity,
                     &pile,
@@ -955,10 +935,7 @@ pub fn listen_for_mouse(
                 );
                 *focus.menu = Menu::Side;
             }
-            if input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
-                && inother.is_none()
-                && !pile.is_empty()
-            {
+            if keybinds.pressed(Keybind::View) && inother.is_none() && !pile.is_empty() {
                 let mut spawn = || {
                     let card = pile.get_card(&transform);
                     let mut transform = UiTransform::default();
@@ -1009,7 +986,7 @@ pub fn listen_for_mouse(
                             spawn();
                         }
                         commands.entity(single.0).despawn();
-                    } else if input.just_pressed(KeyCode::KeyO) {
+                    } else if keybinds.just_pressed(Keybind::Transform) {
                         let card = pile.get_mut_card(&transform);
                         if card.back().is_some() {
                             single.1.1 = !single.1.1;
@@ -1021,9 +998,9 @@ pub fn listen_for_mouse(
                                 *single.2 = card.image_node();
                             }
                         }
-                    } else if input.just_pressed(KeyCode::KeyE) {
+                    } else if keybinds.just_pressed(Keybind::RotateRight) {
                         ui_rotate_right(&mut single.3);
-                    } else if input.just_pressed(KeyCode::KeyQ) {
+                    } else if keybinds.just_pressed(Keybind::RotateLeft) {
                         ui_rotate_left(&mut single.3);
                     }
                 } else if !is_reversed(&transform) {
@@ -1036,7 +1013,7 @@ pub fn listen_for_mouse(
             if let Some(single) = zoom {
                 commands.entity(single.0).despawn();
             }
-            if mouse_input.just_pressed(MouseButton::Right)
+            if keybinds.just_pressed(Keybind::Sub)
                 && let Ok((s, _)) = shape.get_mut(entity)
                 && let Shape::Counter(v, _) = s.into_inner()
             {
@@ -1050,43 +1027,38 @@ pub fn listen_for_mouse(
                 } else if let Ok(id) = others_ids.get(entity) {
                     net.counter(*id, v.clone());
                 }
-            } else if mouse_input.just_pressed(MouseButton::Left) {
-                if !input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-                    && let Ok((s, _)) = shape.get_mut(entity)
-                    && let Shape::Counter(v, _) = s.into_inner()
-                {
-                    v.0 += 1;
-                    for ent in children.get(entity).unwrap() {
-                        let mut text = text3d.get_mut(*ent).unwrap();
-                        *text.get_single_mut().unwrap() = v.0.to_string();
-                    }
-                    if let Ok(id) = ids.get(entity) {
-                        net.counter_me(*id, v.clone());
-                    } else if let Ok(id) = others_ids.get(entity) {
-                        net.counter(*id, v.clone());
-                    }
-                } else {
-                    if let Some(e) = follow {
-                        commands.entity(*e).remove::<FollowMouse>();
-                    }
-                    if let Ok(id) = others_ids.get(entity) {
-                        net.take(entity, *id);
-                    }
-                    phys.0 = 0.0;
-                    commands
-                        .entity(entity)
-                        .insert(FollowMouse)
-                        .insert(SleepingDisabled)
-                        .remove::<FollowOtherMouse>();
+            } else if keybinds.just_pressed(Keybind::Add)
+                && let Ok((s, _)) = shape.get_mut(entity)
+                && let Shape::Counter(v, _) = s.into_inner()
+            {
+                v.0 += 1;
+                for ent in children.get(entity).unwrap() {
+                    let mut text = text3d.get_mut(*ent).unwrap();
+                    *text.get_single_mut().unwrap() = v.0.to_string();
                 }
-            } else if input.just_pressed(KeyCode::KeyC)
-                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-                && input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
+                if let Ok(id) = ids.get(entity) {
+                    net.counter_me(*id, v.clone());
+                } else if let Ok(id) = others_ids.get(entity) {
+                    net.counter(*id, v.clone());
+                }
+            } else if keybinds.just_pressed(Keybind::Select) {
+                if let Some(e) = follow {
+                    commands.entity(*e).remove::<FollowMouse>();
+                }
+                if let Ok(id) = others_ids.get(entity) {
+                    net.take(entity, *id);
+                }
+                phys.0 = 0.0;
+                commands
+                    .entity(entity)
+                    .insert(FollowMouse)
+                    .insert(SleepingDisabled)
+                    .remove::<FollowOtherMouse>();
+            } else if keybinds.just_pressed(Keybind::CopyObject)
                 && let Ok((shape, _)) = shape.get(entity)
             {
                 *game_clipboard = GameClipboard::Shape(shape.clone());
-            } else if input.just_pressed(KeyCode::KeyR)
-                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+            } else if keybinds.just_pressed(Keybind::Calc)
                 && let Ok((s, _)) = shape.get(entity)
                 && let Shape::Counter(v, _) = s
             {
@@ -1122,19 +1094,14 @@ pub fn listen_for_mouse(
                         .id();
                     focus.active_input.set(ent);
                 }
-            } else if (input.just_pressed(KeyCode::Backspace)
-                || (input.pressed(KeyCode::Backspace)
-                    && input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])))
-                && input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-                && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
-            {
+            } else if keybinds.just_pressed(Keybind::Remove) {
                 if let Ok(id) = ids.get(entity) {
                     net.killed_me(*id)
                 } else if let Ok(id) = others_ids.get(entity) {
                     net.killed(*id);
                 }
                 commands.entity(entity).despawn();
-            } else if input.just_pressed(KeyCode::KeyF) {
+            } else if keybinds.just_pressed(Keybind::Flip) {
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
                 }
@@ -1234,9 +1201,7 @@ pub fn listen_for_mouse(
                         transform.rotate_local_z(PI);
                     }
                 }
-            } else if (input.just_pressed(KeyCode::KeyR)
-                || (input.pressed(KeyCode::KeyR)
-                    && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])))
+            } else if keybinds.just_pressed(Keybind::Shuffle)
                 && let Ok((mut lv, mut av)) = vels.get_mut(entity)
             {
                 commands.entity(entity).insert(TempDisable);
@@ -1253,12 +1218,12 @@ pub fn listen_for_mouse(
                     * (net.rand.random_range(32.0..64.0) + av.y.abs());
                 av.z = if net.rand.random() { 1.0 } else { -1.0 }
                     * (net.rand.random_range(32.0..64.0) + av.z.abs());
-            } else if input.just_pressed(KeyCode::KeyE) {
+            } else if keybinds.just_pressed(Keybind::RotateRight) {
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
                 }
                 rotate_right(&mut transform)
-            } else if input.just_pressed(KeyCode::KeyQ) {
+            } else if keybinds.just_pressed(Keybind::RotateLeft) {
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
                 }
@@ -1319,17 +1284,17 @@ pub fn text_keybinds(
     mut active_input: ResMut<InputFocus>,
     text: Single<Entity, With<TextInput>>,
     menu: Res<Menu>,
-    input: Res<ButtonInput<KeyCode>>,
+    keybinds: Keybinds,
 ) {
-    if !matches!(*menu, Menu::World) || !input.just_pressed(KeyCode::Enter) {
+    if !matches!(*menu, Menu::World) || !keybinds.just_pressed(Keybind::Chat) {
         return;
     }
     active_input.set(*text);
 }
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
 pub struct VoiceActive(pub bool);
-pub fn voice_keybinds(input: Res<ButtonInput<KeyCode>>, mut active: ResMut<VoiceActive>) {
-    **active = input.just_pressed(KeyCode::KeyB);
+pub fn voice_keybinds(keybinds: Keybinds, mut active: ResMut<VoiceActive>) {
+    **active = keybinds.just_pressed(Keybind::Voice);
 }
 pub fn voice_chat(active: Res<VoiceActive>, net: Net) {
     if !**active {
@@ -1345,9 +1310,9 @@ pub fn turn_keybinds(
     mut net: Net,
     mut turn: ResMut<Turn>,
     peers: Res<Peers>,
-    input: Res<ButtonInput<KeyCode>>,
+    keybinds: Keybinds,
 ) {
-    if input.just_pressed(KeyCode::KeyX) {
+    if keybinds.just_pressed(Keybind::PassTurn) || keybinds.just_pressed(Keybind::TakeTurn) {
         let mut flip = true;
         let mut up = false;
         let map = peers.map();
@@ -1374,7 +1339,7 @@ pub fn turn_keybinds(
         }) else {
             return;
         };
-        if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
+        if keybinds.just_pressed(Keybind::TakeTurn) {
             if me == turn.0 {
                 return;
             }
@@ -1611,7 +1576,7 @@ pub fn reset_layers(
 }
 pub fn esc_menu(
     mut commands: Commands,
-    input: Res<ButtonInput<KeyCode>>,
+    keybinds: Keybinds,
     mut ents: Single<&mut Visibility, (With<EscMenu>, Without<TextMenu>)>,
     mut other_ents: Single<&mut Visibility, (With<TextMenu>, Without<EscMenu>)>,
     mut menu: ResMut<Menu>,
@@ -1620,10 +1585,9 @@ pub fn esc_menu(
     text: Query<Entity, With<TextInputContents>>,
     hover_map: Res<HoverMap>,
     mut active_input: ResMut<InputFocus>,
-    mouse_input: Res<ButtonInput<MouseButton>>,
 ) {
-    if input.just_pressed(KeyCode::Escape)
-        || (input.just_pressed(KeyCode::Enter) && matches!(*menu, Menu::Counter))
+    if keybinds.just_pressed(Keybind::Menu)
+        || (keybinds.just_pressed(Keybind::CalcClose) && matches!(*menu, Menu::Counter))
     {
         if let Some(e) = side {
             commands.entity(*e).despawn()
@@ -1642,7 +1606,7 @@ pub fn esc_menu(
         **ents = new;
         **other_ents = old;
     }
-    if mouse_input.just_pressed(MouseButton::Left) {
+    if keybinds.just_pressed(Keybind::Select) {
         for pointer_event in hover_map.values() {
             for entity in pointer_event.keys().copied() {
                 for text in text.iter() {
@@ -1703,7 +1667,7 @@ pub fn pick_from_list(
     mut query: Query<(&TargetCard, &mut ImageNode)>,
     search_deck: Single<(Entity, &SearchDeck)>,
     mut decks: Query<(&mut Pile, &mut Transform, &Children)>,
-    mouse_input: Res<ButtonInput<MouseButton>>,
+    keybinds: Keybinds,
     mut commands: Commands,
     card_base: Res<CardBase>,
     mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
@@ -1719,23 +1683,22 @@ pub fn pick_from_list(
             Without<Pile>,
         ),
     >,
-    (mut colliders, follow, ids, others_ids, text, equipment, input, side, mut net, mut focus): (
+    (mut colliders, follow, ids, others_ids, text, equipment, side, mut net, mut focus): (
         Query<&mut Collider>,
         Option<Single<Entity, With<FollowMouse>>>,
         Query<&SyncObjectMe>,
         Query<&SyncObject>,
         Single<&TextInputContents, With<SearchText>>,
         Query<(), Or<(With<Equipment>, With<Counter>)>>,
-        Res<ButtonInput<KeyCode>>,
         Option<Single<Entity, With<SideMenu>>>,
         Net,
         Focus,
     ),
 ) {
-    let left = mouse_input.just_pressed(MouseButton::Left);
-    let swap = input.just_pressed(KeyCode::KeyO) && !focus.key_lock();
+    let left = keybinds.just_pressed(Keybind::Select);
+    let swap = keybinds.just_pressed(Keybind::Transform) && !focus.key_lock();
     if !matches!(*focus.menu, Menu::Side)
-        || !(left || swap || (follow.is_some() && !mouse_input.pressed(MouseButton::Left)))
+        || !(left || swap || (follow.is_some() && !keybinds.pressed(Keybind::Select)))
     {
         return;
     }
@@ -1939,7 +1902,7 @@ pub fn update_search_deck(
     }
 }
 pub fn cam_translation(
-    input: Res<ButtonInput<KeyCode>>,
+    keybinds: Keybinds,
     mouse_motion: Res<AccumulatedMouseScroll>,
     mut cam: Single<&mut Transform, With<Camera3d>>,
     peers: Res<Peers>,
@@ -1950,37 +1913,48 @@ pub fn cam_translation(
     if focus.key_lock() {
         return;
     }
-    let scale = if input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
-        CARD_THICKNESS * 64.0
-    } else {
-        CARD_THICKNESS * 16.0
+    let scale = CARD_THICKNESS * 16.0;
+    let apply = |translate: Vec3, cam: &mut Transform| {
+        let mut norm = translate.normalize();
+        norm.y = 0.0;
+        let abs = norm.length();
+        if abs != 0.0 {
+            let translate = norm * translate.length() / abs;
+            cam.translation += translate;
+        }
     };
-    if !input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
-        let apply = |translate: Vec3, cam: &mut Transform| {
-            let mut norm = translate.normalize();
-            norm.y = 0.0;
-            let abs = norm.length();
-            if abs != 0.0 {
-                let translate = norm * translate.length() / abs;
-                cam.translation += translate;
-            }
-        };
-        if input.pressed(KeyCode::KeyW) {
-            let translate = cam.forward().as_vec3() * scale;
-            apply(translate, &mut cam)
-        }
-        if input.pressed(KeyCode::KeyA) {
-            let translate = cam.left().as_vec3() * scale;
-            apply(translate, &mut cam)
-        }
-        if input.pressed(KeyCode::KeyD) {
-            let translate = cam.right().as_vec3() * scale;
-            apply(translate, &mut cam)
-        }
-        if input.pressed(KeyCode::KeyS) {
-            let translate = cam.back().as_vec3() * scale;
-            apply(translate, &mut cam)
-        }
+    if keybinds.pressed(Keybind::Up) {
+        let translate = cam.forward().as_vec3() * scale;
+        apply(translate, &mut cam)
+    }
+    if keybinds.pressed(Keybind::Left) {
+        let translate = cam.left().as_vec3() * scale;
+        apply(translate, &mut cam)
+    }
+    if keybinds.pressed(Keybind::Right) {
+        let translate = cam.right().as_vec3() * scale;
+        apply(translate, &mut cam)
+    }
+    if keybinds.pressed(Keybind::Down) {
+        let translate = cam.back().as_vec3() * scale;
+        apply(translate, &mut cam)
+    }
+    let scale = scale * 4.0;
+    if keybinds.pressed(Keybind::UpFast) {
+        let translate = cam.forward().as_vec3() * scale;
+        apply(translate, &mut cam)
+    }
+    if keybinds.pressed(Keybind::LeftFast) {
+        let translate = cam.left().as_vec3() * scale;
+        apply(translate, &mut cam)
+    }
+    if keybinds.pressed(Keybind::RightFast) {
+        let translate = cam.right().as_vec3() * scale;
+        apply(translate, &mut cam)
+    }
+    if keybinds.pressed(Keybind::DownFast) {
+        let translate = cam.back().as_vec3() * scale;
+        apply(translate, &mut cam)
     }
     if mouse_motion.delta.y != 0.0 && !focus.mouse_lock() {
         let mut translate = cam.forward().as_vec3() * scale * mouse_motion.delta.y * 16.0;
@@ -2006,12 +1980,12 @@ pub fn cam_translation(
         Vec3::new(-W, 0.0, -W) + epsilon,
         Vec3::new(W, 2.0 * W, W) - epsilon,
     );
-    if input.pressed(KeyCode::Space) {
+    if keybinds.just_pressed(Keybind::Reset) {
         *cam.into_inner() = default_cam_pos(peers.me.unwrap_or_default());
     }
 }
 pub fn cam_rotation(
-    mouse_button: Res<ButtonInput<MouseButton>>,
+    keybinds: Keybinds,
     mouse_motion: Res<AccumulatedMouseMotion>,
     mut cam: Single<(&mut Transform, &Camera, &GlobalTransform), With<Camera3d>>,
     window: Single<&Window, With<PrimaryWindow>>,
@@ -2020,7 +1994,7 @@ pub fn cam_rotation(
     if focus.mouse_lock() {
         return;
     }
-    if mouse_button.pressed(MouseButton::Right) && mouse_motion.delta != Vec2::ZERO {
+    if keybinds.pressed(Keybind::Rotate) && mouse_motion.delta != Vec2::ZERO {
         let Ok(ray) = cam.1.viewport_to_world(cam.2, window.size() / 2.0) else {
             return;
         };
@@ -2041,7 +2015,7 @@ pub fn cam_rotation(
     }
 }
 pub fn listen_for_deck(
-    input: Res<ButtonInput<KeyCode>>,
+    keybinds: Keybinds,
     #[cfg(not(feature = "wasm"))] mut clipboard: ResMut<Clipboard>,
     #[cfg(feature = "wasm")] clipboard: Res<Clipboard>,
     down: ResMut<Download>,
@@ -2060,12 +2034,7 @@ pub fn listen_for_deck(
     if focus.key_lock() {
         return;
     }
-    if input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-        && (input.just_pressed(KeyCode::KeyV)
-            || (input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
-                && input.any_pressed([KeyCode::AltLeft, KeyCode::AltRight])
-                && input.pressed(KeyCode::KeyV)))
-    {
+    if keybinds.just_pressed(Keybind::Paste) || keybinds.just_pressed(Keybind::PasteObject) {
         let Some(cursor_position) = window.cursor_position() else {
             return;
         };
@@ -2081,7 +2050,7 @@ pub fn listen_for_deck(
             v.x = point.x;
             v.y = point.z;
         }
-        if !input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
+        if keybinds.just_pressed(Keybind::Paste) {
             let client = down.client.0.clone();
             let decks = down.get_deck.clone();
             let asset_server = asset_server.clone();
@@ -2462,7 +2431,7 @@ pub fn on_scroll_handler(
 pub fn send_scroll_events(
     mut mouse_wheel_reader: MessageReader<MouseWheel>,
     hover_map: Res<HoverMap>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
+    keybinds: Keybinds,
     mut commands: Commands,
 ) {
     for mouse_wheel in mouse_wheel_reader.read() {
@@ -2470,7 +2439,10 @@ pub fn send_scroll_events(
         if mouse_wheel.unit == MouseScrollUnit::Line {
             delta *= 128.0;
         }
-        if keyboard_input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
+        if keybinds
+            .keyboard
+            .any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+        {
             mem::swap(&mut delta.x, &mut delta.y);
         }
         for pointer_map in hover_map.values() {

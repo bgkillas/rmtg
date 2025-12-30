@@ -41,7 +41,7 @@ pub fn get_sync(
     camera: Single<(&Camera, &GlobalTransform), (With<Camera3d>, Without<SyncObjectMe>)>,
     window: Single<&Window, With<PrimaryWindow>>,
     spatial: SpatialQuery,
-    mouse_input: Res<ButtonInput<MouseButton>>,
+    keybinds: Keybinds,
 ) {
     if !client.is_connected() {
         return;
@@ -95,11 +95,7 @@ pub fn get_sync(
     if let Some(hit) = hit {
         let cam = camera_transform.translation();
         let cur = ray.origin + ray.direction * hit.distance;
-        let packet = Packet::Indicator(
-            cam.into(),
-            cur.into(),
-            mouse_input.pressed(MouseButton::Middle),
-        );
+        let packet = Packet::Indicator(cam.into(), cur.into(), keybinds.pressed(Keybind::Ping));
         client
             .broadcast(&packet, Reliability::Reliable, COMPRESSION)
             .unwrap();
@@ -1176,7 +1172,7 @@ pub fn on_leave(
 }
 #[cfg(all(feature = "steam", feature = "ip"))]
 pub fn new_lobby(
-    input: Res<ButtonInput<KeyCode>>,
+    keybinds: Keybinds,
     mut client: ResMut<Client>,
     down: Res<Download>,
     #[cfg(feature = "ip")] send_sleep: Res<SendSleeping>,
@@ -1187,69 +1183,67 @@ pub fn new_lobby(
     shapes: Query<Entity, (With<Shape>, With<SyncObjectMe>)>,
     mut commands: Commands,
 ) {
-    if input.all_pressed([KeyCode::ShiftLeft, KeyCode::AltLeft, KeyCode::ControlLeft]) {
-        if input.just_pressed(KeyCode::KeyN) {
-            info!("hosting steam");
-            peers.me = Some(0);
-            peers.map().insert(client.my_id(), 0);
-            #[cfg(feature = "steam")]
-            client.host_steam().unwrap();
-        } else if input.just_pressed(KeyCode::KeyM) {
-            info!("hosting ip");
-            peers.me = Some(0);
-            peers.map().insert(client.my_id(), 0);
-            #[cfg(feature = "ip")]
-            {
-                let flip = flip_counter.0.clone();
-                let flip2 = flip.clone();
-                let send = send_sleep.0.clone();
-                let give = give.0.clone();
-                let rempeers = rempeers.0.clone();
-                let peers = peers.map.clone();
-                let peers2 = peers.clone();
-                let who = Arc::new(Mutex::new(HashMap::new()));
-                let who2 = who.clone();
-                client
-                    .host_ip_runtime(
-                        Some(Box::new(move |client, peer| {
-                            on_join(client, peer, &peers, &flip, &send, &who);
-                        })),
-                        Some(Box::new(move |client, peer| {
-                            on_leave(client, peer, &peers2, &flip2, &who2, &rempeers, &give);
-                        })),
-                        &down.runtime.0,
-                    )
-                    .unwrap();
-            }
-        } else if input.just_pressed(KeyCode::KeyK) {
-            for e in shapes {
-                commands.entity(e).despawn()
-            }
-            info!("joining ip");
-            #[cfg(feature = "ip")]
-            {
-                let flip = flip_counter.0.clone();
-                let flip2 = flip.clone();
-                let send = send_sleep.0.clone();
-                let give = give.0.clone();
-                let rempeers = rempeers.0.clone();
-                let peers = peers.map.clone();
-                let peers2 = peers.clone();
-                let who = Arc::new(Mutex::new(HashMap::new()));
-                let who2 = who.clone();
-                client
-                    .join_ip_runtime(
-                        "127.0.0.1".parse().unwrap(),
-                        Some(Box::new(move |client, peer| {
-                            on_join(client, peer, &peers, &flip, &send, &who);
-                        })),
-                        Some(Box::new(move |client, peer| {
-                            on_leave(client, peer, &peers2, &flip2, &who2, &rempeers, &give);
-                        })),
-                        &down.runtime.0,
-                    )
-                    .unwrap();
-            }
+    if keybinds.just_pressed(Keybind::HostSteam) {
+        info!("hosting steam");
+        peers.me = Some(0);
+        peers.map().insert(client.my_id(), 0);
+        #[cfg(feature = "steam")]
+        client.host_steam().unwrap();
+    } else if keybinds.just_pressed(Keybind::HostIp) {
+        info!("hosting ip");
+        peers.me = Some(0);
+        peers.map().insert(client.my_id(), 0);
+        #[cfg(feature = "ip")]
+        {
+            let flip = flip_counter.0.clone();
+            let flip2 = flip.clone();
+            let send = send_sleep.0.clone();
+            let give = give.0.clone();
+            let rempeers = rempeers.0.clone();
+            let peers = peers.map.clone();
+            let peers2 = peers.clone();
+            let who = Arc::new(Mutex::new(HashMap::new()));
+            let who2 = who.clone();
+            client
+                .host_ip_runtime(
+                    Some(Box::new(move |client, peer| {
+                        on_join(client, peer, &peers, &flip, &send, &who);
+                    })),
+                    Some(Box::new(move |client, peer| {
+                        on_leave(client, peer, &peers2, &flip2, &who2, &rempeers, &give);
+                    })),
+                    &down.runtime.0,
+                )
+                .unwrap();
+        }
+    } else if keybinds.just_pressed(Keybind::JoinIp) {
+        for e in shapes {
+            commands.entity(e).despawn()
+        }
+        info!("joining ip");
+        #[cfg(feature = "ip")]
+        {
+            let flip = flip_counter.0.clone();
+            let flip2 = flip.clone();
+            let send = send_sleep.0.clone();
+            let give = give.0.clone();
+            let rempeers = rempeers.0.clone();
+            let peers = peers.map.clone();
+            let peers2 = peers.clone();
+            let who = Arc::new(Mutex::new(HashMap::new()));
+            let who2 = who.clone();
+            client
+                .join_ip_runtime(
+                    "127.0.0.1".parse().unwrap(),
+                    Some(Box::new(move |client, peer| {
+                        on_join(client, peer, &peers, &flip, &send, &who);
+                    })),
+                    Some(Box::new(move |client, peer| {
+                        on_leave(client, peer, &peers2, &flip2, &who2, &rempeers, &give);
+                    })),
+                    &down.runtime.0,
+                )
+                .unwrap();
         }
     }
 }

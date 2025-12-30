@@ -1579,20 +1579,22 @@ async fn get_image_bytes(url: &str) -> Option<(Vec<u8>, u32, u32)> {
         .data();
     Some((data.0, img.width(), img.height()))
 }
-#[allow(dead_code)]
 #[derive(SystemParam)]
 struct Keybinds<'w> {
     keyboard: Res<'w, ButtonInput<KeyCode>>,
     mouse: Res<'w, ButtonInput<MouseButton>>,
     keybinds: ResMut<'w, KeybindsList>,
 }
-#[allow(dead_code)]
 impl Keybinds<'_> {
-    pub fn pressed(&self, keybind: KeybindKey) -> bool {
+    pub fn just_pressed(&self, keybind: Keybind) -> bool {
+        self.keybinds[keybind].just_pressed(&self.keyboard, &self.mouse)
+    }
+    pub fn pressed(&self, keybind: Keybind) -> bool {
         self.keybinds[keybind].pressed(&self.keyboard, &self.mouse)
     }
-    pub fn set(&mut self, keybind: KeybindKey) -> bool {
-        if let Some(new) = Keybind::new_from(&self.keyboard, &self.mouse) {
+    #[allow(dead_code)]
+    pub fn set(&mut self, keybind: Keybind) -> bool {
+        if let Some(new) = Bind::new_from(&self.keyboard, &self.mouse) {
             self.keybinds[keybind] = new;
             true
         } else {
@@ -1600,24 +1602,109 @@ impl Keybinds<'_> {
         }
     }
 }
-#[allow(dead_code)]
 #[derive(Enum)]
-enum KeybindKey {
-    Todo,
+enum Keybind {
+    Ping,
+    HostSteam,
+    HostIp,
+    JoinIp,
+    SortHand,
+    Select,
+    Flip,
+    Shuffle,
+    Remove,
+    Modify,
+    Copy,
+    CopyObject,
+    Paste,
+    PasteObject,
+    PickCard,
+    Equip,
+    RotateRight,
+    RotateLeft,
+    Spread,
+    Printings,
+    Tokens,
+    Transform,
+    Search,
+    View,
+    Sub,
+    Add,
+    Calc,
+    Chat,
+    Voice,
+    TakeTurn,
+    PassTurn,
+    Menu,
+    CalcClose,
+    Left,
+    Right,
+    Up,
+    Down,
+    LeftFast,
+    RightFast,
+    UpFast,
+    DownFast,
+    Reset,
+    Rotate,
 }
-#[allow(dead_code)]
 #[derive(Resource, Deref, DerefMut)]
-struct KeybindsList(EnumMap<KeybindKey, Keybind>);
+struct KeybindsList(EnumMap<Keybind, Bind>);
 impl Default for KeybindsList {
     fn default() -> Self {
+        let ctrl = Modifier::Control;
+        let alt = Modifier::Alt;
+        let shift = Modifier::Shift;
         Self(enum_map! {
-            KeybindKey::Todo => Keybind::new(enum_set!(Modifier::Alt), KeyCode::KeyA.into())
+            Keybind::Ping => Bind::new(enum_set!(), MouseButton::Middle),
+            Keybind::Select => Bind::new(enum_set!(), MouseButton::Left),
+            Keybind::Add => Bind::new(enum_set!(), MouseButton::Left),
+            Keybind::Sub => Bind::new(enum_set!(), MouseButton::Right),
+            Keybind::PickCard => Bind::new(enum_set!(ctrl), MouseButton::Left),
+            Keybind::HostSteam => Bind::new(enum_set!(ctrl | alt | shift), KeyCode::KeyN),
+            Keybind::HostIp => Bind::new(enum_set!(ctrl | alt | shift), KeyCode::KeyM),
+            Keybind::JoinIp => Bind::new(enum_set!(ctrl | alt | shift), KeyCode::KeyK),
+            Keybind::SortHand => Bind::new(enum_set!(ctrl), KeyCode::KeyS),
+            Keybind::Flip => Bind::new(enum_set!(), KeyCode::KeyF),
+            Keybind::Shuffle => Bind::new(enum_set!(), KeyCode::KeyR),
+            Keybind::Calc => Bind::new(enum_set!(ctrl), KeyCode::KeyR),
+            Keybind::Remove => Bind::new(enum_set!(), KeyCode::Delete),
+            Keybind::Modify => Bind::new(enum_set!(alt), KeyCode::KeyM),
+            Keybind::Copy => Bind::new(enum_set!(ctrl), KeyCode::KeyC),
+            Keybind::CopyObject => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyC),
+            Keybind::Paste => Bind::new(enum_set!(ctrl), KeyCode::KeyV),
+            Keybind::PasteObject => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyV),
+            Keybind::Equip => Bind::new(enum_set!(ctrl), KeyCode::KeyE),
+            Keybind::RotateLeft => Bind::new(enum_set!(), KeyCode::KeyQ),
+            Keybind::RotateRight => Bind::new(enum_set!(), KeyCode::KeyE),
+            Keybind::Spread => Bind::new(enum_set!(ctrl | alt), KeyCode::KeyS),
+            Keybind::Printings => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyO),
+            Keybind::Tokens => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyT),
+            Keybind::Transform => Bind::new(enum_set!(), KeyCode::KeyO),
+            Keybind::Search => Bind::new(enum_set!(ctrl), KeyCode::KeyZ),
+            Keybind::View => Bind::new(enum_set!(), Modifier::Alt),
+            Keybind::Chat => Bind::new(enum_set!(), KeyCode::Enter),
+            Keybind::Voice => Bind::new(enum_set!(), KeyCode::KeyB),
+            Keybind::TakeTurn => Bind::new(enum_set!(ctrl), KeyCode::KeyX),
+            Keybind::PassTurn => Bind::new(enum_set!(), KeyCode::KeyX),
+            Keybind::Menu => Bind::new(enum_set!(), KeyCode::Escape),
+            Keybind::CalcClose => Bind::new(enum_set!(), KeyCode::Enter),
+            Keybind::Left => Bind::new(enum_set!(), KeyCode::KeyA),
+            Keybind::Up => Bind::new(enum_set!(), KeyCode::KeyW),
+            Keybind::Down => Bind::new(enum_set!(), KeyCode::KeyS),
+            Keybind::Right => Bind::new(enum_set!(), KeyCode::KeyD),
+            Keybind::LeftFast => Bind::new(enum_set!(shift), KeyCode::KeyA),
+            Keybind::UpFast => Bind::new(enum_set!(shift), KeyCode::KeyW),
+            Keybind::DownFast => Bind::new(enum_set!(shift), KeyCode::KeyS),
+            Keybind::RightFast => Bind::new(enum_set!(shift), KeyCode::KeyD),
+            Keybind::Reset => Bind::new(enum_set!(), KeyCode::Space),
+            Keybind::Rotate => Bind::new(enum_set!(), MouseButton::Right),
         })
     }
 }
-#[allow(dead_code)]
 enum Key {
     KeyCode(KeyCode),
+    Modifier(Modifier),
     Mouse(MouseButton),
 }
 impl From<KeyCode> for Key {
@@ -1630,7 +1717,11 @@ impl From<MouseButton> for Key {
         Self::Mouse(value)
     }
 }
-#[allow(dead_code)]
+impl From<Modifier> for Key {
+    fn from(value: Modifier) -> Self {
+        Self::Modifier(value)
+    }
+}
 #[derive(EnumSetType)]
 enum Modifier {
     Alt,
@@ -1638,10 +1729,17 @@ enum Modifier {
     Shift,
     Super,
 }
-#[allow(dead_code)]
 impl Modifier {
     pub fn pressed(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
         keyboard.any_pressed(match self {
+            Modifier::Alt => [KeyCode::AltLeft, KeyCode::AltRight],
+            Modifier::Control => [KeyCode::ControlLeft, KeyCode::ControlRight],
+            Modifier::Shift => [KeyCode::ShiftLeft, KeyCode::ShiftRight],
+            Modifier::Super => [KeyCode::SuperLeft, KeyCode::SuperRight],
+        })
+    }
+    pub fn just_pressed(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
+        keyboard.any_just_pressed(match self {
             Modifier::Alt => [KeyCode::AltLeft, KeyCode::AltRight],
             Modifier::Control => [KeyCode::ControlLeft, KeyCode::ControlRight],
             Modifier::Shift => [KeyCode::ShiftLeft, KeyCode::ShiftRight],
@@ -1661,12 +1759,11 @@ impl TryFrom<&KeyCode> for Modifier {
         })
     }
 }
-#[allow(dead_code)]
-struct Keybind {
+struct Bind {
     modifiers: EnumSet<Modifier>,
     key: Key,
 }
-impl From<KeyCode> for Keybind {
+impl From<KeyCode> for Bind {
     fn from(value: KeyCode) -> Self {
         Self {
             modifiers: default(),
@@ -1674,7 +1771,7 @@ impl From<KeyCode> for Keybind {
         }
     }
 }
-impl From<MouseButton> for Keybind {
+impl From<MouseButton> for Bind {
     fn from(value: MouseButton) -> Self {
         Self {
             modifiers: default(),
@@ -1682,8 +1779,8 @@ impl From<MouseButton> for Keybind {
         }
     }
 }
-#[allow(dead_code)]
-impl Keybind {
+impl Bind {
+    #[allow(dead_code)]
     pub fn new_from(
         keyboard: &ButtonInput<KeyCode>,
         mouse: &ButtonInput<MouseButton>,
@@ -1718,8 +1815,29 @@ impl Keybind {
             None
         }
     }
-    pub fn new(modifiers: EnumSet<Modifier>, key: Key) -> Self {
-        Self { modifiers, key }
+    pub fn new(modifiers: EnumSet<Modifier>, key: impl Into<Key>) -> Self {
+        Self {
+            modifiers,
+            key: key.into(),
+        }
+    }
+    pub fn just_pressed(
+        &self,
+        keyboard: &ButtonInput<KeyCode>,
+        mouse: &ButtonInput<MouseButton>,
+    ) -> bool {
+        (match self.key {
+            Key::KeyCode(key) => keyboard.just_pressed(key),
+            Key::Modifier(button) => button.just_pressed(keyboard),
+            Key::Mouse(button) => mouse.just_pressed(button),
+        }) && self.modifiers.iter().all(|m| m.pressed(keyboard))
+            && keyboard.get_pressed().all(|k| {
+                if let Ok(m) = k.try_into() {
+                    self.modifiers.contains(m)
+                } else {
+                    true
+                }
+            })
     }
     pub fn pressed(
         &self,
@@ -1727,8 +1845,9 @@ impl Keybind {
         mouse: &ButtonInput<MouseButton>,
     ) -> bool {
         (match self.key {
-            Key::KeyCode(key) => keyboard.just_pressed(key),
-            Key::Mouse(button) => mouse.just_pressed(button),
+            Key::KeyCode(key) => keyboard.pressed(key),
+            Key::Modifier(button) => button.pressed(keyboard),
+            Key::Mouse(button) => mouse.pressed(button),
         }) && self.modifiers.iter().all(|m| m.pressed(keyboard))
             && keyboard.get_pressed().all(|k| {
                 if let Ok(m) = k.try_into() {
