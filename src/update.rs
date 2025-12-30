@@ -559,20 +559,18 @@ pub fn listen_for_mouse(
                     pile.len()
                 };
                 let new = pile.take_card(&transform);
-                if !pile.is_empty() {
-                    let card = pile.last();
-                    repaint_face(&mut mats, &mut materials, card, children);
-                    adjust_meshes(
-                        &pile,
-                        children,
-                        &mut meshes,
-                        &mut query_meshes,
-                        &mut transform,
-                        &mut colliders.get_mut(entity).unwrap().0,
-                        &equipment,
-                        &mut commands,
-                    );
-                }
+                let card = pile.last();
+                repaint_face(&mut mats, &mut materials, card, children);
+                adjust_meshes(
+                    &pile,
+                    children,
+                    &mut meshes,
+                    &mut query_meshes,
+                    &mut transform,
+                    &mut colliders.get_mut(entity).unwrap().0,
+                    &equipment,
+                    &mut commands,
+                );
                 let mut transform = *transform;
                 transform.translation.y += len + CARD_THICKNESS * 4.0;
                 if let Some(e) = follow {

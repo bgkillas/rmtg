@@ -1682,7 +1682,7 @@ impl Default for KeybindsList {
             Keybind::Tokens => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyT),
             Keybind::Transform => Bind::new(enum_set!(), KeyCode::KeyO),
             Keybind::Search => Bind::new(enum_set!(ctrl), KeyCode::KeyZ),
-            Keybind::View => Bind::new(enum_set!(), Modifier::Alt),
+            Keybind::View => Bind::new(enum_set!(alt), Key::None),
             Keybind::Chat => Bind::new(enum_set!(), KeyCode::Enter),
             Keybind::Voice => Bind::new(enum_set!(), KeyCode::KeyB),
             Keybind::TakeTurn => Bind::new(enum_set!(ctrl), KeyCode::KeyX),
@@ -1704,8 +1704,8 @@ impl Default for KeybindsList {
 }
 enum Key {
     KeyCode(KeyCode),
-    Modifier(Modifier),
     Mouse(MouseButton),
+    None,
 }
 impl From<KeyCode> for Key {
     fn from(value: KeyCode) -> Self {
@@ -1715,11 +1715,6 @@ impl From<KeyCode> for Key {
 impl From<MouseButton> for Key {
     fn from(value: MouseButton) -> Self {
         Self::Mouse(value)
-    }
-}
-impl From<Modifier> for Key {
-    fn from(value: Modifier) -> Self {
-        Self::Modifier(value)
     }
 }
 #[derive(EnumSetType)]
@@ -1738,6 +1733,7 @@ impl Modifier {
             Modifier::Super => [KeyCode::SuperLeft, KeyCode::SuperRight],
         })
     }
+    #[allow(dead_code)]
     pub fn just_pressed(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
         keyboard.any_just_pressed(match self {
             Modifier::Alt => [KeyCode::AltLeft, KeyCode::AltRight],
@@ -1821,16 +1817,8 @@ impl Bind {
             key: key.into(),
         }
     }
-    pub fn just_pressed(
-        &self,
-        keyboard: &ButtonInput<KeyCode>,
-        mouse: &ButtonInput<MouseButton>,
-    ) -> bool {
-        (match self.key {
-            Key::KeyCode(key) => keyboard.just_pressed(key),
-            Key::Modifier(button) => button.just_pressed(keyboard),
-            Key::Mouse(button) => mouse.just_pressed(button),
-        }) && self.modifiers.iter().all(|m| m.pressed(keyboard))
+    pub fn modifiers_pressed(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
+        self.modifiers.iter().all(|m| m.pressed(keyboard))
             && keyboard.get_pressed().all(|k| {
                 if let Ok(m) = k.try_into() {
                     self.modifiers.contains(m)
@@ -1839,6 +1827,17 @@ impl Bind {
                 }
             })
     }
+    pub fn just_pressed(
+        &self,
+        keyboard: &ButtonInput<KeyCode>,
+        mouse: &ButtonInput<MouseButton>,
+    ) -> bool {
+        (match self.key {
+            Key::KeyCode(key) => keyboard.just_pressed(key),
+            Key::Mouse(button) => mouse.just_pressed(button),
+            Key::None => self.modifiers.iter().all(|m| m.just_pressed(keyboard)),
+        }) && self.modifiers_pressed(keyboard)
+    }
     pub fn pressed(
         &self,
         keyboard: &ButtonInput<KeyCode>,
@@ -1846,15 +1845,8 @@ impl Bind {
     ) -> bool {
         (match self.key {
             Key::KeyCode(key) => keyboard.pressed(key),
-            Key::Modifier(button) => button.pressed(keyboard),
             Key::Mouse(button) => mouse.pressed(button),
-        }) && self.modifiers.iter().all(|m| m.pressed(keyboard))
-            && keyboard.get_pressed().all(|k| {
-                if let Ok(m) = k.try_into() {
-                    self.modifiers.contains(m)
-                } else {
-                    true
-                }
-            })
+            Key::None => true,
+        }) && self.modifiers_pressed(keyboard)
     }
 }
