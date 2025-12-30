@@ -1819,13 +1819,13 @@ impl Bind {
     }
     pub fn modifiers_pressed(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
         self.modifiers.iter().all(|m| m.pressed(keyboard))
-            && keyboard.get_pressed().all(|k| {
-                if let Ok(m) = k.try_into() {
-                    self.modifiers.contains(m)
-                } else {
-                    true
-                }
-            })
+        /*&& keyboard.get_pressed().all(|k| {
+            if let Ok(m) = k.try_into() {
+                self.modifiers.contains(m)
+            } else {
+                true
+            }
+        })*/
     }
     pub fn just_pressed(
         &self,

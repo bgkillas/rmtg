@@ -461,7 +461,7 @@ pub fn listen_for_mouse(
             return;
         };
         if let Ok((mut pile, children, parent, inhand, inother)) = cards.get_mut(entity) {
-            if keybinds.just_pressed(Keybind::Flip) {
+            if keybinds.just_pressed(Keybind::Flip) && zoom.is_none() {
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
                 }
@@ -1921,38 +1921,43 @@ pub fn cam_translation(
             cam.translation += translate;
         }
     };
-    if keybinds.pressed(Keybind::Up) {
-        let translate = cam.forward().as_vec3() * scale;
-        apply(translate, &mut cam)
-    }
-    if keybinds.pressed(Keybind::Left) {
-        let translate = cam.left().as_vec3() * scale;
-        apply(translate, &mut cam)
-    }
-    if keybinds.pressed(Keybind::Right) {
-        let translate = cam.right().as_vec3() * scale;
-        apply(translate, &mut cam)
-    }
-    if keybinds.pressed(Keybind::Down) {
-        let translate = cam.back().as_vec3() * scale;
-        apply(translate, &mut cam)
-    }
-    let scale = scale * 4.0;
-    if keybinds.pressed(Keybind::UpFast) {
-        let translate = cam.forward().as_vec3() * scale;
-        apply(translate, &mut cam)
-    }
-    if keybinds.pressed(Keybind::LeftFast) {
-        let translate = cam.left().as_vec3() * scale;
-        apply(translate, &mut cam)
-    }
-    if keybinds.pressed(Keybind::RightFast) {
-        let translate = cam.right().as_vec3() * scale;
-        apply(translate, &mut cam)
-    }
-    if keybinds.pressed(Keybind::DownFast) {
-        let translate = cam.back().as_vec3() * scale;
-        apply(translate, &mut cam)
+    if !keybinds
+        .keyboard
+        .any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+    {
+        if keybinds.pressed(Keybind::Up) {
+            let translate = cam.forward().as_vec3() * scale;
+            apply(translate, &mut cam)
+        }
+        if keybinds.pressed(Keybind::Left) {
+            let translate = cam.left().as_vec3() * scale;
+            apply(translate, &mut cam)
+        }
+        if keybinds.pressed(Keybind::Right) {
+            let translate = cam.right().as_vec3() * scale;
+            apply(translate, &mut cam)
+        }
+        if keybinds.pressed(Keybind::Down) {
+            let translate = cam.back().as_vec3() * scale;
+            apply(translate, &mut cam)
+        }
+        let scale = scale * 4.0;
+        if keybinds.pressed(Keybind::UpFast) {
+            let translate = cam.forward().as_vec3() * scale;
+            apply(translate, &mut cam)
+        }
+        if keybinds.pressed(Keybind::LeftFast) {
+            let translate = cam.left().as_vec3() * scale;
+            apply(translate, &mut cam)
+        }
+        if keybinds.pressed(Keybind::RightFast) {
+            let translate = cam.right().as_vec3() * scale;
+            apply(translate, &mut cam)
+        }
+        if keybinds.pressed(Keybind::DownFast) {
+            let translate = cam.back().as_vec3() * scale;
+            apply(translate, &mut cam)
+        }
     }
     if mouse_motion.delta.y != 0.0 && !focus.mouse_lock() {
         let mut translate = cam.forward().as_vec3() * scale * mouse_motion.delta.y * 16.0;
@@ -2048,7 +2053,7 @@ pub fn listen_for_deck(
             v.x = point.x;
             v.y = point.z;
         }
-        if keybinds.just_pressed(Keybind::Paste) {
+        if !keybinds.just_pressed(Keybind::PasteObject) {
             let client = down.client.0.clone();
             let decks = down.get_deck.clone();
             let asset_server = asset_server.clone();
