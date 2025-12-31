@@ -4,7 +4,7 @@ use crate::update::{
     flip_ents, follow_mouse, gather_hand, give_ents, listen_for_deck, listen_for_mouse,
     on_scroll_handler, pick_from_list, pile_merge, register_deck, rem_peers, reset_layers,
     scroll_to_bottom, send_scroll_events, set_card_spot, text_keybinds, text_send, to_move_up,
-    turn_keybinds, update_hand, update_search_deck, voice_chat, voice_keybinds,
+    turn_keybinds, untap_keybinds, update_hand, update_search_deck, voice_chat, voice_keybinds,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -180,11 +180,13 @@ pub fn start() -> AppExit {
     .add_systems(Startup, setup)
     .add_systems(
         Update,
+        //TODO could be more parralized
         (
             (
                 give_ents,
                 flip_ents,
                 (
+                    untap_keybinds,
                     text_send,
                     voice_keybinds,
                     voice_chat,
@@ -1581,6 +1583,7 @@ async fn get_image_bytes(url: &str) -> Option<(Vec<u8>, u32, u32)> {
         .data();
     Some((data.0, img.width(), img.height()))
 }
+//TODO maybe should be combined with focus
 #[derive(SystemParam)]
 struct Keybinds<'w> {
     keyboard: Res<'w, ButtonInput<KeyCode>>,
@@ -1649,6 +1652,7 @@ enum Keybind {
     DownFast,
     Reset,
     Rotate,
+    Untap,
 }
 #[derive(Resource, Deref, DerefMut)]
 struct KeybindsList(EnumMap<Keybind, Bind>);
@@ -1701,6 +1705,7 @@ impl Default for KeybindsList {
             Keybind::RightFast => Bind::new(enum_set!(shift), KeyCode::KeyD),
             Keybind::Reset => Bind::new(enum_set!(), KeyCode::Space),
             Keybind::Rotate => Bind::new(enum_set!(), MouseButton::Right),
+            Keybind::Untap => Bind::new(enum_set!(), KeyCode::KeyU),
         })
     }
 }

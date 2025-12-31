@@ -18,6 +18,7 @@ use bevy::input::mouse::{
     AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit, MouseWheel,
 };
 use bevy::input_focus::InputFocus;
+use bevy::math::bounding::{Aabb3d, BoundingVolume};
 use bevy::picking::hover::HoverMap;
 use bevy::window::PrimaryWindow;
 use bevy_rich_text3d::Text3d;
@@ -341,6 +342,80 @@ pub fn follow_mouse(
             .remove::<RigidBodyDisabled>()
             .remove::<SleepingDisabled>();
         card.2.0 = GRAVITY
+    }
+}
+pub fn untap_keybinds(
+    spatial: SpatialQuery,
+    mut cards: Query<
+        (&Pile, &mut Transform, Option<&SyncObject>),
+        (Without<FollowOtherMouse>, Without<FollowMouse>),
+    >,
+    mut net: Net,
+    peers: Res<Peers>,
+    mut commands: Commands,
+    mut focus: Focus,
+    keybinds: Keybinds,
+    search_deck: Option<Single<(Entity, &SearchDeck)>>,
+    text: Option<Single<&TextInputContents, With<SearchText>>>,
+    side: Option<Single<Entity, With<SideMenu>>>,
+) {
+    if focus.key_lock() || !keybinds.just_pressed(Keybind::Untap) {
+        return;
+    }
+    let (x, y, z) = (
+        MAT_WIDTH / 2.0 - CARD_WIDTH / 2.0 - MAT_BAR,
+        MAT_HEIGHT / 2.0,
+        CARD_THICKNESS / 2.0,
+    );
+    let aabb = match peers.me.unwrap_or(0) {
+        1 => (x, z, -y),
+        2 => (-x, z, y),
+        3 => (-x, z, -y),
+        _ => (x, z, y),
+    };
+    let aabb = Aabb3d::new(aabb, (x, z, y));
+    let intersections = spatial.shape_intersections(
+        &Collider::cuboid(2.0 * x, CARD_THICKNESS, 2.0 * y),
+        aabb.center().into(),
+        Quat::default(),
+        &SpatialQueryFilter::DEFAULT,
+    );
+    for ent in intersections {
+        let Ok((pile, mut transform, id)) = cards.get_mut(ent) else {
+            continue;
+        };
+        if aabb.closest_point(transform.translation) != transform.translation.into() {
+            continue;
+        }
+        if let Some(id) = id {
+            net.take(ent, *id);
+        }
+        let rev = is_reversed(&transform);
+        transform.rotation = Quat::default();
+        if rev {
+            transform.rotate_local_z(PI);
+            if let Some(entity) = search_deck
+                .as_ref()
+                .and_then(|s| if s.1.0 == ent { Some(s.0) } else { None })
+            {
+                update_search(
+                    &mut commands,
+                    entity,
+                    pile,
+                    &transform,
+                    text.as_ref().unwrap().get(),
+                    &side,
+                    &mut focus.menu,
+                );
+            }
+        }
+        if matches!(peers.me.unwrap_or(0), 1 | 3) {
+            rotate_right(&mut transform);
+            rotate_right(&mut transform);
+        }
+        if matches!(pile.get_card(&transform).data.layout, Layout::Room) {
+            rotate_right(&mut transform);
+        }
     }
 }
 pub fn listen_for_mouse(
