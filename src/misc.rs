@@ -332,28 +332,14 @@ pub fn default_cam_pos(n: usize) -> Transform {
 pub fn rotate_left(transform: &mut Transform) {
     let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
     let n = (2.0 * rot / PI).round() as isize;
-    transform.rotate_y(
-        match n {
-            0 => PI / 2.0,
-            1 => PI,
-            2 | -2 => -PI / 2.0,
-            -1 => 0.0,
-            _ => unreachable!(),
-        } - rot,
-    );
+    let n = (n + 1).rem_euclid(4);
+    transform.rotate_y(n as f32 * (PI / 2.0) - rot);
 }
 pub fn rotate_right(transform: &mut Transform) {
     let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
     let n = (2.0 * rot / PI).round() as isize;
-    transform.rotate_y(
-        match n {
-            0 => -PI / 2.0,
-            1 => 0.0,
-            2 | -2 => PI / 2.0,
-            -1 => PI,
-            _ => unreachable!(),
-        } - rot,
-    );
+    let n = (n - 1).rem_euclid(4);
+    transform.rotate_y(n as f32 * (PI / 2.0) - rot);
 }
 pub fn ui_rotate_right(transform: &mut UiTransform) {
     transform.rotation = match transform.rotation.sin_cos() {

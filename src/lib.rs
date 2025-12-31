@@ -147,6 +147,8 @@ pub fn start() -> AppExit {
     .insert_gizmo_config(
         PhysicsGizmos {
             axis_lengths: None,
+            collider_color: Some(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
+            sleeping_color_multiplier: None,
             ..default()
         },
         GizmoConfig::default(),
