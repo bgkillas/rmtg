@@ -4,7 +4,8 @@ use crate::update::{
     flip_ents, follow_mouse, gather_hand, give_ents, listen_for_deck, listen_for_mouse,
     on_scroll_handler, pick_from_list, pile_merge, register_deck, rem_peers, reset_layers,
     scroll_to_bottom, send_scroll_events, set_card_spot, text_keybinds, text_send, to_move_up,
-    turn_keybinds, untap_keybinds, update_hand, update_search_deck, voice_chat, voice_keybinds,
+    turn_keybinds, untap_keybinds, update_hand, update_rich, update_search_deck, voice_chat,
+    voice_keybinds,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -186,6 +187,7 @@ pub fn start() -> AppExit {
                 give_ents,
                 flip_ents,
                 (
+                    update_rich,
                     untap_keybinds,
                     text_send,
                     voice_keybinds,

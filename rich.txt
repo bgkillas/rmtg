@@ -1,0 +1,10 @@
+"lang"
+{
+    "english"
+    {
+        "tokens"
+        {
+            "#InLobby"    "%players%/%max_players% %time%"
+        }
+    }
+}

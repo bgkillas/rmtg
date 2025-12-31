@@ -14,6 +14,7 @@ use crate::setup::{
 use crate::sync::{CameraInd, CursorInd, InOtherHand, Net, SyncObjectMe, Trans};
 use crate::*;
 use avian3d::math::Vector;
+use bevy::diagnostic::FrameCount;
 use bevy::input::mouse::{
     AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit, MouseWheel,
 };
@@ -22,7 +23,7 @@ use bevy::math::bounding::{Aabb3d, BoundingVolume};
 use bevy::picking::hover::HoverMap;
 use bevy::window::PrimaryWindow;
 use bevy_rich_text3d::Text3d;
-use bevy_tangled::PeerId;
+use bevy_tangled::{ClientTrait, PeerId};
 use bevy_ui_text_input::{
     SubmitText, TextInputBuffer, TextInputContents, TextInputMode, TextInputNode,
 };
@@ -100,6 +101,20 @@ pub fn gather_hand(
                 }
             }
         }
+    }
+}
+pub fn update_rich(client: Res<Client>, peers: Res<Peers>, frame: Res<FrameCount>) {
+    if !frame.0.is_multiple_of(60) {
+        return;
+    }
+    if peers.me.is_some() {
+        client.set_rich_presence("players", Some(&peers.map().len().to_string()));
+        client.set_rich_presence("max_players", Some("4"));
+        client.set_rich_presence("time", Some(&format!("{}s", frame.0 / 60)));
+        client.set_rich_presence("steam_display", Some("#InLobby"));
+        client.set_rich_presence("steam_player_group", Some(&client.host_id().to_string()));
+    } else {
+        client.clear_rich_presence();
     }
 }
 fn place_pos(
