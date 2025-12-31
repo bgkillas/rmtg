@@ -4,8 +4,7 @@ use crate::update::{
     flip_ents, follow_mouse, gather_hand, give_ents, listen_for_deck, listen_for_mouse,
     on_scroll_handler, pick_from_list, pile_merge, register_deck, rem_peers, reset_layers,
     scroll_to_bottom, send_scroll_events, set_card_spot, text_keybinds, text_send, to_move_up,
-    turn_keybinds, untap_keybinds, update_hand, update_rich, update_search_deck, voice_chat,
-    voice_keybinds,
+    turn_keybinds, untap_keybinds, update_hand, update_search_deck, voice_chat, voice_keybinds,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -63,6 +62,8 @@ use crate::sync::display_steam_info;
 #[cfg(all(feature = "steam", feature = "ip"))]
 use crate::sync::new_lobby;
 use crate::sync::{SendSleeping, Sent, SyncCount, SyncObject, apply_sync, get_sync};
+#[cfg(feature = "steam")]
+use crate::update::update_rich;
 use bitcode::{Decode, Encode};
 use enum_map::{Enum, EnumMap, enum_map};
 use enumset::{EnumSet, EnumSetType, enum_set};
