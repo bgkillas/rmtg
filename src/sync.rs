@@ -900,8 +900,32 @@ pub fn apply_sync(
                         }
                         return;
                     }
-                    for ((id, trans), card) in to.into_iter().zip(pile.drain(start - len..start)) {
-                        let syncobject = SyncObject { user, id };
+                    for ((cid, trans, uuid), card) in
+                        to.into_iter().zip(pile.drain(start - len..start))
+                    {
+                        let syncobject = SyncObject { user, id: cid };
+                        if resend && card.data.id != uuid {
+                            println!("i");
+                            commands.entity(entity).despawn();
+                            client
+                                .send(
+                                    id.user,
+                                    &Packet::Request(id.id),
+                                    Reliability::Reliable,
+                                    COMPRESSION,
+                                )
+                                .unwrap();
+                            client
+                                .send(
+                                    id.user,
+                                    &Packet::Request(cid),
+                                    Reliability::Reliable,
+                                    COMPRESSION,
+                                )
+                                .unwrap();
+                            ignore.insert(syncobject);
+                            return;
+                        }
                         new_pile_at(
                             Pile::Single(card.into()),
                             card_base.clone(),
@@ -1293,7 +1317,7 @@ pub enum Packet {
     Equip(SyncObject),
     Counter(SyncObject, Value),
     Reorder(SyncObject, Vec<Id>),
-    Draw(SyncObject, Vec<(SyncObjectMe, Trans)>, usize),
+    Draw(SyncObject, Vec<(SyncObjectMe, Trans, Id)>, usize),
     Merge(SyncObject, SyncObject, usize),
     SetUser(PeerId, usize),
     Indicator(Pos, Pos, bool),
@@ -1484,7 +1508,7 @@ impl<'w, 's> Net<'w, 's> {
     pub fn equip_me(&self, id: SyncObjectMe) {
         self.equip(self.to_global(id))
     }
-    pub fn draw(&self, id: SyncObject, to: Vec<(SyncObjectMe, Trans)>, start: usize) {
+    pub fn draw(&self, id: SyncObject, to: Vec<(SyncObjectMe, Trans, Id)>, start: usize) {
         self.client
             .broadcast(
                 &Packet::Draw(id, to, start),
@@ -1493,7 +1517,7 @@ impl<'w, 's> Net<'w, 's> {
             )
             .unwrap();
     }
-    pub fn draw_me(&self, id: SyncObjectMe, to: Vec<(SyncObjectMe, Trans)>, start: usize) {
+    pub fn draw_me(&self, id: SyncObjectMe, to: Vec<(SyncObjectMe, Trans, Id)>, start: usize) {
         self.draw(self.to_global(id), to, start)
     }
     pub fn flip(&self, id: SyncObject, at: usize) {

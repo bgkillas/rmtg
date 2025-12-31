@@ -593,13 +593,13 @@ pub fn listen_for_mouse(
                 if let Ok(lid) = ids.get(entity) {
                     net.draw_me(
                         *lid,
-                        vec![(id, Trans::from_transform(&transform))],
+                        vec![(id, Trans::from_transform(&transform), card.data.id)],
                         draw_len,
                     );
                 } else if let Ok(oid) = others_ids.get(entity) {
                     net.draw(
                         *oid,
-                        vec![(id, Trans::from_transform(&transform))],
+                        vec![(id, Trans::from_transform(&transform), card.data.id)],
                         draw_len,
                     );
                 }
@@ -688,6 +688,7 @@ pub fn listen_for_mouse(
                 let mut vec = Vec::with_capacity(pile.len());
                 for c in pile.drain(..) {
                     let id = net.new_id();
+                    let uuid = c.data.id;
                     new_pile_at(
                         Pile::Single(c.into()),
                         card_base.clone(),
@@ -705,7 +706,7 @@ pub fn listen_for_mouse(
                         transform.translation.x = start.translation.x;
                         transform.translation.z += CARD_HEIGHT + CARD_THICKNESS;
                     }
-                    vec.push((id, Trans::from_transform(&transform)));
+                    vec.push((id, Trans::from_transform(&transform), uuid));
                 }
                 if let Ok(lid) = ids.get(entity) {
                     let len = vec.len();
@@ -853,6 +854,7 @@ pub fn listen_for_mouse(
                     for _ in 0..n {
                         let new = pile.take_card(&transform);
                         let id = net.new_id();
+                        let uuid = new.data.id;
                         let mut ent = new_pile_at(
                             Pile::Single(new.into()),
                             card_base.clone(),
@@ -875,7 +877,7 @@ pub fn listen_for_mouse(
                         .unwrap();
                         ent.insert(InHand(hand.0.count));
                         ent.insert(RigidBodyDisabled);
-                        vec.push((id, Trans::from_transform(&Transform::default())));
+                        vec.push((id, Trans::from_transform(&Transform::default()), uuid));
                         hand.0.count += 1;
                     }
                     if let Some(entity) =
@@ -1681,6 +1683,7 @@ pub fn pick_from_list(
                             commands.entity(**e).remove::<FollowMouse>();
                         }
                         let id = net.new_id();
+                        let uuid = new.data.id;
                         new_pile_at(
                             Pile::Single(new.into()),
                             card_base.clone(),
@@ -1696,13 +1699,13 @@ pub fn pick_from_list(
                         if let Ok(lid) = ids.get(entity) {
                             net.draw_me(
                                 *lid,
-                                vec![(id, Trans::from_transform(&transform))],
+                                vec![(id, Trans::from_transform(&transform), uuid)],
                                 card.0 + 1,
                             );
                         } else if let Ok(oid) = others_ids.get(entity) {
                             net.draw(
                                 *oid,
-                                vec![(id, Trans::from_transform(&transform))],
+                                vec![(id, Trans::from_transform(&transform), uuid)],
                                 card.0 + 1,
                             );
                         }
