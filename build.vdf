@@ -1,0 +1,36 @@
+"AppBuild"
+{
+    "AppID"    "4046880"
+    "ContentRoot"    "."
+    "BuildOutput"    "./output"
+    "Depots"
+    {
+        "4046881"
+        {
+            "FileMapping"
+            {
+                "LocalPath"    "linux/*"
+                "DepotPath"    "."
+                "recursive"    "1"
+            }
+        }
+        "4046882"
+        {
+            "FileMapping"
+            {
+                "LocalPath"    "win/*"
+                "DepotPath"    "."
+                "recursive"    "1"
+            }
+        }
+        "4046883"
+        {
+            "FileMapping"
+            {
+                "LocalPath"    "macos/*"
+                "DepotPath"    "."
+                "recursive"    "1"
+            }
+        }
+    }
+}
