@@ -5,7 +5,8 @@ use crate::download::{
 };
 use crate::misc::{
     Counter, Equipment, adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile,
-    new_pile_at, repaint_face, spawn_equip, vec2_to_ground,
+    new_pile_at, repaint_face, rotate_left, rotate_right, spawn_equip, ui_rotate_left,
+    ui_rotate_right, vec2_to_ground,
 };
 use crate::setup::{
     EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, TextChat, TextInput, TextMenu, W, Wall,
@@ -523,6 +524,8 @@ pub fn listen_for_mouse(
             {
                 c.loyalty = Some(0);
                 //TODO
+            } else if keybinds.just_pressed(Keybind::CopyObject) {
+                *game_clipboard = GameClipboard::Pile(pile.clone());
             } else if keybinds.just_pressed(Keybind::Copy) && !is_reversed(&transform) {
                 let card = pile.get_card(&transform);
                 let text = format!("https://scryfall.com/card/{}", card.data.id);
@@ -534,8 +537,6 @@ pub fn listen_for_mouse(
                 });
                 #[cfg(not(feature = "wasm"))]
                 clipboard.set_text(&text);
-            } else if keybinds.just_pressed(Keybind::CopyObject) {
-                *game_clipboard = GameClipboard::Pile(pile.clone());
             } else if keybinds.just_pressed(Keybind::PickCard) && pile.len() > 1 {
                 if focus.mouse_lock() {
                     return;
@@ -1474,66 +1475,6 @@ fn next_turn(
         net.turn(turn.0);
     }
 }
-fn rotate_left(transform: &mut Transform) {
-    let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
-    let n = (2.0 * rot / PI).round() as isize;
-    transform.rotate_y(
-        match n {
-            0 => PI / 2.0,
-            1 => PI,
-            2 | -2 => -PI / 2.0,
-            -1 => 0.0,
-            _ => unreachable!(),
-        } - rot,
-    );
-}
-fn rotate_right(transform: &mut Transform) {
-    let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
-    let n = (2.0 * rot / PI).round() as isize;
-    transform.rotate_y(
-        match n {
-            0 => -PI / 2.0,
-            1 => 0.0,
-            2 | -2 => PI / 2.0,
-            -1 => PI,
-            _ => unreachable!(),
-        } - rot,
-    );
-}
-fn ui_rotate_right(transform: &mut UiTransform) {
-    transform.rotation = match transform.rotation.sin_cos() {
-        (0.0, 1.0) => Rot2::from_sin_cos(1.0, 0.0),
-        (1.0, 0.0) => Rot2::from_sin_cos(0.0, -1.0),
-        (0.0, -1.0) => Rot2::from_sin_cos(-1.0, 0.0),
-        (-1.0, 0.0) => Rot2::from_sin_cos(0.0, 1.0),
-        _ => unreachable!(),
-    };
-    transform.translation = if matches!(transform.rotation.sin_cos(), (1.0, 0.0) | (-1.0, 0.0)) {
-        Val2::px(
-            (IMAGE_HEIGHT - IMAGE_WIDTH) / 2.0,
-            (IMAGE_WIDTH - IMAGE_HEIGHT) / 2.0,
-        )
-    } else {
-        Val2::px(0.0, 0.0)
-    };
-}
-fn ui_rotate_left(transform: &mut UiTransform) {
-    transform.rotation = match transform.rotation.sin_cos() {
-        (0.0, 1.0) => Rot2::from_sin_cos(-1.0, 0.0),
-        (-1.0, 0.0) => Rot2::from_sin_cos(0.0, -1.0),
-        (0.0, -1.0) => Rot2::from_sin_cos(1.0, 0.0),
-        (1.0, 0.0) => Rot2::from_sin_cos(0.0, 1.0),
-        _ => unreachable!(),
-    };
-    transform.translation = if matches!(transform.rotation.sin_cos(), (1.0, 0.0) | (-1.0, 0.0)) {
-        Val2::px(
-            (IMAGE_HEIGHT - IMAGE_WIDTH) / 2.0,
-            (IMAGE_WIDTH - IMAGE_HEIGHT) / 2.0,
-        )
-    } else {
-        Val2::px(0.0, 0.0)
-    };
-}
 #[derive(Component)]
 pub struct CounterMenu(Entity, Value);
 #[derive(Component)]
@@ -2197,7 +2138,7 @@ pub fn register_deck(
             }
             spot.0.translation()
         };
-        let mut v = match deck_type {
+        let v = match deck_type {
             DeckType::Other(v, _) => v,
             DeckType::Single(v) => vec2_to_ground(&deck, v, rev),
             DeckType::Deck => {
@@ -2285,10 +2226,6 @@ pub fn register_deck(
                 vec2_to_ground(&deck, v, rev)
             }
         };
-        if v.translation.z.is_sign_negative() {
-            rotate_right(&mut v);
-            rotate_right(&mut v)
-        }
         if let Some(ent) = new_pile_at(
             deck,
             card_base.clone(),

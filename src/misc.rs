@@ -9,6 +9,10 @@ pub fn vec2_to_ground(pile: &Pile, v: Vec2, rev: bool) -> Transform {
     if rev {
         transform.rotate_local_z(PI);
     }
+    if transform.translation.z.is_sign_negative() {
+        rotate_right(&mut transform);
+        rotate_right(&mut transform)
+    }
     transform
 }
 pub fn new_pile(
@@ -324,4 +328,64 @@ pub fn default_cam_pos(n: usize) -> Transform {
         -MAT_WIDTH
     };
     Transform::from_xyz(x, START_Y, z).looking_at(Vec3::new(x, 0.0, 0.0), Vec3::Y)
+}
+pub fn rotate_left(transform: &mut Transform) {
+    let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
+    let n = (2.0 * rot / PI).round() as isize;
+    transform.rotate_y(
+        match n {
+            0 => PI / 2.0,
+            1 => PI,
+            2 | -2 => -PI / 2.0,
+            -1 => 0.0,
+            _ => unreachable!(),
+        } - rot,
+    );
+}
+pub fn rotate_right(transform: &mut Transform) {
+    let (_, rot, _) = transform.rotation.to_euler(EulerRot::XYZ);
+    let n = (2.0 * rot / PI).round() as isize;
+    transform.rotate_y(
+        match n {
+            0 => -PI / 2.0,
+            1 => 0.0,
+            2 | -2 => PI / 2.0,
+            -1 => PI,
+            _ => unreachable!(),
+        } - rot,
+    );
+}
+pub fn ui_rotate_right(transform: &mut UiTransform) {
+    transform.rotation = match transform.rotation.sin_cos() {
+        (0.0, 1.0) => Rot2::from_sin_cos(1.0, 0.0),
+        (1.0, 0.0) => Rot2::from_sin_cos(0.0, -1.0),
+        (0.0, -1.0) => Rot2::from_sin_cos(-1.0, 0.0),
+        (-1.0, 0.0) => Rot2::from_sin_cos(0.0, 1.0),
+        _ => unreachable!(),
+    };
+    transform.translation = if matches!(transform.rotation.sin_cos(), (1.0, 0.0) | (-1.0, 0.0)) {
+        Val2::px(
+            (IMAGE_HEIGHT - IMAGE_WIDTH) / 2.0,
+            (IMAGE_WIDTH - IMAGE_HEIGHT) / 2.0,
+        )
+    } else {
+        Val2::px(0.0, 0.0)
+    };
+}
+pub fn ui_rotate_left(transform: &mut UiTransform) {
+    transform.rotation = match transform.rotation.sin_cos() {
+        (0.0, 1.0) => Rot2::from_sin_cos(-1.0, 0.0),
+        (-1.0, 0.0) => Rot2::from_sin_cos(0.0, -1.0),
+        (0.0, -1.0) => Rot2::from_sin_cos(1.0, 0.0),
+        (1.0, 0.0) => Rot2::from_sin_cos(0.0, 1.0),
+        _ => unreachable!(),
+    };
+    transform.translation = if matches!(transform.rotation.sin_cos(), (1.0, 0.0) | (-1.0, 0.0)) {
+        Val2::px(
+            (IMAGE_HEIGHT - IMAGE_WIDTH) / 2.0,
+            (IMAGE_WIDTH - IMAGE_HEIGHT) / 2.0,
+        )
+    } else {
+        Val2::px(0.0, 0.0)
+    };
 }
