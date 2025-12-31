@@ -599,7 +599,7 @@ pub fn apply_sync(
                     }
                 }
             }
-            Packet::Flip(id, idx) => {
+            Packet::Flip(id, idx, rev) => {
                 if id.user == client.my_id()
                     && let Some((pile, children, entity, transform)) =
                         queryme.iter_mut().find_map(|(a, _, p, e, c, _, t)| {
@@ -615,6 +615,7 @@ pub fn apply_sync(
                     let last = idx == pile.len() - 1;
                     if let Some(card) = pile.get_mut(idx)
                         && card.data.back.is_some()
+                        && card.flipped != rev
                     {
                         card.flipped = !card.flipped;
                         if last {
@@ -646,7 +647,7 @@ pub fn apply_sync(
                 {
                     let last = idx == pile.len() - 1;
                     if let Some(card) = pile.get_mut(idx) {
-                        if card.data.back.is_some() {
+                        if card.data.back.is_some() && card.flipped != rev {
                             card.flipped = !card.flipped;
                             if last {
                                 repaint_face(&mut mats, &mut materials, card, children);
@@ -905,7 +906,6 @@ pub fn apply_sync(
                     {
                         let syncobject = SyncObject { user, id: cid };
                         if resend && card.data.id != uuid {
-                            println!("i");
                             commands.entity(entity).despawn();
                             client
                                 .send(
@@ -1313,7 +1313,7 @@ pub enum Packet {
     Take(SyncObject, SyncObjectMe),
     New(SyncObjectMe, Pile, Trans),
     NewShape(SyncObjectMe, Shape, Trans),
-    Flip(SyncObject, usize),
+    Flip(SyncObject, usize, bool),
     Equip(SyncObject),
     Counter(SyncObject, Value),
     Reorder(SyncObject, Vec<Id>),
@@ -1520,13 +1520,17 @@ impl<'w, 's> Net<'w, 's> {
     pub fn draw_me(&self, id: SyncObjectMe, to: Vec<(SyncObjectMe, Trans, Id)>, start: usize) {
         self.draw(self.to_global(id), to, start)
     }
-    pub fn flip(&self, id: SyncObject, at: usize) {
+    pub fn flip(&self, id: SyncObject, at: usize, rev: bool) {
         self.client
-            .broadcast(&Packet::Flip(id, at), Reliability::Reliable, COMPRESSION)
+            .broadcast(
+                &Packet::Flip(id, at, rev),
+                Reliability::Reliable,
+                COMPRESSION,
+            )
             .unwrap();
     }
-    pub fn flip_me(&self, id: SyncObjectMe, at: usize) {
-        self.flip(self.to_global(id), at)
+    pub fn flip_me(&self, id: SyncObjectMe, at: usize, rev: bool) {
+        self.flip(self.to_global(id), at, rev)
     }
     pub fn counter(&self, id: SyncObject, value: Value) {
         self.client

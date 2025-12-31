@@ -801,15 +801,16 @@ pub fn listen_for_mouse(
                     card.flipped = !card.flipped;
                     repaint_face(&mut mats, &mut materials, card, children);
                 }
+                let flipped = card.flipped;
                 let idx = if is_reversed(&transform) {
                     0
                 } else {
                     pile.len() - 1
                 };
                 if let Ok(id) = ids.get(entity) {
-                    net.flip_me(*id, idx);
+                    net.flip_me(*id, idx, flipped);
                 } else if let Ok(id) = others_ids.get(entity) {
-                    net.flip(*id, idx);
+                    net.flip(*id, idx, flipped);
                 }
             } else if keybinds.keyboard.any_just_pressed([
                 KeyCode::Digit1,
@@ -1729,9 +1730,9 @@ pub fn pick_from_list(
                             }
                         }
                         if let Ok(id) = ids.get(entity) {
-                            net.flip_me(*id, card.0);
+                            net.flip_me(*id, card.0, inner_card.flipped);
                         } else if let Ok(id) = others_ids.get(entity) {
-                            net.flip(*id, card.0);
+                            net.flip(*id, card.0, inner_card.flipped);
                         }
                         *image = inner_card.image_node();
                         return;
