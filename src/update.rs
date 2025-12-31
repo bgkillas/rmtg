@@ -35,6 +35,7 @@ use std::f32::consts::PI;
 use std::mem;
 #[derive(Component)]
 pub struct HandIgnore;
+const HAND_WIDTH: f32 = MAT_WIDTH - CARD_HEIGHT;
 pub fn gather_hand(
     mut hand: Single<(&Transform, &mut Hand, Entity, Option<&Children>)>,
     mut cards: Query<
@@ -63,7 +64,7 @@ pub fn gather_hand(
     peers: Res<Peers>,
 ) {
     let intersections = spatial.shape_intersections(
-        &Collider::cuboid(MAT_WIDTH, CARD_HEIGHT, CARD_HEIGHT),
+        &Collider::cuboid(HAND_WIDTH, CARD_HEIGHT, CARD_HEIGHT),
         hand.0.translation,
         hand.0.rotation,
         &SpatialQueryFilter::DEFAULT,
@@ -285,7 +286,7 @@ pub fn follow_mouse(
             );
             if child.contains(card.0) {
                 if Collider::cuboid(
-                    MAT_WIDTH + CARD_THICKNESS,
+                    HAND_WIDTH + CARD_THICKNESS,
                     CARD_HEIGHT + CARD_THICKNESS,
                     CARD_HEIGHT + CARD_THICKNESS,
                 )
@@ -316,7 +317,7 @@ pub fn follow_mouse(
         && let Some(time) =
             ray.intersect_plane(card.5.translation(), InfinitePlane3d { normal: Dir3::Y })
         && Collider::cuboid(
-            MAT_WIDTH + CARD_THICKNESS,
+            HAND_WIDTH + CARD_THICKNESS,
             CARD_HEIGHT + CARD_THICKNESS,
             CARD_HEIGHT + CARD_THICKNESS,
         )

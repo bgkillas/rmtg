@@ -1109,25 +1109,21 @@ pub struct CameraInd(pub PeerId);
 pub struct CursorInd(pub PeerId, pub bool);
 pub fn spawn_hand(me: usize, commands: &mut Commands) {
     let transform = match me {
-        0 => Transform::from_xyz(
-            MAT_WIDTH / 2.0,
-            CARD_HEIGHT / 2.0,
-            MAT_HEIGHT + CARD_HEIGHT / 2.0,
-        ),
+        0 => Transform::from_xyz(MAT_WIDTH / 2.0, CARD_HEIGHT / 2.0, MAT_HEIGHT + CARD_HEIGHT),
         1 => Transform::from_xyz(
             MAT_WIDTH / 2.0,
             CARD_HEIGHT / 2.0,
-            -MAT_HEIGHT - CARD_HEIGHT / 2.0,
+            -MAT_HEIGHT - CARD_HEIGHT,
         ),
         2 => Transform::from_xyz(
             -MAT_WIDTH / 2.0,
             CARD_HEIGHT / 2.0,
-            MAT_HEIGHT + CARD_HEIGHT / 2.0,
+            MAT_HEIGHT + CARD_HEIGHT,
         ),
         3 => Transform::from_xyz(
             -MAT_WIDTH / 2.0,
             CARD_HEIGHT / 2.0,
-            -MAT_HEIGHT - CARD_HEIGHT / 2.0,
+            -MAT_HEIGHT - CARD_HEIGHT,
         ),
         _ => Transform::default(),
     };
