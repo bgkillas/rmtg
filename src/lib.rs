@@ -187,6 +187,7 @@ pub fn start() -> AppExit {
                 give_ents,
                 flip_ents,
                 (
+                    #[cfg(feature = "steam")]
                     update_rich,
                     untap_keybinds,
                     text_send,

@@ -72,6 +72,7 @@ jobs:
           mingw-w64-x86_64-mpfr
           mingw-w64-x86_64-make
           mingw-w64-x86_64-clang
+          mingw-w64-x86_64-cmake
           m4
           make
           python

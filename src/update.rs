@@ -103,6 +103,7 @@ pub fn gather_hand(
         }
     }
 }
+#[cfg(feature = "steam")]
 pub fn update_rich(client: Res<Client>, peers: Res<Peers>, frame: Res<FrameCount>) {
     if !frame.0.is_multiple_of(60) {
         return;
