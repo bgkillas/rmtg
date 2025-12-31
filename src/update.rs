@@ -105,13 +105,20 @@ pub fn gather_hand(
 }
 #[cfg(feature = "steam")]
 pub fn update_rich(client: Res<Client>, peers: Res<Peers>, frame: Res<FrameCount>) {
-    if !frame.0.is_multiple_of(60) {
+    if !frame.0.is_multiple_of(600) {
         return;
     }
     if peers.me.is_some() {
+        fn get_time(time: u32) -> String {
+            format!(
+                "{:02}h:{:02}m",
+                time / (60 * 60 * 60),
+                (time / (60 * 60)) % 60
+            )
+        }
         client.set_rich_presence("players", Some(&peers.map().len().to_string()));
         client.set_rich_presence("max_players", Some("4"));
-        client.set_rich_presence("time", Some(&format!("{}s", frame.0 / 60)));
+        client.set_rich_presence("time", Some(&get_time(frame.0 / 60)));
         client.set_rich_presence("steam_display", Some("#InLobby"));
         client.set_rich_presence("steam_player_group", Some(&client.host_id().to_string()));
     } else {
@@ -358,6 +365,64 @@ pub fn follow_mouse(
             .remove::<RigidBodyDisabled>()
             .remove::<SleepingDisabled>();
         card.2.0 = GRAVITY
+    }
+}
+#[derive(Component, Deref, DerefMut)]
+pub struct PingDrag(pub Vec3);
+pub fn ping_drag(
+    keybinds: Keybinds,
+    focus: Focus,
+    drag: Option<Single<(Entity, &PingDrag, &mut Mesh3d, &mut Transform)>>,
+    mut commands: Commands,
+    camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
+    window: Single<&Window, With<PrimaryWindow>>,
+    spatial: SpatialQuery,
+    peer: Res<Peers>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    if focus.key_lock() || !keybinds.pressed(Keybind::Select) {
+        if let Some(drag) = drag {
+            commands.entity(drag.0).despawn();
+        }
+        return;
+    }
+    let Some(cursor_position) = window.cursor_position() else {
+        return;
+    };
+    let (camera, camera_transform) = camera.into_inner();
+    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        return;
+    };
+    let Some(v) = spatial.cast_ray(
+        ray.origin,
+        ray.direction,
+        f32::MAX,
+        true,
+        &SpatialQueryFilter::default(),
+    ) else {
+        return;
+    };
+    let v = ray.origin + ray.direction * v.distance;
+    if let Some((_, orig, mut mesh, mut transform)) = drag.map(|e| e.into_inner()) {
+        let dir = (v - orig.0).normalize();
+        let d = (v - orig.0).length();
+        let m = (v + orig.0) / 2.0;
+        transform.translation = m;
+        mesh.0 = meshes.add(Cylinder::new(CARD_THICKNESS * 8.0, d));
+        transform.rotation = Quat::from_rotation_arc(Vec3::Y, dir);
+    } else {
+        commands.spawn((
+            PingDrag(v),
+            Mesh3d(meshes.add(Cylinder::new(CARD_THICKNESS * 8.0, 0.0))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                alpha_mode: AlphaMode::Opaque,
+                unlit: true,
+                base_color: PLAYER[peer.me.unwrap_or(0) % PLAYER.len()],
+                ..default()
+            })),
+            Transform::from_xyz(v.x, v.y, v.z),
+        ));
     }
 }
 pub fn untap_keybinds(

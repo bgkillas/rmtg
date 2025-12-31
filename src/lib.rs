@@ -2,9 +2,10 @@ use crate::setup::{MAT_BAR, MAT_HEIGHT, MAT_WIDTH, setup};
 use crate::update::{
     FlipCounter, GiveEnts, ToMoveUp, VoiceActive, cam_rotation, cam_translation, esc_menu,
     flip_ents, follow_mouse, gather_hand, give_ents, listen_for_deck, listen_for_mouse,
-    on_scroll_handler, pick_from_list, pile_merge, register_deck, rem_peers, reset_layers,
-    scroll_to_bottom, send_scroll_events, set_card_spot, text_keybinds, text_send, to_move_up,
-    turn_keybinds, untap_keybinds, update_hand, update_search_deck, voice_chat, voice_keybinds,
+    on_scroll_handler, pick_from_list, pile_merge, ping_drag, register_deck, rem_peers,
+    reset_layers, scroll_to_bottom, send_scroll_events, set_card_spot, text_keybinds, text_send,
+    to_move_up, turn_keybinds, untap_keybinds, update_hand, update_search_deck, voice_chat,
+    voice_keybinds,
 };
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -59,7 +60,7 @@ use crate::misc::is_reversed;
 use crate::shapes::Shape;
 #[cfg(feature = "steam")]
 use crate::sync::display_steam_info;
-#[cfg(all(feature = "steam", feature = "ip"))]
+#[cfg(any(feature = "steam", feature = "ip"))]
 use crate::sync::new_lobby;
 use crate::sync::{SendSleeping, Sent, SyncCount, SyncObject, apply_sync, get_sync};
 #[cfg(feature = "steam")]
@@ -190,6 +191,7 @@ pub fn start() -> AppExit {
                 (
                     #[cfg(feature = "steam")]
                     update_rich,
+                    ping_drag,
                     untap_keybinds,
                     text_send,
                     voice_keybinds,
@@ -204,7 +206,7 @@ pub fn start() -> AppExit {
                     register_deck,
                     (cam_rotation, cam_translation).chain(),
                     esc_menu,
-                    #[cfg(all(feature = "steam", feature = "ip"))]
+                    #[cfg(any(feature = "steam", feature = "ip"))]
                     new_lobby,
                     update_search_deck,
                     (

@@ -1193,7 +1193,7 @@ pub fn on_leave(
         who.retain(|_, p| *p != peer)
     }
 }
-#[cfg(all(feature = "steam", feature = "ip"))]
+#[cfg(any(feature = "steam", feature = "ip"))]
 pub fn new_lobby(
     keybinds: Keybinds,
     mut client: ResMut<Client>,
@@ -1206,68 +1206,66 @@ pub fn new_lobby(
     shapes: Query<Entity, (With<Shape>, With<SyncObjectMe>)>,
     mut commands: Commands,
 ) {
+    #[cfg(feature = "steam")]
     if keybinds.just_pressed(Keybind::HostSteam) {
         info!("hosting steam");
         peers.me = Some(0);
         peers.map().insert(client.my_id(), 0);
-        #[cfg(feature = "steam")]
         client.host_steam().unwrap();
-    } else if keybinds.just_pressed(Keybind::HostIp) {
+    }
+    #[cfg(feature = "ip")]
+    if keybinds.just_pressed(Keybind::HostIp) {
         info!("hosting ip");
-        #[cfg(feature = "ip")]
-        {
-            let flip = flip_counter.0.clone();
-            let flip2 = flip.clone();
-            let send = send_sleep.0.clone();
-            let give = give.0.clone();
-            let rempeers = rempeers.0.clone();
-            let peers1 = peers.map.clone();
-            let peers2 = peers1.clone();
-            let who = Arc::new(Mutex::new(HashMap::new()));
-            let who2 = who.clone();
-            client
-                .host_ip_runtime(
-                    Some(Box::new(move |client, peer| {
-                        on_join(client, peer, &peers1, &flip, &send, &who);
-                    })),
-                    Some(Box::new(move |client, peer| {
-                        on_leave(client, peer, &peers2, &flip2, &who2, &rempeers, &give);
-                    })),
-                    &down.runtime.0,
-                )
-                .unwrap();
-            peers.me = Some(0);
-            peers.map().insert(client.my_id(), 0);
-        }
-    } else if keybinds.just_pressed(Keybind::JoinIp) {
+        let flip = flip_counter.0.clone();
+        let flip2 = flip.clone();
+        let send = send_sleep.0.clone();
+        let give = give.0.clone();
+        let rempeers = rempeers.0.clone();
+        let peers1 = peers.map.clone();
+        let peers2 = peers1.clone();
+        let who = Arc::new(Mutex::new(HashMap::new()));
+        let who2 = who.clone();
+        client
+            .host_ip_runtime(
+                Some(Box::new(move |client, peer| {
+                    on_join(client, peer, &peers1, &flip, &send, &who);
+                })),
+                Some(Box::new(move |client, peer| {
+                    on_leave(client, peer, &peers2, &flip2, &who2, &rempeers, &give);
+                })),
+                &down.runtime.0,
+            )
+            .unwrap();
+        peers.me = Some(0);
+        peers.map().insert(client.my_id(), 0);
+    }
+    #[cfg(feature = "ip")]
+    if keybinds.just_pressed(Keybind::JoinIp) {
         for e in shapes {
             commands.entity(e).despawn()
         }
         info!("joining ip");
-        #[cfg(feature = "ip")]
-        {
-            let flip = flip_counter.0.clone();
-            let flip2 = flip.clone();
-            let send = send_sleep.0.clone();
-            let give = give.0.clone();
-            let rempeers = rempeers.0.clone();
-            let peers = peers.map.clone();
-            let peers2 = peers.clone();
-            let who = Arc::new(Mutex::new(HashMap::new()));
-            let who2 = who.clone();
-            client
-                .join_ip_runtime(
-                    "127.0.0.1".parse().unwrap(),
-                    Some(Box::new(move |client, peer| {
-                        on_join(client, peer, &peers, &flip, &send, &who);
-                    })),
-                    Some(Box::new(move |client, peer| {
-                        on_leave(client, peer, &peers2, &flip2, &who2, &rempeers, &give);
-                    })),
-                    &down.runtime.0,
-                )
-                .unwrap();
-        }
+        let flip = flip_counter.0.clone();
+        let flip2 = flip.clone();
+        let send = send_sleep.0.clone();
+        let give = give.0.clone();
+        let rempeers = rempeers.0.clone();
+        let peers = peers.map.clone();
+        let peers2 = peers.clone();
+        let who = Arc::new(Mutex::new(HashMap::new()));
+        let who2 = who.clone();
+        client
+            .join_ip_runtime(
+                "127.0.0.1".parse().unwrap(),
+                Some(Box::new(move |client, peer| {
+                    on_join(client, peer, &peers, &flip, &send, &who);
+                })),
+                Some(Box::new(move |client, peer| {
+                    on_leave(client, peer, &peers2, &flip2, &who2, &rempeers, &give);
+                })),
+                &down.runtime.0,
+            )
+            .unwrap();
     }
 }
 #[derive(Resource, Default, Deref, DerefMut)]
