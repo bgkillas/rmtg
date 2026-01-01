@@ -1453,13 +1453,14 @@ pub fn text_keybinds(
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
 pub struct VoiceActive(pub bool);
 pub fn voice_keybinds(keybinds: Keybinds, mut active: ResMut<VoiceActive>) {
-    **active = keybinds.just_pressed(Keybind::Voice);
+    **active = keybinds.pressed(Keybind::Voice);
 }
 pub fn voice_chat(active: Res<VoiceActive>, net: Net, audio: Res<AudioResource>) {
-    if !**active {
-        return;
-    }
-    audio.recv_audio(|data| net.voice(data.into()))
+    audio.recv_audio(|data| {
+        if **active {
+            net.voice(data)
+        }
+    })
 }
 pub fn turn_keybinds(
     others_ids: Query<&SyncObject>,

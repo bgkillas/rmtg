@@ -124,6 +124,7 @@ cosmic-text = "0.14.2"
 rules = {path = "rules"}
 uuid = "1.19.0"
 bevy_microphone={git="https://github.com/bgkillas/bevy_microphone", optional = true}
+rodio = "0.21.1"
 
 [target.'cfg(windows)'.dependencies]
 winapi={version="0.3.9",features = ["wincon"]}

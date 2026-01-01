@@ -20,6 +20,7 @@ use bevy_rich_text3d::Text3d;
 use bevy_tangled::{ClientTrait, ClientTypeRef, Compression, PeerId, Reliability};
 use bevy_ui_text_input::TextInputContents;
 use bitcode::{Decode, Encode};
+use rodio::buffer::SamplesBuffer;
 use std::collections::hash_map::Entry::Vacant;
 use std::collections::{HashMap, HashSet};
 use std::mem;
@@ -197,7 +198,7 @@ pub fn apply_sync(
     mut count: ResMut<SyncCount>,
     mut client: ResMut<Client>,
     mut colliders: Query<&mut Collider>,
-    (mut query_meshes, chat, font, mut drag): (
+    (mut query_meshes, chat, font, mut drag, sink, audio, audio_settings): (
         Query<
             (&mut Mesh3d, &mut Transform),
             (
@@ -222,6 +223,9 @@ pub fn apply_sync(
                 Without<CameraInd>,
             ),
         >,
+        Res<AudioPlayer>,
+        Res<AudioResource>,
+        Res<AudioSettings>,
     ),
     (
         search,
@@ -1155,8 +1159,16 @@ pub fn apply_sync(
             Packet::Text(msg) => {
                 spawn_msg(*chat, msg, &mut commands, font.0.clone());
             }
-            Packet::Voice(_msg) => {
-                //TODO
+            Packet::Voice(data) => {
+                audio.decode(data, |data| {
+                    let source = SamplesBuffer::new(
+                        1,
+                        (audio_settings.sample_rate.get_number() * 1000) as u32,
+                        data,
+                    );
+                    sink.append(source);
+                    sink.play()
+                });
             }
             Packet::Turn(player) => turn.0 = player,
         }
@@ -1377,7 +1389,7 @@ pub enum Packet {
     SetUser(PeerId, usize),
     Indicator(Pos, Option<Pos>, bool),
     Text(String),
-    Voice(Box<[f32]>),
+    Voice(Vec<u8>),
     Turn(usize),
 }
 #[derive(Encode, Decode, Debug)]
@@ -1517,7 +1529,7 @@ impl<'w, 's> Net<'w, 's> {
             .broadcast(&Packet::Text(msg), Reliability::Reliable, COMPRESSION)
             .unwrap();
     }
-    pub fn voice(&self, msg: Box<[f32]>) {
+    pub fn voice(&self, msg: Vec<u8>) {
         self.client
             .broadcast(&Packet::Voice(msg), Reliability::Reliable, COMPRESSION)
             .unwrap();

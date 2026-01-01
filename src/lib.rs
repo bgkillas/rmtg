@@ -73,6 +73,7 @@ use enumset::{EnumSet, EnumSetType, enum_set};
 use futures::channel::oneshot;
 use itertools::Either;
 use rand::seq::SliceRandom;
+use rodio::{OutputStreamBuilder, Sink};
 use uuid::Uuid;
 #[cfg(feature = "wasm")]
 use wasm_bindgen::JsCast;
@@ -91,6 +92,9 @@ const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO multi select, in card counters
 //TODO spawn stuff touching the floor
+//TODO test search insert sync
+//TODO ctrl+N to mill, +shift to exile, alt+N to reveal
+//TODO half card width between card spots
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
@@ -123,6 +127,8 @@ pub fn start() -> AppExit {
     let get_deck = GetDeck::default();
     let game_clipboard = GameClipboard::None;
     let mut app = App::new();
+    let stream_handle = OutputStreamBuilder::open_default_stream().unwrap();
+    let sink = Sink::connect_new(stream_handle.mixer());
     app.add_plugins((
         Client::new(
             #[cfg(feature = "steam")]
@@ -162,6 +168,7 @@ pub fn start() -> AppExit {
         ..default()
     })
     .insert_resource(clipboard)
+    .insert_resource(AudioPlayer(sink))
     .insert_resource(ToMoveUp::default())
     .insert_resource(Turn::default())
     .insert_resource(SyncCount::default())
@@ -174,6 +181,7 @@ pub fn start() -> AppExit {
     .insert_resource(SendSleeping::default())
     .insert_resource(VoiceActive::default())
     .insert_resource(KeybindsList::default())
+    .insert_resource(AudioSettings::default())
     .insert_resource(AudioResource::new(&AudioSettings::default()))
     .insert_resource(game_clipboard)
     .insert_resource(Download {
@@ -232,6 +240,8 @@ pub fn start() -> AppExit {
     .add_observer(pile_merge);
     app.run()
 }
+#[derive(Resource, Deref, DerefMut)]
+struct AudioPlayer(Sink);
 #[derive(Resource, Default, Debug)]
 enum Menu {
     #[default]
@@ -241,7 +251,7 @@ enum Menu {
     Side,
 }
 #[derive(SystemParam)]
-pub struct Focus<'w> {
+struct Focus<'w> {
     menu: ResMut<'w, Menu>,
     active_input: ResMut<'w, InputFocus>,
     hover_map: Res<'w, HoverMap>,
