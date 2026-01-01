@@ -1135,6 +1135,9 @@ pub fn apply_sync(
                             t.scale = Vec3::splat(1.0);
                             t.translation = v;
                         } else {
+                            if let Some(e) = drag.iter_mut().find(|p| *p.4 == sender) {
+                                commands.entity(e.0).despawn();
+                            }
                             t.scale = Vec3::splat(0.0);
                         }
                     } else {
