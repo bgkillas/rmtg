@@ -27,7 +27,8 @@ wasm-opt = false
 
 [features]
 default=["bin", "steam", "ip"]
-bin=["dep:arboard", "tokio/rt-multi-thread", "calc"]
+bin=["dep:arboard", "tokio/rt-multi-thread", "calc", "mic"]
+mic=["dep:bevy_microphone"]
 calc=["dep:kalc-lib"]
 wasm=["bevy_rand/wasm_js", "dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:web-sys", "dep:console_error_panic_hook", "dep:js-sys"]
 steam=["bevy_tangled/steam"]
@@ -122,10 +123,7 @@ kalc-lib = {git="https://github.com/bgkillas/kalc-lib",version = "1.5.1", option
 cosmic-text = "0.14.2"
 rules = {path = "rules"}
 uuid = "1.19.0"
-cpal = {version= "0.17.0", features=["jack"]}
-opus = "0.3.0"
-rubato = "1.0.0"
-audioadapter-buffers="2.0.0"
+bevy_microphone={git="https://github.com/bgkillas/bevy_microphone", optional = true}
 
 [target.'cfg(windows)'.dependencies]
 winapi={version="0.3.9",features = ["wincon"]}

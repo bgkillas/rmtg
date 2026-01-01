@@ -49,7 +49,6 @@ const PLAYER3: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 85);
 const PLAYER4: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 255);
 const PLAYER5: bevy::color::Color = bevy::color::Color::srgb_u8(255, 255, 85);
 const PLAYER: [bevy::color::Color; 6] = [PLAYER0, PLAYER1, PLAYER2, PLAYER3, PLAYER4, PLAYER5];
-mod audio;
 mod counters;
 mod download;
 mod misc;
@@ -57,7 +56,6 @@ mod setup;
 mod shapes;
 mod sync;
 mod update;
-use crate::audio::{AudioResource, AudioSettings};
 use crate::misc::is_reversed;
 use crate::shapes::Shape;
 #[cfg(feature = "steam")]
@@ -67,6 +65,7 @@ use crate::sync::new_lobby;
 use crate::sync::{SendSleeping, Sent, SyncCount, SyncObject, apply_sync, get_sync};
 #[cfg(feature = "steam")]
 use crate::update::update_rich;
+use bevy_microphone::{AudioResource, AudioSettings};
 use bitcode::{Decode, Encode};
 use enum_map::{Enum, EnumMap, enum_map};
 use enumset::{EnumSet, EnumSetType, enum_set};

@@ -1196,6 +1196,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_microphone"
+version = "0.1.0"
+source = "git+https://github.com/bgkillas/bevy_microphone#712e0fb7078b9262018113d6825c456da611831c"
+dependencies = [
+ "audioadapter-buffers",
+ "bevy_ecs",
+ "cpal",
+ "opus",
+ "rubato",
+ "tracing",
+]
+
+[[package]]
 name = "bevy_mikktspace"
 version = "0.17.0-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5705,10 +5718,10 @@ name = "rmtg"
 version = "0.1.0"
 dependencies = [
  "arboard",
- "audioadapter-buffers",
  "avian3d",
  "bevy",
  "bevy_framepace",
+ "bevy_microphone",
  "bevy_mod_mipmap_generator",
  "bevy_prng",
  "bevy_rand",
@@ -5719,7 +5732,6 @@ dependencies = [
  "bytes",
  "console_error_panic_hook",
  "cosmic-text",
- "cpal",
  "enum-map",
  "enumset",
  "futures",
@@ -5729,10 +5741,8 @@ dependencies = [
  "json",
  "kalc-lib",
  "lz4_flex",
- "opus",
  "rand",
  "reqwest",
- "rubato",
  "rules",
  "tokio",
  "uuid",
