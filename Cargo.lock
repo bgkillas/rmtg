@@ -1530,7 +1530,7 @@ dependencies = [
 [[package]]
 name = "bevy_tangled"
 version = "0.1.0"
-source = "git+https://github.com/bgkillas/bevy_tangled#547c3d640f688baae22624c62e865ba6434dab65"
+source = "git+https://github.com/bgkillas/bevy_tangled#b16bb033cae3485564f865318042e5d11d587f7d"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -6190,7 +6190,7 @@ dependencies = [
 [[package]]
 name = "tangled"
 version = "0.5.0"
-source = "git+https://github.com/intquant/tangled#f1b5d7e3f6fe5a67f24c1b3e458009cab02696d1"
+source = "git+https://github.com/intquant/tangled#2a1e453593f43e3eda09f507e3274b463320ab45"
 dependencies = [
  "bitcode 0.6.9",
  "crossbeam",
@@ -7978,9 +7978,9 @@ dependencies = [
 
 [[package]]
 name = "zmij"
-version = "1.0.5"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3280a1b827474fcd5dbef4b35a674deb52ba5c312363aef9135317df179d81b"
+checksum = "aac060176f7020d62c3bcc1cdbcec619d54f48b07ad1963a3f80ce7a0c17755f"
 
 [[package]]
 name = "zune-core"

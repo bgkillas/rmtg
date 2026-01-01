@@ -8,7 +8,9 @@ use crate::misc::{
 use crate::setup::SteamInfo;
 use crate::setup::{FontRes, MAT_HEIGHT, MAT_WIDTH, SideMenu, TextChat};
 use crate::shapes::Shape;
-use crate::update::{GiveEnts, HandIgnore, SearchDeck, SearchText, spawn_msg, update_search};
+use crate::update::{
+    GiveEnts, HandIgnore, PingDrag, SearchDeck, SearchText, spawn_msg, update_search,
+};
 use crate::*;
 use bevy::diagnostic::FrameCount;
 use bevy::ecs::system::SystemParam;
@@ -74,35 +76,43 @@ pub fn get_sync(
     } else {
         count.give(vec);
     }
-    let Some(cursor_position) = window.cursor_position() else {
-        #[cfg(feature = "steam")]
-        client.flush();
-        return;
-    };
     let (camera, camera_transform) = camera.into_inner();
-    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
-        #[cfg(feature = "steam")]
-        client.flush();
-        return;
-    };
-    let hit = spatial.cast_ray(
-        ray.origin,
-        ray.direction,
-        f32::MAX,
-        true,
-        &SpatialQueryFilter::DEFAULT,
-    );
-    if let Some(hit) = hit {
-        let cam = camera_transform.translation();
-        let cur = ray.origin + ray.direction * hit.distance;
-        client
-            .broadcast(
-                &Packet::Indicator(cam.into(), cur.into(), keybinds.pressed(Keybind::Ping)),
-                Reliability::Reliable,
-                COMPRESSION,
-            )
-            .unwrap();
+    fn get_dest(
+        camera: &Camera,
+        camera_transform: &GlobalTransform,
+        window: Single<&Window, With<PrimaryWindow>>,
+        spatial: SpatialQuery,
+    ) -> Option<Pos> {
+        let cursor_position = window.cursor_position()?;
+        let ray = camera
+            .viewport_to_world(camera_transform, cursor_position)
+            .ok()?;
+        let hit = spatial.cast_ray(
+            ray.origin,
+            ray.direction,
+            f32::MAX,
+            true,
+            &SpatialQueryFilter::DEFAULT,
+        );
+        if let Some(hit) = hit {
+            let cur = ray.origin + ray.direction * hit.distance;
+            Some(cur.into())
+        } else {
+            None
+        }
     }
+    let cam = camera_transform.translation();
+    client
+        .broadcast(
+            &Packet::Indicator(
+                cam.into(),
+                get_dest(camera, camera_transform, window, spatial),
+                keybinds.pressed(Keybind::Select),
+            ),
+            Reliability::Reliable,
+            COMPRESSION,
+        )
+        .unwrap();
     #[cfg(feature = "steam")]
     client.flush();
 }
@@ -187,7 +197,7 @@ pub fn apply_sync(
     mut count: ResMut<SyncCount>,
     mut client: ResMut<Client>,
     mut colliders: Query<&mut Collider>,
-    (mut query_meshes, chat, font): (
+    (mut query_meshes, chat, font, mut drag): (
         Query<
             (&mut Mesh3d, &mut Transform),
             (
@@ -200,6 +210,18 @@ pub fn apply_sync(
         >,
         Single<Entity, With<TextChat>>,
         Res<FontRes>,
+        Query<
+            (Entity, &PingDrag, &mut Mesh3d, &mut Transform, &PeerId),
+            (
+                Without<ChildOf>,
+                Without<Pile>,
+                Without<Shape>,
+                Without<SyncObject>,
+                Without<SyncObjectMe>,
+                Without<CursorInd>,
+                Without<CameraInd>,
+            ),
+        >,
     ),
     (
         search,
@@ -247,6 +269,7 @@ pub fn apply_sync(
                 Without<ChildOf>,
                 Without<CursorInd>,
                 Without<CameraInd>,
+                Without<PeerId>,
             ),
         >,
         Query<(), Or<(With<Equipment>, With<Counter>)>>,
@@ -1078,7 +1101,42 @@ pub fn apply_sync(
                                 });
                             }
                         }
-                        t.translation = cur.into()
+                        if let Some(v) = cur {
+                            let v: Vec3 = v.into();
+                            if ping {
+                                if let Some((_, orig, mut mesh, mut transform, _)) =
+                                    drag.iter_mut().find(|p| *p.4 == sender)
+                                {
+                                    let dir = (v - orig.0).normalize();
+                                    let d = (v - orig.0).length();
+                                    let m = (v + orig.0) / 2.0;
+                                    transform.translation = m;
+                                    mesh.0 = meshes.add(Cylinder::new(CARD_THICKNESS * 8.0, d));
+                                    transform.rotation = Quat::from_rotation_arc(Vec3::Y, dir);
+                                } else {
+                                    commands.spawn((
+                                        PingDrag(v),
+                                        Mesh3d(
+                                            meshes.add(Cylinder::new(CARD_THICKNESS * 8.0, 0.0)),
+                                        ),
+                                        MeshMaterial3d(materials.add(StandardMaterial {
+                                            alpha_mode: AlphaMode::Opaque,
+                                            unlit: true,
+                                            base_color: PLAYER[id % PLAYER.len()],
+                                            ..default()
+                                        })),
+                                        Transform::from_xyz(v.x, v.y, v.z),
+                                        sender,
+                                    ));
+                                }
+                            } else if let Some(e) = drag.iter_mut().find(|p| *p.4 == sender) {
+                                commands.entity(e.0).despawn();
+                            }
+                            t.scale = Vec3::splat(1.0);
+                            t.translation = v;
+                        } else {
+                            t.scale = Vec3::splat(0.0);
+                        }
                     } else {
                         make_cur(
                             &mut commands,
@@ -1314,7 +1372,7 @@ pub enum Packet {
     Draw(SyncObject, Vec<(SyncObjectMe, Trans, Id)>, usize),
     Merge(SyncObject, SyncObject, usize),
     SetUser(PeerId, usize),
-    Indicator(Pos, Pos, bool),
+    Indicator(Pos, Option<Pos>, bool),
     Text(String),
     Voice(Vec<u8>),
     Turn(usize),

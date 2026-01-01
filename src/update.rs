@@ -372,7 +372,7 @@ pub struct PingDrag(pub Vec3);
 pub fn ping_drag(
     keybinds: Keybinds,
     focus: Focus,
-    drag: Option<Single<(Entity, &PingDrag, &mut Mesh3d, &mut Transform)>>,
+    drag: Option<Single<(Entity, &PingDrag, &mut Mesh3d, &mut Transform), Without<PeerId>>>,
     mut commands: Commands,
     camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
     window: Single<&Window, With<PrimaryWindow>>,
