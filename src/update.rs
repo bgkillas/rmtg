@@ -381,7 +381,7 @@ pub fn ping_drag(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    if focus.key_lock() || !keybinds.pressed(Keybind::Select) {
+    if focus.key_lock() || !keybinds.pressed(Keybind::Ping) {
         if let Some(drag) = drag {
             commands.entity(drag.0).despawn();
         }
@@ -1455,12 +1455,11 @@ pub struct VoiceActive(pub bool);
 pub fn voice_keybinds(keybinds: Keybinds, mut active: ResMut<VoiceActive>) {
     **active = keybinds.just_pressed(Keybind::Voice);
 }
-pub fn voice_chat(active: Res<VoiceActive>, net: Net) {
+pub fn voice_chat(active: Res<VoiceActive>, net: Net, audio: Res<AudioResource>) {
     if !**active {
         return;
     }
-    net.voice(Vec::new());
-    //TODO
+    audio.recv_audio(|data| net.voice(data.into()))
 }
 pub fn turn_keybinds(
     others_ids: Query<&SyncObject>,

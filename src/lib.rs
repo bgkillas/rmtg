@@ -49,6 +49,7 @@ const PLAYER3: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 85);
 const PLAYER4: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 255);
 const PLAYER5: bevy::color::Color = bevy::color::Color::srgb_u8(255, 255, 85);
 const PLAYER: [bevy::color::Color; 6] = [PLAYER0, PLAYER1, PLAYER2, PLAYER3, PLAYER4, PLAYER5];
+mod audio;
 mod counters;
 mod download;
 mod misc;
@@ -56,6 +57,7 @@ mod setup;
 mod shapes;
 mod sync;
 mod update;
+use crate::audio::{AudioResource, AudioSettings};
 use crate::misc::is_reversed;
 use crate::shapes::Shape;
 #[cfg(feature = "steam")]
@@ -173,6 +175,7 @@ pub fn start() -> AppExit {
     .insert_resource(SendSleeping::default())
     .insert_resource(VoiceActive::default())
     .insert_resource(KeybindsList::default())
+    .insert_resource(AudioResource::new(&AudioSettings::default()))
     .insert_resource(game_clipboard)
     .insert_resource(Download {
         client,
@@ -194,8 +197,7 @@ pub fn start() -> AppExit {
                     ping_drag,
                     untap_keybinds,
                     text_send,
-                    voice_keybinds,
-                    voice_chat,
+                    (voice_keybinds, voice_chat).chain(),
                     text_keybinds,
                     turn_keybinds,
                     set_card_spot,

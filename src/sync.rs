@@ -107,7 +107,7 @@ pub fn get_sync(
             &Packet::Indicator(
                 cam.into(),
                 get_dest(camera, camera_transform, window, spatial),
-                keybinds.pressed(Keybind::Select),
+                keybinds.pressed(Keybind::Ping),
             ),
             Reliability::Reliable,
             COMPRESSION,
@@ -1377,7 +1377,7 @@ pub enum Packet {
     SetUser(PeerId, usize),
     Indicator(Pos, Option<Pos>, bool),
     Text(String),
-    Voice(Vec<u8>),
+    Voice(Box<[f32]>),
     Turn(usize),
 }
 #[derive(Encode, Decode, Debug)]
@@ -1517,7 +1517,7 @@ impl<'w, 's> Net<'w, 's> {
             .broadcast(&Packet::Text(msg), Reliability::Reliable, COMPRESSION)
             .unwrap();
     }
-    pub fn voice(&self, msg: Vec<u8>) {
+    pub fn voice(&self, msg: Box<[f32]>) {
         self.client
             .broadcast(&Packet::Voice(msg), Reliability::Reliable, COMPRESSION)
             .unwrap();
