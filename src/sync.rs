@@ -197,8 +197,12 @@ pub fn apply_sync(
     card_base: Res<CardBase>,
     mut count: ResMut<SyncCount>,
     mut client: ResMut<Client>,
-    mut colliders: Query<&mut Collider>,
-    (mut query_meshes, chat, font, mut drag, sink, audio, audio_settings): (
+    #[cfg(feature = "mic")] (sink, audio, audio_settings): (
+        Res<AudioPlayer>,
+        Res<AudioResource>,
+        Res<AudioSettings>,
+    ),
+    (mut query_meshes, chat, font, mut drag, mut colliders): (
         Query<
             (&mut Mesh3d, &mut Transform),
             (
@@ -223,9 +227,7 @@ pub fn apply_sync(
                 Without<CameraInd>,
             ),
         >,
-        Res<AudioPlayer>,
-        Res<AudioResource>,
-        Res<AudioSettings>,
+        Query<&mut Collider>,
     ),
     (
         search,
@@ -1160,6 +1162,7 @@ pub fn apply_sync(
                 spawn_msg(*chat, msg, &mut commands, font.0.clone());
             }
             Packet::Voice(data) => {
+                #[cfg(feature = "mic")]
                 audio.decode(data, |data| {
                     let source = SamplesBuffer::new(
                         1,

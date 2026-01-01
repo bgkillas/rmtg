@@ -1455,6 +1455,7 @@ pub struct VoiceActive(pub bool);
 pub fn voice_keybinds(keybinds: Keybinds, mut active: ResMut<VoiceActive>) {
     **active = keybinds.pressed(Keybind::Voice);
 }
+#[cfg(feature = "mic")]
 pub fn voice_chat(active: Res<VoiceActive>, net: Net, audio: Res<AudioResource>) {
     audio.recv_audio(|data| {
         if **active {

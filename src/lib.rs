@@ -65,6 +65,7 @@ use crate::sync::new_lobby;
 use crate::sync::{SendSleeping, Sent, SyncCount, SyncObject, apply_sync, get_sync};
 #[cfg(feature = "steam")]
 use crate::update::update_rich;
+#[cfg(feature = "mic")]
 use bevy_microphone::{AudioResource, AudioSettings};
 use bitcode::{Decode, Encode};
 use enum_map::{Enum, EnumMap, enum_map};
@@ -181,8 +182,6 @@ pub fn start() -> AppExit {
     .insert_resource(SendSleeping::default())
     .insert_resource(VoiceActive::default())
     .insert_resource(KeybindsList::default())
-    .insert_resource(AudioSettings::default())
-    .insert_resource(AudioResource::new(&AudioSettings::default()))
     .insert_resource(game_clipboard)
     .insert_resource(Download {
         client,
@@ -238,6 +237,9 @@ pub fn start() -> AppExit {
     .add_systems(PreUpdate, (get_sync, apply_sync).chain())
     .add_observer(on_scroll_handler)
     .add_observer(pile_merge);
+    #[cfg(feature = "mic")]
+    app.insert_resource(AudioSettings::default())
+        .insert_resource(AudioResource::new(&AudioSettings::default()));
     app.run()
 }
 #[derive(Resource, Deref, DerefMut)]
