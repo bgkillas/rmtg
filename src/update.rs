@@ -1457,16 +1457,20 @@ pub fn text_keybinds(
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
 pub struct VoiceActive(pub bool);
 #[cfg(feature = "steam")]
-pub fn voice_keybinds(keybinds: Keybinds, mut active: ResMut<VoiceActive>) {
-    **active = keybinds.pressed(Keybind::Voice);
+pub fn voice_keybinds(
+    keybinds: Keybinds,
+    mut active: ResMut<VoiceActive>,
+    audio: Res<AudioResource>,
+) {
+    let new = keybinds.pressed(Keybind::Voice);
+    if new != **active {
+        **active = new;
+        audio.stop(!new)
+    }
 }
 #[cfg(feature = "mic")]
-pub fn voice_chat(active: Res<VoiceActive>, net: Net, audio: Res<AudioResource>) {
-    audio.recv_audio(|data| {
-        if **active {
-            net.voice(data)
-        }
-    })
+pub fn voice_chat(net: Net, audio: Res<AudioResource>) {
+    audio.recv_audio(|data| net.voice(data))
 }
 pub fn turn_keybinds(
     others_ids: Query<&SyncObject>,

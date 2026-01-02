@@ -1210,7 +1210,7 @@ dependencies = [
 [[package]]
 name = "bevy_microphone"
 version = "0.1.0"
-source = "git+https://github.com/bgkillas/bevy_microphone#424807bc22f4d6b52d5a0cb91f78e9ed1a25f530"
+source = "git+https://github.com/bgkillas/bevy_microphone#d6d06c9bfd9c8b58b35f7e446595a48e60193dde"
 dependencies = [
  "audioadapter-buffers",
  "bevy_ecs",

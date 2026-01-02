@@ -224,18 +224,22 @@ pub fn start() -> AppExit {
                 ),
                 to_move_up,
                 reset_layers,
+                (get_sync, apply_sync).chain(),
             )
                 .chain(),
             rem_peers,
             scroll_to_bottom.after(UiSystems::Layout),
         ),
     )
-    .add_systems(PreUpdate, (get_sync, apply_sync).chain())
     .add_observer(on_scroll_handler)
     .add_observer(pile_merge);
     #[cfg(feature = "mic")]
+    let audio = AudioResource::new(&AudioSettings::default());
+    #[cfg(feature = "mic")]
+    audio.stop(true);
+    #[cfg(feature = "mic")]
     app.insert_resource(AudioSettings::default())
-        .insert_resource(AudioResource::new(&AudioSettings::default()))
+        .insert_resource(audio)
         .insert_resource(AudioPlayer(sink));
     app.run()
 }
