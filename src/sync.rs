@@ -783,22 +783,21 @@ pub fn apply_sync(
             }
             Packet::Merge(base, from, at) => {
                 let (top_pile, top_ent) = if from.user == client.my_id()
-                    && let Some((pile, ent)) =
-                        queryme.iter().find_map(
-                            |(a, _, p, e, _, _, _)| {
-                                if *a == from.id { Some((p, e)) } else { None }
-                            },
-                        )
+                    && let Some((pile, ent)) = queryme.iter_mut().find_map(
+                        |(a, _, p, e, _, _, _)| {
+                            if *a == from.id { Some((p, e)) } else { None }
+                        },
+                    )
                     && let Some(pile) = pile
                 {
-                    (pile.clone(), ent)
-                } else if let Some((pile, ent)) = query.iter().find_map(
+                    (mem::replace(pile.into_inner(), Pile::Empty), ent)
+                } else if let Some((pile, ent)) = query.iter_mut().find_map(
                     |(a, _, _, _, _, _, e, _, _, d, _, _)| {
                         if *a == from { Some((d, e)) } else { None }
                     },
                 ) && let Some(pile) = pile
                 {
-                    (pile.clone(), ent)
+                    (mem::replace(pile.into_inner(), Pile::Empty), ent)
                 } else if base.user != client.my_id()
                     && let Some(base_ent) = query.iter_mut().find_map(
                         |(a, _, _, _, _, _, e, _, _, _, _, _)| {
@@ -1544,6 +1543,15 @@ impl<'w, 's> Net<'w, 's> {
     pub fn killed(&self, id: SyncObject) {
         self.client
             .broadcast(&Packet::Dead(id), Reliability::Reliable, COMPRESSION)
+            .unwrap();
+    }
+    pub fn merge_them(&self, base: SyncObject, top: SyncObjectMe, at: usize) {
+        self.client
+            .broadcast(
+                &Packet::Merge(base, self.to_global(top), at),
+                Reliability::Reliable,
+                COMPRESSION,
+            )
             .unwrap();
     }
     pub fn merge(&self, base: SyncObjectMe, top: SyncObject, at: usize) {

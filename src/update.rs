@@ -1892,9 +1892,9 @@ pub fn pick_from_list(
                                 repaint_face(&mut mats, &mut materials, inner_card, children);
                             }
                         }
-                        if let Ok(id) = ids.get(entity) {
+                        if let Ok(id) = ids.get(search_deck.1.0) {
                             net.flip_me(*id, card.0, inner_card.flipped);
-                        } else if let Ok(id) = others_ids.get(entity) {
+                        } else if let Ok(id) = others_ids.get(search_deck.1.0) {
                             net.flip(*id, card.0, inner_card.flipped);
                         }
                         *image = inner_card.image_node();
@@ -1914,6 +1914,13 @@ pub fn pick_from_list(
                         pile.splice_at(i, p);
                     } else {
                         pile.extend(p)
+                    }
+                    if let Ok(tid) = ids.get(**e) {
+                        if let Ok(id) = ids.get(search_deck.1.0) {
+                            net.merge_me(*id, *tid, drop.unwrap_or(pile.len()));
+                        } else if let Ok(id) = others_ids.get(search_deck.1.0) {
+                            net.merge_them(*id, *tid, drop.unwrap_or(pile.len()));
+                        }
                     }
                     commands.entity(**e).despawn();
                     update_search(
