@@ -4,6 +4,7 @@ use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
 //use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin};
 use bevy::ecs::system::SystemParam;
+use bevy::image::{ImageFilterMode, ImageSamplerDescriptor};
 use bevy::input_focus::InputFocus;
 use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;
@@ -142,6 +143,15 @@ pub fn start() -> AppExit {
             .set(AssetPlugin {
                 meta_check: AssetMetaCheck::Never,
                 ..default()
+            })
+            .set(ImagePlugin {
+                default_sampler: ImageSamplerDescriptor {
+                    mag_filter: ImageFilterMode::Linear,
+                    min_filter: ImageFilterMode::Linear,
+                    mipmap_filter: ImageFilterMode::Linear,
+                    anisotropy_clamp: 16,
+                    ..Default::default()
+                },
             }),
         PhysicsPlugins::default(),
         PhysicsDebugPlugin,
