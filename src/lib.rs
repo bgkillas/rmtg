@@ -67,6 +67,7 @@ use enumset::{EnumSet, EnumSetType, enum_set};
 use futures::channel::oneshot;
 use itertools::Either;
 use rand::seq::SliceRandom;
+#[cfg(feature = "mic")]
 use rodio::{OutputStreamBuilder, Sink};
 use uuid::Uuid;
 #[cfg(feature = "wasm")]
@@ -121,7 +122,9 @@ pub fn start() -> AppExit {
     let get_deck = GetDeck::default();
     let game_clipboard = GameClipboard::None;
     let mut app = App::new();
+    #[cfg(feature = "mic")]
     let stream_handle = OutputStreamBuilder::open_default_stream().unwrap();
+    #[cfg(feature = "mic")]
     let sink = Sink::connect_new(stream_handle.mixer());
     app.add_plugins((
         Client::new(
@@ -162,7 +165,6 @@ pub fn start() -> AppExit {
         ..default()
     })
     .insert_resource(clipboard)
-    .insert_resource(AudioPlayer(sink))
     .insert_resource(ToMoveUp::default())
     .insert_resource(Turn::default())
     .insert_resource(SyncCount::default())
@@ -233,9 +235,11 @@ pub fn start() -> AppExit {
     .add_observer(pile_merge);
     #[cfg(feature = "mic")]
     app.insert_resource(AudioSettings::default())
-        .insert_resource(AudioResource::new(&AudioSettings::default()));
+        .insert_resource(AudioResource::new(&AudioSettings::default()))
+        .insert_resource(AudioPlayer(sink));
     app.run()
 }
+#[cfg(feature = "mic")]
 #[derive(Resource, Deref, DerefMut)]
 struct AudioPlayer(Sink);
 #[derive(Resource, Default, Debug)]

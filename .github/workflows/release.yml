@@ -35,7 +35,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Install deps
-        run: brew install opus pkg-config cmake
+        run: brew install opus
       - uses: actions/checkout@v5
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1

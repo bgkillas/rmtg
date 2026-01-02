@@ -8,10 +8,9 @@ use crate::misc::{
 use crate::setup::SteamInfo;
 use crate::setup::{FontRes, MAT_HEIGHT, MAT_WIDTH, SideMenu, TextChat};
 use crate::shapes::Shape;
-use crate::update::{
-    GiveEnts, HandIgnore, PingDrag, SearchDeck, SearchText, spawn_msg, update_search,
-};
+use crate::update::*;
 use crate::*;
+#[cfg(feature = "steam")]
 use bevy::diagnostic::FrameCount;
 use bevy::ecs::system::SystemParam;
 use bevy::window::PrimaryWindow;
@@ -20,6 +19,7 @@ use bevy_rich_text3d::Text3d;
 use bevy_tangled::{ClientTrait, ClientTypeRef, Compression, PeerId, Reliability};
 use bevy_ui_text_input::TextInputContents;
 use bitcode::{Decode, Encode};
+#[cfg(feature = "mic")]
 use rodio::buffer::SamplesBuffer;
 use std::collections::hash_map::Entry::Vacant;
 use std::collections::{HashMap, HashSet};

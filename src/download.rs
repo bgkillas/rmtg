@@ -4,6 +4,7 @@ use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy_mod_mipmap_generator::{MipmapGeneratorSettings, generate_mips_texture};
+#[cfg(not(feature = "wasm"))]
 use bitcode::{decode, encode};
 use bytes::Bytes;
 use futures::StreamExt;
@@ -12,6 +13,7 @@ use futures::stream::{FuturesOrdered, FuturesUnordered};
 use image::imageops::FilterType;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
+#[cfg(not(feature = "wasm"))]
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::fs;
 use std::io::Cursor;
@@ -262,20 +264,27 @@ async fn get_bytes(
     if !cfg!(feature = "wasm")
         && let Ok(data) = fs::read(&path)
     {
-        let image_data: ImageData = decode(&decompress_size_prepended(&data).ok()?).ok()?;
-        let mut image = Image::new_uninit(
-            Extent3d {
-                width: image_data.width,
-                height: image_data.height,
-                depth_or_array_layers: 1,
-            },
-            TextureDimension::D2,
-            TextureFormat::Rgba8UnormSrgb,
-            RenderAssetUsages::RENDER_WORLD,
-        );
-        image.data = Some(image_data.data);
-        image.texture_descriptor.mip_level_count = image_data.mip;
-        Some(asset_server.add(image).into())
+        #[cfg(not(feature = "wasm"))]
+        {
+            let image_data: ImageData = decode(&decompress_size_prepended(&data).ok()?).ok()?;
+            let mut image = Image::new_uninit(
+                Extent3d {
+                    width: image_data.width,
+                    height: image_data.height,
+                    depth_or_array_layers: 1,
+                },
+                TextureDimension::D2,
+                TextureFormat::Rgba8UnormSrgb,
+                RenderAssetUsages::RENDER_WORLD,
+            );
+            image.data = Some(image_data.data);
+            image.texture_descriptor.mip_level_count = image_data.mip;
+            Some(asset_server.add(image).into())
+        }
+        #[cfg(feature = "wasm")]
+        {
+            None
+        }
     } else {
         let url = if normal {
             format!(

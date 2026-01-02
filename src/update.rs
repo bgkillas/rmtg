@@ -14,6 +14,7 @@ use crate::setup::{
 use crate::sync::{CameraInd, CursorInd, InOtherHand, Net, SyncObjectMe, Trans};
 use crate::*;
 use avian3d::math::Vector;
+#[cfg(feature = "steam")]
 use bevy::diagnostic::FrameCount;
 use bevy::input::mouse::{
     AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit, MouseWheel,
@@ -23,10 +24,13 @@ use bevy::math::bounding::{Aabb3d, BoundingVolume};
 use bevy::picking::hover::HoverMap;
 use bevy::window::PrimaryWindow;
 use bevy_rich_text3d::Text3d;
-use bevy_tangled::{ClientTrait, PeerId};
-use bevy_ui_text_input::{
-    SubmitText, TextInputBuffer, TextInputContents, TextInputMode, TextInputNode,
-};
+#[cfg(feature = "steam")]
+use bevy_tangled::ClientTrait;
+use bevy_tangled::PeerId;
+#[cfg(feature = "calc")]
+use bevy_ui_text_input::TextInputBuffer;
+use bevy_ui_text_input::{SubmitText, TextInputContents, TextInputMode, TextInputNode};
+#[cfg(feature = "calc")]
 use cosmic_text::Edit;
 #[cfg(feature = "calc")]
 use kalc_lib::complex::NumStr;
