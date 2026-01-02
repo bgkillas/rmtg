@@ -1470,7 +1470,7 @@ pub fn voice_keybinds(
 }
 #[cfg(feature = "mic")]
 pub fn voice_chat(net: Net, audio: Res<AudioResource>) {
-    audio.recv_audio(|data| net.voice(data))
+    audio.try_recv_audio(|data| net.voice(data))
 }
 pub fn turn_keybinds(
     others_ids: Query<&SyncObject>,
