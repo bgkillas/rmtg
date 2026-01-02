@@ -1,12 +1,5 @@
 use crate::setup::{MAT_BAR, MAT_HEIGHT, MAT_WIDTH, setup};
-use crate::update::{
-    FlipCounter, GiveEnts, ToMoveUp, VoiceActive, cam_rotation, cam_translation, esc_menu,
-    flip_ents, follow_mouse, gather_hand, give_ents, listen_for_deck, listen_for_mouse,
-    on_scroll_handler, pick_from_list, pile_merge, ping_drag, register_deck, rem_peers,
-    reset_layers, scroll_to_bottom, send_scroll_events, set_card_spot, text_keybinds, text_send,
-    to_move_up, turn_keybinds, untap_keybinds, update_hand, update_search_deck, voice_chat,
-    voice_keybinds,
-};
+use crate::update::*;
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
 //use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin};
@@ -203,6 +196,7 @@ pub fn start() -> AppExit {
                     ping_drag,
                     untap_keybinds,
                     text_send,
+                    #[cfg(feature = "mic")]
                     (voice_keybinds, voice_chat).chain(),
                     text_keybinds,
                     turn_keybinds,

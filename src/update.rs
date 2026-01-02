@@ -1452,6 +1452,7 @@ pub fn text_keybinds(
 }
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
 pub struct VoiceActive(pub bool);
+#[cfg(feature = "steam")]
 pub fn voice_keybinds(keybinds: Keybinds, mut active: ResMut<VoiceActive>) {
     **active = keybinds.pressed(Keybind::Voice);
 }
