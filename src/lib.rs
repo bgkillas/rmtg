@@ -43,13 +43,13 @@ const PLAYER3: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 85);
 const PLAYER4: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 255);
 const PLAYER5: bevy::color::Color = bevy::color::Color::srgb_u8(255, 255, 85);
 const PLAYER: [bevy::color::Color; 6] = [PLAYER0, PLAYER1, PLAYER2, PLAYER3, PLAYER4, PLAYER5];
-mod counters;
-mod download;
-mod misc;
-mod setup;
-mod shapes;
-mod sync;
-mod update;
+pub mod counters;
+pub mod download;
+pub mod misc;
+pub mod setup;
+pub mod shapes;
+pub mod sync;
+pub mod update;
 use crate::misc::is_reversed;
 use crate::shapes::Shape;
 #[cfg(feature = "steam")]
@@ -256,9 +256,9 @@ pub fn start() -> AppExit {
 }
 #[cfg(feature = "mic")]
 #[derive(Resource, Deref, DerefMut)]
-struct AudioPlayer(Sink);
+pub struct AudioPlayer(Sink);
 #[derive(Resource, Default, Debug)]
-enum Menu {
+pub enum Menu {
     #[default]
     World,
     Counter,
@@ -266,7 +266,7 @@ enum Menu {
     Side,
 }
 #[derive(SystemParam)]
-struct Focus<'w> {
+pub struct Focus<'w> {
     menu: ResMut<'w, Menu>,
     active_input: ResMut<'w, InputFocus>,
     hover_map: Res<'w, HoverMap>,
@@ -289,9 +289,9 @@ const SLEEP: SleepThreshold = SleepThreshold {
     angular: 0.25,
 };
 #[derive(Resource, Default, Debug, Deref, DerefMut)]
-struct Turn(usize);
+pub struct Turn(usize);
 #[derive(Resource, Default, Debug)]
-struct Peers {
+pub struct Peers {
     map: Arc<Mutex<HashMap<PeerId, usize>>>,
     me: Option<usize>,
 }
@@ -301,16 +301,16 @@ impl Peers {
     }
 }
 #[derive(Resource, Default, Debug, Deref, DerefMut)]
-struct RemPeers(Arc<Mutex<Vec<PeerId>>>);
+pub struct RemPeers(Arc<Mutex<Vec<PeerId>>>);
 #[derive(Component, Default, Debug, Deref, DerefMut)]
-struct InHand(usize);
+pub struct InHand(usize);
 #[derive(Component, Default, Debug)]
-struct Hand {
+pub struct Hand {
     count: usize,
     removed: Vec<usize>,
 }
 #[derive(Component, Default, Clone, Debug, Encode, Decode)]
-enum Pile {
+pub enum Pile {
     Multiple(Vec<SubCard>),
     Single(Box<Card>),
     #[default]
@@ -658,7 +658,7 @@ impl Pile {
     }
 }
 #[derive(Debug, Clone)]
-enum DeckType {
+pub enum DeckType {
     Other(Transform, SyncObject),
     Single(Vec2),
     Deck,
@@ -670,10 +670,10 @@ enum DeckType {
     Attraction,
 }
 #[derive(Resource, Debug, Default, Clone, Deref, DerefMut)]
-struct GetDeck(Arc<Mutex<Vec<(Pile, DeckType)>>>);
+pub struct GetDeck(Arc<Mutex<Vec<(Pile, DeckType)>>>);
 #[derive(Debug, Default, Clone, Encode, Decode)]
 #[allow(dead_code)]
-struct CardInfo {
+pub struct CardInfo {
     name: String,
     mana_cost: Cost,
     card_type: Types,
@@ -699,7 +699,7 @@ impl CardInfo {
     }
 }
 #[derive(Debug, Clone, Default, Deref, DerefMut)]
-struct UninitImage(Option<Handle<Image>>);
+pub struct UninitImage(Option<Handle<Image>>);
 impl From<Handle<Image>> for UninitImage {
     fn from(value: Handle<Image>) -> Self {
         Self(Some(value))
@@ -726,7 +726,7 @@ impl Type {
 }
 #[allow(dead_code)]
 #[derive(Debug, Default, Clone, Encode, Decode, Eq, PartialEq)]
-struct Types {
+pub struct Types {
     super_type: SuperTypes,
     main_type: MainTypes,
     sub_type: SubTypes,
@@ -735,13 +735,16 @@ impl Types {
     pub fn len(&self) -> usize {
         self.super_type.len() + self.main_type.len() + self.sub_type.len()
     }
+    pub fn is_empty(&self) -> bool {
+        self.super_type.is_empty() && self.main_type.is_empty() && self.sub_type.is_empty()
+    }
 }
 #[derive(Debug, Default, Clone, Encode, Decode, Eq, PartialEq, Deref, DerefMut)]
-struct SuperTypes(pub Vec<SuperType>);
+pub struct SuperTypes(pub Vec<SuperType>);
 #[derive(Debug, Default, Clone, Encode, Decode, Eq, PartialEq, Deref, DerefMut)]
-struct MainTypes(pub Vec<Type>);
+pub struct MainTypes(pub Vec<Type>);
 #[derive(Debug, Default, Clone, Encode, Decode, Eq, PartialEq, Deref, DerefMut)]
-struct SubTypes(pub Vec<SubType>);
+pub struct SubTypes(pub Vec<SubType>);
 fn subset<T: PartialEq>(a: &[T], b: &[T]) -> bool {
     b.iter().all(|t| a.contains(t))
 }
@@ -871,7 +874,7 @@ impl FromStr for SubTypes {
     }
 }
 #[derive(Debug, Default, Clone, Copy, Encode, Decode, PartialEq)]
-struct Color {
+pub struct Color {
     white: bool,
     blue: bool,
     black: bool,
@@ -954,9 +957,12 @@ impl Color {
         };
         n
     }
+    pub fn is_empty(&self) -> bool {
+        !self.white && !self.blue && !self.black && !self.red && !self.green
+    }
 }
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
-struct Cost {
+pub struct Cost {
     white: u8,
     blue: u8,
     black: u8,
@@ -998,14 +1004,14 @@ impl Cost {
     }
 }
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
-enum Layout {
+pub enum Layout {
     #[default]
     Normal,
     Flip,
     Room,
 }
 #[derive(Default, PartialEq, Clone, Copy, Encode, Decode)]
-struct Id(u128);
+pub struct Id(u128);
 impl FromStr for Id {
     type Err = uuid::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -1023,7 +1029,7 @@ impl Debug for Id {
     }
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
-struct CardData {
+pub struct CardData {
     id: Id,
     tokens: Vec<Id>,
     face: CardInfo,
@@ -1042,7 +1048,7 @@ impl CardData {
     }
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
-struct SubCard {
+pub struct SubCard {
     data: CardData,
     flipped: bool,
 }
@@ -1106,12 +1112,12 @@ impl SubCard {
     }
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
-struct Modified {
+pub struct Modified {
     main: (i32, i32),
     counter: Option<(i32, i32)>,
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
-struct Card {
+pub struct Card {
     subcard: SubCard,
     equiped: Vec<SubCard>,
     modified: Option<Modified>,
@@ -1178,7 +1184,7 @@ impl Card {
         }
     }
 }
-struct CardIter<'a> {
+pub struct CardIter<'a> {
     subcard: &'a SubCard,
     equiped: Iter<'a, SubCard>,
     started: bool,
@@ -1217,7 +1223,7 @@ impl<'a> ExactSizeIterator for CardIterMut<'a> {
         1 + self.equiped.len()
     }
 }
-struct CardIterMut<'a> {
+pub struct CardIterMut<'a> {
     subcard: *mut SubCard,
     equiped: IterMut<'a, SubCard>,
     started: bool,
@@ -1394,7 +1400,7 @@ impl CardInfo {
     }
 }
 #[derive(Debug)]
-enum Order {
+pub enum Order {
     Greater,
     Less,
     Equal,
@@ -1516,7 +1522,7 @@ fn get_key(key: &str) -> Option<SearchKey> {
     })
 }
 #[derive(Debug, Clone, Copy)]
-enum SearchKey {
+pub enum SearchKey {
     Name,
     Cmc,
     Type,
@@ -1529,31 +1535,31 @@ enum SearchKey {
     Toughness,
 }
 #[derive(Resource)]
-struct Download {
+pub struct Download {
     client: ReqClient,
     get_deck: GetDeck,
     #[cfg(not(feature = "wasm"))]
     runtime: Runtime,
 }
 #[derive(Resource, Clone)]
-enum GameClipboard {
+pub enum GameClipboard {
     Pile(Pile),
     Shape(Shape),
     None,
 }
 #[derive(Component, Default, Debug)]
-struct FollowMouse;
+pub struct FollowMouse;
 #[derive(Component, Default, Debug)]
-struct FollowOtherMouse;
+pub struct FollowOtherMouse;
 #[derive(Component, Default, Debug)]
-struct ZoomHold(u64, bool);
+pub struct ZoomHold(u64, bool);
 #[cfg(not(feature = "wasm"))]
 #[derive(Resource, Deref, DerefMut)]
-struct Clipboard(arboard::Clipboard);
+pub struct Clipboard(arboard::Clipboard);
 #[cfg(feature = "wasm")]
 #[cfg_attr(feature = "wasm", derive(Clone, Copy))]
 #[derive(Resource)]
-struct Clipboard;
+pub struct Clipboard;
 impl Clipboard {
     #[cfg(not(feature = "wasm"))]
     fn get_text(&mut self) -> String {
@@ -1583,11 +1589,11 @@ impl Clipboard {
     }
 }
 #[derive(Resource, Deref, DerefMut)]
-struct ReqClient(reqwest::Client);
+pub struct ReqClient(reqwest::Client);
 #[derive(Resource, Deref, DerefMut)]
-struct Runtime(tokio::runtime::Runtime);
+pub struct Runtime(tokio::runtime::Runtime);
 #[derive(Resource, Clone)]
-struct CardBase {
+pub struct CardBase {
     stock: Handle<Mesh>,
     back: Handle<StandardMaterial>,
     side: Handle<StandardMaterial>,
@@ -1617,7 +1623,7 @@ async fn get_image_bytes(url: &str) -> Option<(Vec<u8>, u32, u32)> {
 }
 //TODO maybe should be combined with focus
 #[derive(SystemParam)]
-struct Keybinds<'w> {
+pub struct Keybinds<'w> {
     keyboard: Res<'w, ButtonInput<KeyCode>>,
     mouse: Res<'w, ButtonInput<MouseButton>>,
     keybinds: ResMut<'w, KeybindsList>,
@@ -1640,7 +1646,7 @@ impl Keybinds<'_> {
     }
 }
 #[derive(Enum)]
-enum Keybind {
+pub enum Keybind {
     Ping,
     HostSteam,
     HostIp,
@@ -1687,7 +1693,7 @@ enum Keybind {
     Untap,
 }
 #[derive(Resource, Deref, DerefMut)]
-struct KeybindsList(EnumMap<Keybind, Bind>);
+pub struct KeybindsList(EnumMap<Keybind, Bind>);
 impl Default for KeybindsList {
     fn default() -> Self {
         let ctrl = Modifier::Control;
@@ -1742,7 +1748,7 @@ impl Default for KeybindsList {
     }
 }
 #[derive(PartialEq)]
-enum Key {
+pub enum Key {
     KeyCode(KeyCode),
     Mouse(MouseButton),
     None,
@@ -1758,7 +1764,7 @@ impl From<MouseButton> for Key {
     }
 }
 #[derive(EnumSetType)]
-enum Modifier {
+pub enum Modifier {
     Alt,
     Control,
     Shift,
@@ -1795,7 +1801,7 @@ impl TryFrom<&KeyCode> for Modifier {
         })
     }
 }
-struct Bind {
+pub struct Bind {
     modifiers: EnumSet<Modifier>,
     key: Key,
 }

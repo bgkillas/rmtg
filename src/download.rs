@@ -6,7 +6,6 @@ use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy_mod_mipmap_generator::{MipmapGeneratorSettings, generate_mips_texture};
 #[cfg(not(feature = "wasm"))]
 use bitcode::{decode, encode};
-use bytes::Bytes;
 use futures::StreamExt;
 use futures::future::join_all;
 use futures::stream::{FuturesOrdered, FuturesUnordered};
@@ -17,7 +16,8 @@ use json::JsonValue;
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use std::fs;
 use std::io::Cursor;
-pub fn parse_no_mips(bytes: Bytes) -> Option<Image> {
+const QUALITY: &str = "large";
+pub fn parse_no_mips(bytes: &[u8]) -> Option<Image> {
     let image = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
         .ok()?
@@ -40,7 +40,7 @@ pub fn make_img(rgba: Vec<u8>, width: u32, height: u32) -> Image {
         RenderAssetUsages::RENDER_WORLD,
     )
 }
-pub fn parse_bytes(bytes: Bytes) -> Option<Image> {
+pub fn parse_bytes(bytes: &[u8]) -> Option<Image> {
     let mut image = parse_no_mips(bytes)?;
     generate_mips(&mut image);
     Some(image)
@@ -58,8 +58,8 @@ pub fn generate_mips(image: &mut Image) {
     )
     .unwrap();
 }
-pub fn get_from_img(bytes: Bytes, asset_server: &AssetServer) -> Option<Handle<Image>> {
-    let image = parse_bytes(bytes)?;
+pub fn get_from_img(bytes: &[u8], asset_server: &AssetServer) -> Option<Handle<Image>> {
+    let image = parse_bytes_mip(bytes)?;
     Some(asset_server.add(image))
 }
 pub async fn get_by_id(
@@ -254,6 +254,44 @@ pub struct ImageData {
     width: u32,
     height: u32,
 }
+#[cfg(not(feature = "wasm"))]
+impl ImageData {
+    pub fn decode(data: &[u8]) -> Option<Self> {
+        let data = decompress_size_prepended(data).ok()?;
+        decode::<ImageData>(&data).ok()
+    }
+    pub fn encode(&self) -> Vec<u8> {
+        compress_prepend_size(&encode(self))
+    }
+}
+#[cfg(not(feature = "wasm"))]
+pub fn parse_bytes_mip(data: &[u8]) -> Option<Image> {
+    let image_data = ImageData::decode(data)?;
+    let mut image = Image::new_uninit(
+        Extent3d {
+            width: image_data.width,
+            height: image_data.height,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::RENDER_WORLD,
+    );
+    image.data = Some(image_data.data);
+    image.texture_descriptor.mip_level_count = image_data.mip;
+    Some(image)
+}
+#[cfg(not(feature = "wasm"))]
+pub fn write_file(path: &str, image: &mut Image) {
+    let image_data = ImageData {
+        data: mem::take(&mut image.data).unwrap(),
+        mip: image.texture_descriptor.mip_level_count,
+        width: image.width(),
+        height: image.height(),
+    };
+    let _ = fs::write(path, image_data.encode());
+    image.data = Some(image_data.data);
+}
 async fn get_bytes(
     id: &str,
     client: &reqwest::Client,
@@ -266,60 +304,42 @@ async fn get_bytes(
     {
         #[cfg(not(feature = "wasm"))]
         {
-            let image_data: ImageData = decode(&decompress_size_prepended(&data).ok()?).ok()?;
-            let mut image = Image::new_uninit(
-                Extent3d {
-                    width: image_data.width,
-                    height: image_data.height,
-                    depth_or_array_layers: 1,
-                },
-                TextureDimension::D2,
-                TextureFormat::Rgba8UnormSrgb,
-                RenderAssetUsages::RENDER_WORLD,
-            );
-            image.data = Some(image_data.data);
-            image.texture_descriptor.mip_level_count = image_data.mip;
-            Some(asset_server.add(image).into())
+            if let Some(image) = parse_bytes_mip(&data) {
+                return Some(asset_server.add(image).into());
+            }
+            let _ = fs::remove_file(&path);
         }
         #[cfg(feature = "wasm")]
         {
             None
         }
-    } else {
-        let url = if normal {
-            format!(
-                "https://cards.scryfall.io/large/front/{}/{}/{id}.jpg",
-                &id[0..1],
-                &id[1..2]
-            )
-        } else {
-            format!(
-                "https://cards.scryfall.io/large/back/{}/{}/{id}.jpg",
-                &id[0..1],
-                &id[1..2]
-            )
-        };
-        #[cfg(feature = "wasm")]
-        let (bytes, w, h) = get_image_bytes(&url).await?.into();
-        #[cfg(feature = "wasm")]
-        let mut image = make_img(bytes, w, h);
-        #[cfg(feature = "wasm")]
-        generate_mips(&mut image);
-        #[cfg(not(feature = "wasm"))]
-        let bytes = client.get(url).send().await.ok()?.bytes().await.ok()?;
-        #[cfg(not(feature = "wasm"))]
-        let mut image = parse_bytes(bytes)?;
-        let image_data = ImageData {
-            data: mem::take(&mut image.data)?,
-            mip: image.texture_descriptor.mip_level_count,
-            width: image.width(),
-            height: image.height(),
-        };
-        #[cfg(not(feature = "wasm"))]
-        fs::write(path, compress_prepend_size(&encode(&image_data))).ok()?;
-        image.data = Some(image_data.data);
-        Some(asset_server.add(image).into())
     }
+    let url = if normal {
+        format!(
+            "https://cards.scryfall.io/{QUALITY}/front/{}/{}/{id}.jpg",
+            &id[0..1],
+            &id[1..2]
+        )
+    } else {
+        format!(
+            "https://cards.scryfall.io/{QUALITY}/back/{}/{}/{id}.jpg",
+            &id[0..1],
+            &id[1..2]
+        )
+    };
+    #[cfg(feature = "wasm")]
+    let (bytes, w, h) = get_image_bytes(&url).await?.into();
+    #[cfg(feature = "wasm")]
+    let mut image = make_img(bytes, w, h);
+    #[cfg(feature = "wasm")]
+    generate_mips(&mut image);
+    #[cfg(not(feature = "wasm"))]
+    let bytes = client.get(url).send().await.ok()?.bytes().await.ok()?;
+    #[cfg(not(feature = "wasm"))]
+    let mut image = parse_bytes(&bytes)?;
+    #[cfg(not(feature = "wasm"))]
+    write_file(&path, &mut image);
+    Some(asset_server.add(image).into())
 }
 fn get<T: Default, F>(value: &JsonValue, index: &str, double: bool, f: F) -> (T, T)
 where

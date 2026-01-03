@@ -8,7 +8,6 @@ use crate::*;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy_framepace::{FramepaceSettings, Limiter};
 use bevy_ui_text_input::{TextInputBuffer, TextInputContents, TextInputMode, TextInputNode};
-use bytes::Bytes;
 #[cfg(feature = "steam")]
 use std::collections::HashMap;
 #[cfg(feature = "steam")]
@@ -79,8 +78,8 @@ pub fn setup(
     let _ = fs::create_dir("./cache");
     framepace.limiter = Limiter::from_framerate(60.0);
     let card_stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
-    let bytes = include_bytes!("../assets/back.jpg");
-    let card_back = get_from_img(Bytes::from(bytes.as_slice()), &asset_server).unwrap();
+    let bytes = include_bytes!("../assets/back.mip");
+    let card_back = get_from_img(bytes, &asset_server).unwrap();
     let material_handle = materials.add(StandardMaterial {
         base_color_texture: Some(card_back),
         alpha_mode: AlphaMode::Opaque,
