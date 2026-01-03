@@ -420,7 +420,7 @@ pub fn apply_sync(
                 {
                     sent.add(*id);
                     *id = new
-                } else {
+                } else if sent.add(new) {
                     client
                         .send(
                             sender,
@@ -699,15 +699,26 @@ pub fn apply_sync(
                         }
                     } else {
                         commands.entity(entity).despawn();
-                        client
-                            .send(
-                                id.user,
-                                &Packet::Request(id.id),
-                                Reliability::Reliable,
-                                COMPRESSION,
-                            )
-                            .unwrap();
+                        if sent.add(id) {
+                            client
+                                .send(
+                                    id.user,
+                                    &Packet::Request(id.id),
+                                    Reliability::Reliable,
+                                    COMPRESSION,
+                                )
+                                .unwrap();
+                        }
                     }
+                } else if sent.add(id) {
+                    client
+                        .send(
+                            id.user,
+                            &Packet::Request(id.id),
+                            Reliability::Reliable,
+                            COMPRESSION,
+                        )
+                        .unwrap();
                 }
             }
             Packet::Reorder(id, order) => {
@@ -733,14 +744,16 @@ pub fn apply_sync(
                                 commands.entity(search.0).despawn()
                             }
                             commands.entity(entity).despawn();
-                            client
-                                .send(
-                                    id.user,
-                                    &Packet::Request(id.id),
-                                    Reliability::Reliable,
-                                    COMPRESSION,
-                                )
-                                .unwrap();
+                            if sent.add(id) {
+                                client
+                                    .send(
+                                        id.user,
+                                        &Packet::Request(id.id),
+                                        Reliability::Reliable,
+                                        COMPRESSION,
+                                    )
+                                    .unwrap();
+                            }
                             return;
                         }
                         if let Some(search) = &search
@@ -807,14 +820,16 @@ pub fn apply_sync(
                     )
                 {
                     commands.entity(base_ent).despawn();
-                    client
-                        .send(
-                            base.user,
-                            &Packet::Request(base.id),
-                            Reliability::Reliable,
-                            COMPRESSION,
-                        )
-                        .unwrap();
+                    if sent.add(base) {
+                        client
+                            .send(
+                                base.user,
+                                &Packet::Request(base.id),
+                                Reliability::Reliable,
+                                COMPRESSION,
+                            )
+                            .unwrap();
+                    }
                     return;
                 } else {
                     return;
@@ -844,25 +859,29 @@ pub fn apply_sync(
                 {
                     (pile, children, ent, transform)
                 } else {
-                    client
-                        .send(
-                            base.user,
-                            &Packet::Request(base.id),
-                            Reliability::Reliable,
-                            COMPRESSION,
-                        )
-                        .unwrap();
+                    if sent.add(base) {
+                        client
+                            .send(
+                                base.user,
+                                &Packet::Request(base.id),
+                                Reliability::Reliable,
+                                COMPRESSION,
+                            )
+                            .unwrap();
+                    }
                     return;
                 };
                 if at > base_pile.len() && base.user != client.my_id() {
-                    client
-                        .send(
-                            base.user,
-                            &Packet::Request(base.id),
-                            Reliability::Reliable,
-                            COMPRESSION,
-                        )
-                        .unwrap();
+                    if sent.add(base) {
+                        client
+                            .send(
+                                base.user,
+                                &Packet::Request(base.id),
+                                Reliability::Reliable,
+                                COMPRESSION,
+                            )
+                            .unwrap();
+                    }
                     return;
                 }
                 let mut equip = false;
@@ -919,41 +938,50 @@ pub fn apply_sync(
                     if start > pile.len() || len > start {
                         if resend {
                             commands.entity(entity).despawn();
-                            client
-                                .send(
-                                    id.user,
-                                    &Packet::Request(id.id),
-                                    Reliability::Reliable,
-                                    COMPRESSION,
-                                )
-                                .unwrap();
+                            if sent.add(id) {
+                                client
+                                    .send(
+                                        id.user,
+                                        &Packet::Request(id.id),
+                                        Reliability::Reliable,
+                                        COMPRESSION,
+                                    )
+                                    .unwrap();
+                            }
+                            for (cid, _, _) in to {
+                                let syncobject = SyncObject { user, id: cid };
+                                if sent.add(syncobject) {
+                                    client
+                                        .send(
+                                            id.user,
+                                            &Packet::Request(cid),
+                                            Reliability::Reliable,
+                                            COMPRESSION,
+                                        )
+                                        .unwrap();
+                                }
+                            }
                         }
                         return;
                     }
+                    let mut fail = false;
                     for ((cid, trans, uuid), card) in
                         to.into_iter().zip(pile.drain(start - len..start))
                     {
                         let syncobject = SyncObject { user, id: cid };
                         if resend && card.data.id != uuid {
+                            fail = true;
                             commands.entity(entity).despawn();
-                            client
-                                .send(
-                                    id.user,
-                                    &Packet::Request(id.id),
-                                    Reliability::Reliable,
-                                    COMPRESSION,
-                                )
-                                .unwrap();
-                            client
-                                .send(
-                                    id.user,
-                                    &Packet::Request(cid),
-                                    Reliability::Reliable,
-                                    COMPRESSION,
-                                )
-                                .unwrap();
-                            ignore.insert(syncobject);
-                            return;
+                            if sent.add(syncobject) {
+                                client
+                                    .send(
+                                        id.user,
+                                        &Packet::Request(cid),
+                                        Reliability::Reliable,
+                                        COMPRESSION,
+                                    )
+                                    .unwrap();
+                            }
                         }
                         new_pile_at(
                             Pile::Single(card.into()),
@@ -967,7 +995,19 @@ pub fn apply_sync(
                             Some(syncobject),
                             None,
                         );
-                        ignore.insert(syncobject);
+                    }
+                    if fail {
+                        if sent.add(id) {
+                            client
+                                .send(
+                                    id.user,
+                                    &Packet::Request(id.id),
+                                    Reliability::Reliable,
+                                    COMPRESSION,
+                                )
+                                .unwrap();
+                        }
+                        return;
                     }
                     pile.set_single();
                     if !pile.is_empty() {
