@@ -29,7 +29,7 @@ wasm-opt = false
 default=["bin", "steam", "ip"]
 bin=["dep:arboard", "tokio/rt-multi-thread", "calc", "mic"]
 mic=["dep:bevy_microphone", "dep:rodio"]
-calc=["dep:kalc-lib", "dep:cosmic-text"]
+calc=["dep:kalc-lib"]
 wasm=["bevy_rand/wasm_js", "dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:web-sys", "dep:console_error_panic_hook", "dep:js-sys"]
 steam=["bevy_tangled/steam"]
 ip=["bevy_tangled/tangled"]
@@ -120,7 +120,6 @@ bevy_ui_text_input = "0.6.0"
 bevy_mod_mipmap_generator={git="https://github.com/DGriffin91/bevy_mod_mipmap_generator"}
 lz4_flex = { version = "0.12.0", default-features = false }
 kalc-lib = {git="https://github.com/bgkillas/kalc-lib",version = "1.5.1", optional = true}
-cosmic-text = {version="0.14.2", optional = true}
 rules = {path = "rules"}
 uuid = "1.19.0"
 bevy_microphone={git="https://github.com/bgkillas/bevy_microphone", optional = true}

@@ -30,9 +30,10 @@ use bevy_tangled::ClientTrait;
 use bevy_tangled::PeerId;
 #[cfg(feature = "calc")]
 use bevy_ui_text_input::TextInputBuffer;
-use bevy_ui_text_input::{SubmitText, TextInputContents, TextInputMode, TextInputNode};
-#[cfg(feature = "calc")]
-use cosmic_text::Edit;
+use bevy_ui_text_input::actions::{TextInputAction, TextInputEdit};
+use bevy_ui_text_input::{
+    SubmitText, TextInputContents, TextInputMode, TextInputNode, TextInputQueue,
+};
 #[cfg(feature = "calc")]
 use kalc_lib::complex::NumStr;
 #[cfg(feature = "calc")]
@@ -1245,9 +1246,8 @@ pub fn listen_for_mouse(
                 #[cfg(feature = "calc")]
                 {
                     *focus.menu = Menu::Counter;
-                    let mut input_buffer = TextInputBuffer::default();
-                    let editor = &mut input_buffer.editor;
-                    editor.insert_string("n", None);
+                    let mut queue = TextInputQueue::default();
+                    queue.add(TextInputAction::Edit(TextInputEdit::Insert('n', false)));
                     let ent = commands
                         .spawn((
                             CounterMenu(entity, v.clone()),
@@ -1269,7 +1269,8 @@ pub fn listen_for_mouse(
                                 ..default()
                             },
                             TextInputContents::default(),
-                            input_buffer,
+                            TextInputBuffer::default(),
+                            queue,
                         ))
                         .id();
                     focus.active_input.set(ent);

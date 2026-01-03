@@ -5829,7 +5829,6 @@ dependencies = [
  "bitcode 0.6.7",
  "bytes",
  "console_error_panic_hook",
- "cosmic-text",
  "enum-map",
  "enumset",
  "futures",
