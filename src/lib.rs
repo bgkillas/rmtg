@@ -1715,7 +1715,7 @@ impl Default for KeybindsList {
             Keybind::Equip => Bind::new(enum_set!(ctrl), KeyCode::KeyE),
             Keybind::RotateLeft => Bind::new(enum_set!(), KeyCode::KeyQ),
             Keybind::RotateRight => Bind::new(enum_set!(), KeyCode::KeyE),
-            Keybind::Spread => Bind::new(enum_set!(ctrl | alt), KeyCode::KeyS),
+            Keybind::Spread => Bind::new(enum_set!(ctrl | alt | shift), KeyCode::KeyS),
             Keybind::Printings => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyO),
             Keybind::Tokens => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyT),
             Keybind::Transform => Bind::new(enum_set!(), KeyCode::KeyO),
@@ -1741,6 +1741,7 @@ impl Default for KeybindsList {
         })
     }
 }
+#[derive(PartialEq)]
 enum Key {
     KeyCode(KeyCode),
     Mouse(MouseButton),
