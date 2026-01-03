@@ -971,7 +971,6 @@ pub fn apply_sync(
                         let syncobject = SyncObject { user, id: cid };
                         if resend && card.data.id != uuid {
                             fail = true;
-                            commands.entity(entity).despawn();
                             if sent.add(syncobject) {
                                 client
                                     .send(
@@ -982,21 +981,23 @@ pub fn apply_sync(
                                     )
                                     .unwrap();
                             }
+                        } else {
+                            new_pile_at(
+                                Pile::Single(card.into()),
+                                card_base.clone(),
+                                &mut materials,
+                                &mut commands,
+                                &mut meshes,
+                                trans.into(),
+                                false,
+                                None,
+                                Some(syncobject),
+                                None,
+                            );
                         }
-                        new_pile_at(
-                            Pile::Single(card.into()),
-                            card_base.clone(),
-                            &mut materials,
-                            &mut commands,
-                            &mut meshes,
-                            trans.into(),
-                            false,
-                            None,
-                            Some(syncobject),
-                            None,
-                        );
                     }
                     if fail {
+                        commands.entity(entity).despawn();
                         if sent.add(id) {
                             client
                                 .send(
