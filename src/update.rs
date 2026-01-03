@@ -104,6 +104,7 @@ pub fn gather_hand(
                     rotate_right(&mut trans);
                     rotate_right(&mut trans);
                 }
+                return;
             }
         }
     }
