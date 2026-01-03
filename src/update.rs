@@ -393,10 +393,16 @@ pub fn ping_drag(
         return;
     }
     let Some(cursor_position) = window.cursor_position() else {
+        if let Some(drag) = drag {
+            commands.entity(drag.0).despawn();
+        }
         return;
     };
     let (camera, camera_transform) = camera.into_inner();
     let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        if let Some(drag) = drag {
+            commands.entity(drag.0).despawn();
+        }
         return;
     };
     let Some(v) = spatial.cast_ray(
@@ -406,6 +412,9 @@ pub fn ping_drag(
         true,
         &SpatialQueryFilter::default(),
     ) else {
+        if let Some(drag) = drag {
+            commands.entity(drag.0).despawn();
+        }
         return;
     };
     let v = ray.origin + ray.direction * v.distance;

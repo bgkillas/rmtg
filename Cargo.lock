@@ -1199,7 +1199,7 @@ dependencies = [
 [[package]]
 name = "bevy_microphone"
 version = "0.1.0"
-source = "git+https://github.com/bgkillas/bevy_microphone#2b27cea906727ce980e4b601a87c9b2195caee42"
+source = "git+https://github.com/bgkillas/bevy_microphone#aa7ecd2d8b3cde47168e6b5536f50e75fbae4eaa"
 dependencies = [
  "audioadapter-buffers",
  "bevy_ecs",
@@ -1614,7 +1614,7 @@ dependencies = [
 [[package]]
 name = "bevy_tangled"
 version = "0.1.0"
-source = "git+https://github.com/bgkillas/bevy_tangled#91078b2afc6140e4bce644ba9eedc372d53b0ccc"
+source = "git+https://github.com/bgkillas/bevy_tangled#7e24d35266b9b29779c36160131b78fd2efb1fb8"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
