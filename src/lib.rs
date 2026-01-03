@@ -123,7 +123,9 @@ pub fn start() -> AppExit {
     let game_clipboard = GameClipboard::None;
     let mut app = App::new();
     #[cfg(feature = "mic")]
-    let stream_handle = OutputStreamBuilder::open_default_stream().unwrap();
+    let mut stream_handle = OutputStreamBuilder::open_default_stream().unwrap();
+    #[cfg(feature = "mic")]
+    stream_handle.log_on_drop(false);
     #[cfg(feature = "mic")]
     let sink = Sink::connect_new(stream_handle.mixer());
     app.add_plugins((
