@@ -1,4 +1,5 @@
 use crate::setup::{MAT_WIDTH, Wall};
+use crate::shapes::Side;
 use crate::sync::{CameraInd, CursorInd, SyncObjectMe};
 use crate::*;
 use bevy_tangled::PeerId;
@@ -209,6 +210,7 @@ pub fn adjust_meshes(
             Without<InHand>,
             Without<Shape>,
             Without<Pile>,
+            Without<Side>,
         ),
     >,
     transform: &mut Transform,
@@ -374,4 +376,10 @@ pub fn ui_rotate_left(transform: &mut UiTransform) {
     } else {
         Val2::px(0.0, 0.0)
     };
+}
+pub fn remove_follow(commands: &mut Commands, entity: Entity) {
+    commands
+        .entity(entity)
+        .remove::<FollowMouse>()
+        .remove::<ShapeHold>();
 }

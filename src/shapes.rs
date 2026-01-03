@@ -17,6 +17,27 @@ pub enum Shape {
     Turn(usize),
     Counter(Value, usize),
 }
+impl Shape {
+    pub fn in_range(&self, n: usize) -> bool {
+        match self {
+            Shape::Cube => (1..=6).contains(&n),
+            Shape::Icosahedron => (1..=20).contains(&n),
+            Shape::Dodecahedron => (1..=12).contains(&n),
+            Shape::Octohedron => (1..=8).contains(&n),
+            Shape::Tetrahedron => (1..=4).contains(&n),
+            Shape::Disc => (0..=1).contains(&n),
+            Shape::Turn(_) => {
+                unreachable!()
+            }
+            Shape::Counter(_, _) => {
+                unreachable!()
+            }
+        }
+    }
+    pub fn is_dice(&self) -> bool {
+        !matches!(self, Shape::Turn(_) | Shape::Counter(_, _))
+    }
+}
 const SIZE: f32 = 4.0 * MAT_BAR;
 pub const WORLD_FONT_SIZE: f32 = 128.0;
 impl Shape {
@@ -575,7 +596,6 @@ pub fn spawn_disc<'a>(
     });
     ent
 }
-#[allow(dead_code)]
 #[derive(Component, Deref, DerefMut)]
 pub struct Side(pub usize);
 pub fn spawn_dodec<'a>(

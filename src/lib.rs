@@ -88,7 +88,6 @@ const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO multi select, in card counters
 //TODO spawn stuff touching the floor
-//TODO test search insert sync
 //TODO ctrl+N to mill, +shift to exile, alt+N to reveal
 //TODO half card width between card spots
 rules::generate_types!();

@@ -5,12 +5,13 @@ use crate::download::{
 };
 use crate::misc::{
     Counter, Equipment, adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile,
-    new_pile_at, repaint_face, rotate_left, rotate_right, spawn_equip, ui_rotate_left,
-    ui_rotate_right, vec2_to_ground,
+    new_pile_at, remove_follow, repaint_face, rotate_left, rotate_right, spawn_equip,
+    ui_rotate_left, ui_rotate_right, vec2_to_ground,
 };
 use crate::setup::{
     EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, TextChat, TextInput, TextMenu, W, Wall,
 };
+use crate::shapes::Side;
 use crate::sync::{CameraInd, CursorInd, InOtherHand, Net, SyncObjectMe, Trans};
 use crate::*;
 use avian3d::math::Vector;
@@ -352,7 +353,7 @@ pub fn follow_mouse(
         .aabb(hand.0.translation, hand.0.rotation)
         .intersects(&card.4.aabb(ray.get_point(time), card.1.rotation))
     {
-        commands.entity(card.0).remove::<FollowMouse>();
+        remove_follow(&mut commands, card.0);
         commands.entity(hand.2).add_child(card.0);
     } else {
         if let Some(time) =
@@ -363,9 +364,9 @@ pub fn follow_mouse(
             point.z = point.z.clamp(-W, W);
             card.3.0 = (point - card.5.translation()) / time_since.delta_secs();
         }
+        remove_follow(&mut commands, card.0);
         commands
             .entity(card.0)
-            .remove::<FollowMouse>()
             .remove::<RigidBodyDisabled>()
             .remove::<SleepingDisabled>();
         card.2.0 = GRAVITY
@@ -542,6 +543,7 @@ pub fn listen_for_mouse(
         mut shape,
         side,
         search_deck,
+        mut shape_hold,
     ): (
         Option<Single<(Entity, &mut ZoomHold, &mut ImageNode, &mut UiTransform)>>,
         ResMut<Download>,
@@ -557,12 +559,14 @@ pub fn listen_for_mouse(
                 Without<InHand>,
                 Without<Shape>,
                 Without<Pile>,
+                Without<Side>,
             ),
         >,
         Option<Single<Entity, With<FollowMouse>>>,
         Query<(&mut Shape, Entity)>,
         Option<Single<Entity, With<SideMenu>>>,
         Option<Single<(Entity, &SearchDeck)>>,
+        Query<(&mut ShapeHold, &Children), Without<Pile>>,
     ),
     (
         text,
@@ -575,17 +579,19 @@ pub fn listen_for_mouse(
         mut turn,
         peers,
         mut focus,
+        sides,
     ): (
         Option<Single<&TextInputContents, With<SearchText>>>,
         Res<FontRes>,
         Query<&mut Text3d>,
-        Query<&Children, Without<Pile>>,
-        Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
+        Query<&Children, (Without<Pile>, Without<ShapeHold>)>,
+        Query<&mut Transform, (Or<(With<Pile>, With<Shape>)>, Without<Side>)>,
         Query<(), Or<(With<Equipment>, With<Counter>)>>,
         Net,
         ResMut<Turn>,
         Res<Peers>,
         Focus,
+        Query<(&Side, &Transform)>,
     ),
 ) {
     if focus.key_lock() {
@@ -736,7 +742,7 @@ pub fn listen_for_mouse(
                 let mut transform = *transform;
                 transform.translation.y += len + CARD_THICKNESS * 4.0;
                 if let Some(e) = follow {
-                    commands.entity(*e).remove::<FollowMouse>();
+                    remove_follow(&mut commands, *e);
                 }
                 let id = net.new_id();
                 new_pile_at(
@@ -794,7 +800,7 @@ pub fn listen_for_mouse(
                     transform.translation.y += 8.0 * CARD_THICKNESS;
                 }
                 if let Some(e) = follow {
-                    commands.entity(*e).remove::<FollowMouse>();
+                    remove_follow(&mut commands, *e);
                 }
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
@@ -1206,17 +1212,18 @@ pub fn listen_for_mouse(
                 }
             } else if keybinds.just_pressed(Keybind::Select) {
                 if let Some(e) = follow {
-                    commands.entity(*e).remove::<FollowMouse>();
+                    remove_follow(&mut commands, *e);
                 }
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
                 }
                 phys.0 = 0.0;
-                commands
-                    .entity(entity)
-                    .insert(FollowMouse)
-                    .insert(SleepingDisabled)
+                let mut cmd = commands.entity(entity);
+                cmd.insert((FollowMouse, SleepingDisabled))
                     .remove::<FollowOtherMouse>();
+                if shape.get(entity).is_ok_and(|s| s.0.is_dice()) {
+                    cmd.insert(ShapeHold(None));
+                }
             } else if keybinds.just_pressed(Keybind::CopyObject)
                 && let Ok((shape, _)) = shape.get(entity)
             {
@@ -1391,6 +1398,70 @@ pub fn listen_for_mouse(
                     net.take(entity, *id);
                 }
                 rotate_left(&mut transform)
+            } else if let Ok((shape, _)) = shape.get(entity)
+                && let Ok((mut hold, children)) = shape_hold.get_mut(entity)
+                && keybinds.keyboard.any_just_pressed([
+                    KeyCode::Digit0,
+                    KeyCode::Digit1,
+                    KeyCode::Digit2,
+                    KeyCode::Digit3,
+                    KeyCode::Digit4,
+                    KeyCode::Digit5,
+                    KeyCode::Digit6,
+                    KeyCode::Digit7,
+                    KeyCode::Digit8,
+                    KeyCode::Digit9,
+                ])
+            {
+                let mut n = 0;
+                macro_rules! get {
+                        ($(($a:expr, $b:expr)),*) => {
+                            $(
+                                if keybinds.keyboard.just_pressed($a){
+                                    n = $b
+                                }
+                            )*
+                        };
+                    }
+                get!(
+                    (KeyCode::Digit0, 0),
+                    (KeyCode::Digit1, 1),
+                    (KeyCode::Digit2, 2),
+                    (KeyCode::Digit3, 3),
+                    (KeyCode::Digit4, 4),
+                    (KeyCode::Digit5, 5),
+                    (KeyCode::Digit6, 6),
+                    (KeyCode::Digit7, 7),
+                    (KeyCode::Digit8, 8),
+                    (KeyCode::Digit9, 9)
+                );
+                **hold = if let Some(k) = &**hold {
+                    format!("{k}{n}").parse().ok().and_then(|k| {
+                        if shape.in_range(k) {
+                            Some(k)
+                        } else if shape.in_range(n) {
+                            Some(n)
+                        } else {
+                            None
+                        }
+                    })
+                } else if shape.in_range(n) {
+                    Some(n)
+                } else {
+                    None
+                };
+                if let Some(n) = &**hold {
+                    let t = children
+                        .iter()
+                        .find_map(|c| {
+                            sides
+                                .get(c)
+                                .ok()
+                                .and_then(|(s, t)| if **s == *n { Some(t) } else { None })
+                        })
+                        .unwrap();
+                    transform.rotation = Quat::from_rotation_arc(*-t.forward(), Vec3::Y);
+                }
             }
         } else if let Some(single) = zoom {
             commands.entity(single.0).despawn();
@@ -1454,6 +1525,8 @@ pub fn text_keybinds(
     }
     active_input.set(*text);
 }
+#[derive(Default, Debug, Component, Deref, DerefMut)]
+pub struct ShapeHold(pub Option<usize>);
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
 pub struct VoiceActive(pub bool);
 #[cfg(feature = "steam")]
@@ -1475,7 +1548,7 @@ pub fn voice_chat(net: Net, audio: Res<AudioResource>) {
 pub fn turn_keybinds(
     others_ids: Query<&SyncObject>,
     mut shape: Query<(&mut Shape, Entity)>,
-    mut transforms: Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
+    mut transforms: Query<&mut Transform, (Or<(With<Pile>, With<Shape>)>, Without<Side>)>,
     mut net: Net,
     mut turn: ResMut<Turn>,
     peers: Res<Peers>,
@@ -1563,7 +1636,7 @@ pub fn turn_keybinds(
 fn to_turn(
     others_ids: Query<&SyncObject>,
     shape: &mut Query<(&mut Shape, Entity)>,
-    transforms: &mut Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
+    transforms: &mut Query<&mut Transform, (Or<(With<Pile>, With<Shape>)>, Without<Side>)>,
     net: &mut Net,
     turn: &mut ResMut<Turn>,
     n: usize,
@@ -1590,7 +1663,7 @@ fn to_turn(
 fn next_turn(
     others_ids: Query<&SyncObject>,
     shape: &mut Query<(&mut Shape, Entity)>,
-    transforms: &mut Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
+    transforms: &mut Query<&mut Transform, (Or<(With<Pile>, With<Shape>)>, Without<Side>)>,
     net: &mut Net,
     turn: &mut ResMut<Turn>,
     entity: Entity,
@@ -1790,6 +1863,7 @@ pub fn pick_from_list(
             Without<InHand>,
             Without<Shape>,
             Without<Pile>,
+            Without<Side>,
         ),
     >,
     (mut colliders, follow, ids, others_ids, text, equipment, side, mut net, mut focus): (
@@ -1848,7 +1922,7 @@ pub fn pick_from_list(
                         let mut transform = *trans;
                         transform.translation.y += len + CARD_THICKNESS * 4.0;
                         if let Some(e) = &follow {
-                            commands.entity(**e).remove::<FollowMouse>();
+                            remove_follow(&mut commands, **e);
                         }
                         let id = net.new_id();
                         let uuid = new.data.id;
@@ -2452,7 +2526,7 @@ pub fn flip_ents(
     to_do: Res<FlipCounter>,
     others_ids: Query<&SyncObject>,
     mut shape: Query<(&mut Shape, Entity)>,
-    mut transforms: Query<&mut Transform, Or<(With<Pile>, With<Shape>)>>,
+    mut transforms: Query<&mut Transform, (Or<(With<Pile>, With<Shape>)>, Without<Side>)>,
     mut net: Net,
     mut turn: ResMut<Turn>,
     peers: Res<Peers>,
@@ -2679,6 +2753,7 @@ pub fn pile_merge(
             Without<InHand>,
             Without<Shape>,
             Without<Pile>,
+            Without<Side>,
         ),
     >,
     mut commands: Commands,

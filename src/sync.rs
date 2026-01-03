@@ -2,12 +2,12 @@ use crate::counters::Value;
 use crate::download::add_images;
 use crate::misc::{
     Counter, Equipment, adjust_meshes, default_cam_pos, make_cam, make_cur, new_pile_at,
-    repaint_face, spawn_equip,
+    remove_follow, repaint_face, spawn_equip,
 };
 #[cfg(feature = "steam")]
 use crate::setup::SteamInfo;
 use crate::setup::{FontRes, MAT_HEIGHT, MAT_WIDTH, SideMenu, TextChat};
-use crate::shapes::Shape;
+use crate::shapes::{Shape, Side};
 use crate::update::*;
 use crate::*;
 #[cfg(feature = "steam")]
@@ -211,6 +211,7 @@ pub fn apply_sync(
                 Without<InHand>,
                 Without<Shape>,
                 Without<Pile>,
+                Without<Side>,
             ),
         >,
         Single<Entity, With<TextChat>>,
@@ -403,12 +404,12 @@ pub fn apply_sync(
                             hand.1.removed.push(inhand.0);
                         }
                         count.rem(1);
+                        remove_follow(&mut commands, e);
                         commands
                             .entity(e)
                             .remove::<InHand>()
                             .remove::<RigidBodyDisabled>()
                             .remove::<SyncObjectMe>()
-                            .remove::<FollowMouse>()
                             .insert(new)
                             .insert(HandIgnore)
                             .remove_parent_in_place();
