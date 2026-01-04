@@ -639,7 +639,21 @@ pub fn listen_for_mouse(
             }
             return;
         };
-        if let Ok((mut pile, children, parent, inhand, inother)) = cards.get_mut(entity) {
+        if keybinds.just_pressed(Keybind::ScaleUp) {
+            transform.scale *= 1.25;
+            if let Ok(id) = ids.get(entity) {
+                net.scale_me(*id, transform.scale.x);
+            } else if let Ok(id) = others_ids.get(entity) {
+                net.scale(*id, transform.scale.x);
+            }
+        } else if keybinds.just_pressed(Keybind::ScaleDown) {
+            transform.scale /= 1.25;
+            if let Ok(id) = ids.get(entity) {
+                net.scale_me(*id, transform.scale.x);
+            } else if let Ok(id) = others_ids.get(entity) {
+                net.scale(*id, transform.scale.x);
+            }
+        } else if let Ok((mut pile, children, parent, inhand, inother)) = cards.get_mut(entity) {
             if keybinds.just_pressed(Keybind::Flip) && zoom.is_none() {
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
@@ -2914,7 +2928,8 @@ pub fn set_card_spot(
                     lv.0 = Vector::default();
                     av.0 = Vector::default();
                     let rev = is_reversed(&t);
-                    *t = transform;
+                    t.translation = transform.translation;
+                    t.rotation = transform.rotation;
                     if rev {
                         t.rotate_local_z(PI);
                     }

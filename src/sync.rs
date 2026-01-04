@@ -324,7 +324,8 @@ pub fn apply_sync(
                         let (lvt, avt) = phys.to();
                         *lv = lvt;
                         *av = avt;
-                        *t = trans.into();
+                        t.translation = trans.translation.into();
+                        t.rotation = trans.rotation.into();
                         if let Some(pile) = pile
                             && in_hand != hand.is_some()
                             && let Some(children) = children
@@ -917,6 +918,25 @@ pub fn apply_sync(
                     );
                 }
             }
+            Packet::Scale(id, new) => {
+                if id.user == client.my_id() {
+                    if let Some(mut t) =
+                        queryme.iter_mut().find_map(
+                            |(a, _, _, _, _, _, t)| {
+                                if *a == id.id { Some(t) } else { None }
+                            },
+                        )
+                    {
+                        t.scale = Vec3::splat(new);
+                    }
+                } else if let Some(mut t) = query.iter_mut().find_map(
+                    |(a, t, _, _, _, _, _, _, _, _)| {
+                        if *a == id { Some(t) } else { None }
+                    },
+                ) {
+                    t.scale = Vec3::splat(new);
+                }
+            }
             Packet::Draw(id, to, start) => {
                 let user = sender;
                 let run = |pile: &mut Pile,
@@ -1408,6 +1428,7 @@ impl Sent {
 #[derive(Encode, Decode, Debug)]
 pub enum Packet {
     Pos(Vec<(SyncObjectMe, Trans, Phys, bool, bool)>),
+    Scale(SyncObject, f32),
     Request(SyncObjectMe),
     Received(SyncObjectMe),
     Dead(SyncObject),
@@ -1464,24 +1485,34 @@ pub struct Trans {
 impl Trans {
     pub fn from(value: &GlobalTransform) -> Self {
         Self {
-            translation: unsafe { mem::transmute::<Vec3, Pos>(value.translation()) },
-            rotation: unsafe { mem::transmute::<Quat, Rot>(value.rotation()) },
+            translation: value.translation().into(),
+            rotation: value.rotation().into(),
         }
     }
     pub fn from_transform(value: &Transform) -> Self {
         Self {
-            translation: unsafe { mem::transmute::<Vec3, Pos>(value.translation) },
-            rotation: unsafe { mem::transmute::<Quat, Rot>(value.rotation) },
+            translation: value.translation.into(),
+            rotation: value.rotation.into(),
         }
     }
 }
 impl From<Trans> for Transform {
     fn from(value: Trans) -> Self {
         Self {
-            translation: unsafe { mem::transmute::<Pos, Vec3>(value.translation) },
-            rotation: unsafe { mem::transmute::<Rot, Quat>(value.rotation) },
+            translation: value.translation.into(),
+            rotation: value.rotation.into(),
             scale: Vec3::splat(1.0),
         }
+    }
+}
+impl From<Rot> for Quat {
+    fn from(value: Rot) -> Self {
+        unsafe { mem::transmute::<Rot, Quat>(value) }
+    }
+}
+impl From<Quat> for Rot {
+    fn from(value: Quat) -> Self {
+        unsafe { mem::transmute::<Quat, Rot>(value) }
     }
 }
 #[derive(Component, Debug, Encode, Decode, Eq, PartialEq, Hash, Copy, Clone)]
@@ -1540,6 +1571,18 @@ impl<'w, 's> Net<'w, 's> {
                 COMPRESSION,
             )
             .unwrap();
+    }
+    pub fn scale(&self, id: SyncObject, scale: f32) {
+        self.client
+            .broadcast(
+                &Packet::Scale(id, scale),
+                Reliability::Reliable,
+                COMPRESSION,
+            )
+            .unwrap();
+    }
+    pub fn scale_me(&self, id: SyncObjectMe, scale: f32) {
+        self.scale(self.to_global(id), scale)
     }
     pub fn take(&mut self, entity: Entity, id: SyncObject) {
         self.sent.add(id);

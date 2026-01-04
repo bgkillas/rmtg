@@ -1691,6 +1691,8 @@ pub enum Keybind {
     Reset,
     Rotate,
     Untap,
+    ScaleUp,
+    ScaleDown,
 }
 #[derive(Resource, Deref, DerefMut)]
 pub struct KeybindsList(EnumMap<Keybind, Bind>);
@@ -1744,6 +1746,8 @@ impl Default for KeybindsList {
             Keybind::Reset => Bind::new(enum_set!(), KeyCode::Space),
             Keybind::Rotate => Bind::new(enum_set!(), MouseButton::Right),
             Keybind::Untap => Bind::new(enum_set!(), KeyCode::KeyU),
+            Keybind::ScaleUp => Bind::new(enum_set!(), KeyCode::Equal),
+            Keybind::ScaleDown => Bind::new(enum_set!(), KeyCode::Minus),
         })
     }
 }
