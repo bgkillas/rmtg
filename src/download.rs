@@ -254,12 +254,12 @@ pub struct ImageData {
     width: u32,
     height: u32,
 }
-#[cfg(not(feature = "wasm"))]
 impl ImageData {
     pub fn decode(data: &[u8]) -> Option<Self> {
         let data = decompress_size_prepended(data).ok()?;
         decode::<ImageData>(&data).ok()
     }
+    #[cfg(not(feature = "wasm"))]
     pub fn encode(&self) -> Vec<u8> {
         compress_prepend_size(&encode(self))
     }
