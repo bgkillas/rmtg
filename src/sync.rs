@@ -433,7 +433,12 @@ pub fn apply_sync(
                             client
                                 .send(
                                     sender,
-                                    &Packet::New(lid, c.clone_no_image(), Trans::from(b)),
+                                    &Packet::New(
+                                        lid,
+                                        c.clone_no_image(),
+                                        Trans::from(b),
+                                        b.scale().x,
+                                    ),
                                     Reliability::Reliable,
                                     COMPRESSION,
                                 )
@@ -442,7 +447,7 @@ pub fn apply_sync(
                             client
                                 .send(
                                     sender,
-                                    &Packet::NewShape(lid, s.clone(), Trans::from(b)),
+                                    &Packet::NewShape(lid, s.clone(), Trans::from(b), b.scale().x),
                                     Reliability::Reliable,
                                     COMPRESSION,
                                 )
@@ -458,21 +463,29 @@ pub fn apply_sync(
                 let id = SyncObject { user, id: lid };
                 sent.del(id);
             }
-            Packet::New(lid, pile, trans) => {
+            Packet::New(lid, pile, trans, scale) => {
                 let user = sender;
                 let id = SyncObject { user, id: lid };
                 let deck = down.get_deck.clone();
                 let client = down.client.0.clone();
                 let asset_server = asset_server.clone();
                 let f = async move {
-                    add_images(pile, trans.into(), id, deck, client, asset_server).await;
+                    add_images(
+                        pile,
+                        trans.with_scale(scale),
+                        id,
+                        deck,
+                        client,
+                        asset_server,
+                    )
+                    .await;
                 };
                 #[cfg(feature = "wasm")]
                 wasm_bindgen_futures::spawn_local(f);
                 #[cfg(not(feature = "wasm"))]
                 down.runtime.0.spawn(f);
             }
-            Packet::NewShape(lid, shape, trans) => {
+            Packet::NewShape(lid, shape, trans, scale) => {
                 client
                     .send(
                         sender,
@@ -489,7 +502,7 @@ pub fn apply_sync(
                     id,
                     shape
                         .create(
-                            trans.into(),
+                            trans.with_scale(scale),
                             &mut commands,
                             &mut meshes,
                             &mut materials,
@@ -998,7 +1011,7 @@ pub fn apply_sync(
                                 &mut materials,
                                 &mut commands,
                                 &mut meshes,
-                                trans.into(),
+                                trans.with_scale(transform.scale.x),
                                 false,
                                 None,
                                 Some(syncobject),
@@ -1433,8 +1446,8 @@ pub enum Packet {
     Received(SyncObjectMe),
     Dead(SyncObject),
     Take(SyncObject, SyncObjectMe),
-    New(SyncObjectMe, Pile, Trans),
-    NewShape(SyncObjectMe, Shape, Trans),
+    New(SyncObjectMe, Pile, Trans, f32),
+    NewShape(SyncObjectMe, Shape, Trans, f32),
     Flip(SyncObject, usize, bool),
     Equip(SyncObject),
     Counter(SyncObject, Value),
@@ -1495,13 +1508,11 @@ impl Trans {
             rotation: value.rotation.into(),
         }
     }
-}
-impl From<Trans> for Transform {
-    fn from(value: Trans) -> Self {
-        Self {
-            translation: value.translation.into(),
-            rotation: value.rotation.into(),
-            scale: Vec3::splat(1.0),
+    pub fn with_scale(self, scale: f32) -> Transform {
+        Transform {
+            translation: self.translation.into(),
+            rotation: self.rotation.into(),
+            scale: Vec3::splat(scale),
         }
     }
 }
