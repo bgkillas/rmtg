@@ -36,14 +36,13 @@ pub fn new_pile(
 pub fn move_up(
     entity: Entity,
     ents: &mut Query<(&Collider, &mut Transform), Without<Wall>>,
-    pset: &mut ParamSet<(Query<&mut Position>, SpatialQuery)>,
+    spatial: &mut SpatialQuery,
 ) {
     let mut excluded = vec![entity];
     let (collider, transform) = ents.get(entity).unwrap();
     let rotation = transform.rotation;
     let mut translation = transform.translation;
-    while let Some(m) = pset
-        .p1()
+    while let Some(m) = spatial
         .shape_intersections(
             collider,
             translation,
@@ -70,10 +69,7 @@ pub fn move_up(
         let aabb = collider.aabb(transform.translation, transform.rotation);
         let max = m + (aabb.max.y - aabb.min.y) / 2.0 + CARD_THICKNESS;
         let max = max.max(aabb.max.y);
-        let mut pos = pset.p0();
-        let mut position = pos.get_mut(entity).unwrap();
         translation.y = max;
-        position.y = max;
     }
     let (_, mut t) = ents.get_mut(entity).unwrap();
     t.translation.y = translation.y

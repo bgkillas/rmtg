@@ -161,8 +161,6 @@ pub fn apply_sync(
         (
             &mut SyncObject,
             &mut Transform,
-            Option<&mut Position>,
-            Option<&mut Rotation>,
             &mut LinearVelocity,
             &mut AngularVelocity,
             Entity,
@@ -305,8 +303,6 @@ pub fn apply_sync(
                     }
                     if let Some((
                         mut t,
-                        p,
-                        r,
                         hand,
                         children,
                         entity,
@@ -317,9 +313,9 @@ pub fn apply_sync(
                         followother,
                     )) = query
                         .iter_mut()
-                        .find_map(|(a, b, z, r, lv, av, e, h, c, p, g, f)| {
+                        .find_map(|(a, b, lv, av, e, h, c, p, g, f)| {
                             if *a == id {
-                                Some((b, z, r, h, c, e, p, g, lv, av, f))
+                                Some((b, h, c, e, p, g, lv, av, f))
                             } else {
                                 None
                             }
@@ -329,12 +325,6 @@ pub fn apply_sync(
                         *lv = lvt;
                         *av = avt;
                         *t = trans.into();
-                        if let Some(mut p) = p {
-                            *p = t.translation.into();
-                        }
-                        if let Some(mut r) = r {
-                            *r = t.rotation.into();
-                        }
                         if let Some(pile) = pile
                             && in_hand != hand.is_some()
                             && let Some(children) = children
@@ -414,9 +404,9 @@ pub fn apply_sync(
                             .insert(HandIgnore)
                             .remove_parent_in_place();
                     }
-                } else if let Some((mut id, _, _, _, _, _, _, _, _, _, _, _)) = query
+                } else if let Some((mut id, _, _, _, _, _, _, _, _, _)) = query
                     .iter_mut()
-                    .find(|(id, _, _, _, _, _, _, _, _, _, _, _)| *id.as_ref() == from)
+                    .find(|(id, _, _, _, _, _, _, _, _, _)| *id.as_ref() == from)
                 {
                     sent.add(*id);
                     *id = new
@@ -548,7 +538,7 @@ pub fn apply_sync(
                         commands.entity(**side.as_ref().unwrap()).despawn();
                     }
                 } else if let Some(e) = query.iter().find_map(
-                    |(a, _, _, _, _, _, b, _, _, _, _, _)| if *a == id { Some(b) } else { None },
+                    |(a, _, _, _, b, _, _, _, _, _)| if *a == id { Some(b) } else { None },
                 ) {
                     commands.entity(e).despawn();
                     if let Some(search) = &search
@@ -598,7 +588,7 @@ pub fn apply_sync(
                     }
                 } else if let Some((pile, entity, children, mut transform)) =
                     query.iter_mut().find_map(
-                        |(a, t, _, _, _, _, e, _, c, p, _, _)| {
+                        |(a, t, _, _, e, _, c, p, _, _)| {
                             if *a == id { Some((p, e, c, t)) } else { None }
                         },
                     )
@@ -668,7 +658,7 @@ pub fn apply_sync(
                     }
                 } else if let Some((children, mut pile, entity, transform)) =
                     query.iter_mut().find_map(
-                        |(a, t, _, _, _, _, e, _, c, d, _, _)| {
+                        |(a, t, _, _, e, _, c, d, _, _)| {
                             if *a == id { Some((c, d, e, t)) } else { None }
                         },
                     )
@@ -786,7 +776,7 @@ pub fn apply_sync(
                 {
                     run(pile, children, &transform, entity, false)
                 } else if let Some((pile, children, entity, transform)) = query.iter_mut().find_map(
-                    |(a, t, _, _, _, _, e, _, c, d, _, _)| {
+                    |(a, t, _, _, e, _, c, d, _, _)| {
                         if *a == id { Some((d, c, e, t)) } else { None }
                     },
                 ) && let Some(mut pile) = pile
@@ -806,7 +796,7 @@ pub fn apply_sync(
                 {
                     (mem::replace(pile.into_inner(), Pile::Empty), ent)
                 } else if let Some((pile, ent)) = query.iter_mut().find_map(
-                    |(a, _, _, _, _, _, e, _, _, d, _, _)| {
+                    |(a, _, _, _, e, _, _, d, _, _)| {
                         if *a == from { Some((d, e)) } else { None }
                     },
                 ) && let Some(pile) = pile
@@ -814,7 +804,7 @@ pub fn apply_sync(
                     (mem::replace(pile.into_inner(), Pile::Empty), ent)
                 } else if base.user != client.my_id()
                     && let Some(base_ent) = query.iter_mut().find_map(
-                        |(a, _, _, _, _, _, e, _, _, _, _, _)| {
+                        |(a, _, _, _, e, _, _, _, _, _)| {
                             if *a == base { Some(e) } else { None }
                         },
                     )
@@ -851,7 +841,7 @@ pub fn apply_sync(
                     count.rem(1);
                     (pile, children, ent, transform)
                 } else if let Some((pile, children, ent, transform)) = query.iter_mut().find_map(
-                    |(a, t, _, _, _, _, e, _, c, d, _, _)| {
+                    |(a, t, _, _, e, _, c, d, _, _)| {
                         if *a == base { Some((d, c, e, t)) } else { None }
                     },
                 ) && let Some(pile) = pile
@@ -1054,7 +1044,7 @@ pub fn apply_sync(
                     run(pile, children, transform, entity, false);
                 } else if let Some((mut pile, children, transform, entity)) =
                     query.iter_mut().find_map(
-                        |(a, t, _, _, _, _, e, _, c, d, _, _)| {
+                        |(a, t, _, _, e, _, c, d, _, _)| {
                             if *a == id { Some((d, c, t, e)) } else { None }
                         },
                     )
@@ -1084,7 +1074,7 @@ pub fn apply_sync(
                         run(children, e);
                     }
                 } else if let Some((Some(children), e)) = query.iter_mut().find_map(
-                    |(a, _, _, _, _, _, e, _, c, _, _, _)| {
+                    |(a, _, _, _, e, _, c, _, _, _)| {
                         if *a == id { Some((c, e)) } else { None }
                     },
                 ) {

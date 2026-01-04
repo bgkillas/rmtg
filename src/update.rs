@@ -2512,7 +2512,7 @@ pub fn register_deck(
 pub fn to_move_up(
     mut to_do: ResMut<ToMoveUp>,
     mut ents: Query<(&Collider, &mut Transform), Without<Wall>>,
-    mut pset: ParamSet<(Query<&mut Position>, SpatialQuery)>,
+    mut pset: SpatialQuery,
 ) {
     for ent in to_do.0.drain(..) {
         move_up(ent, &mut ents, &mut pset);
