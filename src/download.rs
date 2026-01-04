@@ -4,8 +4,9 @@ use crate::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy_mod_mipmap_generator::{MipmapGeneratorSettings, generate_mips_texture};
+use bitcode::decode;
 #[cfg(not(feature = "wasm"))]
-use bitcode::{decode, encode};
+use bitcode::encode;
 use futures::StreamExt;
 use futures::future::join_all;
 use futures::stream::{FuturesOrdered, FuturesUnordered};
@@ -13,7 +14,8 @@ use image::imageops::FilterType;
 use image::{GenericImageView, ImageReader};
 use json::JsonValue;
 #[cfg(not(feature = "wasm"))]
-use lz4_flex::{compress_prepend_size, decompress_size_prepended};
+use lz4_flex::compress_prepend_size;
+use lz4_flex::decompress_size_prepended;
 use std::fs;
 use std::io::Cursor;
 const QUALITY: &str = "large";
