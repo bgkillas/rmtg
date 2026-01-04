@@ -264,7 +264,6 @@ impl ImageData {
         compress_prepend_size(&encode(self))
     }
 }
-#[cfg(not(feature = "wasm"))]
 pub fn parse_bytes_mip(data: &[u8]) -> Option<Image> {
     let image_data = ImageData::decode(data)?;
     let mut image = Image::new_uninit(
@@ -308,10 +307,6 @@ async fn get_bytes(
                 return Some(asset_server.add(image).into());
             }
             let _ = fs::remove_file(&path);
-        }
-        #[cfg(feature = "wasm")]
-        {
-            None
         }
     }
     let url = if normal {
