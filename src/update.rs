@@ -730,115 +730,113 @@ pub fn listen_for_mouse(
                 #[cfg(not(feature = "wasm"))]
                 clipboard.set_text(&text);
             } else if keybinds.just_pressed(Keybind::PickCard) && pile.len() > 1 {
-                if focus.mouse_lock() {
-                    return;
-                }
-                if inother.is_some() {
-                    let mut ent = commands.entity(entity);
-                    ent.remove::<InOtherHand>();
-                    ent.remove::<SleepingDisabled>();
-                    repaint_face(&mut mats, &mut materials, pile.first(), children);
-                    colliders.get_mut(entity).unwrap().1.0 = GRAVITY;
-                }
-                if inhand.is_some() {
-                    transform.translation.y += 128.0 * CARD_THICKNESS;
-                } else {
-                    transform.translation.y += 8.0 * CARD_THICKNESS;
-                }
-                let len = pile.len() as f32 * CARD_THICKNESS;
-                let draw_len = if is_reversed(&transform) {
-                    1
-                } else {
-                    pile.len()
-                };
-                let new = pile.take_card(&transform);
-                let card = pile.last();
-                repaint_face(&mut mats, &mut materials, card, children);
-                adjust_meshes(
-                    &pile,
-                    children,
-                    &mut meshes,
-                    &mut query_meshes,
-                    &mut transform,
-                    &mut colliders.get_mut(entity).unwrap().0,
-                    &equipment,
-                    &mut commands,
-                );
-                let mut transform = *transform;
-                transform.translation.y += len + CARD_THICKNESS * 4.0;
-                if let Some(e) = follow {
-                    remove_follow(&mut commands, *e);
-                }
-                let id = net.new_id();
-                new_pile_at(
-                    Pile::Single(new.into()),
-                    card_base.clone(),
-                    &mut materials,
-                    &mut commands,
-                    &mut meshes,
-                    transform,
-                    true,
-                    None,
-                    None,
-                    Some(id),
-                );
-                if let Ok(lid) = ids.get(entity) {
-                    net.draw_me(
-                        *lid,
-                        vec![(id, Trans::from_transform(&transform), card.data.id)],
-                        draw_len,
-                    );
-                } else if let Ok(oid) = others_ids.get(entity) {
-                    net.draw(
-                        *oid,
-                        vec![(id, Trans::from_transform(&transform), card.data.id)],
-                        draw_len,
-                    );
-                }
-                if let Some(entity) =
-                    search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
-                {
-                    update_search(
-                        &mut commands,
-                        entity,
+                if !focus.mouse_lock() {
+                    if inother.is_some() {
+                        let mut ent = commands.entity(entity);
+                        ent.remove::<InOtherHand>();
+                        ent.remove::<SleepingDisabled>();
+                        repaint_face(&mut mats, &mut materials, pile.first(), children);
+                        colliders.get_mut(entity).unwrap().1.0 = GRAVITY;
+                    }
+                    if inhand.is_some() {
+                        transform.translation.y += 128.0 * CARD_THICKNESS;
+                    } else {
+                        transform.translation.y += 8.0 * CARD_THICKNESS;
+                    }
+                    let len = pile.len() as f32 * CARD_THICKNESS;
+                    let draw_len = if is_reversed(&transform) {
+                        1
+                    } else {
+                        pile.len()
+                    };
+                    let new = pile.take_card(&transform);
+                    let card = pile.last();
+                    repaint_face(&mut mats, &mut materials, card, children);
+                    adjust_meshes(
                         &pile,
-                        &transform,
-                        text.as_ref().unwrap().get(),
-                        &side,
-                        &mut focus.menu,
+                        children,
+                        &mut meshes,
+                        &mut query_meshes,
+                        &mut transform,
+                        &mut colliders.get_mut(entity).unwrap().0,
+                        &equipment,
+                        &mut commands,
                     );
+                    let mut transform = *transform;
+                    transform.translation.y += len + CARD_THICKNESS * 4.0;
+                    if let Some(e) = follow {
+                        remove_follow(&mut commands, *e);
+                    }
+                    let id = net.new_id();
+                    new_pile_at(
+                        Pile::Single(new.into()),
+                        card_base.clone(),
+                        &mut materials,
+                        &mut commands,
+                        &mut meshes,
+                        transform,
+                        true,
+                        None,
+                        None,
+                        Some(id),
+                    );
+                    if let Ok(lid) = ids.get(entity) {
+                        net.draw_me(
+                            *lid,
+                            vec![(id, Trans::from_transform(&transform), card.data.id)],
+                            draw_len,
+                        );
+                    } else if let Ok(oid) = others_ids.get(entity) {
+                        net.draw(
+                            *oid,
+                            vec![(id, Trans::from_transform(&transform), card.data.id)],
+                            draw_len,
+                        );
+                    }
+                    if let Some(entity) =
+                        search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
+                    {
+                        update_search(
+                            &mut commands,
+                            entity,
+                            &pile,
+                            &transform,
+                            text.as_ref().unwrap().get(),
+                            &side,
+                            &mut focus.menu,
+                        );
+                    }
                 }
             } else if keybinds.just_pressed(Keybind::Select) {
-                if focus.mouse_lock() {
-                    return;
+                if !focus.mouse_lock() {
+                    if inother.is_some() {
+                        let mut ent = commands.entity(entity);
+                        ent.remove::<InOtherHand>();
+                        ent.remove::<SleepingDisabled>();
+                        repaint_face(&mut mats, &mut materials, pile.first(), children);
+                        colliders.get_mut(entity).unwrap().1.0 = GRAVITY;
+                    }
+                    if inhand.is_some() {
+                        transform.translation.y += 128.0 * CARD_THICKNESS;
+                    } else {
+                        transform.translation.y += 8.0 * CARD_THICKNESS;
+                    }
+                    if let Some(e) = follow {
+                        remove_follow(&mut commands, *e);
+                    }
+                    if let Ok(id) = others_ids.get(entity) {
+                        net.take(entity, *id);
+                    }
+                    colliders.get_mut(entity).unwrap().1.0 = 0.0;
+                    commands
+                        .entity(entity)
+                        .insert(FollowMouse)
+                        .insert(SleepingDisabled)
+                        .remove::<InOtherHand>()
+                        .remove::<FollowOtherMouse>()
+                        .remove::<RigidBodyDisabled>()
+                        .remove_parent_in_place();
                 }
-                if inother.is_some() {
-                    let mut ent = commands.entity(entity);
-                    ent.remove::<InOtherHand>();
-                    ent.remove::<SleepingDisabled>();
-                    repaint_face(&mut mats, &mut materials, pile.first(), children);
-                    colliders.get_mut(entity).unwrap().1.0 = GRAVITY;
-                }
-                if inhand.is_some() {
-                    transform.translation.y += 128.0 * CARD_THICKNESS;
-                } else {
-                    transform.translation.y += 8.0 * CARD_THICKNESS;
-                }
-                if let Some(e) = follow {
-                    remove_follow(&mut commands, *e);
-                }
-                if let Ok(id) = others_ids.get(entity) {
-                    net.take(entity, *id);
-                }
-                colliders.get_mut(entity).unwrap().1.0 = 0.0;
-                commands
-                    .entity(entity)
-                    .insert(FollowMouse)
-                    .insert(SleepingDisabled)
-                    .remove::<InOtherHand>()
-                    .remove::<FollowOtherMouse>()
-                    .remove::<RigidBodyDisabled>()
-                    .remove_parent_in_place();
             } else if keybinds.just_pressed(Keybind::Equip) && !is_reversed(&transform) {
                 let b = pile.equip();
                 if let Ok(id) = ids.get(entity) {
@@ -1004,39 +1002,33 @@ pub fn listen_for_mouse(
                 } else if let Ok(id) = others_ids.get(entity) {
                     net.flip(*id, idx, flipped);
                 }
-            } else if keybinds.keyboard.any_just_pressed([
-                KeyCode::Digit1,
-                KeyCode::Digit2,
-                KeyCode::Digit3,
-                KeyCode::Digit4,
-                KeyCode::Digit5,
-                KeyCode::Digit6,
-                KeyCode::Digit7,
-                KeyCode::Digit8,
-                KeyCode::Digit9,
-            ]) {
-                if parent.is_none() && inother.is_none() {
-                    let mut n = 0;
-                    macro_rules! get {
-                        ($(($a:expr, $b:expr)),*) => {
-                            $(
-                                if keybinds.keyboard.just_pressed($a){
-                                    n = $b
-                                }
-                            )*
-                        };
-                    }
-                    get!(
-                        (KeyCode::Digit1, 1),
-                        (KeyCode::Digit2, 2),
-                        (KeyCode::Digit3, 3),
-                        (KeyCode::Digit4, 4),
-                        (KeyCode::Digit5, 5),
-                        (KeyCode::Digit6, 6),
-                        (KeyCode::Digit7, 7),
-                        (KeyCode::Digit8, 8),
-                        (KeyCode::Digit9, 9)
-                    );
+            } else if keybinds.just_pressed(Keybind::Mill) && parent.is_none() && inother.is_none()
+            {
+                todo!()
+                /*let n = keybinds.get_numeric();
+                if n != 0 {
+                    //TODO
+                }*/
+            } else if keybinds.just_pressed(Keybind::Exile) && parent.is_none() && inother.is_none()
+            {
+                todo!()
+                /*let n = keybinds.get_numeric();
+                if n != 0 {
+                    //TODO
+                }*/
+            } else if keybinds.just_pressed(Keybind::Reveal)
+                && parent.is_none()
+                && inother.is_none()
+            {
+                todo!()
+                /*let n = keybinds.get_numeric();
+                if n != 0 {
+                    //TODO
+                }*/
+            } else if keybinds.just_pressed(Keybind::Draw) && parent.is_none() && inother.is_none()
+            {
+                let n = keybinds.get_numeric();
+                if n != 0 {
                     let n = n.min(pile.len());
                     let mut vec = Vec::new();
                     let len = if is_reversed(&transform) {
@@ -1425,41 +1417,9 @@ pub fn listen_for_mouse(
                 rotate_left(&mut transform)
             } else if let Ok((shape, _)) = shape.get(entity)
                 && let Ok((mut hold, children)) = shape_hold.get_mut(entity)
-                && keybinds.keyboard.any_just_pressed([
-                    KeyCode::Digit0,
-                    KeyCode::Digit1,
-                    KeyCode::Digit2,
-                    KeyCode::Digit3,
-                    KeyCode::Digit4,
-                    KeyCode::Digit5,
-                    KeyCode::Digit6,
-                    KeyCode::Digit7,
-                    KeyCode::Digit8,
-                    KeyCode::Digit9,
-                ])
+                && keybinds.just_pressed(Keybind::Draw)
             {
-                let mut n = 0;
-                macro_rules! get {
-                        ($(($a:expr, $b:expr)),*) => {
-                            $(
-                                if keybinds.keyboard.just_pressed($a){
-                                    n = $b
-                                }
-                            )*
-                        };
-                    }
-                get!(
-                    (KeyCode::Digit0, 0),
-                    (KeyCode::Digit1, 1),
-                    (KeyCode::Digit2, 2),
-                    (KeyCode::Digit3, 3),
-                    (KeyCode::Digit4, 4),
-                    (KeyCode::Digit5, 5),
-                    (KeyCode::Digit6, 6),
-                    (KeyCode::Digit7, 7),
-                    (KeyCode::Digit8, 8),
-                    (KeyCode::Digit9, 9)
-                );
+                let n = keybinds.get_numeric();
                 **hold = if let Some(k) = &**hold {
                     format!("{k}{n}").parse().ok().and_then(|k| {
                         if shape.in_range(k) {

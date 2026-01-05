@@ -88,7 +88,6 @@ const FONT_HEIGHT: f32 = FONT_SIZE;
 const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO multi select, in card counters
 //TODO spawn stuff touching the floor
-//TODO ctrl+N to mill, +shift to exile, alt+N to reveal
 //TODO half card width between card spots
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
@@ -1635,6 +1634,21 @@ impl Keybinds<'_> {
     pub fn pressed(&self, keybind: Keybind) -> bool {
         self.keybinds[keybind].pressed(&self.keyboard, &self.mouse)
     }
+    pub fn get_numeric(&self) -> usize {
+        match DIGITS.iter().find(|n| self.keyboard.pressed(**n)) {
+            Some(KeyCode::Digit0) | Some(KeyCode::Numpad0) => 0,
+            Some(KeyCode::Digit1) | Some(KeyCode::Numpad1) => 1,
+            Some(KeyCode::Digit2) | Some(KeyCode::Numpad2) => 2,
+            Some(KeyCode::Digit3) | Some(KeyCode::Numpad3) => 3,
+            Some(KeyCode::Digit4) | Some(KeyCode::Numpad4) => 4,
+            Some(KeyCode::Digit5) | Some(KeyCode::Numpad5) => 5,
+            Some(KeyCode::Digit6) | Some(KeyCode::Numpad6) => 6,
+            Some(KeyCode::Digit7) | Some(KeyCode::Numpad7) => 7,
+            Some(KeyCode::Digit8) | Some(KeyCode::Numpad8) => 8,
+            Some(KeyCode::Digit9) | Some(KeyCode::Numpad9) => 9,
+            _ => unreachable!(),
+        }
+    }
     #[allow(dead_code)]
     pub fn set(&mut self, keybind: Keybind) -> bool {
         if let Some(new) = Bind::new_from(&self.keyboard, &self.mouse) {
@@ -1693,6 +1707,10 @@ pub enum Keybind {
     Untap,
     ScaleUp,
     ScaleDown,
+    Mill,
+    Exile,
+    Reveal,
+    Draw,
 }
 #[derive(Resource, Deref, DerefMut)]
 pub struct KeybindsList(EnumMap<Keybind, Bind>);
@@ -1748,6 +1766,10 @@ impl Default for KeybindsList {
             Keybind::Untap => Bind::new(enum_set!(), KeyCode::KeyU),
             Keybind::ScaleUp => Bind::new(enum_set!(), KeyCode::Equal),
             Keybind::ScaleDown => Bind::new(enum_set!(), KeyCode::Minus),
+            Keybind::Mill => Bind::new(enum_set!(ctrl), Key::Numeric),
+            Keybind::Exile => Bind::new(enum_set!(ctrl | shift), Key::Numeric),
+            Keybind::Reveal => Bind::new(enum_set!(alt), Key::Numeric),
+            Keybind::Draw => Bind::new(enum_set!(), Key::Numeric)
         })
     }
 }
@@ -1755,6 +1777,7 @@ impl Default for KeybindsList {
 pub enum Key {
     KeyCode(KeyCode),
     Mouse(MouseButton),
+    Numeric,
     None,
 }
 impl From<KeyCode> for Key {
@@ -1886,6 +1909,7 @@ impl Bind {
             Key::KeyCode(key) => keyboard.just_pressed(key),
             Key::Mouse(button) => mouse.just_pressed(button),
             Key::None => self.modifiers.iter().all(|m| m.just_pressed(keyboard)),
+            Key::Numeric => DIGITS.iter().any(|n| keyboard.just_pressed(*n)),
         }) && self.modifiers_pressed(keyboard)
     }
     pub fn pressed(
@@ -1897,6 +1921,29 @@ impl Bind {
             Key::KeyCode(key) => keyboard.pressed(key),
             Key::Mouse(button) => mouse.pressed(button),
             Key::None => true,
+            Key::Numeric => DIGITS.iter().any(|n| keyboard.pressed(*n)),
         }) && self.modifiers_pressed(keyboard)
     }
 }
+const DIGITS: &[KeyCode] = &[
+    KeyCode::Digit0,
+    KeyCode::Digit1,
+    KeyCode::Digit2,
+    KeyCode::Digit3,
+    KeyCode::Digit4,
+    KeyCode::Digit5,
+    KeyCode::Digit6,
+    KeyCode::Digit7,
+    KeyCode::Digit8,
+    KeyCode::Digit9,
+    KeyCode::Numpad0,
+    KeyCode::Numpad1,
+    KeyCode::Numpad2,
+    KeyCode::Numpad3,
+    KeyCode::Numpad4,
+    KeyCode::Numpad5,
+    KeyCode::Numpad6,
+    KeyCode::Numpad7,
+    KeyCode::Numpad8,
+    KeyCode::Numpad9,
+];
