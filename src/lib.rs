@@ -1,3 +1,5 @@
+use crate::events::Scroll;
+use crate::events::*;
 use crate::setup::{MAT_BAR, MAT_HEIGHT, MAT_WIDTH, setup};
 use crate::update::*;
 use avian3d::prelude::*;
@@ -45,6 +47,7 @@ const PLAYER5: bevy::color::Color = bevy::color::Color::srgb_u8(255, 255, 85);
 const PLAYER: [bevy::color::Color; 6] = [PLAYER0, PLAYER1, PLAYER2, PLAYER3, PLAYER4, PLAYER5];
 pub mod counters;
 pub mod download;
+pub mod events;
 pub mod misc;
 pub mod setup;
 pub mod shapes;
@@ -242,6 +245,7 @@ pub fn start() -> AppExit {
         ),
     )
     .add_observer(on_scroll_handler)
+    .add_observer(move_to_floor)
     .add_observer(pile_merge);
     #[cfg(feature = "mic")]
     let audio = AudioResource::new(&AudioSettings::default());

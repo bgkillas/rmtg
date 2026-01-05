@@ -207,53 +207,65 @@ pub fn setup(
     ));
     if !no_obj {
         let mut cube = Shape::Cube.create(
-            Transform::from_xyz(MAT_WIDTH + 2.0 * CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
+            Transform::from_xyz(MAT_WIDTH + 2.0 * CARD_WIDTH, 0.0, -CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
             bevy::color::Color::WHITE,
         );
         cube.insert(net.new_id());
+        let cube = cube.id();
+        commands.trigger(MoveToFloor(cube));
         let mut tetra = Shape::Tetrahedron.create(
-            Transform::from_xyz(MAT_WIDTH + 2.0 * CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
+            Transform::from_xyz(MAT_WIDTH + 2.0 * CARD_WIDTH, 0.0, CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
             bevy::color::Color::WHITE,
         );
         tetra.insert(net.new_id());
+        let tetra = tetra.id();
+        commands.trigger(MoveToFloor(tetra));
         let mut ico = Shape::Icosahedron.create(
-            Transform::from_xyz(MAT_WIDTH + 3.0 * CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
+            Transform::from_xyz(MAT_WIDTH + 3.0 * CARD_WIDTH, 0.0, -CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
             bevy::color::Color::WHITE,
         );
         ico.insert(net.new_id());
+        let ico = ico.id();
+        commands.trigger(MoveToFloor(ico));
         let mut oct = Shape::Octohedron.create(
-            Transform::from_xyz(MAT_WIDTH + 3.0 * CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
+            Transform::from_xyz(MAT_WIDTH + 3.0 * CARD_WIDTH, 0.0, CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
             bevy::color::Color::WHITE,
         );
         oct.insert(net.new_id());
+        let oct = oct.id();
+        commands.trigger(MoveToFloor(oct));
         let mut dodec = Shape::Dodecahedron.create(
-            Transform::from_xyz(MAT_WIDTH + 4.0 * CARD_WIDTH, MAT_BAR * 4.0, -CARD_WIDTH),
+            Transform::from_xyz(MAT_WIDTH + 4.0 * CARD_WIDTH, 0.0, -CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
             bevy::color::Color::WHITE,
         );
         dodec.insert(net.new_id());
+        let dodec = dodec.id();
+        commands.trigger(MoveToFloor(dodec));
         let mut coin = Shape::Disc.create(
-            Transform::from_xyz(MAT_WIDTH + 4.0 * CARD_WIDTH, MAT_BAR * 4.0, CARD_WIDTH),
+            Transform::from_xyz(MAT_WIDTH + 4.0 * CARD_WIDTH, 0.0, CARD_WIDTH),
             &mut commands,
             &mut meshes,
             &mut materials,
             bevy::color::Color::WHITE,
         );
         coin.insert(net.new_id());
+        let coin = coin.id();
+        commands.trigger(MoveToFloor(coin));
         for i in 0..4 {
             let (x, y) = match i {
                 0 => (MAT_BAR * 3.0, MAT_BAR * 3.0),
@@ -263,7 +275,7 @@ pub fn setup(
                 _ => unreachable!(),
             };
             let mut counter = Shape::Counter(Value(40), i).create(
-                Transform::from_xyz(x, MAT_BAR * 4.0, y).looking_to(
+                Transform::from_xyz(x, 0.0, y).looking_to(
                     if i == 0 || i == 2 {
                         Dir3::NEG_Z
                     } else {
@@ -277,8 +289,10 @@ pub fn setup(
                 bevy::color::Color::WHITE,
             );
             counter.insert(net.new_id());
+            let counter = counter.id();
+            commands.trigger(MoveToFloor(counter));
             let mut turn = Shape::Turn(i).create(
-                Transform::from_xyz(x * 7.0 / 3.0, MAT_BAR * 4.0, y)
+                Transform::from_xyz(x * 7.0 / 3.0, 0.0, y)
                     .looking_to(Dir3::NEG_Z, if i == 0 { Dir3::Y } else { Dir3::NEG_Y }),
                 &mut commands,
                 &mut meshes,
@@ -286,6 +300,8 @@ pub fn setup(
                 bevy::color::Color::WHITE,
             );
             turn.insert(net.new_id());
+            let turn = turn.id();
+            commands.trigger(MoveToFloor(turn));
         }
     }
     commands.spawn((
