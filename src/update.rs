@@ -43,7 +43,8 @@ use std::f32::consts::PI;
 use std::mem;
 #[derive(Component)]
 pub struct HandIgnore;
-const HAND_WIDTH: f32 = MAT_WIDTH - CARD_HEIGHT;
+pub const HAND_WIDTH: f32 = MAT_WIDTH - CARD_HEIGHT;
+pub const LIFT_SPACE: f32 = 2.0 * CARD_THICKNESS;
 pub fn gather_hand(
     mut hand: Single<(&Transform, &mut Hand, Entity, Option<&Children>)>,
     mut cards: Query<
@@ -238,7 +239,7 @@ pub fn follow_mouse(
     keybinds: Keybinds,
     camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
     window: Single<&Window, With<PrimaryWindow>>,
-    cards: Query<(&Collider, &Transform), (Without<FollowMouse>, Without<Hand>)>,
+    cards: Query<&ColliderAabb, (Without<FollowMouse>, Without<Hand>)>,
     mut commands: Commands,
     time_since: Res<Time>,
     spatial: SpatialQuery,
@@ -249,10 +250,11 @@ pub fn follow_mouse(
             &mut Transform,
             &mut GravityScale,
             &mut LinearVelocity,
-            &Collider,
+            &ColliderAabb,
             &GlobalTransform,
             Option<&ChildOf>,
             Option<&Pile>,
+            &Collider,
         ),
         (With<FollowMouse>, Without<Hand>),
     >,
@@ -271,33 +273,7 @@ pub fn follow_mouse(
         && keybinds.pressed(Keybind::Select)
     {
         card.3.y = 0.0;
-        let aabb = card.4.aabb(card.1.translation, card.1.rotation);
-        if let Some(max) = spatial
-            .shape_intersections(
-                card.4,
-                card.1.translation,
-                card.1.rotation,
-                &SpatialQueryFilter::from_mask(u32::MAX - 0b100),
-            )
-            .into_iter()
-            .filter_map(|a| {
-                if !walls.contains(a)
-                    && let Ok((collider, transform)) = cards.get(a)
-                {
-                    let y = collider
-                        .aabb(transform.translation, transform.rotation)
-                        .max
-                        .y;
-                    Some(y)
-                } else {
-                    None
-                }
-            })
-            .reduce(f32::max)
-        {
-            let max = max.max(aabb.max.y);
-            card.1.translation.y = max + CARD_THICKNESS * 4.0;
-        }
+        let aabb = card.4;
         if let Some(time) = ray.intersect_plane(
             if card.6.is_some() {
                 card.5.translation()
@@ -322,7 +298,7 @@ pub fn follow_mouse(
                     CARD_HEIGHT + CARD_THICKNESS,
                 )
                 .aabb(hand.0.translation, hand.0.rotation)
-                .intersects(&card.4.aabb(card.5.translation(), card.1.rotation))
+                .intersects(card.4)
                 {
                     let cur = child.get(card.0).unwrap().0;
                     let n = swap_pos(&mut hand, point.x, &mut child, cur);
@@ -344,16 +320,40 @@ pub fn follow_mouse(
             }
             card.1.translation = point;
         }
+        if let Some(max) = spatial
+            .shape_intersections(
+                card.8,
+                card.1.translation,
+                card.1.rotation,
+                &SpatialQueryFilter::from_mask(u32::MAX - 0b100),
+            )
+            .into_iter()
+            .filter_map(|a| {
+                if !walls.contains(a)
+                    && let Ok(aabb) = cards.get(a)
+                {
+                    Some(aabb.max.y)
+                } else {
+                    None
+                }
+            })
+            .reduce(f32::max)
+        {
+            let max = max.max(aabb.max.y);
+            card.1.translation.y = max + LIFT_SPACE;
+        }
     } else if card.7.is_some_and(|s| s.len() == 1)
         && let Some(time) =
             ray.intersect_plane(card.5.translation(), InfinitePlane3d { normal: Dir3::Y })
-        && Collider::cuboid(
-            HAND_WIDTH + CARD_THICKNESS,
-            CARD_HEIGHT + CARD_THICKNESS,
-            CARD_HEIGHT + CARD_THICKNESS,
+        && ColliderAabb::new(
+            hand.0.translation,
+            Vec3::new(
+                HAND_WIDTH + CARD_THICKNESS,
+                CARD_HEIGHT + CARD_THICKNESS,
+                CARD_HEIGHT + CARD_THICKNESS,
+            ) / 2.0,
         )
-        .aabb(hand.0.translation, hand.0.rotation)
-        .intersects(&card.4.aabb(ray.get_point(time), card.1.rotation))
+        .intersects(&card.8.aabb(ray.get_point(time), card.1.rotation))
     {
         remove_follow(&mut commands, card.0);
         commands.entity(hand.2).add_child(card.0);
@@ -763,7 +763,7 @@ pub fn listen_for_mouse(
                         &mut commands,
                     );
                     let mut transform = *transform;
-                    transform.translation.y += len + CARD_THICKNESS * 4.0;
+                    transform.translation.y += len + LIFT_SPACE;
                     if let Some(e) = follow {
                         remove_follow(&mut commands, *e);
                     }
@@ -817,9 +817,10 @@ pub fn listen_for_mouse(
                         colliders.get_mut(entity).unwrap().1.0 = GRAVITY;
                     }
                     if inhand.is_some() {
-                        transform.translation.y += 128.0 * CARD_THICKNESS;
+                        //TODO
+                        transform.translation.y += 2.0 * CARD_THICKNESS;
                     } else {
-                        transform.translation.y += 8.0 * CARD_THICKNESS;
+                        transform.translation.y += LIFT_SPACE;
                     }
                     if let Some(e) = follow {
                         remove_follow(&mut commands, *e);
@@ -1234,6 +1235,7 @@ pub fn listen_for_mouse(
                 if let Ok(id) = others_ids.get(entity) {
                     net.take(entity, *id);
                 }
+                transform.translation.y += LIFT_SPACE;
                 phys.0 = 0.0;
                 let mut cmd = commands.entity(entity);
                 cmd.insert((FollowMouse, SleepingDisabled))
@@ -1905,7 +1907,7 @@ pub fn pick_from_list(
                             commands.entity(search_deck.1.0).despawn();
                         }
                         let mut transform = *trans;
-                        transform.translation.y += len + CARD_THICKNESS * 4.0;
+                        transform.translation.y += len + LIFT_SPACE;
                         if let Some(e) = &follow {
                             remove_follow(&mut commands, **e);
                         }
@@ -2485,7 +2487,7 @@ pub fn register_deck(
 }
 pub fn to_move_up(
     mut to_do: ResMut<ToMoveUp>,
-    mut ents: Query<(&Collider, &mut Transform), Without<Wall>>,
+    mut ents: Query<(&Collider, &mut Transform, &ColliderAabb), Without<Wall>>,
     mut pset: SpatialQuery,
 ) {
     for ent in to_do.0.drain(..) {

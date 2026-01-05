@@ -35,11 +35,11 @@ pub fn new_pile(
 }
 pub fn move_up(
     entity: Entity,
-    ents: &mut Query<(&Collider, &mut Transform), Without<Wall>>,
+    ents: &mut Query<(&Collider, &mut Transform, &ColliderAabb), Without<Wall>>,
     spatial: &mut SpatialQuery,
 ) {
     let mut excluded = vec![entity];
-    let (collider, transform) = ents.get(entity).unwrap();
+    let (collider, transform, _) = ents.get(entity).unwrap();
     let rotation = transform.rotation;
     let mut translation = transform.translation;
     while let Some(m) = spatial
@@ -52,11 +52,8 @@ pub fn move_up(
         .into_iter()
         .filter_map(|a| {
             excluded.push(a);
-            if let Ok((collider, transform)) = ents.get(a) {
-                let y = collider
-                    .aabb(transform.translation, transform.rotation)
-                    .max
-                    .y;
+            if let Ok((_, _, aabb)) = ents.get(a) {
+                let y = aabb.max.y;
                 Some(y)
             } else {
                 None
@@ -64,14 +61,12 @@ pub fn move_up(
         })
         .reduce(f32::max)
     {
-        translation.y = m;
-        let (collider, transform) = ents.get(entity).unwrap();
-        let aabb = collider.aabb(transform.translation, transform.rotation);
+        let (_, _, aabb) = ents.get(entity).unwrap();
         let max = m + (aabb.max.y - aabb.min.y) / 2.0 + CARD_THICKNESS;
         let max = max.max(aabb.max.y);
         translation.y = max;
     }
-    let (_, mut t) = ents.get_mut(entity).unwrap();
+    let (_, mut t, _) = ents.get_mut(entity).unwrap();
     t.translation.y = translation.y
 }
 fn side(size: f32, meshes: &mut Assets<Mesh>) -> (Handle<Mesh>, Transform, Transform) {
