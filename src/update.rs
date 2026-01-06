@@ -73,44 +73,45 @@ pub fn gather_hand(
     mut net: Net,
     peers: Res<Peers>,
 ) {
-    let intersections = spatial.shape_intersections(
+    spatial.shape_intersections_callback(
         &Collider::cuboid(HAND_WIDTH, CARD_HEIGHT, CARD_HEIGHT),
         hand.0.translation,
         hand.0.rotation,
         &SpatialQueryFilter::DEFAULT,
-    );
-    for ent in intersections {
-        if let Ok((entity, mut grav, mut linvel, mut angvel, pile, obj, ign, mut trans, fm)) =
-            cards.get_mut(ent)
-            && pile.len() == 1
-        {
-            if ign.is_some() {
-                commands.entity(entity).remove::<HandIgnore>();
-            } else {
-                if let Some(n) = obj {
-                    net.take(entity, *n);
+        |ent| {
+            if let Ok((entity, mut grav, mut linvel, mut angvel, pile, obj, ign, mut trans, fm)) =
+                cards.get_mut(ent)
+                && pile.len() == 1
+            {
+                if ign.is_some() {
+                    commands.entity(entity).remove::<HandIgnore>();
+                } else {
+                    if let Some(n) = obj {
+                        net.take(entity, *n);
+                    }
+                    *linvel = default();
+                    *angvel = default();
+                    grav.0 = 0.0;
+                    let entry = place_pos(&mut hand, trans.translation.x, &mut child);
+                    commands
+                        .entity(entity)
+                        .insert(InHand(entry))
+                        .insert(RigidBodyDisabled);
+                    hand.1.count += 1;
+                    if fm.is_none() {
+                        commands.entity(hand.2).add_child(entity);
+                    }
+                    trans.rotation = Quat::default();
+                    if peers.me.is_some_and(|i| i == 1 || i == 3) {
+                        rotate_right(&mut trans);
+                        rotate_right(&mut trans);
+                    }
+                    return false;
                 }
-                *linvel = default();
-                *angvel = default();
-                grav.0 = 0.0;
-                let entry = place_pos(&mut hand, trans.translation.x, &mut child);
-                commands
-                    .entity(entity)
-                    .insert(InHand(entry))
-                    .insert(RigidBodyDisabled);
-                hand.1.count += 1;
-                if fm.is_none() {
-                    commands.entity(hand.2).add_child(entity);
-                }
-                trans.rotation = Quat::default();
-                if peers.me.is_some_and(|i| i == 1 || i == 3) {
-                    rotate_right(&mut trans);
-                    rotate_right(&mut trans);
-                }
-                return;
             }
-        }
-    }
+            true
+        },
+    );
 }
 #[cfg(feature = "steam")]
 pub fn update_rich(client: Res<Client>, peers: Res<Peers>, frame: Res<FrameCount>) {
@@ -295,26 +296,24 @@ pub fn follow_mouse(
             );
             card.1.translation = point;
         }
-        if let Some(max) = spatial
-            .shape_intersections(
-                card.8,
-                card.1.translation,
-                card.1.rotation,
-                &SpatialQueryFilter::from_mask(u32::MAX - 0b100),
-            )
-            .into_iter()
-            .filter_map(|a| {
+        let mut max = f32::NEG_INFINITY;
+        spatial.shape_intersections_callback(
+            card.8,
+            card.1.translation,
+            card.1.rotation,
+            &SpatialQueryFilter::from_mask(u32::MAX - 0b100),
+            |a| {
                 if !walls.contains(a)
                     && a != card.0
                     && let Ok(aabb) = cards.get(a)
+                    && aabb.max.y > max
                 {
-                    Some(aabb.max.y)
-                } else {
-                    None
+                    max = aabb.max.y;
                 }
-            })
-            .reduce(f32::max)
-        {
+                true
+            },
+        );
+        if max != f32::INFINITY {
             some = true;
             let max = max + (aabb.max.y - aabb.min.y) / 2.0 + CARD_THICKNESS;
             let max = max.max(card.1.translation.y);
@@ -498,49 +497,50 @@ pub fn untap_keybinds(
         _ => (x, z, y),
     };
     let aabb = Aabb3d::new(aabb, (x, z, y));
-    let intersections = spatial.shape_intersections(
+    spatial.shape_intersections_callback(
         &Collider::cuboid(2.0 * x, CARD_THICKNESS, 2.0 * y),
         aabb.center().into(),
         Quat::default(),
         &SpatialQueryFilter::DEFAULT,
-    );
-    for ent in intersections {
-        let Ok((pile, mut transform, id)) = cards.get_mut(ent) else {
-            continue;
-        };
-        if aabb.closest_point(transform.translation) != transform.translation.into() {
-            continue;
-        }
-        if let Some(id) = id {
-            net.take(ent, *id);
-        }
-        let rev = is_reversed(&transform);
-        transform.rotation = Quat::default();
-        if rev {
-            transform.rotate_local_z(PI);
-            if let Some(entity) = search_deck
-                .as_ref()
-                .and_then(|s| if s.1.0 == ent { Some(s.0) } else { None })
-            {
-                update_search(
-                    &mut commands,
-                    entity,
-                    pile,
-                    &transform,
-                    text.as_ref().unwrap().get(),
-                    &side,
-                    &mut focus.menu,
-                );
+        |ent| {
+            let Ok((pile, mut transform, id)) = cards.get_mut(ent) else {
+                return true;
+            };
+            if aabb.closest_point(transform.translation) != transform.translation.into() {
+                return true;
             }
-        }
-        if matches!(peers.me.unwrap_or(0), 1 | 3) {
-            rotate_right(&mut transform);
-            rotate_right(&mut transform);
-        }
-        if matches!(pile.get_card(&transform).data.layout, Layout::Room) {
-            rotate_right(&mut transform);
-        }
-    }
+            if let Some(id) = id {
+                net.take(ent, *id);
+            }
+            let rev = is_reversed(&transform);
+            transform.rotation = Quat::default();
+            if rev {
+                transform.rotate_local_z(PI);
+                if let Some(entity) = search_deck
+                    .as_ref()
+                    .and_then(|s| if s.1.0 == ent { Some(s.0) } else { None })
+                {
+                    update_search(
+                        &mut commands,
+                        entity,
+                        pile,
+                        &transform,
+                        text.as_ref().unwrap().get(),
+                        &side,
+                        &mut focus.menu,
+                    );
+                }
+            }
+            if matches!(peers.me.unwrap_or(0), 1 | 3) {
+                rotate_right(&mut transform);
+                rotate_right(&mut transform);
+            }
+            if matches!(pile.get_card(&transform).data.layout, Layout::Room) {
+                rotate_right(&mut transform);
+            }
+            true
+        },
+    );
 }
 pub fn listen_for_mouse(
     keybinds: Keybinds,
@@ -2741,7 +2741,7 @@ pub fn set_card_spot(
                     }
                 }
                 spot.ent = Some(ent);
-                continue;
+                break;
             }
         }
     }

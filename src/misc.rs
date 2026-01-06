@@ -42,24 +42,30 @@ pub fn move_up(
     let (collider, transform, _) = ents.get(entity).unwrap();
     let rotation = transform.rotation;
     let mut translation = transform.translation;
-    while let Some(m) = spatial
-        .shape_intersections(
+    let mut max = |translation: Vec3| -> Option<f32> {
+        let mut max = f32::NEG_INFINITY;
+        spatial.shape_intersections_callback(
             collider,
             translation,
             rotation,
             &SpatialQueryFilter::DEFAULT.with_excluded_entities(excluded.clone()),
-        )
-        .into_iter()
-        .filter_map(|a| {
-            excluded.push(a);
-            if let Ok((_, _, aabb)) = ents.get(a) {
-                Some(aabb.max.y)
-            } else {
-                None
-            }
-        })
-        .reduce(f32::max)
-    {
+            |a| {
+                excluded.push(a);
+                if let Ok((_, _, aabb)) = ents.get(a)
+                    && max < aabb.max.y
+                {
+                    max = aabb.max.y
+                }
+                true
+            },
+        );
+        if max == f32::NEG_INFINITY {
+            None
+        } else {
+            Some(max)
+        }
+    };
+    while let Some(m) = max(translation) {
         let (_, _, aabb) = ents.get(entity).unwrap();
         let max = m + (aabb.max.y - aabb.min.y) / 2.0 + CARD_THICKNESS;
         let max = max.max(translation.y);
