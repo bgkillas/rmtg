@@ -4,9 +4,9 @@ use crate::download::{
     spawn_singleton_id,
 };
 use crate::misc::{
-    Counter, Equipment, adjust_meshes, default_cam_pos, is_reversed, move_up, new_pile,
-    new_pile_at, remove_follow, repaint_face, rotate_left, rotate_right, spawn_equip,
-    ui_rotate_left, ui_rotate_right, vec2_to_ground,
+    Counter, Equipment, adjust_meshes, default_cam_pos, is_reversed, new_pile, new_pile_at,
+    remove_follow, repaint_face, rotate_left, rotate_right, spawn_equip, ui_rotate_left,
+    ui_rotate_right, vec2_to_ground,
 };
 use crate::setup::{
     EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, TextChat, TextInput, TextMenu, W, Wall,
@@ -2236,7 +2236,6 @@ pub fn listen_for_deck(
     card_base: Res<CardBase>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut commands: Commands,
-    mut to_move: ResMut<ToMoveUp>,
     mut net: Net,
     focus: Focus,
 ) {
@@ -2348,7 +2347,7 @@ pub fn listen_for_deck(
             ),
             GameClipboard::None => None,
         } {
-            to_move.0.push(ent)
+            commands.trigger(MoveUp(ent))
         }
     }
 }
@@ -2358,7 +2357,6 @@ pub fn register_deck(
     mut materials: ResMut<Assets<StandardMaterial>>,
     card_base: Res<CardBase>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut to_move: ResMut<ToMoveUp>,
     mut spots: Query<(&GlobalTransform, &mut CardSpot, &Player)>,
     peers: Res<Peers>,
     mut trans: Query<Entity, With<Pile>>,
@@ -2503,7 +2501,8 @@ pub fn register_deck(
             id,
             my_id,
         ) {
-            to_move.0.push(ent.id());
+            let id = ent.id();
+            commands.trigger(MoveUp(id));
         }
         if let Some(id) = id {
             net.sent.del(id);
@@ -2511,17 +2510,6 @@ pub fn register_deck(
         }
     }
 }
-pub fn to_move_up(
-    mut to_do: ResMut<ToMoveUp>,
-    mut ents: Query<(&Collider, &mut Transform, &ColliderAabb), Without<Wall>>,
-    mut pset: SpatialQuery,
-) {
-    for ent in to_do.0.drain(..) {
-        move_up(ent, &mut ents, &mut pset);
-    }
-}
-#[derive(Resource, Default, Deref, DerefMut)]
-pub struct ToMoveUp(pub Vec<Entity>);
 pub fn give_ents(to_do: Res<GiveEnts>, ents: Query<(&SyncObject, Entity)>, mut net: Net) {
     for peer in to_do.0.lock().unwrap().drain(..) {
         for (id, ent) in ents {

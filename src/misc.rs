@@ -1,4 +1,4 @@
-use crate::setup::{MAT_WIDTH, Wall};
+use crate::setup::MAT_WIDTH;
 use crate::shapes::Side;
 use crate::sync::{CameraInd, CursorInd, SyncObjectMe};
 use crate::*;
@@ -32,47 +32,6 @@ pub fn new_pile(
         pile, card_base, materials, commands, meshes, transform, false, None, id, my_id,
     )
     .map(|a| a.id())
-}
-pub fn move_up(
-    entity: Entity,
-    ents: &mut Query<(&Collider, &mut Transform, &ColliderAabb), Without<Wall>>,
-    spatial: &mut SpatialQuery,
-) {
-    let mut excluded = vec![entity];
-    let (collider, transform, _) = ents.get(entity).unwrap();
-    let rotation = transform.rotation;
-    let mut translation = transform.translation;
-    let mut max = |translation: Vec3| -> Option<f32> {
-        let mut max = f32::NEG_INFINITY;
-        spatial.shape_intersections_callback(
-            collider,
-            translation,
-            rotation,
-            &SpatialQueryFilter::DEFAULT.with_excluded_entities(excluded.clone()),
-            |a| {
-                excluded.push(a);
-                if let Ok((_, _, aabb)) = ents.get(a)
-                    && max < aabb.max.y
-                {
-                    max = aabb.max.y
-                }
-                true
-            },
-        );
-        if max == f32::NEG_INFINITY {
-            None
-        } else {
-            Some(max)
-        }
-    };
-    while let Some(m) = max(translation) {
-        let (_, _, aabb) = ents.get(entity).unwrap();
-        let max = m + (aabb.max.y - aabb.min.y) / 2.0 + CARD_THICKNESS;
-        let max = max.max(translation.y);
-        translation.y = max;
-    }
-    let (_, mut t, _) = ents.get_mut(entity).unwrap();
-    t.translation.y = translation.y
 }
 fn side(size: f32, meshes: &mut Assets<Mesh>) -> (Handle<Mesh>, Transform, Transform) {
     let mesh = meshes.add(Rectangle::new(size, CARD_HEIGHT));

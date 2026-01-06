@@ -178,7 +178,6 @@ pub fn start() -> AppExit {
         ..default()
     })
     .insert_resource(clipboard)
-    .insert_resource(ToMoveUp::default())
     .insert_resource(Turn::default())
     .insert_resource(SyncCount::default())
     .insert_resource(Sent::default())
@@ -235,7 +234,6 @@ pub fn start() -> AppExit {
                     )
                         .chain(),
                 ),
-                to_move_up,
                 reset_layers,
                 (get_sync, apply_sync).chain(),
             )

@@ -1,10 +1,11 @@
 use crate::misc::{Counter, Equipment, adjust_meshes, is_reversed, repaint_face, spawn_equip};
-use crate::setup::SideMenu;
+use crate::setup::{SideMenu, Wall};
 use crate::shapes::{Shape, Side};
 use crate::sync::{Net, SyncObject, SyncObjectMe};
 use crate::update::{SearchDeck, SearchText, update_search};
-use crate::{CARD_HEIGHT, CARD_WIDTH, CardBase, FollowMouse, InHand, Menu, Pile};
+use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, CardBase, FollowMouse, InHand, Menu, Pile};
 use avian3d::prelude::{Collider, ColliderAabb, CollisionStart};
+use avian3d::spatial_query::{SpatialQuery, SpatialQueryFilter};
 use bevy::prelude::*;
 use bevy_ui_text_input::TextInputContents;
 use std::mem;
@@ -195,4 +196,47 @@ pub struct MoveToFloor(pub Entity);
 pub fn move_to_floor(ent: On<MoveToFloor>, mut query: Query<(&mut Transform, &ColliderAabb)>) {
     let (mut transform, aabb) = query.get_mut(**ent).unwrap();
     transform.translation.y -= aabb.min.y;
+}
+#[derive(EntityEvent, Deref, DerefMut)]
+pub struct MoveUp(pub Entity);
+pub fn move_up(
+    entity: MoveUp,
+    ents: &mut Query<(&Collider, &mut Transform, &ColliderAabb), Without<Wall>>,
+    spatial: &mut SpatialQuery,
+) {
+    let mut excluded = vec![*entity];
+    let (collider, transform, _) = ents.get(*entity).unwrap();
+    let rotation = transform.rotation;
+    let mut translation = transform.translation;
+    let mut max = |translation: Vec3| -> Option<f32> {
+        let mut max = f32::NEG_INFINITY;
+        spatial.shape_intersections_callback(
+            collider,
+            translation,
+            rotation,
+            &SpatialQueryFilter::DEFAULT.with_excluded_entities(excluded.clone()),
+            |a| {
+                excluded.push(a);
+                if let Ok((_, _, aabb)) = ents.get(a)
+                    && max < aabb.max.y
+                {
+                    max = aabb.max.y
+                }
+                true
+            },
+        );
+        if max == f32::NEG_INFINITY {
+            None
+        } else {
+            Some(max)
+        }
+    };
+    while let Some(m) = max(translation) {
+        let (_, _, aabb) = ents.get(*entity).unwrap();
+        let max = m + (aabb.max.y - aabb.min.y) / 2.0 + CARD_THICKNESS;
+        let max = max.max(translation.y);
+        translation.y = max;
+    }
+    let (_, mut t, _) = ents.get_mut(*entity).unwrap();
+    t.translation.y = translation.y;
 }
