@@ -200,12 +200,12 @@ pub fn move_to_floor(ent: On<MoveToFloor>, mut query: Query<(&mut Transform, &Co
 #[derive(EntityEvent, Deref, DerefMut)]
 pub struct MoveUp(pub Entity);
 pub fn move_up(
-    entity: MoveUp,
-    ents: &mut Query<(&Collider, &mut Transform, &ColliderAabb), Without<Wall>>,
-    spatial: &mut SpatialQuery,
+    entity: On<MoveUp>,
+    mut ents: Query<(&Collider, &mut Transform, &ColliderAabb), Without<Wall>>,
+    spatial: SpatialQuery,
 ) {
-    let mut excluded = vec![*entity];
-    let (collider, transform, _) = ents.get(*entity).unwrap();
+    let mut excluded = vec![**entity];
+    let (collider, transform, _) = ents.get(**entity).unwrap();
     let rotation = transform.rotation;
     let mut translation = transform.translation;
     let mut max = |translation: Vec3| -> Option<f32> {
@@ -232,11 +232,11 @@ pub fn move_up(
         }
     };
     while let Some(m) = max(translation) {
-        let (_, _, aabb) = ents.get(*entity).unwrap();
+        let (_, _, aabb) = ents.get(**entity).unwrap();
         let max = m + (aabb.max.y - aabb.min.y) / 2.0 + CARD_THICKNESS;
         let max = max.max(translation.y);
         translation.y = max;
     }
-    let (_, mut t, _) = ents.get_mut(*entity).unwrap();
+    let (_, mut t, _) = ents.get_mut(**entity).unwrap();
     t.translation.y = translation.y;
 }

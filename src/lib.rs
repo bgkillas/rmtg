@@ -244,6 +244,7 @@ pub fn start() -> AppExit {
     )
     .add_observer(on_scroll_handler)
     .add_observer(move_to_floor)
+    .add_observer(move_up)
     .add_observer(pile_merge);
     #[cfg(feature = "mic")]
     let audio = AudioResource::new(&AudioSettings::default());
