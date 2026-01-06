@@ -53,8 +53,7 @@ pub fn move_up(
         .filter_map(|a| {
             excluded.push(a);
             if let Ok((_, _, aabb)) = ents.get(a) {
-                let y = aabb.max.y;
-                Some(y)
+                Some(aabb.max.y)
             } else {
                 None
             }
@@ -63,7 +62,7 @@ pub fn move_up(
     {
         let (_, _, aabb) = ents.get(entity).unwrap();
         let max = m + (aabb.max.y - aabb.min.y) / 2.0 + CARD_THICKNESS;
-        let max = max.max(aabb.max.y);
+        let max = max.max(translation.y);
         translation.y = max;
     }
     let (_, mut t, _) = ents.get_mut(entity).unwrap();

@@ -45,6 +45,7 @@ use std::mem;
 pub struct HandIgnore;
 pub const HAND_WIDTH: f32 = MAT_WIDTH - CARD_HEIGHT;
 pub const LIFT_SPACE: f32 = 2.0 * CARD_THICKNESS;
+pub const HAND_LIFT_SPACE: f32 = CARD_HEIGHT * 3.0 / 4.0;
 pub fn gather_hand(
     mut hand: Single<(&Transform, &mut Hand, Entity, Option<&Children>)>,
     mut cards: Query<
@@ -274,6 +275,7 @@ pub fn follow_mouse(
     {
         card.3.y = 0.0;
         let aabb = card.4;
+        let mut some = false;
         if let Some(time) = ray.intersect_plane(
             if card.6.is_some() {
                 card.5.translation()
@@ -291,33 +293,6 @@ pub fn follow_mouse(
                 -W + (aabb.min.z - card.1.translation.z).abs(),
                 W - (aabb.max.z - card.1.translation.z).abs(),
             );
-            if child.contains(card.0) {
-                if Collider::cuboid(
-                    HAND_WIDTH + CARD_THICKNESS,
-                    CARD_HEIGHT + CARD_THICKNESS,
-                    CARD_HEIGHT + CARD_THICKNESS,
-                )
-                .aabb(hand.0.translation, hand.0.rotation)
-                .intersects(card.4)
-                {
-                    let cur = child.get(card.0).unwrap().0;
-                    let n = swap_pos(&mut hand, point.x, &mut child, cur);
-                    child.get_mut(card.0).unwrap().0 = n;
-                    if card.6.is_some() {
-                        commands.entity(card.0).remove_parent_in_place();
-                    }
-                    commands.entity(card.0).insert(RigidBodyDisabled);
-                    point.y = CARD_HEIGHT * 3.0 / 4.0;
-                } else {
-                    hand.1.count -= 1;
-                    hand.1.removed.push(child.get(card.0).unwrap().0);
-                    commands
-                        .entity(card.0)
-                        .remove_parent_in_place()
-                        .remove::<RigidBodyDisabled>()
-                        .remove::<InHand>();
-                }
-            }
             card.1.translation = point;
         }
         if let Some(max) = spatial
@@ -330,6 +305,7 @@ pub fn follow_mouse(
             .into_iter()
             .filter_map(|a| {
                 if !walls.contains(a)
+                    && a != card.0
                     && let Ok(aabb) = cards.get(a)
                 {
                     Some(aabb.max.y)
@@ -339,8 +315,59 @@ pub fn follow_mouse(
             })
             .reduce(f32::max)
         {
-            let max = max.max(aabb.max.y);
-            card.1.translation.y = max + LIFT_SPACE;
+            some = true;
+            let max = max + (aabb.max.y - aabb.min.y) / 2.0 + CARD_THICKNESS;
+            let max = max.max(card.1.translation.y);
+            card.1.translation.y = max;
+        }
+        if child.contains(card.0) {
+            if Collider::cuboid(
+                HAND_WIDTH + CARD_THICKNESS,
+                CARD_HEIGHT + CARD_THICKNESS,
+                CARD_HEIGHT + CARD_THICKNESS,
+            )
+            .aabb(hand.0.translation, hand.0.rotation)
+            .intersects(card.4)
+            {
+                let cur = child.get(card.0).unwrap().0;
+                let n = swap_pos(&mut hand, card.1.translation.x, &mut child, cur);
+                child.get_mut(card.0).unwrap().0 = n;
+                if card.6.is_some() {
+                    commands.entity(card.0).remove_parent_in_place();
+                }
+                commands.entity(card.0).insert(RigidBodyDisabled);
+                card.1.translation.y = HAND_LIFT_SPACE;
+                some = true;
+            } else {
+                hand.1.count -= 1;
+                hand.1.removed.push(child.get(card.0).unwrap().0);
+                commands
+                    .entity(card.0)
+                    .remove_parent_in_place()
+                    .remove::<RigidBodyDisabled>()
+                    .remove::<InHand>();
+            }
+        }
+        if some
+            && let Some(time) = ray.intersect_plane(
+                if card.6.is_some() {
+                    card.5.translation()
+                } else {
+                    card.1.translation
+                },
+                InfinitePlane3d { normal: Dir3::Y },
+            )
+        {
+            let mut point = ray.get_point(time);
+            point.x = point.x.clamp(
+                -W + (aabb.min.x - card.1.translation.x).abs(),
+                W - (aabb.max.x - card.1.translation.x).abs(),
+            );
+            point.z = point.z.clamp(
+                -W + (aabb.min.z - card.1.translation.z).abs(),
+                W - (aabb.max.z - card.1.translation.z).abs(),
+            );
+            card.1.translation = point;
         }
     } else if card.7.is_some_and(|s| s.len() == 1)
         && let Some(time) =
@@ -817,8 +844,7 @@ pub fn listen_for_mouse(
                         colliders.get_mut(entity).unwrap().1.0 = GRAVITY;
                     }
                     if inhand.is_some() {
-                        //TODO
-                        transform.translation.y += 2.0 * CARD_THICKNESS;
+                        transform.translation.y = HAND_LIFT_SPACE;
                     } else {
                         transform.translation.y += LIFT_SPACE;
                     }
