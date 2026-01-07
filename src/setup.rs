@@ -7,6 +7,7 @@ use crate::sync::*;
 use crate::*;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy_framepace::{FramepaceSettings, Limiter};
+#[cfg(feature = "steam")]
 use bevy_tangled::LobbyId;
 use bevy_ui_text_input::{TextInputBuffer, TextInputContents, TextInputMode, TextInputNode};
 #[cfg(feature = "steam")]
