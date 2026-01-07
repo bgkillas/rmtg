@@ -235,6 +235,9 @@ pub fn start() -> AppExit {
                         .chain(),
                 ),
                 reset_layers,
+                #[cfg(feature = "steam")]
+                (bevy_tangled::update, get_sync, apply_sync).chain(),
+                #[cfg(not(feature = "steam"))]
                 (get_sync, apply_sync).chain(),
             )
                 .chain(),
@@ -296,6 +299,10 @@ pub struct Turn(usize);
 pub struct Peers {
     map: Arc<Mutex<HashMap<PeerId, usize>>>,
     me: Option<usize>,
+    #[allow(dead_code)]
+    names: HashMap<PeerId, String>,
+    #[allow(dead_code)]
+    name: Option<String>,
 }
 impl Peers {
     fn map(&self) -> MutexGuard<'_, HashMap<PeerId, usize>> {
