@@ -46,7 +46,9 @@ pub fn get_sync(
     spatial: SpatialQuery,
     keybinds: Keybinds,
 ) {
+    #[allow(unused_variables)]
     if let Err(e) = client.update() {
+        #[cfg(feature = "steam")]
         warn!("{e}")
     }
     if !client.is_connected() {
