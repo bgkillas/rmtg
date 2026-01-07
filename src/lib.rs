@@ -235,9 +235,6 @@ pub fn start() -> AppExit {
                         .chain(),
                 ),
                 reset_layers,
-                #[cfg(feature = "steam")]
-                (bevy_tangled::update, get_sync, apply_sync).chain(),
-                #[cfg(not(feature = "steam"))]
                 (get_sync, apply_sync).chain(),
             )
                 .chain(),

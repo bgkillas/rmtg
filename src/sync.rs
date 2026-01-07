@@ -39,13 +39,16 @@ pub fn get_sync(
         Option<&FollowMouse>,
     )>,
     mut count: ResMut<SyncCount>,
-    client: Res<Client>,
+    mut client: ResMut<Client>,
     send_sleep: Res<SendSleeping>,
     camera: Single<(&Camera, &GlobalTransform), (With<Camera3d>, Without<SyncObjectMe>)>,
     window: Single<&Window, With<PrimaryWindow>>,
     spatial: SpatialQuery,
     keybinds: Keybinds,
 ) {
+    if let Err(e) = client.update() {
+        warn!("{e}")
+    }
     if !client.is_connected() {
         return;
     }

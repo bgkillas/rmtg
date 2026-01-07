@@ -7,6 +7,7 @@ use crate::sync::*;
 use crate::*;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy_framepace::{FramepaceSettings, Limiter};
+use bevy_tangled::LobbyId;
 use bevy_ui_text_input::{TextInputBuffer, TextInputContents, TextInputMode, TextInputNode};
 #[cfg(feature = "steam")]
 use std::collections::HashMap;
@@ -68,7 +69,7 @@ pub fn setup(
         }
         if let Some(lobby) = lobby {
             no_obj = true;
-            net.client.join_steam(lobby);
+            net.client.join_steam(LobbyId::from_raw(lobby));
         }
     }
     let font = include_bytes!("../assets/noto.ttf");
