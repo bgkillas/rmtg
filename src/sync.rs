@@ -1228,7 +1228,9 @@ pub fn apply_sync(
                 }
             }
             Packet::Text(msg) => {
-                spawn_msg(*chat, msg, &mut commands, font.0.clone());
+                if let Some(name) = peers.names.get(&sender) {
+                    spawn_msg(*chat, name.clone(), msg, &mut commands, font.clone());
+                }
             }
             Packet::Voice(data) => {
                 #[cfg(feature = "mic")]
@@ -1355,12 +1357,14 @@ pub fn new_lobby(
     if keybinds.just_pressed(Keybind::HostSteam) {
         info!("hosting steam");
         peers.me = Some(0);
+        peers.name = client.get_name();
         peers.map().insert(client.my_id(), 0);
         client.host_steam().unwrap();
     }
     #[cfg(feature = "ip")]
     if keybinds.just_pressed(Keybind::HostIp) {
         info!("hosting ip");
+        peers.name = client.get_name();
         let flip = flip_counter.0.clone();
         let flip2 = flip.clone();
         let send = send_sleep.0.clone();
@@ -1386,10 +1390,11 @@ pub fn new_lobby(
     }
     #[cfg(feature = "ip")]
     if keybinds.just_pressed(Keybind::JoinIp) {
+        info!("joining ip");
         for e in shapes {
             commands.entity(e).despawn()
         }
-        info!("joining ip");
+        peers.name = client.get_name();
         let flip = flip_counter.0.clone();
         let flip2 = flip.clone();
         let send = send_sleep.0.clone();

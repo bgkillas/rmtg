@@ -77,7 +77,7 @@ pub fn gather_hand(
         &Collider::cuboid(HAND_WIDTH, CARD_HEIGHT, CARD_HEIGHT),
         hand.0.translation,
         hand.0.rotation,
-        &SpatialQueryFilter::DEFAULT,
+        &SpatialQueryFilter::from_mask(u32::MAX - 0b100),
         |ent| {
             if let Ok((entity, mut grav, mut linvel, mut angvel, pile, obj, ign, mut trans, fm)) =
                 cards.get_mut(ent)
@@ -501,7 +501,7 @@ pub fn untap_keybinds(
         &Collider::cuboid(2.0 * x, CARD_THICKNESS, 2.0 * y),
         aabb.center().into(),
         Quat::default(),
-        &SpatialQueryFilter::DEFAULT,
+        &SpatialQueryFilter::from_mask(u32::MAX - 0b100),
         |ent| {
             let Ok((pile, mut transform, id)) = cards.get_mut(ent) else {
                 return true;
@@ -1144,7 +1144,7 @@ pub fn listen_for_mouse(
                     &side,
                     &mut commands,
                     &mut focus.active_input,
-                    font.0.clone(),
+                    font.clone(),
                 );
                 *focus.menu = Menu::Side;
             }
@@ -1298,7 +1298,7 @@ pub fn listen_for_mouse(
                                 ..default()
                             },
                             TextFont {
-                                font: font.0.clone(),
+                                font: font.clone(),
                                 font_size: FONT_SIZE,
                                 ..default()
                             },
@@ -1489,16 +1489,31 @@ pub fn text_send(
     chat: Single<Entity, With<TextChat>>,
     mut commands: Commands,
     font: Res<FontRes>,
+    peers: Res<Peers>,
 ) {
     for msg in msg.read() {
         if msg.text.is_empty() {
             return;
         }
-        net.text(msg.text.clone());
-        spawn_msg(*chat, msg.text.clone(), &mut commands, font.0.clone());
+        if let Some(name) = &peers.name {
+            net.text(msg.text.clone());
+            spawn_msg(
+                *chat,
+                name.clone(),
+                msg.text.clone(),
+                &mut commands,
+                font.clone(),
+            );
+        }
     }
 }
-pub fn spawn_msg(entity: Entity, msg: String, commands: &mut Commands, font: Handle<Font>) {
+pub fn spawn_msg(
+    entity: Entity,
+    name: String,
+    msg: String,
+    commands: &mut Commands,
+    font: Handle<Font>,
+) {
     commands
         .entity(entity)
         .with_child((
@@ -1506,7 +1521,7 @@ pub fn spawn_msg(entity: Entity, msg: String, commands: &mut Commands, font: Han
                 width: Val::Percent(100.0),
                 ..default()
             },
-            Text(msg),
+            Text(format!("{name}: {msg}")),
             Visibility::Inherited,
             TextFont {
                 font,
@@ -2705,7 +2720,7 @@ pub fn set_card_spot(
             &Collider::cuboid(CARD_WIDTH / 2.0, CARD_THICKNESS / 2.0, CARD_HEIGHT / 2.0),
             transform.translation,
             transform.rotation,
-            &SpatialQueryFilter::DEFAULT,
+            &SpatialQueryFilter::from_mask(u32::MAX - 0b100),
         );
         if let Some(ent) = spot.ent {
             if intersects.contains(&ent) {

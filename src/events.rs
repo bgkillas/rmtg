@@ -204,7 +204,8 @@ pub fn move_up(
     mut ents: Query<(&Collider, &mut Transform, &ColliderAabb), Without<Wall>>,
     spatial: SpatialQuery,
 ) {
-    let mut excluded = vec![**entity];
+    let mut filter = SpatialQueryFilter::from_mask(u32::MAX - 0b100);
+    filter.excluded_entities.insert(**entity);
     let (collider, transform, _) = ents.get(**entity).unwrap();
     let rotation = transform.rotation;
     let mut translation = transform.translation;
@@ -214,9 +215,9 @@ pub fn move_up(
             collider,
             translation,
             rotation,
-            &SpatialQueryFilter::DEFAULT.with_excluded_entities(excluded.clone()),
+            &filter.clone(),
             |a| {
-                excluded.push(a);
+                filter.excluded_entities.insert(a);
                 if let Ok((_, _, aabb)) = ents.get(a)
                     && max < aabb.max.y
                 {

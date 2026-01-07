@@ -37,7 +37,7 @@ pub fn make_counter<'a>(
         p.spawn((
             Transform::from_xyz(0.0, m / 16.0 + CARD_THICKNESS, 0.0)
                 .looking_at(Vec3::default(), Dir3::NEG_Z),
-            Text3d::new(s.clone()),
+            Text3d::new(s),
             Mesh3d(meshes.add(Rectangle::new(m, m))),
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
