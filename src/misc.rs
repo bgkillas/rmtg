@@ -1,3 +1,4 @@
+use crate::counters::Counter;
 use crate::setup::MAT_WIDTH;
 use crate::shapes::Side;
 use crate::sync::{CameraInd, CursorInd, SyncObjectMe};
@@ -170,7 +171,8 @@ pub fn adjust_meshes(
     >,
     transform: &mut Transform,
     collider: &mut Collider,
-    equipment: &Query<(), Or<(With<Equipment>, With<Counter>)>>,
+    equipment: &Query<(), With<Equipment>>,
+    counters: &Query<(), With<Counter>>,
     commands: &mut Commands,
 ) {
     let size = pile.len() as f32 * CARD_THICKNESS;
@@ -197,7 +199,7 @@ pub fn adjust_meshes(
     bottommesh.0 = mesh2;
     *bottomt = t2;
     for c in children {
-        if equipment.contains(c) {
+        if equipment.contains(c) || counters.contains(c) {
             commands.entity(c).despawn();
         }
     }
@@ -230,9 +232,6 @@ pub fn spawn_equip(
 }
 #[derive(Component)]
 pub struct Equipment;
-//TODO
-#[derive(Component)]
-pub struct Counter;
 pub fn make_cam(
     commands: &mut Commands,
     peer: PeerId,

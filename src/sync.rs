@@ -1,8 +1,8 @@
-use crate::counters::Value;
+use crate::counters::{Counter, Value};
 use crate::download::add_images;
 use crate::misc::{
-    Counter, Equipment, adjust_meshes, default_cam_pos, make_cam, make_cur, new_pile_at,
-    remove_follow, repaint_face, spawn_equip,
+    Equipment, adjust_meshes, default_cam_pos, make_cam, make_cur, new_pile_at, remove_follow,
+    repaint_face, spawn_equip,
 };
 #[cfg(feature = "steam")]
 use crate::setup::SteamInfo;
@@ -243,6 +243,7 @@ pub fn apply_sync(
         mut peers,
         cam,
         equipment,
+        counters,
         side,
         mut menu,
         mut turn,
@@ -282,7 +283,8 @@ pub fn apply_sync(
                 Without<PeerId>,
             ),
         >,
-        Query<(), Or<(With<Equipment>, With<Counter>)>>,
+        Query<(), With<Equipment>>,
+        Query<(), With<Counter>>,
         Option<Single<Entity, With<SideMenu>>>,
         ResMut<Menu>,
         ResMut<Turn>,
@@ -609,6 +611,7 @@ pub fn apply_sync(
                         &mut transform,
                         &mut colliders.get_mut(entity).unwrap(),
                         &equipment,
+                        &counters,
                         &mut commands,
                     );
                     if b {
@@ -640,6 +643,7 @@ pub fn apply_sync(
                         &mut transform,
                         &mut colliders.get_mut(entity).unwrap(),
                         &equipment,
+                        &counters,
                         &mut commands,
                     );
                     if b {
@@ -926,6 +930,7 @@ pub fn apply_sync(
                     &mut base_transform,
                     &mut colliders.get_mut(base_ent).unwrap(),
                     &equipment,
+                    &counters,
                     &mut commands,
                 );
                 if equip {
@@ -1066,6 +1071,7 @@ pub fn apply_sync(
                             &mut transform,
                             &mut colliders.get_mut(entity).unwrap(),
                             &equipment,
+                            &counters,
                             &mut commands,
                         );
                     }

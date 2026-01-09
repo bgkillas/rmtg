@@ -1,12 +1,12 @@
-use crate::counters::Value;
+use crate::counters::{Counter, Value, spawn_modify};
 use crate::download::{
     Exact, get_alts, get_deck, get_deck_export, spawn_scryfall_list, spawn_singleton,
     spawn_singleton_id,
 };
 use crate::misc::{
-    Counter, Equipment, adjust_meshes, default_cam_pos, is_reversed, new_pile, new_pile_at,
-    remove_follow, repaint_face, rotate_left, rotate_right, spawn_equip, ui_rotate_left,
-    ui_rotate_right, vec2_to_ground,
+    Equipment, adjust_meshes, default_cam_pos, is_reversed, new_pile, new_pile_at, remove_follow,
+    repaint_face, rotate_left, rotate_right, spawn_equip, ui_rotate_left, ui_rotate_right,
+    vec2_to_ground,
 };
 use crate::setup::{
     EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, TextChat, TextInput, TextMenu, W, Wall,
@@ -613,6 +613,7 @@ pub fn listen_for_mouse(
         children,
         mut transforms,
         equipment,
+        counters,
         mut net,
         mut turn,
         peers,
@@ -624,7 +625,8 @@ pub fn listen_for_mouse(
         Query<&mut Text3d>,
         Query<&Children, (Without<Pile>, Without<ShapeHold>)>,
         Query<&mut Transform, (Or<(With<Pile>, With<Shape>)>, Without<Side>)>,
-        Query<(), Or<(With<Equipment>, With<Counter>)>>,
+        Query<(), With<Equipment>>,
+        Query<(), With<Counter>>,
         Net,
         ResMut<Turn>,
         Res<Peers>,
@@ -738,11 +740,91 @@ pub fn listen_for_mouse(
                     *focus.menu = Menu::World;
                     commands.entity(**side.as_ref().unwrap()).despawn();
                 }
-            } else if keybinds.just_pressed(Keybind::Modify)
+            } else if keybinds.just_pressed(Keybind::MiscCounter)
                 && let Pile::Single(c) = &mut *pile
             {
-                c.loyalty = Some(0);
-                //TODO
+                c.misc = if c.misc.is_none() {
+                    Some(Value(0))
+                } else {
+                    None
+                };
+                spawn_modify(
+                    entity,
+                    c,
+                    &mut commands,
+                    &mut materials,
+                    &mut meshes,
+                    children,
+                    &counters,
+                );
+            } else if keybinds.just_pressed(Keybind::Counters)
+                && let Pile::Single(c) = &mut *pile
+            {
+                c.counters = if c.counters.is_none() {
+                    Some(Value(0))
+                } else {
+                    None
+                };
+                spawn_modify(
+                    entity,
+                    c,
+                    &mut commands,
+                    &mut materials,
+                    &mut meshes,
+                    children,
+                    &counters,
+                );
+            } else if keybinds.just_pressed(Keybind::Loyalty)
+                && let Pile::Single(c) = &mut *pile
+            {
+                c.loyalty = if c.loyalty.is_none() {
+                    Some(Value(c.subcard.face().loyalty.unwrap_or_default() as i128))
+                } else {
+                    None
+                };
+                spawn_modify(
+                    entity,
+                    c,
+                    &mut commands,
+                    &mut materials,
+                    &mut meshes,
+                    children,
+                    &counters,
+                );
+            } else if keybinds.just_pressed(Keybind::Power)
+                && let Pile::Single(c) = &mut *pile
+            {
+                c.power = if c.power.is_none() {
+                    Some(Value(c.subcard.face().power.unwrap_or_default() as i128))
+                } else {
+                    None
+                };
+                spawn_modify(
+                    entity,
+                    c,
+                    &mut commands,
+                    &mut materials,
+                    &mut meshes,
+                    children,
+                    &counters,
+                );
+            } else if keybinds.just_pressed(Keybind::Toughness)
+                && let Pile::Single(c) = &mut *pile
+            {
+                c.toughness = if c.toughness.is_none() {
+                    Some(Value(c.subcard.face().toughness.unwrap_or_default() as i128))
+                } else {
+                    None
+                };
+                spawn_modify(
+                    entity,
+                    c,
+                    &mut commands,
+                    &mut materials,
+                    &mut meshes,
+                    children,
+                    &counters,
+                );
             } else if keybinds.just_pressed(Keybind::CopyObject) {
                 *game_clipboard = GameClipboard::Pile(pile.clone());
             } else if keybinds.just_pressed(Keybind::Copy) && !is_reversed(&transform) {
@@ -787,6 +869,7 @@ pub fn listen_for_mouse(
                         &mut transform,
                         &mut colliders.get_mut(entity).unwrap().0,
                         &equipment,
+                        &counters,
                         &mut commands,
                     );
                     let mut transform = *transform;
@@ -880,6 +963,7 @@ pub fn listen_for_mouse(
                     &mut transform,
                     &mut colliders.get_mut(entity).unwrap().0,
                     &equipment,
+                    &counters,
                     &mut commands,
                 );
                 if b {
@@ -1127,6 +1211,7 @@ pub fn listen_for_mouse(
                             &mut transform,
                             &mut colliders.get_mut(entity).unwrap().0,
                             &equipment,
+                            &counters,
                             &mut commands,
                         );
                     } else {
@@ -1894,13 +1979,14 @@ pub fn pick_from_list(
             Without<Side>,
         ),
     >,
-    (mut colliders, follow, ids, others_ids, text, equipment, side, mut net, mut focus): (
+    (mut colliders, follow, ids, others_ids, text, equipment, counters, side, mut net, mut focus): (
         Query<&mut Collider>,
         Option<Single<Entity, With<FollowMouse>>>,
         Query<&SyncObjectMe>,
         Query<&SyncObject>,
         Single<&TextInputContents, With<SearchText>>,
-        Query<(), Or<(With<Equipment>, With<Counter>)>>,
+        Query<(), With<Equipment>>,
+        Query<(), With<Counter>>,
         Option<Single<Entity, With<SideMenu>>>,
         Net,
         Focus,
@@ -1942,6 +2028,7 @@ pub fn pick_from_list(
                                 &mut trans,
                                 &mut colliders.get_mut(entity).unwrap(),
                                 &equipment,
+                                &counters,
                                 &mut commands,
                             );
                         } else {

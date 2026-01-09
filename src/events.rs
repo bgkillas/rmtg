@@ -1,4 +1,5 @@
-use crate::misc::{Counter, Equipment, adjust_meshes, is_reversed, repaint_face, spawn_equip};
+use crate::counters::Counter;
+use crate::misc::{Equipment, adjust_meshes, is_reversed, repaint_face, spawn_equip};
 use crate::setup::{SideMenu, Wall};
 use crate::shapes::{Shape, Side};
 use crate::sync::{Net, SyncObject, SyncObjectMe};
@@ -83,7 +84,8 @@ pub fn pile_merge(
     mut commands: Commands,
     search_deck: Option<Single<(Entity, &SearchDeck)>>,
     text: Option<Single<&TextInputContents, With<SearchText>>>,
-    equipment: Query<(), Or<(With<Equipment>, With<Counter>)>>,
+    equipment: Query<(), With<Equipment>>,
+    counters: Query<(), With<Counter>>,
     (mut menu, side, net, card_base): (
         ResMut<Menu>,
         Option<Single<Entity, With<SideMenu>>>,
@@ -160,6 +162,7 @@ pub fn pile_merge(
             &mut bottom_transform,
             &mut collider,
             &equipment,
+            &counters,
             &mut commands,
         );
         if equip {

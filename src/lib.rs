@@ -53,6 +53,7 @@ pub mod setup;
 pub mod shapes;
 pub mod sync;
 pub mod update;
+use crate::counters::Value;
 use crate::misc::is_reversed;
 use crate::shapes::Shape;
 #[cfg(feature = "steam")]
@@ -349,7 +350,9 @@ impl Pile {
                 *s = Pile::Single(Box::new(Card {
                     subcard,
                     equiped,
-                    modified: None,
+                    power: None,
+                    toughness: None,
+                    counters: None,
                     loyalty: None,
                     misc: None,
                     is_token: false,
@@ -685,8 +688,9 @@ pub struct CardInfo {
     card_type: Types,
     text: String,
     color: ColorIdentity,
-    power: u16,
-    toughness: u16,
+    power: Option<u8>,
+    toughness: Option<u8>,
+    loyalty: Option<u8>,
     #[bitcode(skip)]
     image: UninitImage,
 }
@@ -699,6 +703,7 @@ impl CardInfo {
             text: self.text.clone(),
             color: self.color,
             power: self.power,
+            loyalty: self.loyalty,
             toughness: self.toughness,
             image: default(),
         }
@@ -1119,24 +1124,23 @@ impl SubCard {
     }
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
-pub struct Modified {
-    main: (i32, i32),
-    counter: Option<(i32, i32)>,
-}
-#[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct Card {
     subcard: SubCard,
     equiped: Vec<SubCard>,
-    modified: Option<Modified>,
-    loyalty: Option<i32>,
-    misc: Option<i32>,
+    power: Option<Value>,
+    toughness: Option<Value>,
+    counters: Option<Value>,
+    loyalty: Option<Value>,
+    misc: Option<Value>,
     #[allow(dead_code)]
     is_token: bool,
 }
 impl Card {
     fn is_modified(&self) -> bool {
         !self.equiped.is_empty()
-            || self.modified.is_some()
+            || self.power.is_some()
+            || self.toughness.is_some()
+            || self.counters.is_some()
             || self.loyalty.is_some()
             || self.misc.is_some()
     }
@@ -1144,7 +1148,9 @@ impl Card {
         Self {
             subcard: self.subcard.clone_no_image(),
             equiped: self.equiped.iter().map(|c| c.clone_no_image()).collect(),
-            modified: None,
+            power: None,
+            toughness: None,
+            counters: None,
             loyalty: None,
             misc: None,
             is_token: false,
@@ -1274,7 +1280,9 @@ impl From<SubCard> for Card {
         Self {
             subcard: value,
             equiped: Vec::new(),
-            modified: None,
+            power: None,
+            toughness: None,
+            counters: None,
             loyalty: None,
             misc: None,
             is_token: false,
@@ -1287,7 +1295,9 @@ impl From<SubCard> for Box<Card> {
             subcard: value,
             equiped: Vec::new(),
             loyalty: None,
-            modified: None,
+            power: None,
+            toughness: None,
+            counters: None,
             misc: None,
             is_token: false,
         })
@@ -1389,15 +1399,28 @@ impl CardInfo {
                 }
             }
             SearchKey::Power => {
-                if let Ok(v) = value.parse() {
-                    self.power.cmp(&v) == ordering
+                if let Some(power) = self.power
+                    && let Ok(v) = value.parse()
+                {
+                    power.cmp(&v) == ordering
+                } else {
+                    return false;
+                }
+            }
+            SearchKey::Loyalty => {
+                if let Some(loyalty) = self.loyalty
+                    && let Ok(v) = value.parse()
+                {
+                    loyalty.cmp(&v) == ordering
                 } else {
                     return false;
                 }
             }
             SearchKey::Toughness => {
-                if let Ok(v) = value.parse() {
-                    self.toughness.cmp(&v) == ordering
+                if let Some(toughness) = self.toughness
+                    && let Ok(v) = value.parse()
+                {
+                    toughness.cmp(&v) == ordering
                 } else {
                     return false;
                 }
@@ -1524,6 +1547,7 @@ fn get_key(key: &str) -> Option<SearchKey> {
         "text" | "o" => SearchKey::Text,
         "color" | "c" => SearchKey::Color,
         "power" | "p" => SearchKey::Power,
+        "loyalty" | "l" => SearchKey::Loyalty,
         "toughness" | "h" => SearchKey::Toughness,
         _ => return None,
     })
@@ -1540,6 +1564,7 @@ pub enum SearchKey {
     Color,
     Power,
     Toughness,
+    Loyalty,
 }
 #[derive(Resource)]
 pub struct Download {
@@ -1678,7 +1703,6 @@ pub enum Keybind {
     Flip,
     Shuffle,
     Remove,
-    Modify,
     Copy,
     CopyObject,
     Paste,
@@ -1719,6 +1743,11 @@ pub enum Keybind {
     Exile,
     Reveal,
     Draw,
+    Loyalty,
+    Power,
+    Toughness,
+    MiscCounter,
+    Counters,
 }
 #[derive(Resource, Deref, DerefMut)]
 pub struct KeybindsList(EnumMap<Keybind, Bind>);
@@ -1741,7 +1770,6 @@ impl Default for KeybindsList {
             Keybind::Shuffle => Bind::new(enum_set!(), KeyCode::KeyR),
             Keybind::Calc => Bind::new(enum_set!(ctrl), KeyCode::KeyR),
             Keybind::Remove => Bind::new(enum_set!(), KeyCode::Delete),
-            Keybind::Modify => Bind::new(enum_set!(alt), KeyCode::KeyM),
             Keybind::Copy => Bind::new(enum_set!(ctrl), KeyCode::KeyC),
             Keybind::CopyObject => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyC),
             Keybind::Paste => Bind::new(enum_set!(ctrl), KeyCode::KeyV),
@@ -1777,7 +1805,12 @@ impl Default for KeybindsList {
             Keybind::Mill => Bind::new(enum_set!(ctrl), Key::Numeric),
             Keybind::Exile => Bind::new(enum_set!(ctrl | shift), Key::Numeric),
             Keybind::Reveal => Bind::new(enum_set!(alt), Key::Numeric),
-            Keybind::Draw => Bind::new(enum_set!(), Key::Numeric)
+            Keybind::Draw => Bind::new(enum_set!(), Key::Numeric),
+            Keybind::Loyalty => Bind::new(enum_set!(alt), KeyCode::KeyL),
+            Keybind::Power => Bind::new(enum_set!(alt), KeyCode::KeyP),
+            Keybind::Toughness => Bind::new(enum_set!(alt), KeyCode::KeyT),
+            Keybind::MiscCounter => Bind::new(enum_set!(alt), KeyCode::KeyM),
+            Keybind::Counters => Bind::new(enum_set!(alt), KeyCode::KeyC),
         })
     }
 }

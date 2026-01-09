@@ -412,9 +412,28 @@ pub async fn parse(
     let (color, alt_color) = get(value, "colors", double, |a| {
         ColorIdentity::parse(a.members().map(|a| a.as_str().unwrap()))
     });
-    let (power, alt_power) = get(value, "power", double, |a| a.as_u16().unwrap_or_default());
+    let (power, alt_power) = get(value, "power", double, |a| {
+        if a.as_str() == Some("∞") {
+            Some(255)
+        } else if let Some(s) = a.as_str() {
+            s.parse().ok()
+        } else {
+            None
+        }
+    });
+    let (loyalty, alt_loyalty) = get(value, "loyalty", double, |a| {
+        if let Some(s) = a.as_str() {
+            s.parse().ok()
+        } else {
+            None
+        }
+    });
     let (toughness, alt_toughness) = get(value, "toughness", double, |a| {
-        a.as_u16().unwrap_or_default()
+        if let Some(s) = a.as_str() {
+            s.parse().ok()
+        } else {
+            None
+        }
     });
     Some(SubCard {
         data: CardData {
@@ -425,6 +444,7 @@ pub async fn parse(
                 text,
                 color,
                 power,
+                loyalty,
                 toughness,
                 image,
             },
@@ -435,6 +455,7 @@ pub async fn parse(
                 text: alt_text,
                 color: alt_color,
                 power: alt_power,
+                loyalty: alt_loyalty,
                 toughness: alt_toughness,
                 image,
             })),
