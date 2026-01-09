@@ -53,7 +53,7 @@ pub mod setup;
 pub mod shapes;
 pub mod sync;
 pub mod update;
-use crate::counters::Value;
+use crate::counters::{Value, counter_hit};
 use crate::misc::is_reversed;
 use crate::shapes::Shape;
 #[cfg(feature = "steam")]
@@ -93,6 +93,7 @@ const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO multi select, in card counters
 //TODO spawn stuff touching the floor
 //TODO half card width between card spots
+//TODO search does not scroll far down enough
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
@@ -163,6 +164,7 @@ pub fn start() -> AppExit {
         EntropyPlugin::<WyRand>::default(),
         Text3dPlugin::default(),
         TextInputPlugin,
+        MeshPickingPlugin,
         //FpsOverlayPlugin::default(),
     ))
     .insert_gizmo_config(
@@ -226,6 +228,7 @@ pub fn start() -> AppExit {
                     #[cfg(any(feature = "steam", feature = "ip"))]
                     new_lobby,
                     update_search_deck,
+                    counter_hit,
                     (
                         pick_from_list,
                         gather_hand,

@@ -1,8 +1,10 @@
 use crate::shapes::{Shape, WORLD_FONT_SIZE};
 use crate::{
-    ANG_DAMPING, CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, Card, GRAVITY, LIN_DAMPING, SLEEP,
+    ANG_DAMPING, CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, Card, GRAVITY, Keybind, Keybinds,
+    LIN_DAMPING, Pile, SLEEP,
 };
 use avian3d::prelude::*;
+use bevy::picking::backend::PointerHits;
 use bevy::prelude::*;
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
 use bitcode::{Decode, Encode};
@@ -85,20 +87,38 @@ pub fn spawn_modify(
             let Some(value) = value else { continue };
             let width = 24.0 * CARD_THICKNESS;
             let n = match counter {
-                Counter::Power => 2,
-                Counter::Toughness => 1,
-                Counter::Loyalty => 0,
-                Counter::Counters => 1,
-                Counter::Misc => 0,
+                Counter::Power => 2.0,
+                Counter::Toughness => 1.0,
+                Counter::Loyalty => 0.0,
+                Counter::Counters => 1.5,
+                Counter::Misc => 0.0,
+            };
+            let is_misc = matches!(counter, Counter::Misc);
+            let (vec, size) = if is_misc {
+                (
+                    Vec3::new(0.0, 0.0, -CARD_HEIGHT / 6.0),
+                    Vec3::new(CARD_WIDTH, CARD_THICKNESS / 2.0, 5.0 * CARD_HEIGHT / 48.0),
+                )
+            } else {
+                (
+                    Vec3::new(
+                        (CARD_WIDTH - width) / 2.0 - width * n,
+                        0.0,
+                        (CARD_HEIGHT + width) / 2.0
+                            + if matches!(counter, Counter::Counters) {
+                                width
+                            } else {
+                                0.0
+                            },
+                    ),
+                    Vec3::new(width, CARD_THICKNESS, width),
+                )
             };
             p.spawn((
-                Transform::from_xyz(
-                    (CARD_WIDTH - width) / 2.0 - width * n as f32,
-                    0.0,
-                    (CARD_HEIGHT + width) / 2.0,
-                ),
+                Transform::from_translation(vec),
                 counter,
-                Mesh3d(meshes.add(Cuboid::new(width, CARD_THICKNESS, width))),
+                Pickable::default(),
+                Mesh3d(meshes.add(Cuboid::from_size(size))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color: Color::BLACK,
                     unlit: true,
@@ -119,7 +139,11 @@ pub fn spawn_modify(
                 })),
                 Text3dStyling {
                     size: WORLD_FONT_SIZE,
-                    world_scale: Some(Vec2::splat(width / 2.0)),
+                    world_scale: Some(Vec2::splat(if is_misc {
+                        CARD_WIDTH / 2.0
+                    } else {
+                        2.0 * width / 3.0
+                    })),
                     anchor: TextAnchor::CENTER,
                     ..default()
                 },
@@ -127,6 +151,49 @@ pub fn spawn_modify(
             ));
         }
     });
+}
+pub fn counter_hit(
+    mut hits: MessageReader<PointerHits>,
+    children: Query<(&Children, &ChildOf, &Counter)>,
+    mut card: Query<&mut Pile>,
+    mut text: Query<&mut Text3d>,
+    keybinds: Keybinds,
+) {
+    let add = keybinds.just_pressed(Keybind::Add);
+    let sub = keybinds.just_pressed(Keybind::Sub);
+    if !add && !sub {
+        hits.clear();
+        return;
+    }
+    for hit in hits.read() {
+        for (hit, _) in &hit.picks {
+            let Ok((child, parent, counter)) = children.get(*hit) else {
+                continue;
+            };
+            let Ok(card) = card.get_mut(parent.0) else {
+                continue;
+            };
+            let Pile::Single(card) = card.into_inner() else {
+                continue;
+            };
+            let Ok(mut text) = text.get_mut(child[0]) else {
+                continue;
+            };
+            let obj = match counter {
+                Counter::Power => card.power.as_mut().unwrap(),
+                Counter::Toughness => card.toughness.as_mut().unwrap(),
+                Counter::Loyalty => card.loyalty.as_mut().unwrap(),
+                Counter::Counters => card.counters.as_mut().unwrap(),
+                Counter::Misc => card.misc.as_mut().unwrap(),
+            };
+            if add {
+                obj.0 += 1;
+            } else if sub {
+                obj.0 -= 1;
+            }
+            *text.get_single_mut().unwrap() = obj.0.to_string();
+        }
+    }
 }
 #[derive(Component, Enum)]
 pub enum Counter {

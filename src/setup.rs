@@ -32,12 +32,14 @@ pub fn setup(
     //mut fps: ResMut<FpsOverlayConfig>,
     mut net: Net,
     mut light: ResMut<AmbientLight>,
+    mut pick: ResMut<MeshPickingSettings>,
     #[cfg(feature = "steam")] send_sleep: Res<SendSleeping>,
     #[cfg(feature = "steam")] give: Res<GiveEnts>,
     #[cfg(feature = "steam")] flip_counter: Res<FlipCounter>,
     #[cfg(feature = "steam")] peers: Res<Peers>,
     #[cfg(feature = "steam")] rempeers: Res<RemPeers>,
 ) {
+    pick.require_markers = true;
     light.brightness = 100.0;
     let mut no_obj = false;
     #[cfg(feature = "steam")]
@@ -206,6 +208,7 @@ pub fn setup(
         Msaa::Sample8,
         default_cam_pos(0),
         Tonemapping::None,
+        MeshPickingCamera,
     ));
     if !no_obj {
         let mut cube = Shape::Cube.create(
