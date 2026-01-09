@@ -16,7 +16,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::window::PrimaryWindow;
 use bevy_rand::global::GlobalRng;
 use bevy_rich_text3d::Text3d;
-use bevy_tangled::{ClientTrait, ClientTypeRef, Compression, PeerId, Reliability};
+use bevy_tangled::{ClientMode, ClientTrait, ClientTypeRef, Compression, PeerId, Reliability};
 use bevy_ui_text_input::TextInputContents;
 use bitcode::{Decode, Encode};
 #[cfg(feature = "mic")]
@@ -539,8 +539,24 @@ pub fn apply_sync(
                     spawn_hand(id, &mut commands);
                     peers.me = Some(id);
                     *cam = default_cam_pos(peers.me.unwrap_or_default());
+                    if matches!(client.mode(), ClientMode::Ip) {
+                        client
+                            .broadcast(
+                                &Packet::Name(peers.name.clone().unwrap()),
+                                Reliability::Reliable,
+                                COMPRESSION,
+                            )
+                            .unwrap();
+                    }
+                } else if matches!(client.mode(), ClientMode::Steam)
+                    && let Some(name) = client.get_name_of(peer)
+                {
+                    peers.names.insert(peer, name);
                 }
                 peers.map().insert(peer, id);
+            }
+            Packet::Name(name) => {
+                peers.names.insert(sender, name);
             }
             Packet::Dead(id) => {
                 if id.user == client.my_id()
@@ -1466,6 +1482,7 @@ pub enum Packet {
     Merge(SyncObject, SyncObject, usize),
     SetUser(PeerId, usize),
     Indicator(Pos, Option<Pos>, bool),
+    Name(String),
     Text(String),
     Voice(Vec<u8>),
     Turn(usize),
