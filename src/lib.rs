@@ -38,13 +38,13 @@ const START_Y: f32 = MAT_WIDTH;
 const GRAVITY: f32 = CARD_HEIGHT;
 const LIN_DAMPING: f32 = CARD_THICKNESS;
 const ANG_DAMPING: f32 = 0.25;
-const PLAYER0: bevy::color::Color = bevy::color::Color::srgb_u8(255, 85, 85);
-const PLAYER1: bevy::color::Color = bevy::color::Color::srgb_u8(85, 85, 255);
-const PLAYER2: bevy::color::Color = bevy::color::Color::srgb_u8(255, 85, 255);
-const PLAYER3: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 85);
-const PLAYER4: bevy::color::Color = bevy::color::Color::srgb_u8(85, 255, 255);
-const PLAYER5: bevy::color::Color = bevy::color::Color::srgb_u8(255, 255, 85);
-const PLAYER: [bevy::color::Color; 6] = [PLAYER0, PLAYER1, PLAYER2, PLAYER3, PLAYER4, PLAYER5];
+const PLAYER0: Color = Color::srgb_u8(255, 85, 85);
+const PLAYER1: Color = Color::srgb_u8(85, 85, 255);
+const PLAYER2: Color = Color::srgb_u8(255, 85, 255);
+const PLAYER3: Color = Color::srgb_u8(85, 255, 85);
+const PLAYER4: Color = Color::srgb_u8(85, 255, 255);
+const PLAYER5: Color = Color::srgb_u8(255, 255, 85);
+const PLAYER: [Color; 6] = [PLAYER0, PLAYER1, PLAYER2, PLAYER3, PLAYER4, PLAYER5];
 pub mod counters;
 pub mod download;
 pub mod events;
@@ -167,7 +167,7 @@ pub fn start() -> AppExit {
     .insert_gizmo_config(
         PhysicsGizmos {
             axis_lengths: None,
-            collider_color: Some(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
+            collider_color: Some(Color::srgba_u8(0, 0, 0, 127)),
             sleeping_color_multiplier: None,
             ..default()
         },
@@ -684,7 +684,7 @@ pub struct CardInfo {
     mana_cost: Cost,
     card_type: Types,
     text: String,
-    color: Color,
+    color: ColorIdentity,
     power: u16,
     toughness: u16,
     #[bitcode(skip)]
@@ -879,15 +879,16 @@ impl FromStr for SubTypes {
         Ok(ret)
     }
 }
+//TODO enumset
 #[derive(Debug, Default, Clone, Copy, Encode, Decode, PartialEq)]
-pub struct Color {
+pub struct ColorIdentity {
     white: bool,
     blue: bool,
     black: bool,
     red: bool,
     green: bool,
 }
-impl FromStr for Color {
+impl FromStr for ColorIdentity {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut cost = Self::default();
@@ -904,7 +905,7 @@ impl FromStr for Color {
         Ok(cost)
     }
 }
-impl Color {
+impl ColorIdentity {
     fn parse<'a>(value: impl Iterator<Item = &'a str>) -> Self {
         let mut cost = Self::default();
         for c in value {
@@ -920,12 +921,12 @@ impl Color {
         cost
     }
 }
-impl PartialOrd for Color {
+impl PartialOrd for ColorIdentity {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         fn contains(a: bool, b: bool) -> bool {
             if b { a } else { true }
         }
-        fn subset(a: &Color, b: &Color) -> bool {
+        fn subset(a: &ColorIdentity, b: &ColorIdentity) -> bool {
             contains(a.white, b.white)
                 && contains(a.blue, b.blue)
                 && contains(a.black, b.black)
@@ -943,7 +944,7 @@ impl PartialOrd for Color {
         }
     }
 }
-impl Color {
+impl ColorIdentity {
     pub fn len(&self) -> usize {
         let mut n = 0;
         if self.white {

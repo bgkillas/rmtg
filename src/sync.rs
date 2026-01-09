@@ -511,7 +511,7 @@ pub fn apply_sync(
                             &mut commands,
                             &mut meshes,
                             &mut materials,
-                            bevy::color::Color::WHITE,
+                            Color::WHITE,
                         )
                         .insert(id)
                         .id(),
@@ -1163,10 +1163,7 @@ pub fn apply_sync(
                         {
                             b.1 = ping;
                             if ping {
-                                fn sub(
-                                    a: bevy::color::Color,
-                                    b: bevy::color::Color,
-                                ) -> bevy::color::Color {
+                                fn sub(a: Color, b: Color) -> Color {
                                     let mut a = a.to_linear();
                                     let b = b.to_linear();
                                     a.red -= b.red;
@@ -1177,10 +1174,7 @@ pub fn apply_sync(
                                 mat.0 = materials.add(StandardMaterial {
                                     alpha_mode: AlphaMode::Opaque,
                                     unlit: true,
-                                    base_color: sub(
-                                        bevy::color::Color::WHITE,
-                                        PLAYER[id % PLAYER.len()],
-                                    ),
+                                    base_color: sub(Color::WHITE, PLAYER[id % PLAYER.len()]),
                                     ..default()
                                 });
                             } else {

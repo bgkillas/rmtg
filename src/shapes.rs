@@ -47,7 +47,7 @@ impl Shape {
         commands: &'a mut Commands,
         meshes: &mut Assets<Mesh>,
         materials: &mut Assets<StandardMaterial>,
-        color: bevy::color::Color,
+        color: Color,
     ) -> EntityCommands<'a> {
         match self {
             Shape::Cube => spawn_cube(SIZE, transform, commands, meshes, materials, color),
@@ -87,7 +87,7 @@ pub fn spawn_ico<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
-    color: bevy::color::Color,
+    color: Color,
 ) -> EntityCommands<'a> {
     let phi = 0.5 + 5.0f64.sqrt() / 2.0;
     let m = m as f64 / (1.0 + phi * phi).sqrt();
@@ -232,7 +232,7 @@ pub fn spawn_oct<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
-    color: bevy::color::Color,
+    color: Color,
 ) -> EntityCommands<'a> {
     let mut verticies: Vec<[f32; 3]> = Vec::with_capacity(6);
     for x in [-m, m] {
@@ -363,7 +363,7 @@ pub fn spawn_tetra<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
-    color: bevy::color::Color,
+    color: Color,
 ) -> EntityCommands<'a> {
     fn make(m: f32) -> (Mesh, Vec<[f32; 3]>) {
         let m = (m as f64 / 3.0f64.sqrt()) as f32;
@@ -498,8 +498,8 @@ pub fn spawn_disc<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
-    top_color: bevy::color::Color,
-    bottom_color: bevy::color::Color,
+    top_color: Color,
+    bottom_color: Color,
     turn: Option<usize>,
 ) -> EntityCommands<'a> {
     let m = m * 0.5;
@@ -604,7 +604,7 @@ pub fn spawn_dodec<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
-    color: bevy::color::Color,
+    color: Color,
 ) -> EntityCommands<'a> {
     let m = m / 3.0f32.sqrt();
     let phi = 0.5 + 5.0f64.sqrt() / 2.0;
@@ -808,7 +808,7 @@ pub fn spawn_cube<'a>(
     commands: &'a mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
-    color: bevy::color::Color,
+    color: Color,
 ) -> EntityCommands<'a> {
     let m = 2.0 * m / 3.0f32.sqrt();
     let d = m / 2.0 + CARD_THICKNESS;

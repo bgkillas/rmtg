@@ -1,4 +1,4 @@
-use crate::Color;
+use crate::ColorIdentity;
 use crate::sync::SyncObject;
 use crate::*;
 use bevy::asset::RenderAssetUsages;
@@ -410,7 +410,7 @@ pub async fn parse(
         a.as_str().unwrap_or_default().to_string()
     });
     let (color, alt_color) = get(value, "colors", double, |a| {
-        Color::parse(a.members().map(|a| a.as_str().unwrap()))
+        ColorIdentity::parse(a.members().map(|a| a.as_str().unwrap()))
     });
     let (power, alt_power) = get(value, "power", double, |a| a.as_u16().unwrap_or_default());
     let (toughness, alt_toughness) = get(value, "toughness", double, |a| {

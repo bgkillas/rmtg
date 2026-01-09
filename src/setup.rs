@@ -213,7 +213,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
-            bevy::color::Color::WHITE,
+            Color::WHITE,
         );
         cube.insert(net.new_id());
         let cube = cube.id();
@@ -223,7 +223,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
-            bevy::color::Color::WHITE,
+            Color::WHITE,
         );
         tetra.insert(net.new_id());
         let tetra = tetra.id();
@@ -233,7 +233,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
-            bevy::color::Color::WHITE,
+            Color::WHITE,
         );
         ico.insert(net.new_id());
         let ico = ico.id();
@@ -243,7 +243,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
-            bevy::color::Color::WHITE,
+            Color::WHITE,
         );
         oct.insert(net.new_id());
         let oct = oct.id();
@@ -253,7 +253,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
-            bevy::color::Color::WHITE,
+            Color::WHITE,
         );
         dodec.insert(net.new_id());
         let dodec = dodec.id();
@@ -263,7 +263,7 @@ pub fn setup(
             &mut commands,
             &mut meshes,
             &mut materials,
-            bevy::color::Color::WHITE,
+            Color::WHITE,
         );
         coin.insert(net.new_id());
         let coin = coin.id();
@@ -288,7 +288,7 @@ pub fn setup(
                 &mut commands,
                 &mut meshes,
                 &mut materials,
-                bevy::color::Color::WHITE,
+                Color::WHITE,
             );
             counter.insert(net.new_id());
             let counter = counter.id();
@@ -299,7 +299,7 @@ pub fn setup(
                 &mut commands,
                 &mut meshes,
                 &mut materials,
-                bevy::color::Color::WHITE,
+                Color::WHITE,
             );
             turn.insert(net.new_id());
             let turn = turn.id();
@@ -315,7 +315,7 @@ pub fn setup(
         },
         TextMenu,
         Visibility::Visible,
-        BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 64)),
+        BackgroundColor(Color::srgba_u8(0, 0, 0, 64)),
         children![
             (
                 Node {
@@ -366,7 +366,7 @@ pub fn setup(
         },
         EscMenu,
         Visibility::Hidden,
-        BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
+        BackgroundColor(Color::srgba_u8(0, 0, 0, 127)),
     ));
     #[cfg(feature = "steam")]
     ent.with_child((
@@ -414,7 +414,7 @@ pub fn make_mat(
     commands: &mut Commands,
     transform: Transform,
     right: bool,
-    color: bevy::color::Color,
+    color: Color,
     player: Player,
 ) {
     let mat = materials.add(StandardMaterial {

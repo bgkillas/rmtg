@@ -1290,7 +1290,7 @@ pub fn listen_for_mouse(
                                 height: Val::Px(FONT_HEIGHT * 1.5),
                                 ..default()
                             },
-                            BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
+                            BackgroundColor(Color::srgba_u8(0, 0, 0, 127)),
                             TextInputNode {
                                 mode: TextInputMode::SingleLine,
                                 clear_on_submit: false,
@@ -2355,7 +2355,7 @@ pub fn listen_for_deck(
                         &mut commands,
                         &mut meshes,
                         &mut materials,
-                        bevy::color::Color::WHITE,
+                        Color::WHITE,
                     )
                     .insert(net.new_id())
                     .id(),
@@ -2645,7 +2645,7 @@ pub fn search(
         },
         SideMenu,
         Visibility::Visible,
-        BackgroundColor(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
+        BackgroundColor(Color::srgba_u8(0, 0, 0, 127)),
     ));
     ent.with_children(|p| {
         let id = p
