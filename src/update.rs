@@ -748,6 +748,11 @@ pub fn listen_for_mouse(
                 } else {
                     None
                 };
+                if let Ok(id) = ids.get(entity) {
+                    net.modify_me(*id, Counter::Misc, c.misc.clone());
+                } else if let Ok(id) = others_ids.get(entity) {
+                    net.modify(*id, Counter::Misc, c.misc.clone());
+                }
                 spawn_modify(
                     entity,
                     c,
@@ -765,6 +770,11 @@ pub fn listen_for_mouse(
                 } else {
                     None
                 };
+                if let Ok(id) = ids.get(entity) {
+                    net.modify_me(*id, Counter::Counters, c.counters.clone());
+                } else if let Ok(id) = others_ids.get(entity) {
+                    net.modify(*id, Counter::Counters, c.counters.clone());
+                }
                 spawn_modify(
                     entity,
                     c,
@@ -782,6 +792,11 @@ pub fn listen_for_mouse(
                 } else {
                     None
                 };
+                if let Ok(id) = ids.get(entity) {
+                    net.modify_me(*id, Counter::Loyalty, c.loyalty.clone());
+                } else if let Ok(id) = others_ids.get(entity) {
+                    net.modify(*id, Counter::Loyalty, c.loyalty.clone());
+                }
                 spawn_modify(
                     entity,
                     c,
@@ -799,6 +814,11 @@ pub fn listen_for_mouse(
                 } else {
                     None
                 };
+                if let Ok(id) = ids.get(entity) {
+                    net.modify_me(*id, Counter::Power, c.power.clone());
+                } else if let Ok(id) = others_ids.get(entity) {
+                    net.modify(*id, Counter::Power, c.power.clone());
+                }
                 spawn_modify(
                     entity,
                     c,
@@ -816,6 +836,11 @@ pub fn listen_for_mouse(
                 } else {
                     None
                 };
+                if let Ok(id) = ids.get(entity) {
+                    net.modify_me(*id, Counter::Toughness, c.toughness.clone());
+                } else if let Ok(id) = others_ids.get(entity) {
+                    net.modify(*id, Counter::Toughness, c.toughness.clone());
+                }
                 spawn_modify(
                     entity,
                     c,

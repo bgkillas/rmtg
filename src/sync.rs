@@ -1,4 +1,4 @@
-use crate::counters::{Counter, Value};
+use crate::counters::{Counter, Value, spawn_modify};
 use crate::download::add_images;
 use crate::misc::{
     Equipment, adjust_meshes, default_cam_pos, make_cam, make_cur, new_pile_at, remove_follow,
@@ -658,6 +658,58 @@ pub fn apply_sync(
                     }
                 }
             }
+            Packet::Modify(id, counter, value) => {
+                if id.user == client.my_id()
+                    && let Some((pile, entity, children)) =
+                        queryme.iter_mut().find_map(|(a, _, p, e, c, _, _)| {
+                            if *a == id.id { Some((p, e, c)) } else { None }
+                        })
+                    && let Some(children) = children
+                    && let Some(pile) = pile
+                    && let Pile::Single(card) = pile.into_inner()
+                {
+                    match counter {
+                        Counter::Power => card.power = value,
+                        Counter::Toughness => card.toughness = value,
+                        Counter::Loyalty => card.loyalty = value,
+                        Counter::Counters => card.counters = value,
+                        Counter::Misc => card.misc = value,
+                    }
+                    spawn_modify(
+                        entity,
+                        card,
+                        &mut commands,
+                        &mut materials,
+                        &mut meshes,
+                        children,
+                        &counters,
+                    );
+                } else if let Some((pile, entity, children)) = query.iter_mut().find_map(
+                    |(a, _, _, _, e, _, c, p, _, _)| {
+                        if *a == id { Some((p, e, c)) } else { None }
+                    },
+                ) && let Some(children) = children
+                    && let Some(pile) = pile
+                    && let Pile::Single(card) = pile.into_inner()
+                {
+                    match counter {
+                        Counter::Power => card.power = value,
+                        Counter::Toughness => card.toughness = value,
+                        Counter::Loyalty => card.loyalty = value,
+                        Counter::Counters => card.counters = value,
+                        Counter::Misc => card.misc = value,
+                    }
+                    spawn_modify(
+                        entity,
+                        card,
+                        &mut commands,
+                        &mut materials,
+                        &mut meshes,
+                        children,
+                        &counters,
+                    );
+                }
+            }
             Packet::Flip(id, idx, rev) => {
                 if id.user == client.my_id()
                     && let Some((pile, children, entity, transform)) =
@@ -1247,6 +1299,7 @@ pub fn apply_sync(
                 if let Some(name) = peers.names.get(&sender) {
                     spawn_msg(*chat, name.clone(), msg, &mut commands, font.clone());
                 }
+                //TODO deal with no name
             }
             Packet::Voice(data) => {
                 #[cfg(feature = "mic")]
@@ -1484,6 +1537,7 @@ pub enum Packet {
     Indicator(Pos, Option<Pos>, bool),
     Name(String),
     Text(String),
+    Modify(SyncObject, Counter, Option<Value>),
     Voice(Vec<u8>),
     Turn(usize),
 }
@@ -1734,6 +1788,18 @@ impl<'w, 's> Net<'w, 's> {
     }
     pub fn counter_me(&self, id: SyncObjectMe, value: Value) {
         self.counter(self.to_global(id), value)
+    }
+    pub fn modify(&self, id: SyncObject, counter: Counter, value: Option<Value>) {
+        self.client
+            .broadcast(
+                &Packet::Modify(id, counter, value),
+                Reliability::Reliable,
+                COMPRESSION,
+            )
+            .unwrap();
+    }
+    pub fn modify_me(&self, id: SyncObjectMe, counter: Counter, value: Option<Value>) {
+        self.modify(self.to_global(id), counter, value)
     }
     pub fn turn(&self, n: usize) {
         self.client

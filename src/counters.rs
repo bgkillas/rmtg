@@ -1,4 +1,5 @@
 use crate::shapes::{Shape, WORLD_FONT_SIZE};
+use crate::sync::{Net, SyncObject, SyncObjectMe};
 use crate::{
     ANG_DAMPING, CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, Card, GRAVITY, Keybind, Keybinds,
     LIN_DAMPING, Pile, SLEEP,
@@ -97,7 +98,7 @@ pub fn spawn_modify(
             let (vec, size) = if is_misc {
                 (
                     Vec3::new(0.0, 0.0, -CARD_HEIGHT / 6.0),
-                    Vec3::new(CARD_WIDTH, CARD_THICKNESS / 2.0, 5.0 * CARD_HEIGHT / 48.0),
+                    Vec3::new(CARD_WIDTH, CARD_THICKNESS / 2.0, CARD_HEIGHT / 3.0),
                 )
             } else {
                 (
@@ -158,6 +159,9 @@ pub fn counter_hit(
     mut card: Query<&mut Pile>,
     mut text: Query<&mut Text3d>,
     keybinds: Keybinds,
+    net: Net,
+    ids: Query<&SyncObjectMe>,
+    others_ids: Query<&SyncObject>,
 ) {
     let add = keybinds.just_pressed(Keybind::Add);
     let sub = keybinds.just_pressed(Keybind::Sub);
@@ -192,10 +196,15 @@ pub fn counter_hit(
                 obj.0 -= 1;
             }
             *text.get_single_mut().unwrap() = obj.0.to_string();
+            if let Ok(id) = ids.get(parent.0) {
+                net.modify_me(*id, *counter, Some(obj.clone()));
+            } else if let Ok(id) = others_ids.get(parent.0) {
+                net.modify(*id, *counter, Some(obj.clone()));
+            }
         }
     }
 }
-#[derive(Component, Enum)]
+#[derive(Component, Enum, Debug, Encode, Decode, Clone, Copy)]
 pub enum Counter {
     Power,
     Toughness,
