@@ -1093,7 +1093,7 @@ pub fn apply_sync(
                                 false,
                                 None,
                                 Some(syncobject),
-                                None,
+                                None,children,&counters
                             );
                         }
                     }

@@ -94,6 +94,7 @@ const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO spawn stuff touching the floor
 //TODO half card width between card spots
 //TODO search does not scroll far down enough
+//TODO card ban lists
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
@@ -388,6 +389,13 @@ impl Pile {
     fn is_modified(&self) -> bool {
         if let Pile::Single(s) = self {
             s.is_modified()
+        } else {
+            false
+        }
+    }
+    fn has_counters(&self) -> bool {
+        if let Pile::Single(s) = self {
+            s.has_counters()
         } else {
             false
         }
@@ -1141,7 +1149,10 @@ pub struct Card {
 impl Card {
     fn is_modified(&self) -> bool {
         !self.equiped.is_empty()
-            || self.power.is_some()
+            || self.has_counters()
+    }
+    fn has_counters(&self) -> bool {
+             self.power.is_some()
             || self.toughness.is_some()
             || self.counters.is_some()
             || self.loyalty.is_some()

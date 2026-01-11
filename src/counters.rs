@@ -5,6 +5,7 @@ use crate::{
     LIN_DAMPING, Pile, SLEEP,
 };
 use avian3d::prelude::*;
+use bevy::ecs::relationship::RelatedSpawnerCommands;
 use bevy::picking::backend::PointerHits;
 use bevy::prelude::*;
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
@@ -62,6 +63,29 @@ pub fn make_counter<'a>(
 }
 #[derive(Encode, Decode, Debug, Clone, PartialEq, Deref, DerefMut)]
 pub struct Value(pub i128);
+#[allow(unused_variables)]
+pub fn modify_view(card: &Card, parent: &mut RelatedSpawnerCommands<ChildOf>, font: Handle<Font>) {
+    let set = enum_map! {
+        Counter::Power=>card.power.clone(),
+        Counter::Toughness=>card.toughness.clone(),
+        Counter::Loyalty=>card.loyalty.clone(),
+        Counter::Misc=>card.misc.clone(),
+        Counter::Counters=>card.counters.clone(),
+    };
+    for (counter, value) in set {
+        let Some(value) = value else { continue };
+        let width = 24.0 * CARD_THICKNESS;
+        let n = match counter {
+            Counter::Power => 2.0,
+            Counter::Toughness => 1.0,
+            Counter::Loyalty => 0.0,
+            Counter::Counters => 1.5,
+            Counter::Misc => 0.0,
+        };
+        let is_misc = matches!(counter, Counter::Misc);
+        //TODO
+    }
+}
 pub fn spawn_modify(
     ent: Entity,
     card: &Card,

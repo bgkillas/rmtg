@@ -1,4 +1,4 @@
-use crate::counters::{Counter, Value, spawn_modify};
+use crate::counters::{Counter, Value, modify_view, spawn_modify};
 use crate::download::{
     Exact, get_alts, get_deck, get_deck_export, spawn_scryfall_list, spawn_singleton,
     spawn_singleton_id,
@@ -913,7 +913,7 @@ pub fn listen_for_mouse(
                         true,
                         None,
                         None,
-                        Some(id),
+                        Some(id),children,&counters
                     );
                     if let Ok(lid) = ids.get(entity) {
                         net.draw_me(
@@ -1025,7 +1025,7 @@ pub fn listen_for_mouse(
                         false,
                         None,
                         None,
-                        Some(id),
+                        Some(id),children,&counters
                     );
                     transform.translation.x += CARD_WIDTH + CARD_THICKNESS;
                     if transform.translation.x >= W - CARD_WIDTH - CARD_THICKNESS {
@@ -1193,7 +1193,7 @@ pub fn listen_for_mouse(
                             false,
                             Some(hand.1),
                             None,
-                            Some(id),
+                            Some(id),children,&counters
                         )
                         .unwrap();
                         ent.insert(InHand(hand.0.count));
@@ -1300,6 +1300,11 @@ pub fn listen_for_mouse(
                                         c.image_node(),
                                     ));
                                 }
+                            }
+                            if let Pile::Single(card) = &*pile
+                                && pile.is_modified()
+                            {
+                                modify_view(card, parent, font.clone());
                             }
                         });
                 };
@@ -2076,7 +2081,7 @@ pub fn pick_from_list(
                             true,
                             None,
                             None,
-                            Some(id),
+                            Some(id),children,&counters
                         );
                         if let Ok(lid) = ids.get(entity) {
                             net.draw_me(
@@ -2365,6 +2370,7 @@ pub fn listen_for_deck(
     mut commands: Commands,
     mut net: Net,
     focus: Focus,
+    counters: Query<(), With<Counter>>,
 ) {
     if focus.key_lock() {
         return;
@@ -2458,7 +2464,7 @@ pub fn listen_for_deck(
                 v,
                 None,
                 Some(net.new_id()),
-                false,
+                false,children,&counters
             ),
             GameClipboard::Shape(shape) => Some(
                 shape
@@ -2626,7 +2632,7 @@ pub fn register_deck(
             false,
             None,
             id,
-            my_id,
+            my_id,children,&counters
         ) {
             let id = ent.id();
             commands.trigger(MoveUp(id));
