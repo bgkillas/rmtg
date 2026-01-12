@@ -65,20 +65,20 @@ pub struct Value(pub i128);
 #[allow(unused_variables)]
 pub fn modify_view(card: &Card, parent: &mut RelatedSpawnerCommands<ChildOf>, font: Handle<Font>) {
     let set = enum_map! {
-        Counter::Power=>card.power.clone(),
-        Counter::Toughness=>card.toughness.clone(),
-        Counter::Loyalty=>card.loyalty.clone(),
-        Counter::Misc=>card.misc.clone(),
-        Counter::Counters=>card.counters.clone(),
+        Counter::Power => card.power.clone(),
+        Counter::Toughness => card.toughness.clone(),
+        Counter::Loyalty => card.loyalty.clone(),
+        Counter::Misc => card.misc.clone(),
+        Counter::Counters => card.counters.clone(),
     };
     for (counter, value) in set {
         let Some(value) = value else { continue };
         let width = 24.0 * CARD_THICKNESS;
         let n = match counter {
-            Counter::Power => 2.0,
-            Counter::Toughness => 1.0,
+            Counter::Power => 2.5,
+            Counter::Toughness => 1.5,
             Counter::Loyalty => 0.0,
-            Counter::Counters => 1.5,
+            Counter::Counters => 4.0,
             Counter::Misc => 0.0,
         };
         let is_misc = matches!(counter, Counter::Misc);
@@ -147,10 +147,10 @@ pub fn spawn_modify(
     let Some(value) = value else { return };
     let width = 24.0 * CARD_THICKNESS;
     let n = match counter {
-        Counter::Power => 2.0,
-        Counter::Toughness => 1.0,
+        Counter::Power => 2.5,
+        Counter::Toughness => 1.5,
         Counter::Loyalty => 0.0,
-        Counter::Counters => 1.5,
+        Counter::Counters => 4.0,
         Counter::Misc => 0.0,
     };
     let is_misc = matches!(counter, Counter::Misc);
@@ -164,12 +164,7 @@ pub fn spawn_modify(
             Vec3::new(
                 (CARD_WIDTH - width) / 2.0 - width * n,
                 0.0,
-                (CARD_HEIGHT + width) / 2.0
-                    + if matches!(counter, Counter::Counters) {
-                        width
-                    } else {
-                        0.0
-                    },
+                (CARD_HEIGHT + width) / 2.0,
             ),
             Vec3::new(width, CARD_THICKNESS, width),
         )
