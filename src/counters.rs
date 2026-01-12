@@ -23,7 +23,7 @@ pub fn make_counter<'a>(
 ) -> EntityCommands<'a> {
     let m = 2.0 * m;
     let s = value.to_string();
-    let mut cmds = commands.spawn((
+    commands.spawn((
         transform,
         Collider::cuboid(m, m / 8.0, m),
         CollisionLayers::new(0b11, LayerMask::ALL),
@@ -39,27 +39,26 @@ pub fn make_counter<'a>(
             ..default()
         })),
         Shape::Counter(value, player),
-    ));
-    cmds.with_child((
-        Transform::from_xyz(0.0, m / 16.0 + CARD_THICKNESS, 0.0)
-            .looking_at(Vec3::default(), Dir3::NEG_Z),
-        Text3d::new(s),
-        Mesh3d(meshes.add(Rectangle::new(m, m))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
-            unlit: true,
-            alpha_mode: AlphaMode::Multiply,
-            base_color: Color::BLACK,
-            ..default()
-        })),
-        Text3dStyling {
-            size: WORLD_FONT_SIZE,
-            world_scale: Some(Vec2::splat(m / 2.0)),
-            anchor: TextAnchor::CENTER,
-            ..default()
-        },
-    ));
-    cmds
+        children![(
+            Transform::from_xyz(0.0, m / 16.0 + CARD_THICKNESS, 0.0)
+                .looking_at(Vec3::default(), Dir3::NEG_Z),
+            Text3d::new(s),
+            Mesh3d(meshes.add(Rectangle::new(m, m))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
+                unlit: true,
+                alpha_mode: AlphaMode::Multiply,
+                base_color: Color::BLACK,
+                ..default()
+            })),
+            Text3dStyling {
+                size: WORLD_FONT_SIZE,
+                world_scale: Some(Vec2::splat(m / 2.0)),
+                anchor: TextAnchor::CENTER,
+                ..default()
+            },
+        )],
+    ))
 }
 #[derive(Encode, Decode, Debug, Clone, PartialEq, Deref, DerefMut)]
 pub struct Value(pub i128);

@@ -361,7 +361,7 @@ pub fn setup(
             ),
         ],
     ));
-    let mut ent = commands.spawn((
+    commands.spawn((
         Node {
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
@@ -370,22 +370,22 @@ pub fn setup(
         EscMenu,
         Visibility::Hidden,
         BackgroundColor(Color::srgba_u8(0, 0, 0, 127)),
-    ));
-    #[cfg(feature = "steam")]
-    ent.with_child((
-        Node {
-            width: Val::Px(0.0),
-            height: Val::Px(0.0),
-            ..default()
-        },
-        Text(String::new()),
-        SteamInfo,
-        Visibility::Inherited,
-        TextFont {
-            font,
-            font_size: FONT_SIZE,
-            ..default()
-        },
+        #[cfg(feature = "steam")]
+        children![(
+            Node {
+                width: Val::Px(0.0),
+                height: Val::Px(0.0),
+                ..default()
+            },
+            Text(String::new()),
+            SteamInfo,
+            Visibility::Inherited,
+            TextFont {
+                font,
+                font_size: FONT_SIZE,
+                ..default()
+            },
+        )],
     ));
 }
 #[derive(Resource, Deref, DerefMut)]
