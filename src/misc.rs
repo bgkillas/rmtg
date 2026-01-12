@@ -1,4 +1,4 @@
-use crate::counters::{spawn_modify, Counter};
+use crate::counters::{Counter, spawn_all_modify};
 use crate::setup::MAT_WIDTH;
 use crate::shapes::Side;
 use crate::sync::{CameraInd, CursorInd, SyncObjectMe};
@@ -27,12 +27,10 @@ pub fn new_pile(
     id: Option<SyncObject>,
     my_id: Option<SyncObjectMe>,
     rev: bool,
-    children: &Children,
-    counters: &Query<(), With<Counter>>,
 ) -> Option<Entity> {
     let transform = vec2_to_ground(&pile, v, rev);
     new_pile_at(
-        pile, card_base, materials, commands, meshes, transform, false, None, id, my_id,children,counters
+        pile, card_base, materials, commands, meshes, transform, false, None, id, my_id,
     )
     .map(|a| a.id())
 }
@@ -63,8 +61,6 @@ pub fn new_pile_at<'a>(
     parent: Option<Entity>,
     id: Option<SyncObject>,
     sync_object: Option<SyncObjectMe>,
-    children: &Children,
-    counters: &Query<(), With<Counter>>,
 ) -> Option<EntityCommands<'a>> {
     let ent = {
         if pile.is_empty() {
@@ -105,8 +101,10 @@ pub fn new_pile_at<'a>(
     if pile.is_equiped() {
         spawn_equip(ent, &pile, commands, card_base, materials, meshes);
     }
-    if pile.has_counters() && let Pile::Single(c) = &pile {
-        spawn_modify(ent, &c, commands,materials, meshes, children, counters)
+    if pile.has_counters()
+        && let Pile::Single(c) = &pile
+    {
+        spawn_all_modify(ent, c, commands, materials, meshes)
     }
     let mut ent = commands.entity(ent);
     ent.insert(pile);
@@ -179,7 +177,7 @@ pub fn adjust_meshes(
     transform: &mut Transform,
     collider: &mut Collider,
     equipment: &Query<(), With<Equipment>>,
-    counters: &Query<(), With<Counter>>,
+    counters: &Query<&Counter>,
     commands: &mut Commands,
 ) {
     let size = pile.len() as f32 * CARD_THICKNESS;

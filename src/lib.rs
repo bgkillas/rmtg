@@ -95,6 +95,7 @@ const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO half card width between card spots
 //TODO search does not scroll far down enough
 //TODO card ban lists
+//TODO use children![] instead of with_child
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
@@ -1148,11 +1149,10 @@ pub struct Card {
 }
 impl Card {
     fn is_modified(&self) -> bool {
-        !self.equiped.is_empty()
-            || self.has_counters()
+        !self.equiped.is_empty() || self.has_counters()
     }
     fn has_counters(&self) -> bool {
-             self.power.is_some()
+        self.power.is_some()
             || self.toughness.is_some()
             || self.counters.is_some()
             || self.loyalty.is_some()

@@ -1,4 +1,4 @@
-use crate::counters::{Counter, Value, modify_view, spawn_modify};
+use crate::counters::{Counter, Value, modify, modify_view};
 use crate::download::{
     Exact, get_alts, get_deck, get_deck_export, spawn_scryfall_list, spawn_singleton,
     spawn_singleton_id,
@@ -626,7 +626,7 @@ pub fn listen_for_mouse(
         Query<&Children, (Without<Pile>, Without<ShapeHold>)>,
         Query<&mut Transform, (Or<(With<Pile>, With<Shape>)>, Without<Side>)>,
         Query<(), With<Equipment>>,
-        Query<(), With<Counter>>,
+        Query<&Counter>,
         Net,
         ResMut<Turn>,
         Res<Peers>,
@@ -753,14 +753,15 @@ pub fn listen_for_mouse(
                 } else if let Ok(id) = others_ids.get(entity) {
                     net.modify(*id, Counter::Misc, c.misc.clone());
                 }
-                spawn_modify(
+                modify(
                     entity,
                     c,
+                    children,
                     &mut commands,
+                    counters,
                     &mut materials,
                     &mut meshes,
-                    children,
-                    &counters,
+                    Counter::Misc,
                 );
             } else if keybinds.just_pressed(Keybind::Counters)
                 && let Pile::Single(c) = &mut *pile
@@ -775,14 +776,15 @@ pub fn listen_for_mouse(
                 } else if let Ok(id) = others_ids.get(entity) {
                     net.modify(*id, Counter::Counters, c.counters.clone());
                 }
-                spawn_modify(
+                modify(
                     entity,
                     c,
+                    children,
                     &mut commands,
+                    counters,
                     &mut materials,
                     &mut meshes,
-                    children,
-                    &counters,
+                    Counter::Counters,
                 );
             } else if keybinds.just_pressed(Keybind::Loyalty)
                 && let Pile::Single(c) = &mut *pile
@@ -797,14 +799,15 @@ pub fn listen_for_mouse(
                 } else if let Ok(id) = others_ids.get(entity) {
                     net.modify(*id, Counter::Loyalty, c.loyalty.clone());
                 }
-                spawn_modify(
+                modify(
                     entity,
                     c,
+                    children,
                     &mut commands,
+                    counters,
                     &mut materials,
                     &mut meshes,
-                    children,
-                    &counters,
+                    Counter::Loyalty,
                 );
             } else if keybinds.just_pressed(Keybind::Power)
                 && let Pile::Single(c) = &mut *pile
@@ -819,14 +822,15 @@ pub fn listen_for_mouse(
                 } else if let Ok(id) = others_ids.get(entity) {
                     net.modify(*id, Counter::Power, c.power.clone());
                 }
-                spawn_modify(
+                modify(
                     entity,
                     c,
+                    children,
                     &mut commands,
+                    counters,
                     &mut materials,
                     &mut meshes,
-                    children,
-                    &counters,
+                    Counter::Power,
                 );
             } else if keybinds.just_pressed(Keybind::Toughness)
                 && let Pile::Single(c) = &mut *pile
@@ -841,14 +845,15 @@ pub fn listen_for_mouse(
                 } else if let Ok(id) = others_ids.get(entity) {
                     net.modify(*id, Counter::Toughness, c.toughness.clone());
                 }
-                spawn_modify(
+                modify(
                     entity,
                     c,
+                    children,
                     &mut commands,
+                    counters,
                     &mut materials,
                     &mut meshes,
-                    children,
-                    &counters,
+                    Counter::Toughness,
                 );
             } else if keybinds.just_pressed(Keybind::CopyObject) {
                 *game_clipboard = GameClipboard::Pile(pile.clone());
@@ -913,7 +918,7 @@ pub fn listen_for_mouse(
                         true,
                         None,
                         None,
-                        Some(id),children,&counters
+                        Some(id),
                     );
                     if let Ok(lid) = ids.get(entity) {
                         net.draw_me(
@@ -1025,7 +1030,7 @@ pub fn listen_for_mouse(
                         false,
                         None,
                         None,
-                        Some(id),children,&counters
+                        Some(id),
                     );
                     transform.translation.x += CARD_WIDTH + CARD_THICKNESS;
                     if transform.translation.x >= W - CARD_WIDTH - CARD_THICKNESS {
@@ -1193,7 +1198,7 @@ pub fn listen_for_mouse(
                             false,
                             Some(hand.1),
                             None,
-                            Some(id),children,&counters
+                            Some(id),
                         )
                         .unwrap();
                         ent.insert(InHand(hand.0.count));
@@ -2016,7 +2021,7 @@ pub fn pick_from_list(
         Query<&SyncObject>,
         Single<&TextInputContents, With<SearchText>>,
         Query<(), With<Equipment>>,
-        Query<(), With<Counter>>,
+        Query<&Counter>,
         Option<Single<Entity, With<SideMenu>>>,
         Net,
         Focus,
@@ -2081,7 +2086,7 @@ pub fn pick_from_list(
                             true,
                             None,
                             None,
-                            Some(id),children,&counters
+                            Some(id),
                         );
                         if let Ok(lid) = ids.get(entity) {
                             net.draw_me(
@@ -2370,7 +2375,6 @@ pub fn listen_for_deck(
     mut commands: Commands,
     mut net: Net,
     focus: Focus,
-    counters: Query<(), With<Counter>>,
 ) {
     if focus.key_lock() {
         return;
@@ -2464,7 +2468,7 @@ pub fn listen_for_deck(
                 v,
                 None,
                 Some(net.new_id()),
-                false,children,&counters
+                false,
             ),
             GameClipboard::Shape(shape) => Some(
                 shape
@@ -2632,7 +2636,7 @@ pub fn register_deck(
             false,
             None,
             id,
-            my_id,children,&counters
+            my_id,
         ) {
             let id = ent.id();
             commands.trigger(MoveUp(id));

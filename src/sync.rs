@@ -1,4 +1,4 @@
-use crate::counters::{Counter, Value, spawn_modify};
+use crate::counters::{Counter, Value, modify};
 use crate::download::add_images;
 use crate::misc::{
     Equipment, adjust_meshes, default_cam_pos, make_cam, make_cur, new_pile_at, remove_follow,
@@ -284,7 +284,7 @@ pub fn apply_sync(
             ),
         >,
         Query<(), With<Equipment>>,
-        Query<(), With<Counter>>,
+        Query<&Counter>,
         Option<Single<Entity, With<SideMenu>>>,
         ResMut<Menu>,
         ResMut<Turn>,
@@ -674,15 +674,16 @@ pub fn apply_sync(
                         Counter::Loyalty => card.loyalty = value,
                         Counter::Counters => card.counters = value,
                         Counter::Misc => card.misc = value,
-                    }
-                    spawn_modify(
+                    };
+                    modify(
                         entity,
                         card,
+                        children,
                         &mut commands,
+                        counters,
                         &mut materials,
                         &mut meshes,
-                        children,
-                        &counters,
+                        counter,
                     );
                 } else if let Some((pile, entity, children)) = query.iter_mut().find_map(
                     |(a, _, _, _, e, _, c, p, _, _)| {
@@ -698,15 +699,16 @@ pub fn apply_sync(
                         Counter::Loyalty => card.loyalty = value,
                         Counter::Counters => card.counters = value,
                         Counter::Misc => card.misc = value,
-                    }
-                    spawn_modify(
+                    };
+                    modify(
                         entity,
                         card,
+                        children,
                         &mut commands,
+                        counters,
                         &mut materials,
                         &mut meshes,
-                        children,
-                        &counters,
+                        counter,
                     );
                 }
             }
@@ -1093,7 +1095,7 @@ pub fn apply_sync(
                                 false,
                                 None,
                                 Some(syncobject),
-                                None,children,&counters
+                                None,
                             );
                         }
                     }

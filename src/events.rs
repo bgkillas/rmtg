@@ -85,7 +85,7 @@ pub fn pile_merge(
     search_deck: Option<Single<(Entity, &SearchDeck)>>,
     text: Option<Single<&TextInputContents, With<SearchText>>>,
     equipment: Query<(), With<Equipment>>,
-    counters: Query<(), With<Counter>>,
+    counters: Query<&Counter>,
     (mut menu, side, net, card_base): (
         ResMut<Menu>,
         Option<Single<Entity, With<SideMenu>>>,
