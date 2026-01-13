@@ -177,7 +177,7 @@ pub fn adjust_meshes(
     transform: &mut Transform,
     collider: &mut Collider,
     equipment: &Query<(), With<Equipment>>,
-    counters: &Query<&Counter>,
+    counters: Option<&Query<&Counter>>,
     commands: &mut Commands,
 ) {
     let size = pile.len() as f32 * CARD_THICKNESS;
@@ -204,7 +204,7 @@ pub fn adjust_meshes(
     bottommesh.0 = mesh2;
     *bottomt = t2;
     for c in children {
-        if equipment.contains(c) || counters.contains(c) {
+        if equipment.contains(c) || counters.is_some_and(|q| q.contains(c)) {
             commands.entity(c).despawn();
         }
     }

@@ -611,7 +611,7 @@ pub fn apply_sync(
                         &mut transform,
                         &mut colliders.get_mut(entity).unwrap(),
                         &equipment,
-                        &counters,
+                        Some(&counters),
                         &mut commands,
                     );
                     if b {
@@ -643,7 +643,7 @@ pub fn apply_sync(
                         &mut transform,
                         &mut colliders.get_mut(entity).unwrap(),
                         &equipment,
-                        &counters,
+                        None,
                         &mut commands,
                     );
                     if b {
@@ -984,7 +984,7 @@ pub fn apply_sync(
                     &mut base_transform,
                     &mut colliders.get_mut(base_ent).unwrap(),
                     &equipment,
-                    &counters,
+                    None,
                     &mut commands,
                 );
                 if equip {
@@ -1125,7 +1125,7 @@ pub fn apply_sync(
                             &mut transform,
                             &mut colliders.get_mut(entity).unwrap(),
                             &equipment,
-                            &counters,
+                            None,
                             &mut commands,
                         );
                     }

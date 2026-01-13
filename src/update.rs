@@ -899,7 +899,7 @@ pub fn listen_for_mouse(
                         &mut transform,
                         &mut colliders.get_mut(entity).unwrap().0,
                         &equipment,
-                        &counters,
+                        None,
                         &mut commands,
                     );
                     let mut transform = *transform;
@@ -993,7 +993,7 @@ pub fn listen_for_mouse(
                     &mut transform,
                     &mut colliders.get_mut(entity).unwrap().0,
                     &equipment,
-                    &counters,
+                    Some(&counters),
                     &mut commands,
                 );
                 if b {
@@ -1241,7 +1241,7 @@ pub fn listen_for_mouse(
                             &mut transform,
                             &mut colliders.get_mut(entity).unwrap().0,
                             &equipment,
-                            &counters,
+                            Some(&counters),
                             &mut commands,
                         );
                     } else {
@@ -2063,7 +2063,7 @@ pub fn pick_from_list(
                                 &mut trans,
                                 &mut colliders.get_mut(entity).unwrap(),
                                 &equipment,
-                                &counters,
+                                Some(&counters),
                                 &mut commands,
                             );
                         } else {

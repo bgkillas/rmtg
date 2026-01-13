@@ -1,4 +1,3 @@
-use crate::counters::Counter;
 use crate::misc::{Equipment, adjust_meshes, is_reversed, repaint_face, spawn_equip};
 use crate::setup::{SideMenu, Wall};
 use crate::shapes::{Shape, Side};
@@ -85,7 +84,7 @@ pub fn pile_merge(
     search_deck: Option<Single<(Entity, &SearchDeck)>>,
     text: Option<Single<&TextInputContents, With<SearchText>>>,
     equipment: Query<(), With<Equipment>>,
-    counters: Query<&Counter>,
+
     (mut menu, side, net, card_base): (
         ResMut<Menu>,
         Option<Single<Entity, With<SideMenu>>>,
@@ -162,7 +161,7 @@ pub fn pile_merge(
             &mut bottom_transform,
             &mut collider,
             &equipment,
-            &counters,
+            None,
             &mut commands,
         );
         if equip {
@@ -198,7 +197,9 @@ pub fn pile_merge(
 pub struct MoveToFloor(pub Entity);
 pub fn move_to_floor(ent: On<MoveToFloor>, mut query: Query<(&mut Transform, &ColliderAabb)>) {
     let (mut transform, aabb) = query.get_mut(**ent).unwrap();
-    transform.translation.y -= aabb.min.y;
+    if transform.translation.y < aabb.min.y {
+        transform.translation.y -= aabb.min.y;
+    }
 }
 #[derive(EntityEvent, Deref, DerefMut)]
 pub struct MoveUp(pub Entity);
