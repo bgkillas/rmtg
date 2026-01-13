@@ -8,9 +8,7 @@ use crate::misc::{
     repaint_face, rotate_left, rotate_right, spawn_equip, ui_rotate_left, ui_rotate_right,
     vec2_to_ground,
 };
-use crate::setup::{
-    EscMenu, FontRes, MAT_WIDTH, Player, SideMenu, TextChat, TextInput, TextMenu, W, Wall,
-};
+use crate::setup::{EscMenu, MAT_WIDTH, Player, SideMenu, TextChat, TextInput, TextMenu, W, Wall};
 use crate::shapes::Side;
 use crate::sync::{CameraInd, CursorInd, InOtherHand, Net, SyncObjectMe, Trans};
 use crate::*;
@@ -608,7 +606,6 @@ pub fn listen_for_mouse(
     ),
     (
         text,
-        font,
         mut text3d,
         children,
         mut transforms,
@@ -621,7 +618,6 @@ pub fn listen_for_mouse(
         sides,
     ): (
         Option<Single<&TextInputContents, With<SearchText>>>,
-        Res<FontRes>,
         Query<&mut Text3d>,
         Query<&Children, (Without<Pile>, Without<ShapeHold>)>,
         Query<&mut Transform, (Or<(With<Pile>, With<Shape>)>, Without<Side>)>,
@@ -978,6 +974,7 @@ pub fn listen_for_mouse(
                         .remove_parent_in_place();
                 }
             } else if keybinds.just_pressed(Keybind::Equip) && !is_reversed(&transform) {
+                //TODO instead move equipment above card
                 let b = pile.equip();
                 if let Ok(id) = ids.get(entity) {
                     net.equip_me(*id)
@@ -1259,7 +1256,6 @@ pub fn listen_for_mouse(
                     &side,
                     &mut commands,
                     &mut focus.active_input,
-                    font.clone(),
                 );
                 *focus.menu = Menu::Side;
             }
@@ -1309,7 +1305,7 @@ pub fn listen_for_mouse(
                             if let Pile::Single(card) = &*pile
                                 && pile.is_modified()
                             {
-                                modify_view(card, parent, font.clone());
+                                modify_view(card, parent);
                             }
                         });
                 };
@@ -1418,7 +1414,6 @@ pub fn listen_for_mouse(
                                 ..default()
                             },
                             TextFont {
-                                font: font.clone(),
                                 font_size: FONT_SIZE,
                                 ..default()
                             },
@@ -1608,7 +1603,6 @@ pub fn text_send(
     net: Net,
     chat: Single<Entity, With<TextChat>>,
     mut commands: Commands,
-    font: Res<FontRes>,
     peers: Res<Peers>,
 ) {
     for msg in msg.read() {
@@ -1617,23 +1611,11 @@ pub fn text_send(
         }
         if let Some(name) = &peers.name {
             net.text(msg.text.clone());
-            spawn_msg(
-                *chat,
-                name.clone(),
-                msg.text.clone(),
-                &mut commands,
-                font.clone(),
-            );
+            spawn_msg(*chat, name.clone(), msg.text.clone(), &mut commands);
         }
     }
 }
-pub fn spawn_msg(
-    entity: Entity,
-    name: String,
-    msg: String,
-    commands: &mut Commands,
-    font: Handle<Font>,
-) {
+pub fn spawn_msg(entity: Entity, name: String, msg: String, commands: &mut Commands) {
     commands
         .entity(entity)
         .with_child((
@@ -1644,7 +1626,6 @@ pub fn spawn_msg(
             Text(format!("{name}: {msg}")),
             Visibility::Inherited,
             TextFont {
-                font,
                 font_size: FONT_SIZE,
                 ..default()
             },
@@ -2752,7 +2733,6 @@ pub fn search(
     side: &Option<Single<Entity, With<SideMenu>>>,
     commands: &mut Commands,
     active_input: &mut InputFocus,
-    font: Handle<Font>,
 ) {
     let mut search = None;
     if let Some(e) = &side {
@@ -2779,7 +2759,6 @@ pub fn search(
                     ..default()
                 },
                 TextFont {
-                    font,
                     font_size: FONT_SIZE,
                     ..default()
                 },

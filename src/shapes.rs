@@ -212,7 +212,7 @@ pub fn spawn_ico<'a>(
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                     unlit: true,
                     alpha_mode: AlphaMode::Multiply,
-                    base_color: bevy::prelude::Color::BLACK,
+                    base_color: Color::BLACK,
                     ..default()
                 })),
                 Text3dStyling {
@@ -343,7 +343,7 @@ pub fn spawn_oct<'a>(
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                     unlit: true,
                     alpha_mode: AlphaMode::Multiply,
-                    base_color: bevy::prelude::Color::BLACK,
+                    base_color: Color::BLACK,
                     ..default()
                 })),
                 Text3dStyling {
@@ -478,7 +478,7 @@ pub fn spawn_tetra<'a>(
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                     unlit: true,
                     alpha_mode: AlphaMode::Multiply,
-                    base_color: bevy::prelude::Color::BLACK,
+                    base_color: Color::BLACK,
                     ..default()
                 })),
                 Text3dStyling {
@@ -581,7 +581,7 @@ pub fn spawn_disc<'a>(
                         base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                         unlit: true,
                         alpha_mode: AlphaMode::Multiply,
-                        base_color: bevy::prelude::Color::BLACK,
+                        base_color: Color::BLACK,
                         ..default()
                     })),
                     Text3dStyling {
@@ -787,7 +787,7 @@ pub fn spawn_dodec<'a>(
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                     unlit: true,
                     alpha_mode: AlphaMode::Multiply,
-                    base_color: bevy::prelude::Color::BLACK,
+                    base_color: Color::BLACK,
                     ..default()
                 })),
                 Text3dStyling {
@@ -850,7 +850,7 @@ pub fn spawn_cube<'a>(
                     base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
                     unlit: true,
                     alpha_mode: AlphaMode::Multiply,
-                    base_color: bevy::prelude::Color::BLACK,
+                    base_color: Color::BLACK,
                     ..default()
                 })),
                 Text3dStyling {

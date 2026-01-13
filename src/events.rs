@@ -143,6 +143,7 @@ pub fn pile_merge(
             }
         }
         let mut equip = false;
+        //TODO should instead keep top entity to preserve counters
         if top_pile.is_modified() {
             bottom_pile.merge(top_pile);
             equip = true;

@@ -21,18 +21,18 @@ pub const MAT_HEIGHT: f32 = MAT_WIDTH * 9.0 / 16.0;
 pub const MAT_BAR: f32 = MAT_HEIGHT / 64.0;
 pub const T: f32 = W / 2.0;
 pub const W: f32 = MAT_WIDTH * 2.0;
-pub const WALL_COLOR: bevy::prelude::Color = bevy::prelude::Color::srgb_u8(103, 73, 40);
-pub const FLOOR_COLOR: bevy::prelude::Color = bevy::prelude::Color::srgb_u8(103, 73, 40);
+pub const WALL_COLOR: Color = Color::srgb_u8(103, 73, 40);
+pub const FLOOR_COLOR: Color = Color::srgb_u8(103, 73, 40);
 pub fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut framepace: ResMut<FramepaceSettings>,
-    //mut fps: ResMut<FpsOverlayConfig>,
     mut net: Net,
     mut light: ResMut<AmbientLight>,
     mut pick: ResMut<MeshPickingSettings>,
+    mut fonts: ResMut<Assets<Font>>,
     #[cfg(feature = "steam")] send_sleep: Res<SendSleeping>,
     #[cfg(feature = "steam")] give: Res<GiveEnts>,
     #[cfg(feature = "steam")] flip_counter: Res<FlipCounter>,
@@ -76,9 +76,8 @@ pub fn setup(
         }
     }
     let font = include_bytes!("../assets/noto.ttf");
-    let font = asset_server.add(Font::try_from_bytes(font.to_vec()).unwrap());
-    //fps.text_config.font = font.clone();
-    commands.insert_resource(FontRes(font.clone()));
+    let font = Font::try_from_bytes(font.to_vec()).unwrap();
+    fonts.insert(AssetId::<Font>::DEFAULT_UUID, font).unwrap();
     let _ = fs::create_dir("./cache");
     framepace.limiter = Limiter::from_framerate(60.0);
     let card_stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
@@ -91,7 +90,7 @@ pub fn setup(
         ..default()
     });
     let card_side = materials.add(StandardMaterial {
-        base_color: bevy::prelude::Color::srgb_u8(0x11, 0x0F, 0x02),
+        base_color: Color::srgb_u8(0x11, 0x0F, 0x02),
         unlit: true,
         ..default()
     });
@@ -335,7 +334,6 @@ pub fn setup(
                     ..default()
                 },
                 TextFont {
-                    font: font.clone(),
                     font_size: FONT_SIZE,
                     ..default()
                 },
@@ -381,15 +379,12 @@ pub fn setup(
             SteamInfo,
             Visibility::Inherited,
             TextFont {
-                font,
                 font_size: FONT_SIZE,
                 ..default()
             },
         )],
     ));
 }
-#[derive(Resource, Deref, DerefMut)]
-pub struct FontRes(pub Handle<Font>);
 #[derive(Component)]
 pub struct EscMenu;
 #[derive(Component)]

@@ -6,7 +6,7 @@ use crate::misc::{
 };
 #[cfg(feature = "steam")]
 use crate::setup::SteamInfo;
-use crate::setup::{FontRes, MAT_HEIGHT, MAT_WIDTH, SideMenu, TextChat};
+use crate::setup::{MAT_HEIGHT, MAT_WIDTH, SideMenu, TextChat};
 use crate::shapes::{Shape, Side};
 use crate::update::*;
 use crate::*;
@@ -205,7 +205,7 @@ pub fn apply_sync(
         Res<AudioResource>,
         Res<AudioSettings>,
     ),
-    (mut query_meshes, chat, font, mut drag, mut colliders): (
+    (mut query_meshes, chat, mut drag, mut colliders): (
         Query<
             (&mut Mesh3d, &mut Transform),
             (
@@ -218,7 +218,6 @@ pub fn apply_sync(
             ),
         >,
         Single<Entity, With<TextChat>>,
-        Res<FontRes>,
         Query<
             (Entity, &PingDrag, &mut Mesh3d, &mut Transform, &PeerId),
             (
@@ -1299,7 +1298,7 @@ pub fn apply_sync(
             }
             Packet::Text(msg) => {
                 if let Some(name) = peers.names.get(&sender) {
-                    spawn_msg(*chat, name.clone(), msg, &mut commands, font.clone());
+                    spawn_msg(*chat, name.clone(), msg, &mut commands);
                 }
                 //TODO deal with no name
             }

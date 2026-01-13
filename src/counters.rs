@@ -63,7 +63,7 @@ pub fn make_counter<'a>(
 #[derive(Encode, Decode, Debug, Clone, PartialEq, Deref, DerefMut)]
 pub struct Value(pub i128);
 #[allow(unused_variables)]
-pub fn modify_view(card: &Card, parent: &mut RelatedSpawnerCommands<ChildOf>, font: Handle<Font>) {
+pub fn modify_view(card: &Card, parent: &mut RelatedSpawnerCommands<ChildOf>) {
     let set = enum_map! {
         Counter::Power => card.power.clone(),
         Counter::Toughness => card.toughness.clone(),

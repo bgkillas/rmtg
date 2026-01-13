@@ -90,6 +90,25 @@ bevy={version="0.17.3", default-features = false, features = [
   "zstd_rust",
   #"track_location",
   #"bevy_dev_tools",
+
+  #"std",
+  #"zstd_rust",
+  #"android-game-activity",
+  #"android_shared_stdcxx",
+  #"bevy_gilrs",
+  #"bevy_winit",
+  #"multi_threaded",
+  #"webgl2",
+  #"x11",
+  #"wayland",
+  #"sysinfo_plugin",
+  #"default_platform",
+  #"3d_bevy_render",
+  #"ui",
+  #"scene",
+  #"picking",
+  #"ui_api",
+  #"ui_bevy_render",
 ]}
 enumset = "1.1.10"
 enum-map = "2.7.3"
