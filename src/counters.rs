@@ -1,7 +1,8 @@
 use crate::shapes::{Shape, WORLD_FONT_SIZE};
 use crate::sync::{Net, SyncObject, SyncObjectMe};
+use crate::update::spawn_calc;
 use crate::{
-    ANG_DAMPING, CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, Card, GRAVITY, Keybind, Keybinds,
+    ANG_DAMPING, CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, Card, Focus, GRAVITY, Keybind, Keybinds,
     LIN_DAMPING, Pile, SLEEP,
 };
 use avian3d::prelude::*;
@@ -214,10 +215,13 @@ pub fn counter_hit(
     net: Net,
     ids: Query<&SyncObjectMe>,
     others_ids: Query<&SyncObject>,
+    mut commands: Commands,
+    mut focus: Focus,
 ) {
     let add = keybinds.just_pressed(Keybind::Add);
     let sub = keybinds.just_pressed(Keybind::Sub);
-    if !add && !sub {
+    let calc = keybinds.just_pressed(Keybind::Calc);
+    if !add && !sub && !calc {
         hits.clear();
         return;
     }
@@ -242,7 +246,10 @@ pub fn counter_hit(
                 Counter::Counters => card.counters.as_mut().unwrap(),
                 Counter::Misc => card.misc.as_mut().unwrap(),
             };
-            if add {
+            if calc {
+                spawn_calc(&mut commands, &mut focus, parent.0, obj, Some(*counter));
+                return;
+            } else if add {
                 obj.0 += 1;
             } else if sub {
                 obj.0 -= 1;

@@ -1393,37 +1393,7 @@ pub fn listen_for_mouse(
                 && let Ok((s, _)) = shape.get(entity)
                 && let Shape::Counter(v, _) = s
             {
-                #[cfg(feature = "calc")]
-                {
-                    *focus.menu = Menu::Counter;
-                    let mut queue = TextInputQueue::default();
-                    queue.add(TextInputAction::Edit(TextInputEdit::Insert('n', false)));
-                    let ent = commands
-                        .spawn((
-                            CounterMenu(entity, v.clone()),
-                            Node {
-                                width: Val::Percent(20.0),
-                                height: Val::Px(FONT_HEIGHT * 1.5),
-                                ..default()
-                            },
-                            BackgroundColor(Color::srgba_u8(0, 0, 0, 127)),
-                            TextInputNode {
-                                mode: TextInputMode::SingleLine,
-                                clear_on_submit: false,
-                                unfocus_on_submit: false,
-                                ..default()
-                            },
-                            TextFont {
-                                font_size: FONT_SIZE,
-                                ..default()
-                            },
-                            TextInputContents::default(),
-                            TextInputBuffer::default(),
-                            queue,
-                        ))
-                        .id();
-                    focus.active_input.set(ent);
-                }
+                spawn_calc(&mut commands, &mut focus, entity, v, None);
             } else if keybinds.just_pressed(Keybind::Remove) {
                 if let Ok(id) = ids.get(entity) {
                     net.killed_me(*id)
@@ -1596,6 +1566,45 @@ pub fn listen_for_mouse(
         }
     } else if let Some(single) = zoom {
         commands.entity(single.0).despawn();
+    }
+}
+pub fn spawn_calc(
+    commands: &mut Commands,
+    focus: &mut Focus,
+    entity: Entity,
+    v: &Value,
+    counter: Option<Counter>,
+) {
+    #[cfg(feature = "calc")]
+    {
+        *focus.menu = Menu::Counter;
+        let mut queue = TextInputQueue::default();
+        queue.add(TextInputAction::Edit(TextInputEdit::Insert('n', false)));
+        let ent = commands
+            .spawn((
+                CounterMenu(entity, v.clone(), counter),
+                Node {
+                    width: Val::Percent(20.0),
+                    height: Val::Px(FONT_HEIGHT * 1.5),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba_u8(0, 0, 0, 127)),
+                TextInputNode {
+                    mode: TextInputMode::SingleLine,
+                    clear_on_submit: false,
+                    unfocus_on_submit: false,
+                    ..default()
+                },
+                TextFont {
+                    font_size: FONT_SIZE,
+                    ..default()
+                },
+                TextInputContents::default(),
+                TextInputBuffer::default(),
+                queue,
+            ))
+            .id();
+        focus.active_input.set(ent);
     }
 }
 pub fn text_send(
@@ -1848,7 +1857,7 @@ fn next_turn(
     }
 }
 #[derive(Component)]
-pub struct CounterMenu(Entity, Value);
+pub struct CounterMenu(Entity, Value, Option<Counter>);
 #[derive(Component)]
 pub struct TempDisable;
 #[derive(Component)]
@@ -2154,11 +2163,12 @@ pub fn update_search_deck(
     mut commands: Commands,
     text: Single<&TextInputContents, Changed<TextInputContents>>,
     single: Option<Single<(Entity, &SearchDeck)>>,
-    query: Query<(&Pile, &Transform)>,
+    query: Query<&Transform>,
     mut menu: ResMut<Menu>,
     counter: Option<Single<&CounterMenu>>,
     mut text3d: Query<&mut Text3d>,
-    mut children: Query<(&Children, &mut Shape)>,
+    children: Query<&Children>,
+    mut obj: Query<(Option<&mut Shape>, Option<&mut Pile>)>,
     ids: Query<&SyncObjectMe>,
     other_ids: Query<&SyncObject>,
     side: Option<Single<Entity, With<SideMenu>>>,
@@ -2167,7 +2177,8 @@ pub fn update_search_deck(
     match *menu {
         Menu::Side => {
             if let Some(single) = single {
-                let (pile, transform) = query.get(single.1.0).unwrap();
+                let transform = query.get(single.1.0).unwrap();
+                let pile = obj.get(single.1.0).unwrap().1.unwrap();
                 update_search(
                     &mut commands,
                     single.0,
@@ -2205,18 +2216,56 @@ pub fn update_search_deck(
                 )
                 && let Ok(value) = kalc_lib::math::do_math(parsed.0, Options::default(), parsed.1)
                 && let NumStr::Num(n) = value
-                && let Ok((children, v)) = children.get_mut(counter.0)
-                && let Shape::Counter(v, _) = v.into_inner()
+                && let Ok(childs) = children.get(counter.0)
+                && let Ok((v, pile)) = obj.get_mut(counter.0)
             {
+                let Some(v) = v
+                    .and_then(|s| match s.into_inner() {
+                        Shape::Counter(v, _) => Some(v),
+                        _ => None,
+                    })
+                    .or_else(|| {
+                        pile.and_then(|c| match c.into_inner() {
+                            Pile::Single(c) => Some(c),
+                            _ => None,
+                        })
+                        .and_then(|card| match counter.2 {
+                            Some(Counter::Power) => card.power.as_mut(),
+                            Some(Counter::Toughness) => card.toughness.as_mut(),
+                            Some(Counter::Loyalty) => card.loyalty.as_mut(),
+                            Some(Counter::Counters) => card.counters.as_mut(),
+                            Some(Counter::Misc) => card.misc.as_mut(),
+                            None => None,
+                        })
+                    })
+                else {
+                    return;
+                };
                 v.0 = n.number.real().to_f64().round() as i128;
-                for ent in children {
-                    let mut text = text3d.get_mut(*ent).unwrap();
-                    *text.get_single_mut().unwrap() = v.0.to_string();
-                }
-                if let Ok(id) = ids.get(counter.0) {
-                    net.counter_me(*id, v.clone());
-                } else if let Ok(id) = other_ids.get(counter.0) {
-                    net.counter(*id, v.clone());
+                for ent in childs {
+                    if let Some(c) = counter.2 {
+                        if let Ok(children) = children.get(*ent) {
+                            for ent in children {
+                                if let Ok(mut text) = text3d.get_mut(*ent) {
+                                    *text.get_single_mut().unwrap() = v.0.to_string();
+                                    if let Ok(id) = ids.get(counter.0) {
+                                        net.modify_me(*id, c, Some(v.clone()));
+                                    } else if let Ok(id) = other_ids.get(counter.0) {
+                                        net.modify(*id, c, Some(v.clone()));
+                                    }
+                                    return;
+                                }
+                            }
+                        }
+                    } else if let Ok(mut text) = text3d.get_mut(*ent) {
+                        *text.get_single_mut().unwrap() = v.0.to_string();
+                        if let Ok(id) = ids.get(counter.0) {
+                            net.counter_me(*id, v.clone());
+                        } else if let Ok(id) = other_ids.get(counter.0) {
+                            net.counter(*id, v.clone());
+                        }
+                        return;
+                    }
                 }
             }
         }
