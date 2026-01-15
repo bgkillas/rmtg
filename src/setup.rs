@@ -360,7 +360,7 @@ pub fn setup(
             ),
         ],
     ));
-    commands.spawn((
+    let mut cmds = commands.spawn((
         Node {
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
@@ -369,37 +369,35 @@ pub fn setup(
         EscMenu,
         Visibility::Hidden,
         BackgroundColor(Color::srgba_u8(0, 0, 0, 127)),
-        children![
-            #[cfg(feature = "steam")]
-            (
-                Node {
-                    width: Val::Px(0.0),
-                    height: Val::Px(0.0),
-                    ..default()
-                },
-                Text(String::new()),
-                SteamInfo,
-                Visibility::Inherited,
-                TextFont {
-                    font_size: FONT_SIZE,
-                    ..default()
-                },
-            ),
-            (
-                Node {
-                    width: Val::Percent(100.0),
-                    height: Val::Percent(100.0),
-                    ..default()
-                },
-                Text(keybinds.to_string()),
-                KeybindInfo,
-                Visibility::Inherited,
-                TextFont {
-                    font_size: FONT_SIZE / 2.0,
-                    ..default()
-                },
-            )
-        ],
+        children![(
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                ..default()
+            },
+            Text(keybinds.to_string()),
+            KeybindInfo,
+            Visibility::Inherited,
+            TextFont {
+                font_size: FONT_SIZE / 2.0,
+                ..default()
+            },
+        )],
+    ));
+    #[cfg(feature = "steam")]
+    cmds.with_child((
+        Node {
+            width: Val::Px(0.0),
+            height: Val::Px(0.0),
+            ..default()
+        },
+        Text(String::new()),
+        SteamInfo,
+        Visibility::Inherited,
+        TextFont {
+            font_size: FONT_SIZE,
+            ..default()
+        },
     ));
 }
 #[derive(Component)]

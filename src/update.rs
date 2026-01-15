@@ -1669,7 +1669,7 @@ pub fn text_keybinds(
 pub struct ShapeHold(pub Option<usize>);
 #[derive(Default, Debug, Resource, Deref, DerefMut)]
 pub struct VoiceActive(pub bool);
-#[cfg(feature = "steam")]
+#[cfg(feature = "mic")]
 pub fn voice_keybinds(
     keybinds: Keybinds,
     mut active: ResMut<VoiceActive>,
