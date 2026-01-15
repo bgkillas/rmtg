@@ -1243,7 +1243,9 @@ pub fn listen_for_mouse(
                         );
                     } else {
                         if let Ok(id) = ids.get(entity) {
-                            net.killed_me(*id);
+                            net.killed_me(*id)
+                        } else if let Ok(id) = others_ids.get(entity) {
+                            net.killed(*id);
                         }
                         commands.entity(entity).despawn();
                     }
@@ -2057,6 +2059,11 @@ pub fn pick_from_list(
                                 &mut commands,
                             );
                         } else {
+                            if let Ok(id) = ids.get(search_deck.1.0) {
+                                net.killed_me(*id)
+                            } else if let Ok(id) = others_ids.get(search_deck.1.0) {
+                                net.killed(*id);
+                            }
                             commands.entity(search_deck.1.0).despawn();
                         }
                         let mut transform = *trans;
