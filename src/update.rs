@@ -2039,12 +2039,12 @@ pub fn pick_from_list(
                         }
                         commands.entity(entity).despawn();
                         let entity = search_deck.1.0;
-                        if let Ok(id) = others_ids.get(entity) {
-                            net.take(entity, *id);
-                        }
                         let len = pile.len() as f32 * CARD_THICKNESS;
                         let new = pile.remove(card.0);
                         if !pile.is_empty() {
+                            if let Ok(id) = others_ids.get(entity) {
+                                net.take(entity, *id);
+                            }
                             let card = pile.last();
                             repaint_face(&mut mats, &mut materials, card, children);
                             adjust_meshes(
