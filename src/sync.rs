@@ -658,7 +658,7 @@ pub fn apply_sync(
                 }
             }
             Packet::Modify(id, counter, value) => {
-                if id.user == client.my_id()
+                let (card, entity, children) = if id.user == client.my_id()
                     && let Some((pile, entity, children)) =
                         queryme.iter_mut().find_map(|(a, _, p, e, c, _, _)| {
                             if *a == id.id { Some((p, e, c)) } else { None }
@@ -667,23 +667,7 @@ pub fn apply_sync(
                     && let Some(pile) = pile
                     && let Pile::Single(card) = pile.into_inner()
                 {
-                    match counter {
-                        Counter::Power => card.power = value,
-                        Counter::Toughness => card.toughness = value,
-                        Counter::Loyalty => card.loyalty = value,
-                        Counter::Counters => card.counters = value,
-                        Counter::Misc => card.misc = value,
-                    };
-                    modify(
-                        entity,
-                        card,
-                        children,
-                        &mut commands,
-                        counters,
-                        &mut materials,
-                        &mut meshes,
-                        counter,
-                    );
+                    (card, entity, children)
                 } else if let Some((pile, entity, children)) = query.iter_mut().find_map(
                     |(a, _, _, _, e, _, c, p, _, _)| {
                         if *a == id { Some((p, e, c)) } else { None }
@@ -692,24 +676,37 @@ pub fn apply_sync(
                     && let Some(pile) = pile
                     && let Pile::Single(card) = pile.into_inner()
                 {
-                    match counter {
-                        Counter::Power => card.power = value,
-                        Counter::Toughness => card.toughness = value,
-                        Counter::Loyalty => card.loyalty = value,
-                        Counter::Counters => card.counters = value,
-                        Counter::Misc => card.misc = value,
-                    };
-                    modify(
-                        entity,
-                        card,
-                        children,
-                        &mut commands,
-                        counters,
-                        &mut materials,
-                        &mut meshes,
-                        counter,
-                    );
-                }
+                    (card, entity, children)
+                } else if sent.add(id) {
+                    client
+                        .send(
+                            id.user,
+                            &Packet::Request(id.id),
+                            Reliability::Reliable,
+                            COMPRESSION,
+                        )
+                        .unwrap();
+                    return;
+                } else {
+                    return;
+                };
+                match counter {
+                    Counter::Power => card.power = value,
+                    Counter::Toughness => card.toughness = value,
+                    Counter::Loyalty => card.loyalty = value,
+                    Counter::Counters => card.counters = value,
+                    Counter::Misc => card.misc = value,
+                };
+                modify(
+                    entity,
+                    card,
+                    children,
+                    &mut commands,
+                    counters,
+                    &mut materials,
+                    &mut meshes,
+                    counter,
+                );
             }
             Packet::Flip(id, idx, rev) => {
                 if id.user == client.my_id()

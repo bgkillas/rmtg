@@ -116,7 +116,7 @@ pub fn spawn_all_modify(
     }
 }
 //TODO can be done without del_modify
-//TODO can spawn/del optionally depending if some=>none, etc
+//TODO can spawn/del optionally depending if some turned to none, etc
 pub fn modify(
     ent: Entity,
     card: &Card,
@@ -127,6 +127,22 @@ pub fn modify(
     meshes: &mut Assets<Mesh>,
     counter: Counter,
 ) {
+    /*let exists = match counter {
+        Counter::Power => card.power.is_some(),
+        Counter::Toughness => card.toughness.is_some(),
+        Counter::Loyalty => card.loyalty.is_some(),
+        Counter::Misc => card.misc.is_some(),
+        Counter::Counters => card.counters.is_some(),
+    };
+    if !exists {
+        del_modify(children, commands, query, counter);
+        return;
+    }
+    for child in children {
+        if query.get(*child).ok().copied() == Some(counter) {
+            return;
+        }
+    }*/
     del_modify(children, commands, query, counter);
     spawn_modify(ent, card, commands, materials, meshes, counter);
 }
