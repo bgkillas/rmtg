@@ -33,6 +33,7 @@ pub fn setup(
     mut light: ResMut<AmbientLight>,
     mut pick: ResMut<MeshPickingSettings>,
     mut fonts: ResMut<Assets<Font>>,
+    keybinds: Res<KeybindsList>,
     #[cfg(feature = "steam")] send_sleep: Res<SendSleeping>,
     #[cfg(feature = "steam")] give: Res<GiveEnts>,
     #[cfg(feature = "steam")] flip_counter: Res<FlipCounter>,
@@ -368,23 +369,41 @@ pub fn setup(
         EscMenu,
         Visibility::Hidden,
         BackgroundColor(Color::srgba_u8(0, 0, 0, 127)),
-        #[cfg(feature = "steam")]
-        children![(
-            Node {
-                width: Val::Px(0.0),
-                height: Val::Px(0.0),
-                ..default()
-            },
-            Text(String::new()),
-            SteamInfo,
-            Visibility::Inherited,
-            TextFont {
-                font_size: FONT_SIZE,
-                ..default()
-            },
-        )],
+        children![
+            #[cfg(feature = "steam")]
+            (
+                Node {
+                    width: Val::Px(0.0),
+                    height: Val::Px(0.0),
+                    ..default()
+                },
+                Text(String::new()),
+                SteamInfo,
+                Visibility::Inherited,
+                TextFont {
+                    font_size: FONT_SIZE,
+                    ..default()
+                },
+            ),
+            (
+                Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    ..default()
+                },
+                Text(keybinds.to_string()),
+                KeybindInfo,
+                Visibility::Inherited,
+                TextFont {
+                    font_size: FONT_SIZE / 2.0,
+                    ..default()
+                },
+            )
+        ],
     ));
 }
+#[derive(Component)]
+pub struct KeybindInfo;
 #[derive(Component)]
 pub struct EscMenu;
 #[derive(Component)]

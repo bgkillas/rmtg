@@ -70,7 +70,7 @@ use enum_map::{Enum, EnumMap, enum_map};
 use enumset::{EnumSet, EnumSetType, enum_set};
 #[cfg(feature = "wasm")]
 use futures::channel::oneshot;
-use itertools::Either;
+use itertools::{Either, Itertools};
 use rand::seq::SliceRandom;
 #[cfg(feature = "mic")]
 use rodio::{OutputStreamBuilder, Sink};
@@ -1706,7 +1706,7 @@ impl Keybinds<'_> {
         }
     }
 }
-#[derive(Enum)]
+#[derive(Enum, Debug)]
 pub enum Keybind {
     Ping,
     HostSteam,
@@ -1828,7 +1828,28 @@ impl Default for KeybindsList {
         })
     }
 }
-#[derive(PartialEq)]
+impl fmt::Display for KeybindsList {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.iter()
+                .map(|a| format!("{:?} => {}", a.0, a.1))
+                .join("\n")
+        )
+    }
+}
+impl fmt::Display for Bind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}{:?}",
+            self.modifiers.iter().map(|m| format!("{m:?}+")).join(""),
+            self.key
+        )
+    }
+}
+#[derive(PartialEq, Debug)]
 pub enum Key {
     KeyCode(KeyCode),
     Mouse(MouseButton),
@@ -1845,7 +1866,7 @@ impl From<MouseButton> for Key {
         Self::Mouse(value)
     }
 }
-#[derive(EnumSetType)]
+#[derive(EnumSetType, Debug)]
 pub enum Modifier {
     Alt,
     Control,
