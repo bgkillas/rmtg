@@ -1093,6 +1093,7 @@ pub fn apply_sync(
                                 Some(syncobject),
                                 None,
                             );
+                            ignore.insert(syncobject);
                         }
                     }
                     if fail {

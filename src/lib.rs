@@ -95,6 +95,8 @@ const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO half card width between card spots
 //TODO search does not scroll far down enough
 //TODO card ban lists
+//TODO numbers on single card with counter
+//TODO commander damage
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
