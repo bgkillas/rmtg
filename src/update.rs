@@ -1142,18 +1142,58 @@ pub fn listen_for_mouse(
                 }
             } else if keybinds.just_pressed(Keybind::Mill) && parent.is_none() && inother.is_none()
             {
-                todo!()
-                /*let n = keybinds.get_numeric();
+                let n = keybinds.get_numeric();
                 if n != 0 {
-                    //TODO
-                }*/
+                    let pile = pile.take_n_card(&transform, n);
+                    if pile.is_empty() {
+                        if let Ok(id) = ids.get(entity) {
+                            net.killed_me(*id)
+                        } else if let Ok(id) = others_ids.get(entity) {
+                            net.killed(*id);
+                        }
+                        commands.entity(entity).despawn();
+                    }
+                    let pile = Pile::new(pile);
+                    commands.trigger(AddToSpot {
+                        pile,
+                        spot: SpotType::Graveyard,
+                        player: peers.me.unwrap_or_default(),
+                        from: if let Ok(id) = ids.get(entity) {
+                            Some((net.to_global(*id), is_reversed(&transform)))
+                        } else if let Ok(id) = others_ids.get(entity) {
+                            Some((*id, is_reversed(&transform)))
+                        } else {
+                            None
+                        },
+                    });
+                }
             } else if keybinds.just_pressed(Keybind::Exile) && parent.is_none() && inother.is_none()
             {
-                todo!()
-                /*let n = keybinds.get_numeric();
+                let n = keybinds.get_numeric();
                 if n != 0 {
-                    //TODO
-                }*/
+                    let pile = pile.take_n_card(&transform, n);
+                    if pile.is_empty() {
+                        if let Ok(id) = ids.get(entity) {
+                            net.killed_me(*id)
+                        } else if let Ok(id) = others_ids.get(entity) {
+                            net.killed(*id);
+                        }
+                        commands.entity(entity).despawn();
+                    }
+                    let pile = Pile::new(pile);
+                    commands.trigger(AddToSpot {
+                        pile,
+                        spot: SpotType::Exile,
+                        player: peers.me.unwrap_or_default(),
+                        from: if let Ok(id) = ids.get(entity) {
+                            Some((net.to_global(*id), is_reversed(&transform)))
+                        } else if let Ok(id) = others_ids.get(entity) {
+                            Some((*id, is_reversed(&transform)))
+                        } else {
+                            None
+                        },
+                    });
+                }
             } else if keybinds.just_pressed(Keybind::Reveal)
                 && parent.is_none()
                 && inother.is_none()
@@ -1864,7 +1904,7 @@ pub struct CounterMenu(Entity, Value, Option<Counter>);
 pub struct TempDisable;
 #[derive(Component)]
 pub struct SearchText;
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum SpotType {
     CommanderMain,
     CommanderAlt,
@@ -1874,8 +1914,8 @@ pub enum SpotType {
 }
 #[derive(Component, Debug)]
 pub struct CardSpot {
-    spot_type: SpotType,
-    ent: Option<Entity>,
+    pub spot_type: SpotType,
+    pub ent: Option<Entity>,
 }
 impl CardSpot {
     pub fn new(spot_type: SpotType) -> Self {
@@ -2042,9 +2082,6 @@ pub fn pick_from_list(
                         let len = pile.len() as f32 * CARD_THICKNESS;
                         let new = pile.remove(card.0);
                         if !pile.is_empty() {
-                            if let Ok(id) = others_ids.get(entity) {
-                                net.take(entity, *id);
-                            }
                             let card = pile.last();
                             repaint_face(&mut mats, &mut materials, card, children);
                             adjust_meshes(
@@ -2059,12 +2096,12 @@ pub fn pick_from_list(
                                 &mut commands,
                             );
                         } else {
-                            if let Ok(id) = ids.get(search_deck.1.0) {
+                            if let Ok(id) = ids.get(entity) {
                                 net.killed_me(*id)
-                            } else if let Ok(id) = others_ids.get(search_deck.1.0) {
+                            } else if let Ok(id) = others_ids.get(entity) {
                                 net.killed(*id);
                             }
-                            commands.entity(search_deck.1.0).despawn();
+                            commands.entity(entity).despawn();
                         }
                         let mut transform = *trans;
                         transform.translation.y += len + LIFT_SPACE;

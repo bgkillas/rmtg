@@ -1,8 +1,8 @@
-use crate::misc::{Equipment, adjust_meshes, is_reversed, repaint_face, spawn_equip};
-use crate::setup::{SideMenu, Wall};
+use crate::misc::{Equipment, adjust_meshes, is_reversed, new_pile_at, repaint_face, spawn_equip};
+use crate::setup::{Player, SideMenu, Wall};
 use crate::shapes::{Shape, Side};
 use crate::sync::{Net, SyncObject, SyncObjectMe};
-use crate::update::{SearchDeck, SearchText, update_search};
+use crate::update::{CardSpot, SearchDeck, SearchText, SpotType, update_search};
 use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, CardBase, FollowMouse, InHand, Menu, Pile};
 use avian3d::prelude::{Collider, ColliderAabb, CollisionStart};
 use avian3d::spatial_query::{SpatialQuery, SpatialQueryFilter};
@@ -192,6 +192,50 @@ pub fn pile_merge(
             }
         }
         commands.entity(top_ent).despawn();
+    }
+}
+#[derive(Event)]
+pub struct AddToSpot {
+    pub pile: Pile,
+    pub spot: SpotType,
+    pub player: usize,
+    pub from: Option<(SyncObject, bool)>,
+}
+pub fn add_to_spot(
+    mut to_add: On<AddToSpot>,
+    mut spots: Query<(&mut CardSpot, &GlobalTransform, &Player)>,
+    mut piles: Query<(&mut Pile, &Transform)>,
+    mut commands: Commands,
+    net: Net,
+) {
+    if let Some((mut s, t, _)) = spots
+        .iter_mut()
+        .find(|(s, _, p)| s.spot_type == to_add.spot && p.0 == to_add.player)
+    {
+        if let Some(ent) = &s.ent
+            && let Ok((mut pile, transform)) = piles.get_mut(*ent)
+        {
+            if is_reversed(transform) {
+                pile.extend_start(mem::take(&mut to_add.pile));
+            } else {
+                pile.extend(mem::take(&mut to_add.pile));
+            }
+            //TODO
+        } else {
+            s.ent = None;
+            /*new_pile_at(
+                Pile::Single(c.into()),
+                card_base.clone(),
+                &mut materials,
+                &mut commands,
+                &mut meshes,
+                transform,
+                false,
+                None,
+                None,
+                Some(id),
+            )*/
+        }
     }
 }
 #[derive(EntityEvent, Deref, DerefMut)]

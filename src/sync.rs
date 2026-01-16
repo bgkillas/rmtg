@@ -874,6 +874,10 @@ pub fn apply_sync(
                     run(&mut pile, children, &transform, entity, true)
                 }
             }
+            #[allow(unused_variables)]
+            Packet::Move(from, to, count, from_top, to_top) => {
+                //TODO
+            }
             Packet::Merge(base, from, at) => {
                 let (top_pile, top_ent) = if from.user == client.my_id()
                     && let Some((pile, ent)) = queryme.iter_mut().find_map(
@@ -1532,6 +1536,7 @@ pub enum Packet {
     Reorder(SyncObject, Vec<Id>),
     Draw(SyncObject, Vec<(SyncObjectMe, Trans, Id)>, usize),
     Merge(SyncObject, SyncObject, usize),
+    Move(SyncObject, SyncObject, usize, bool, bool),
     SetUser(PeerId, usize),
     Indicator(Pos, Option<Pos>, bool),
     Name(String),
@@ -1724,6 +1729,22 @@ impl<'w, 's> Net<'w, 's> {
         self.client
             .broadcast(
                 &Packet::Merge(self.to_global(base), top, at),
+                Reliability::Reliable,
+                COMPRESSION,
+            )
+            .unwrap();
+    }
+    pub fn move_to(
+        &self,
+        from: SyncObject,
+        to: SyncObject,
+        count: usize,
+        from_top: bool,
+        to_top: bool,
+    ) {
+        self.client
+            .broadcast(
+                &Packet::Move(from, to, count, from_top, to_top),
                 Reliability::Reliable,
                 COMPRESSION,
             )

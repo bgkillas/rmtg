@@ -251,6 +251,7 @@ pub fn start() -> AppExit {
     .add_observer(on_scroll_handler)
     .add_observer(move_to_floor)
     .add_observer(move_up)
+    .add_observer(add_to_spot)
     .add_observer(pile_merge);
     #[cfg(feature = "mic")]
     let audio = AudioResource::new(&AudioSettings::default());
@@ -464,6 +465,17 @@ impl Pile {
         self.set_single();
         ret
     }
+    fn take_n_card(&mut self, transform: &Transform, n: usize) -> Vec<SubCard> {
+        let ret = if is_reversed(transform) {
+            self.drain(0..n.min(self.len())).collect()
+        } else {
+            self.drain(self.len().saturating_sub(n)..self.len())
+                .rev()
+                .collect()
+        };
+        self.set_single();
+        ret
+    }
     fn len(&self) -> usize {
         match self {
             Pile::Multiple(v) => v.len(),
@@ -632,7 +644,7 @@ impl Pile {
     fn drain<R>(
         &mut self,
         range: R,
-    ) -> Either<impl Iterator<Item = SubCard>, impl Iterator<Item = SubCard>>
+    ) -> Either<impl DoubleEndedIterator<Item = SubCard>, impl DoubleEndedIterator<Item = SubCard>>
     where
         R: RangeBounds<usize>,
     {
