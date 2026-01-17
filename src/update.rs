@@ -1140,33 +1140,6 @@ pub fn listen_for_mouse(
                 } else if let Ok(id) = others_ids.get(entity) {
                     net.flip(*id, idx, flipped);
                 }
-            } else if keybinds.just_pressed(Keybind::Mill) && parent.is_none() && inother.is_none()
-            {
-                let n = keybinds.get_numeric();
-                if n != 0 {
-                    let pile = pile.take_n_card(&transform, n);
-                    if pile.is_empty() {
-                        if let Ok(id) = ids.get(entity) {
-                            net.killed_me(*id)
-                        } else if let Ok(id) = others_ids.get(entity) {
-                            net.killed(*id);
-                        }
-                        commands.entity(entity).despawn();
-                    }
-                    let pile = Pile::new(pile);
-                    commands.trigger(AddToSpot {
-                        pile,
-                        spot: SpotType::Graveyard,
-                        player: peers.me.unwrap_or_default(),
-                        from: if let Ok(id) = ids.get(entity) {
-                            Some((net.to_global(*id), is_reversed(&transform)))
-                        } else if let Ok(id) = others_ids.get(entity) {
-                            Some((*id, is_reversed(&transform)))
-                        } else {
-                            None
-                        },
-                    });
-                }
             } else if keybinds.just_pressed(Keybind::Exile) && parent.is_none() && inother.is_none()
             {
                 let n = keybinds.get_numeric();
@@ -1184,6 +1157,33 @@ pub fn listen_for_mouse(
                     commands.trigger(AddToSpot {
                         pile,
                         spot: SpotType::Exile,
+                        player: peers.me.unwrap_or_default(),
+                        from: if let Ok(id) = ids.get(entity) {
+                            Some((net.to_global(*id), is_reversed(&transform)))
+                        } else if let Ok(id) = others_ids.get(entity) {
+                            Some((*id, is_reversed(&transform)))
+                        } else {
+                            None
+                        },
+                    });
+                }
+            } else if keybinds.just_pressed(Keybind::Mill) && parent.is_none() && inother.is_none()
+            {
+                let n = keybinds.get_numeric();
+                if n != 0 {
+                    let pile = pile.take_n_card(&transform, n);
+                    if pile.is_empty() {
+                        if let Ok(id) = ids.get(entity) {
+                            net.killed_me(*id)
+                        } else if let Ok(id) = others_ids.get(entity) {
+                            net.killed(*id);
+                        }
+                        commands.entity(entity).despawn();
+                    }
+                    let pile = Pile::new(pile);
+                    commands.trigger(AddToSpot {
+                        pile,
+                        spot: SpotType::Graveyard,
                         player: peers.me.unwrap_or_default(),
                         from: if let Ok(id) = ids.get(entity) {
                             Some((net.to_global(*id), is_reversed(&transform)))

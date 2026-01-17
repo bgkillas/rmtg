@@ -1,3 +1,4 @@
+use crate::counters::Counter;
 use crate::misc::{Equipment, adjust_meshes, is_reversed, new_pile_at, repaint_face, spawn_equip};
 use crate::setup::{Player, SideMenu, Wall};
 use crate::shapes::{Shape, Side};
@@ -84,7 +85,6 @@ pub fn pile_merge(
     search_deck: Option<Single<(Entity, &SearchDeck)>>,
     text: Option<Single<&TextInputContents, With<SearchText>>>,
     equipment: Query<(), With<Equipment>>,
-
     (mut menu, side, net, card_base): (
         ResMut<Menu>,
         Option<Single<Entity, With<SideMenu>>>,
@@ -204,37 +204,72 @@ pub struct AddToSpot {
 pub fn add_to_spot(
     mut to_add: On<AddToSpot>,
     mut spots: Query<(&mut CardSpot, &GlobalTransform, &Player)>,
-    mut piles: Query<(&mut Pile, &Transform)>,
+    mut piles: Query<(&mut Pile, &mut Transform, &Children, &mut Collider)>,
     mut commands: Commands,
-    net: Net,
+    mut net: Net,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    card_base: Res<CardBase>,
+    mut mats: Query<&mut MeshMaterial3d<StandardMaterial>>,
+    mut query_meshes: Query<
+        (&mut Mesh3d, &mut Transform),
+        (
+            Without<Children>,
+            With<ChildOf>,
+            Without<InHand>,
+            Without<Shape>,
+            Without<Pile>,
+            Without<Side>,
+        ),
+    >,
+    equipment: Query<(), With<Equipment>>,
+    counters: Query<&Counter>,
 ) {
     if let Some((mut s, t, _)) = spots
         .iter_mut()
         .find(|(s, _, p)| s.spot_type == to_add.spot && p.0 == to_add.player)
     {
         if let Some(ent) = &s.ent
-            && let Ok((mut pile, transform)) = piles.get_mut(*ent)
+            && let Ok((mut pile, mut transform, children, mut collider)) = piles.get_mut(*ent)
         {
-            if is_reversed(transform) {
+            if is_reversed(&transform) {
                 pile.extend_start(mem::take(&mut to_add.pile));
             } else {
                 pile.extend(mem::take(&mut to_add.pile));
             }
-            //TODO
+            let card = pile.last();
+            repaint_face(&mut mats, &mut materials, card, children);
+            adjust_meshes(
+                &pile,
+                children,
+                &mut meshes,
+                &mut query_meshes,
+                &mut transform,
+                &mut collider,
+                &equipment,
+                Some(&counters),
+                &mut commands,
+            );
+            //TODO update search
+            //TODO sync
         } else {
             s.ent = None;
-            /*new_pile_at(
-                Pile::Single(c.into()),
+            let len = to_add.pile.len() as f32;
+            let mut t = t.compute_transform();
+            t.translation.y += len * CARD_THICKNESS / 2.0;
+            new_pile_at(
+                mem::take(&mut to_add.pile),
                 card_base.clone(),
                 &mut materials,
                 &mut commands,
                 &mut meshes,
-                transform,
+                t,
                 false,
                 None,
                 None,
-                Some(id),
-            )*/
+                Some(net.new_id()),
+            );
+            //TODO sync
         }
     }
 }
