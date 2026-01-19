@@ -774,6 +774,7 @@ impl Types {
         self.super_type.is_empty() && self.main_type.is_empty() && self.sub_type.is_empty()
     }
 }
+//TODO also could be enum sets
 #[derive(Debug, Default, Clone, Encode, Decode, Eq, PartialEq, Deref, DerefMut)]
 pub struct SuperTypes(pub Vec<SuperType>);
 #[derive(Debug, Default, Clone, Encode, Decode, Eq, PartialEq, Deref, DerefMut)]

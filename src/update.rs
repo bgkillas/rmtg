@@ -2859,7 +2859,7 @@ pub fn search(
                 Node {
                     position_type: PositionType::Absolute,
                     width: Val::Percent(100.0),
-                    height: Val::Px(FONT_HEIGHT * 1.5),
+                    height: Val::Percent(5.0),
                     ..default()
                 },
                 SearchText,
@@ -2872,9 +2872,9 @@ pub fn search(
                 Node {
                     display: Display::Grid,
                     position_type: PositionType::Absolute,
-                    top: Val::Px(FONT_HEIGHT * 1.5),
+                    top: Val::Percent(5.0),
                     left: Val::Px(0.0),
-                    height: Val::Percent(100.0),
+                    height: Val::Percent(95.0),
                     width: Val::Percent(100.0),
                     grid_template_columns: vec![RepeatedGridTrack::percent(3, 100.0 / 3.0)],
                     align_content: AlignContent::Start,
