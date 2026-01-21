@@ -477,12 +477,12 @@ pub fn apply_sync(
                 for c in pile.iter_mut() {
                     if let Some(d) = cards.get(&c.id) {
                         c.data.face.image = d.face.image.clone();
-                        if let Some(c) = c.data.back.as_mut()
-                            && let Some(d) = d.back.as_ref()
-                        {
-                            c.image = d.image.clone();
-                        } else {
-                            return;
+                        if let Some(c) = c.data.back.as_mut() {
+                            if let Some(d) = d.back.as_ref() {
+                                c.image = d.image.clone();
+                            } else {
+                                return;
+                            }
                         }
                     } else {
                         some = true;

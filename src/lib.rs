@@ -96,6 +96,7 @@ const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 //TODO search does not scroll far down enough
 //TODO card ban lists
 //TODO commander damage
+//TODO allow listing cards in side menu for tokens and printings instead of spawning in world
 rules::generate_types!();
 #[cfg_attr(feature = "wasm", wasm_bindgen(start))]
 #[cfg(feature = "wasm")]
