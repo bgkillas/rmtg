@@ -205,7 +205,7 @@ pub fn apply_sync(
         Res<AudioResource>,
         Res<AudioSettings>,
     ),
-    (mut query_meshes, chat, mut drag, mut colliders): (
+    (mut query_meshes, chat, mut drag, mut colliders, cards): (
         Query<
             (&mut Mesh3d, &mut Transform),
             (
@@ -231,6 +231,7 @@ pub fn apply_sync(
             ),
         >,
         Query<&mut Collider>,
+        Res<CardList>,
     ),
     (
         search,
@@ -469,27 +470,46 @@ pub fn apply_sync(
                 let id = SyncObject { user, id: lid };
                 sent.del(id);
             }
-            Packet::New(lid, pile, trans, scale) => {
+            Packet::New(lid, mut pile, trans, scale) => {
                 let user = sender;
                 let id = SyncObject { user, id: lid };
-                let deck = down.get_deck.clone();
-                let client = down.client.0.clone();
-                let asset_server = asset_server.clone();
-                let f = async move {
-                    add_images(
-                        pile,
-                        trans.with_scale(scale),
-                        id,
-                        deck,
-                        client,
-                        asset_server,
-                    )
-                    .await;
-                };
-                #[cfg(feature = "wasm")]
-                wasm_bindgen_futures::spawn_local(f);
-                #[cfg(not(feature = "wasm"))]
-                down.runtime.0.spawn(f);
+                let mut some = false;
+                for c in pile.iter_mut() {
+                    if let Some(d) = cards.get(&c.id) {
+                        c.data.face.image = d.face.image.clone();
+                        if let Some(c) = c.data.back.as_mut()
+                            && let Some(d) = d.back.as_ref()
+                        {
+                            c.image = d.image.clone();
+                        } else {
+                            return;
+                        }
+                    } else {
+                        some = true;
+                    }
+                }
+                if some {
+                    let deck = down.get_deck.clone();
+                    let client = down.client.0.clone();
+                    let asset_server = asset_server.clone();
+                    let f = async move {
+                        add_images(
+                            pile,
+                            trans.with_scale(scale),
+                            id,
+                            deck,
+                            client,
+                            asset_server,
+                        )
+                        .await;
+                    };
+                    #[cfg(feature = "wasm")]
+                    wasm_bindgen_futures::spawn_local(f);
+                    #[cfg(not(feature = "wasm"))]
+                    down.runtime.0.spawn(f);
+                } else {
+                    //TODO
+                }
             }
             Packet::NewShape(lid, shape, trans, scale) => {
                 client
@@ -806,7 +826,7 @@ pub fn apply_sync(
                         let mut fail = false;
                         if let Pile::Multiple(pile) = pile {
                             for (i, id) in order.into_iter().enumerate() {
-                                if let Some(k) = pile[i..].iter().position(|c| c.data.id == id) {
+                                if let Some(k) = pile[i..].iter().position(|c| c.id == id) {
                                     pile.swap(i, k + i);
                                 } else {
                                     fail = true;
@@ -1072,7 +1092,7 @@ pub fn apply_sync(
                         to.into_iter().zip(pile.drain(start - len..start))
                     {
                         let syncobject = SyncObject { user, id: cid };
-                        if resend && card.data.id != uuid {
+                        if resend && card.id != uuid {
                             fail = true;
                             if sent.add(syncobject) {
                                 client
@@ -1168,6 +1188,10 @@ pub fn apply_sync(
                 {
                     run(pile, children, transform, entity, true);
                 }
+            }
+            #[allow(unused_variables)]
+            Packet::Repaint(id, to, tokens, flipped) => {
+                todo!()
             }
             Packet::Counter(id, to) => {
                 let mut run = |children: &Children, e: Entity| {
@@ -1539,6 +1563,7 @@ pub enum Packet {
     Move(SyncObject, SyncObject, usize, bool, bool),
     SetUser(PeerId, usize),
     Indicator(Pos, Option<Pos>, bool),
+    Repaint(SyncObjectMe, Id, Vec<Id>, bool),
     Name(String),
     Text(String),
     Modify(SyncObject, Counter, Option<Value>),

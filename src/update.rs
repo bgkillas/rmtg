@@ -37,6 +37,7 @@ use kalc_lib::complex::NumStr;
 #[cfg(feature = "calc")]
 use kalc_lib::units::{Number, Options, Variable};
 use rand::Rng;
+use std::collections::hash_map::Entry;
 use std::f32::consts::PI;
 use std::mem;
 #[derive(Component)]
@@ -703,9 +704,9 @@ pub fn listen_for_mouse(
                     let card = pile.last();
                     repaint_face(&mut mats, &mut materials, card, children);
                     if let Ok(id) = ids.get(entity) {
-                        net.reorder_me(*id, pile.iter().map(|a| a.data.id).collect());
+                        net.reorder_me(*id, pile.iter().map(|a| a.id).collect());
                     } else if let Ok(id) = others_ids.get(entity) {
-                        net.reorder(*id, pile.iter().map(|a| a.data.id).collect());
+                        net.reorder(*id, pile.iter().map(|a| a.id).collect());
                     }
                     if let Some(entity) =
                         search_deck.and_then(|s| if s.1.0 == entity { Some(s.0) } else { None })
@@ -855,7 +856,7 @@ pub fn listen_for_mouse(
                 *game_clipboard = GameClipboard::Pile(pile.clone());
             } else if keybinds.just_pressed(Keybind::Copy) && !is_reversed(&transform) {
                 let card = pile.get_card(&transform);
-                let text = format!("https://scryfall.com/card/{}", card.data.id);
+                let text = format!("https://scryfall.com/card/{}", card.id);
                 #[cfg(feature = "wasm")]
                 let clipboard = *clipboard;
                 #[cfg(feature = "wasm")]
@@ -919,13 +920,13 @@ pub fn listen_for_mouse(
                     if let Ok(lid) = ids.get(entity) {
                         net.draw_me(
                             *lid,
-                            vec![(id, Trans::from_transform(&transform), card.data.id)],
+                            vec![(id, Trans::from_transform(&transform), card.id)],
                             draw_len,
                         );
                     } else if let Ok(oid) = others_ids.get(entity) {
                         net.draw(
                             *oid,
-                            vec![(id, Trans::from_transform(&transform), card.data.id)],
+                            vec![(id, Trans::from_transform(&transform), card.id)],
                             draw_len,
                         );
                     }
@@ -1016,7 +1017,7 @@ pub fn listen_for_mouse(
                 let mut vec = Vec::with_capacity(pile.len());
                 for c in pile.drain(..) {
                     let id = net.new_id();
-                    let uuid = c.data.id;
+                    let uuid = c.id;
                     new_pile_at(
                         Pile::Single(c.into()),
                         card_base.clone(),
@@ -1078,7 +1079,7 @@ pub fn listen_for_mouse(
                 let client = down.client.0.clone();
                 let get_deck = down.get_deck.clone();
                 let asset_server = asset_server.clone();
-                let id = top.data.id;
+                let id = top.id;
                 info!("{}: {} has requested printings", top.face().name, id);
                 #[cfg(not(feature = "wasm"))]
                 down.runtime.0.spawn(async move {
@@ -1101,12 +1102,12 @@ pub fn listen_for_mouse(
                 let client = down.client.0.clone();
                 let get_deck = down.get_deck.clone();
                 let asset_server = asset_server.clone();
-                let ids = top.data.tokens.clone();
+                let ids = top.tokens.clone();
                 if !ids.is_empty() {
                     info!(
                         "{}: {} has requested tokens {ids:?}",
                         top.face().name,
-                        top.data.id
+                        top.id
                     );
                     #[cfg(not(feature = "wasm"))]
                     down.runtime.0.spawn(async move {
@@ -1217,7 +1218,7 @@ pub fn listen_for_mouse(
                     for _ in 0..n {
                         let new = pile.take_card(&transform);
                         let id = net.new_id();
-                        let uuid = new.data.id;
+                        let uuid = new.id;
                         let mut ent = new_pile_at(
                             Pile::Single(new.into()),
                             card_base.clone(),
@@ -2109,7 +2110,7 @@ pub fn pick_from_list(
                             remove_follow(&mut commands, **e);
                         }
                         let id = net.new_id();
-                        let uuid = new.data.id;
+                        let uuid = new.id;
                         new_pile_at(
                             Pile::Single(new.into()),
                             card_base.clone(),
@@ -2571,17 +2572,20 @@ pub fn register_deck(
     mut spots: Query<(&GlobalTransform, &mut CardSpot, &Player)>,
     peers: Res<Peers>,
     mut trans: Query<Entity, With<Pile>>,
-    (ids, others_ids, search_deck, mut net): (
+    (ids, others_ids, search_deck, mut net, mut cards): (
         Query<&SyncObjectMe>,
         Query<&SyncObject>,
         Option<Single<(Entity, &SearchDeck)>>,
         Net,
+        ResMut<CardList>,
     ),
 ) {
     let mut decks = decks.get_deck.0.lock().unwrap();
     for (mut deck, deck_type) in decks.drain(..) {
-        if deck.is_empty() {
-            continue;
+        for c in deck.iter() {
+            if let Entry::Vacant(v) = cards.entry(c.id) {
+                v.insert(c.data.clone());
+            }
         }
         let (id, my_id) = if let DeckType::Other(_, id) = deck_type {
             (Some(id), None)

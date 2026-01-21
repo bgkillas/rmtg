@@ -195,6 +195,7 @@ pub fn start() -> AppExit {
     .insert_resource(VoiceActive::default())
     .insert_resource(KeybindsList::default())
     .insert_resource(game_clipboard)
+    .insert_resource(CardList::default())
     .insert_resource(Download {
         client,
         #[cfg(not(feature = "wasm"))]
@@ -263,6 +264,8 @@ pub fn start() -> AppExit {
         .insert_resource(AudioPlayer(sink));
     app.run()
 }
+#[derive(Resource, Deref, DerefMut, Default)]
+pub struct CardList(HashMap<Id, CardData>);
 #[cfg(feature = "mic")]
 #[derive(Resource, Deref, DerefMut)]
 pub struct AudioPlayer(Sink);
@@ -1047,7 +1050,7 @@ pub enum Layout {
     Flip,
     Room,
 }
-#[derive(Default, PartialEq, Clone, Copy, Encode, Decode)]
+#[derive(Default, PartialEq, Clone, Copy, Encode, Decode, Eq, Hash)]
 pub struct Id(u128);
 impl FromStr for Id {
     type Err = uuid::Error;
@@ -1067,8 +1070,6 @@ impl Debug for Id {
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct CardData {
-    id: Id,
-    tokens: Vec<Id>,
     face: CardInfo,
     back: Option<CardInfo>,
     layout: Layout,
@@ -1076,8 +1077,6 @@ pub struct CardData {
 impl CardData {
     fn clone_no_image(&self) -> Self {
         Self {
-            id: self.id,
-            tokens: self.tokens.clone(),
             face: self.face.clone_no_image(),
             back: self.back.as_ref().map(|a| a.clone_no_image()),
             layout: self.layout,
@@ -1086,12 +1085,16 @@ impl CardData {
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct SubCard {
-    data: CardData,
+    id: Id,
+    tokens: Vec<Id>,
+    data: CardData, //this may be ommited instead getting data from the resource
     flipped: bool,
 }
 impl SubCard {
     fn clone_no_image(&self) -> Self {
         Self {
+            id: self.id,
+            tokens: self.tokens.clone(),
             data: self.data.clone_no_image(),
             flipped: self.flipped,
         }

@@ -231,15 +231,19 @@ pub async fn add_images(
     client: reqwest::Client,
     asset_server: AssetServer,
 ) -> Option<()> {
-    join_all(pile.iter_mut().map(|p| async {
-        let sid = p.data.id.to_string();
-        let bytes = get_bytes(&sid, &client, &asset_server, true);
-        if let Some(c) = p.data.back.as_mut() {
-            let bytes = get_bytes(&sid, &client, &asset_server, false);
-            c.image = bytes.await.unwrap()
-        }
-        p.data.face.image = bytes.await.unwrap()
-    }))
+    join_all(
+        pile.iter_mut()
+            .filter(|a| a.data.face.image.is_none())
+            .map(|p| async {
+                let sid = p.id.to_string();
+                let bytes = get_bytes(&sid, &client, &asset_server, true);
+                if let Some(c) = p.data.back.as_mut() {
+                    let bytes = get_bytes(&sid, &client, &asset_server, false);
+                    c.image = bytes.await.unwrap()
+                }
+                p.data.face.image = bytes.await.unwrap()
+            }),
+    )
     .await;
     if !pile.is_empty() {
         deck.0
@@ -459,11 +463,11 @@ pub async fn parse(
                 toughness: alt_toughness,
                 image,
             })),
-            id,
-            tokens,
             layout,
         },
         flipped: false,
+        id,
+        tokens,
     })
 }
 pub async fn parse_moxfield(
@@ -498,7 +502,7 @@ pub async fn parse_moxfield(
             false,
         )
         .await?;
-        c.data.tokens = tokens;
+        c.tokens = tokens;
         Some(c)
     } else {
         parse(
