@@ -132,7 +132,7 @@ pub fn display_steam_info(
     if matches!(*menu, Menu::Esc) || !frame.0.is_multiple_of(20) {
         return;
     }
-    let Some(info) = client.info() else { return };
+    let info = client.info();
     let info = info
         .0
         .into_iter()

@@ -35,80 +35,25 @@ steam=["bevy_tangled/steam"]
 ip=["bevy_tangled/tangled"]
 
 [dependencies]
-bevy={version="0.17.3", default-features = false, features = [
+bevy={version="0.18.0", default-features = false, features = [
   "std",
-  "async_executor",
-  #"android-game-activity",
-  #"android_shared_stdcxx",
-  #"animation",
-  "bevy_asset",
-  #"bevy_audio",
-  "bevy_color",
-  "bevy_core_pipeline",
-  "bevy_post_process",
-  "bevy_anti_alias",
+  "zstd_rust",
+  "android-game-activity",
+  "android_shared_stdcxx",
   "bevy_gilrs",
-  "bevy_gizmos",
-  "bevy_gltf",
-  "bevy_input_focus",
-  "bevy_log",
-  "bevy_mesh_picking_backend",
-  "bevy_pbr",
-  "bevy_picking",
-  "bevy_render",
-  "bevy_scene",
-  "bevy_image",
-  "bevy_mesh",
-  "bevy_camera",
-  #"bevy_light",
-  "bevy_shader",
-  "bevy_sprite",
-  "bevy_sprite_picking_backend",
-  "bevy_sprite_render",
-  "bevy_state",
-  "bevy_text",
-  "bevy_ui",
-  "bevy_ui_picking_backend",
-  "bevy_ui_render",
-  "bevy_window",
   "bevy_winit",
-  #"custom_cursor",
-  #"default_font",
-  #"hdr",
-  "ktx2",
   "multi_threaded",
-  "png",
-  "reflect_auto_register",
-  "smaa_luts",
-  "sysinfo_plugin",
-  "tonemapping_luts",
-  #"vorbis",
   "webgl2",
   "x11",
   "wayland",
-  "debug",
-  "zstd_rust",
-  #"track_location",
-  #"bevy_dev_tools",
-
-  #"std",
-  #"zstd_rust",
-  #"android-game-activity",
-  #"android_shared_stdcxx",
-  #"bevy_gilrs",
-  #"bevy_winit",
-  #"multi_threaded",
-  #"webgl2",
-  #"x11",
-  #"wayland",
-  #"sysinfo_plugin",
-  #"default_platform",
-  #"3d_bevy_render",
-  #"ui",
-  #"scene",
-  #"picking",
-  #"ui_api",
-  #"ui_bevy_render",
+  "sysinfo_plugin",
+  "default_platform",
+  "3d_bevy_render",
+  "ui",
+  "scene",
+  "picking",
+  "ui_api",
+  "ui_bevy_render",
 ]}
 enumset = "1.1.10"
 enum-map = "2.7.3"
@@ -118,21 +63,21 @@ reqwest={version= "0.13.1", features = ["rustls"], default-features = false}
 json="0.12.4"
 image="0.25.9"
 futures="0.3.31"
-bevy_framepace = "0.20.1"
+bevy_framepace = {version="0.21.0", git="https://github.com/aevyrie/bevy_framepace"}
 tokio={version="1.49.0",default-features = false,features=["rt","macros"]}
 rand = "0.9.2"
-bevy_rand = {version = "0.12.1", features = ["rand_chacha", "wyrand"] }
-bevy_prng = { version = "0.12.1", features = ["rand_chacha", "wyrand"] }
-wasm-bindgen = {version="0.2.106", optional = true}
-wasm-bindgen-futures = {version="0.4.56", optional = true}
-web-sys = { version = "0.3.83", optional = true, features = ["Clipboard", "Navigator", "Window", "HtmlImageElement", "HtmlCanvasElement", "CanvasRenderingContext2d", "Document", "ImageData"] }
-js-sys = {version="0.3.83",optional = true}
+bevy_rand = {version = "0.13.0", features = ["rand_chacha", "wyrand"] }
+bevy_prng = { version = "0.13.0", features = ["rand_chacha", "wyrand"] }
+wasm-bindgen = {version="0.2.108", optional = true}
+wasm-bindgen-futures = {version="0.4.58", optional = true}
+web-sys = { version = "0.3.85", optional = true, features = ["Clipboard", "Navigator", "Window", "HtmlImageElement", "HtmlCanvasElement", "CanvasRenderingContext2d", "Document", "ImageData"] }
+js-sys = {version="0.3.85",optional = true}
 console_error_panic_hook = { version = "0.1.7", optional = true }
-avian3d={version="0.4.1", features = ["simd"]}
-bevy_rich_text3d = "0.5.1"
+avian3d={version="0.5.0", features = ["simd"]}
+bevy_rich_text3d = "0.6.0"
 bevy_tangled = {git = "https://github.com/bgkillas/bevy_tangled", default-features = false, features = ["bevy", "compress"]}
 bitcode = {git="https://github.com/SoftbearStudios/bitcode", version = "0.6.7", branch = "large_c_style_enums"}
-bevy_ui_text_input = "0.6.0"
+bevy_ui_text_input = {git="https://github.com/Elekrisk/bevy_ui_text_input", version = "0.7.0", branch = "bevy-0.18"}
 #bevy_console = "0.14.1"
 #rune = "0.14.1"
 bevy_mod_mipmap_generator={git="https://github.com/DGriffin91/bevy_mod_mipmap_generator"}

@@ -1141,6 +1141,15 @@ pub fn listen_for_mouse(
                 } else if let Ok(id) = others_ids.get(entity) {
                     net.flip(*id, idx, flipped);
                 }
+            } else if keybinds.just_pressed(Keybind::Reveal)
+                && parent.is_none()
+                && inother.is_none()
+            {
+                todo!()
+                /*let n = keybinds.get_numeric();
+                if n != 0 {
+                    //TODO
+                }*/
             } else if keybinds.just_pressed(Keybind::Exile) && parent.is_none() && inother.is_none()
             {
                 let n = keybinds.get_numeric();
@@ -1195,15 +1204,6 @@ pub fn listen_for_mouse(
                         },
                     });
                 }
-            } else if keybinds.just_pressed(Keybind::Reveal)
-                && parent.is_none()
-                && inother.is_none()
-            {
-                todo!()
-                /*let n = keybinds.get_numeric();
-                if n != 0 {
-                    //TODO
-                }*/
             } else if keybinds.just_pressed(Keybind::Draw) && parent.is_none() && inother.is_none()
             {
                 let n = keybinds.get_numeric();
@@ -1999,7 +1999,7 @@ pub fn update_search(
         return;
     }
     let mut search = commands.entity(search);
-    search.clear_children();
+    search.despawn_children();
     search.with_children(|parent| {
         let node = |(i, c): (usize, &SubCard)| {
             parent.spawn((

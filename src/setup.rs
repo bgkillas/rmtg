@@ -23,26 +23,14 @@ pub const T: f32 = W / 2.0;
 pub const W: f32 = MAT_WIDTH * 2.0;
 pub const WALL_COLOR: Color = Color::srgb_u8(103, 73, 40);
 pub const FLOOR_COLOR: Color = Color::srgb_u8(103, 73, 40);
-pub fn setup(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut framepace: ResMut<FramepaceSettings>,
-    mut net: Net,
-    mut light: ResMut<AmbientLight>,
-    mut pick: ResMut<MeshPickingSettings>,
-    mut fonts: ResMut<Assets<Font>>,
-    keybinds: Res<KeybindsList>,
+pub fn setup_net(
     #[cfg(feature = "steam")] send_sleep: Res<SendSleeping>,
     #[cfg(feature = "steam")] give: Res<GiveEnts>,
     #[cfg(feature = "steam")] flip_counter: Res<FlipCounter>,
     #[cfg(feature = "steam")] peers: Res<Peers>,
     #[cfg(feature = "steam")] rempeers: Res<RemPeers>,
+    mut commands: Commands,
 ) {
-    pick.require_markers = true;
-    light.brightness = 100.0;
-    let mut no_obj = false;
     #[cfg(feature = "steam")]
     {
         let who = Arc::new(Mutex::new(HashMap::new()));
@@ -54,14 +42,44 @@ pub fn setup(
         let peers2 = peers.clone();
         let flip = flip_counter.0.clone();
         let flip2 = flip.clone();
-        let _ = net.client.init_steam(
-            Some(Box::new(move |client, peer| {
-                on_join(client, peer, &peers, &flip, &send, &who);
-            })),
-            Some(Box::new(move |client, peer| {
-                on_leave(client, peer, &peers2, &flip2, &who2, &rempeers, &give);
-            })),
+        commands.insert_resource(
+            Client::new(
+                std::env::var("AppId")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(APPID),
+                Some(Box::new(move |client, peer| {
+                    on_join(client, peer, &peers, &flip, &send, &who);
+                })),
+                Some(Box::new(move |client, peer| {
+                    on_leave(client, peer, &peers2, &flip2, &who2, &rempeers, &give);
+                })),
+            )
+            .unwrap(),
         );
+    }
+    #[cfg(not(feature = "steam"))]
+    {
+        commands.insert_resource(Client::new().unwrap())
+    }
+}
+pub fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut framepace: ResMut<FramepaceSettings>,
+    mut net: Net,
+    mut light: ResMut<GlobalAmbientLight>,
+    mut pick: ResMut<MeshPickingSettings>,
+    mut fonts: ResMut<Assets<Font>>,
+    keybinds: Res<KeybindsList>,
+) {
+    pick.require_markers = true;
+    light.brightness = 100.0;
+    let mut no_obj = false;
+    #[cfg(feature = "steam")]
+    {
         let mut next = false;
         let mut lobby = None;
         for arg in args().skip(1) {

@@ -1,6 +1,6 @@
 use crate::events::Scroll;
 use crate::events::*;
-use crate::setup::{MAT_BAR, MAT_HEIGHT, MAT_WIDTH, setup};
+use crate::setup::{MAT_BAR, MAT_HEIGHT, MAT_WIDTH, setup, setup_net};
 use crate::update::*;
 use avian3d::prelude::*;
 use bevy::asset::AssetMetaCheck;
@@ -136,13 +136,6 @@ pub fn start() -> AppExit {
     #[cfg(feature = "mic")]
     let sink = Sink::connect_new(stream_handle.mixer());
     app.add_plugins((
-        Client::new(
-            #[cfg(feature = "steam")]
-            std::env::var("AppId")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(APPID),
-        ),
         DefaultPlugins
             .set(WindowPlugin {
                 primary_window: app_window,
@@ -203,7 +196,7 @@ pub fn start() -> AppExit {
         runtime,
         get_deck,
     })
-    .add_systems(Startup, setup)
+    .add_systems(Startup, (setup_net, setup).chain())
     .add_systems(
         Update,
         //TODO could be more parralized
