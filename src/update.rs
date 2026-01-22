@@ -2431,7 +2431,7 @@ pub fn cam_rotation(
         else {
             return;
         };
-        let orig = ray.origin + ray.direction * time;
+        let orig = cam.0.translation + ray.direction * time;
         cam.0.translation = orig - cam.0.rotation * Dir3::NEG_Z * time;
     }
 }
