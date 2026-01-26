@@ -53,6 +53,12 @@ pub mod setup;
 pub mod shapes;
 pub mod sync;
 pub mod update;
+#[cfg(feature = "calc")]
+pub type I = kalc_lib::types::f64::Integer<i128>;
+#[cfg(feature = "calc")]
+pub type F = kalc_lib::types::f64::Float<f64>;
+#[cfg(feature = "calc")]
+pub type C = kalc_lib::types::f64::Complex<f64>;
 use crate::counters::{Value, counter_hit};
 use crate::misc::is_reversed;
 use crate::shapes::Shape;

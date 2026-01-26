@@ -35,6 +35,8 @@ use bevy_ui_text_input::{
 #[cfg(feature = "calc")]
 use kalc_lib::complex::NumStr;
 #[cfg(feature = "calc")]
+use kalc_lib::types::{Complex, Float};
+#[cfg(feature = "calc")]
 use kalc_lib::units::{Number, Options, Variable};
 use rand::Rng;
 use std::collections::hash_map::Entry;
@@ -2243,7 +2245,8 @@ pub fn update_search_deck(
                     &[Variable {
                         name: vec!['n'],
                         parsed: vec![NumStr::Num(
-                            Number::from_f64(counter.1.0 as f64, &Options::default()).into(),
+                            Number::<I, F, C>::from_f64(counter.1.0 as f64, &Options::default())
+                                .into(),
                         )],
                         unparsed: counter.1.0.to_string(),
                         funcvars: vec![],

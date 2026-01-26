@@ -82,9 +82,9 @@ bevy_ui_text_input = {git="https://github.com/Elekrisk/bevy_ui_text_input", vers
 #rune = "0.14.1"
 bevy_mod_mipmap_generator={git="https://github.com/DGriffin91/bevy_mod_mipmap_generator"}
 lz4_flex = { version = "0.12.0", default-features = false }
-kalc-lib = {git="https://github.com/bgkillas/kalc-lib",version = "1.5.1", optional = true}
+kalc-lib = {git="https://github.com/bgkillas/kalc-lib",version = "1.5.1", default-features = false, features = ["bitcode"], optional = true}
 rules = {path = "rules"}
-uuid = "1.19.0"
+uuid = "1.20.0"
 bevy_microphone={git="https://github.com/bgkillas/bevy_microphone", optional = true}
 rodio = {version="0.21.1",optional=true}
 
