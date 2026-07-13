@@ -15,7 +15,7 @@ jobs:
     - uses: actions/checkout@v7
     - uses: extractions/setup-just@v3
     - name: Install wayland
-      run: sudo apt install -y libwayland-dev libudev-dev libasound2-dev pkg-config
+      run: sudo apt install -y libwayland-dev libudev-dev libasound2-dev pkg-config libpipewire-0.3-dev \
     - name: Temporarily modify the rust toolchain version
       run: rustup override set nightly
     - name: Install nightly components
@@ -35,7 +35,7 @@ jobs:
     - uses: actions/checkout@v7
     - uses: extractions/setup-just@v3
     - name: Install wayland
-      run: sudo apt install -y libwayland-dev libudev-dev libasound2-dev pkg-config
+      run: sudo apt install -y libwayland-dev libudev-dev libasound2-dev pkg-config libpipewire-0.3-dev \
     - name: Temporarily modify the rust toolchain version
       run: rustup override set nightly
     - name: Install nightly components
