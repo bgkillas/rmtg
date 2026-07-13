@@ -14,11 +14,11 @@ use crate::*;
 use bevy::diagnostic::FrameCount;
 use bevy::ecs::system::SystemParam;
 use bevy::window::PrimaryWindow;
-use bevy_rand::global::GlobalRng;
 use bevy_rich_text3d::Text3d;
 use bevy_tangled::{ClientMode, ClientTrait, ClientTypeRef, Compression, PeerId, Reliability};
 use bevy_ui_text_input::TextInputContents;
 use bitcode::{Decode, Encode};
+use rand::rng;
 #[cfg(feature = "mic")]
 use rodio::buffer::SamplesBuffer;
 use std::collections::hash_map::Entry::Vacant;
@@ -1644,9 +1644,9 @@ pub struct SyncObject {
 #[derive(Component, Default, Debug, Encode, Decode, Eq, PartialEq, Copy, Clone, Hash)]
 pub struct SyncObjectMe(pub u64);
 impl SyncObjectMe {
-    pub fn new(rand: &mut Single<&mut WyRand, With<GlobalRng>>, count: &mut SyncCount) -> Self {
+    pub fn new(count: &mut SyncCount) -> Self {
         count.add(1);
-        Self(rand.next_u64())
+        Self(rng().next_u64())
     }
 }
 #[derive(Resource, Default)]
@@ -1674,14 +1674,13 @@ pub struct InOtherHand;
 #[derive(SystemParam)]
 pub struct Net<'w, 's> {
     pub client: ResMut<'w, Client>,
-    pub rand: Single<'w, 's, &'static mut WyRand, With<GlobalRng>>,
     pub count: ResMut<'w, SyncCount>,
     pub sent: ResMut<'w, Sent>,
     commands: Commands<'w, 's>,
 }
 impl<'w, 's> Net<'w, 's> {
     pub fn new_id(&mut self) -> SyncObjectMe {
-        SyncObjectMe::new(&mut self.rand, &mut self.count)
+        SyncObjectMe::new(&mut self.count)
     }
     pub fn received(&self, user: PeerId, id: SyncObjectMe) {
         self.client
