@@ -1,11 +1,11 @@
 use crate::APP_NAME;
-use crate::net::Msg;
+use crate::net::{Msg, connect_failed, on_connect, on_disconnect, receive_message};
 use crate::startup::startup;
 use avian3d::PhysicsPlugins;
 use bevy::DefaultPlugins;
 use bevy::app::{
-    App, AppExit, PluginGroup as _, Startup, TaskPoolOptions, TaskPoolPlugin,
-    TaskPoolThreadAssignmentPolicy,
+    App, AppExit, FixedPostUpdate, FixedUpdate, PluginGroup as _, Startup, TaskPoolOptions,
+    TaskPoolPlugin, TaskPoolThreadAssignmentPolicy,
 };
 use bevy::asset::{AssetMetaCheck, AssetPlugin};
 #[cfg(feature = "colliders")]
@@ -80,5 +80,7 @@ pub fn app_run() -> AppExit {
         bevy::gizmos::config::GizmoConfig::default(),
     );
     app.add_systems(Startup, startup);
+    app.add_systems(FixedUpdate, (connect_failed, on_connect, receive_message));
+    app.add_systems(FixedPostUpdate, on_disconnect);
     app.run()
 }
