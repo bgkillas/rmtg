@@ -57,9 +57,9 @@ impl MeshBuilder for IcosahedronMeshBuilder {
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),
-        )
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, position)
-        .with_inserted_indices(indices);
+        );
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, position);
+        mesh.insert_indices(indices);
         mesh.compute_normals();
         mesh
     }

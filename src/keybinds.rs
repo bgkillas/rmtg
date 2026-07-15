@@ -1,3 +1,4 @@
+#![allow(clippy::shadow_reuse)]
 use bevy::ecs::system::SystemParam;
 use bevy::input::ButtonInput;
 use bevy::prelude::{Deref, DerefMut, KeyCode, MouseButton, Res, ResMut, Resource};
@@ -12,28 +13,31 @@ pub struct Keybinds<'w> {
     pub keybinds: ResMut<'w, KeybindsList>,
 }
 impl Keybinds<'_> {
+    #[must_use]
     pub fn just_pressed(&self, keybind: Keybind) -> bool {
         self.keybinds[keybind].just_pressed(&self.keyboard, &self.mouse)
     }
+    #[must_use]
     pub fn pressed(&self, keybind: Keybind) -> bool {
         self.keybinds[keybind].pressed(&self.keyboard, &self.mouse)
     }
+    #[must_use]
     pub fn get_numeric(&self) -> usize {
         match DIGITS.iter().find(|n| self.keyboard.pressed(**n)) {
-            Some(KeyCode::Digit0) | Some(KeyCode::Numpad0) => 0,
-            Some(KeyCode::Digit1) | Some(KeyCode::Numpad1) => 1,
-            Some(KeyCode::Digit2) | Some(KeyCode::Numpad2) => 2,
-            Some(KeyCode::Digit3) | Some(KeyCode::Numpad3) => 3,
-            Some(KeyCode::Digit4) | Some(KeyCode::Numpad4) => 4,
-            Some(KeyCode::Digit5) | Some(KeyCode::Numpad5) => 5,
-            Some(KeyCode::Digit6) | Some(KeyCode::Numpad6) => 6,
-            Some(KeyCode::Digit7) | Some(KeyCode::Numpad7) => 7,
-            Some(KeyCode::Digit8) | Some(KeyCode::Numpad8) => 8,
-            Some(KeyCode::Digit9) | Some(KeyCode::Numpad9) => 9,
+            Some(KeyCode::Digit0 | KeyCode::Numpad0) => 0,
+            Some(KeyCode::Digit1 | KeyCode::Numpad1) => 1,
+            Some(KeyCode::Digit2 | KeyCode::Numpad2) => 2,
+            Some(KeyCode::Digit3 | KeyCode::Numpad3) => 3,
+            Some(KeyCode::Digit4 | KeyCode::Numpad4) => 4,
+            Some(KeyCode::Digit5 | KeyCode::Numpad5) => 5,
+            Some(KeyCode::Digit6 | KeyCode::Numpad6) => 6,
+            Some(KeyCode::Digit7 | KeyCode::Numpad7) => 7,
+            Some(KeyCode::Digit8 | KeyCode::Numpad8) => 8,
+            Some(KeyCode::Digit9 | KeyCode::Numpad9) => 9,
             _ => unreachable!(),
         }
     }
-    #[allow(dead_code)]
+    #[must_use]
     pub fn set(&mut self, keybind: Keybind) -> bool {
         if let Some(new) = Bind::new_from(&self.keyboard, &self.mouse) {
             self.keybinds[keybind] = new;
@@ -179,16 +183,10 @@ impl Display for KeybindsList {
 }
 impl Display for Bind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}{:?}",
-            self.modifiers
-                .iter()
-                .map(|m| format!("{m:?}+"))
-                .collect::<Vec<String>>()
-                .join(""),
-            self.key
-        )
+        for m in self.modifiers.iter() {
+            write!(f, "{m:?}+")?;
+        }
+        write!(f, "{:?}", self.key)
     }
 }
 #[derive(PartialEq, Debug)]
@@ -216,6 +214,7 @@ pub enum Modifier {
     Super,
 }
 impl Modifier {
+    #[must_use]
     pub fn pressed(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
         keyboard.any_pressed(match self {
             Modifier::Alt => [KeyCode::AltLeft, KeyCode::AltRight],
@@ -224,7 +223,7 @@ impl Modifier {
             Modifier::Super => [KeyCode::SuperLeft, KeyCode::SuperRight],
         })
     }
-    #[allow(dead_code)]
+    #[must_use]
     pub fn just_pressed(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
         keyboard.any_just_pressed(match self {
             Modifier::Alt => [KeyCode::AltLeft, KeyCode::AltRight],
@@ -267,13 +266,13 @@ impl From<MouseButton> for Bind {
     }
 }
 impl Bind {
-    #[allow(dead_code)]
+    #[must_use]
     pub fn new_from(
         keyboard: &ButtonInput<KeyCode>,
         mouse: &ButtonInput<MouseButton>,
     ) -> Option<Self> {
         let mut modifiers = EnumSet::empty();
-        for modifier in keyboard.get_pressed().flat_map(|k| k.try_into().ok()) {
+        for modifier in keyboard.get_pressed().filter_map(|k| k.try_into().ok()) {
             modifiers.insert(modifier);
         }
         let mut mouse_pressed = mouse.get_just_pressed();
@@ -302,12 +301,14 @@ impl Bind {
             None
         }
     }
+    #[must_use]
     pub fn new(modifiers: EnumSet<Modifier>, key: impl Into<Key>) -> Self {
         Self {
             modifiers,
             key: key.into(),
         }
     }
+    #[must_use]
     pub fn modifiers_pressed(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
         self.modifiers.iter().all(|m| m.pressed(keyboard))
         /*&& keyboard.get_pressed().all(|k| {
@@ -318,6 +319,7 @@ impl Bind {
             }
         })*/
     }
+    #[must_use]
     pub fn just_pressed(
         &self,
         keyboard: &ButtonInput<KeyCode>,
@@ -330,6 +332,7 @@ impl Bind {
             Key::Numeric => DIGITS.iter().any(|n| keyboard.just_pressed(*n)),
         }) && self.modifiers_pressed(keyboard)
     }
+    #[must_use]
     pub fn pressed(
         &self,
         keyboard: &ButtonInput<KeyCode>,
