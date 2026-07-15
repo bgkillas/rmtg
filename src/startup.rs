@@ -1,3 +1,4 @@
+use crate::shapes::dodecahedron::Dodecahedron;
 use crate::shapes::icosahedron::Icosahedron;
 use bevy::asset::Assets;
 use bevy::camera::{Camera3d, Exposure, PhysicalCameraParameters};
@@ -7,13 +8,16 @@ use bevy::light::{CascadeShadowConfigBuilder, DirectionalLight};
 use bevy::math::{Dir3, Quat, Vec3};
 use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{Commands, Cuboid, ResMut, Transform};
+use bevy::picking::Pickable;
+use bevy::prelude::{Commands, Cuboid, MeshPickingCamera, MeshPickingSettings, ResMut, Transform};
 use std::f32::consts::PI;
 pub fn startup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut pick: ResMut<MeshPickingSettings>,
 ) {
+    pick.require_markers = true;
     commands.spawn((
         DirectionalLight {
             illuminance: OVERCAST_DAY,
@@ -41,6 +45,16 @@ pub fn startup(
             sensitivity_iso: 100.0,
             sensor_height: 0.01866,
         }),
+        MeshPickingCamera,
+    ));
+    commands.spawn((
+        Transform::from_xyz(-0.5, 0.0, 0.0),
+        Mesh3d(meshes.add(Dodecahedron::new(0.25))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            ..StandardMaterial::default()
+        })),
+        Pickable::default(),
     ));
     commands.spawn((
         Transform::from_xyz(0.0, 0.0, 0.0),
@@ -49,6 +63,7 @@ pub fn startup(
             base_color: Color::WHITE,
             ..StandardMaterial::default()
         })),
+        Pickable::default(),
     ));
     commands.spawn((
         Transform::from_xyz(0.5, 0.0, 0.0),
@@ -57,5 +72,6 @@ pub fn startup(
             base_color: Color::WHITE,
             ..StandardMaterial::default()
         })),
+        Pickable::default(),
     ));
 }

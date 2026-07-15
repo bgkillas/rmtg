@@ -1,16 +1,20 @@
 use crate::APP_NAME;
+use crate::camera::camera_rotation;
+use crate::focus::Menu;
+use crate::keybinds::KeybindsList;
 use crate::net::{Msg, connect_failed, on_connect, on_disconnect, receive_message};
 use crate::startup::startup;
 use avian3d::PhysicsPlugins;
 use bevy::DefaultPlugins;
 use bevy::app::{
     App, AppExit, FixedPostUpdate, FixedUpdate, PluginGroup as _, Startup, TaskPoolOptions,
-    TaskPoolPlugin, TaskPoolThreadAssignmentPolicy,
+    TaskPoolPlugin, TaskPoolThreadAssignmentPolicy, Update,
 };
 use bevy::asset::{AssetMetaCheck, AssetPlugin};
 #[cfg(feature = "colliders")]
 use bevy::gizmos::AppGizmoBuilder as _;
 use bevy::image::ImagePlugin;
+use bevy::prelude::MeshPickingPlugin;
 use bevy::settings::SettingsPlugin;
 use bevy::window::{PresentMode, Window, WindowPlugin};
 use bevy_p2p::plugin::P2PPlugin;
@@ -64,6 +68,7 @@ pub fn app_run() -> AppExit {
         PhysicsPlugins::default(),
         SettingsPlugin::new(APP_NAME),
         P2PPlugin::<Msg>::new(),
+        MeshPickingPlugin,
         #[cfg(feature = "colliders")]
         avian2d::debug_render::PhysicsDebugPlugin,
         #[cfg(feature = "fps")]
@@ -79,7 +84,10 @@ pub fn app_run() -> AppExit {
         },
         bevy::gizmos::config::GizmoConfig::default(),
     );
+    app.insert_resource(Menu::default());
+    app.insert_resource(KeybindsList::default());
     app.add_systems(Startup, startup);
+    app.add_systems(Update, camera_rotation);
     app.add_systems(FixedUpdate, (connect_failed, on_connect, receive_message));
     app.add_systems(FixedPostUpdate, on_disconnect);
     app.run()
