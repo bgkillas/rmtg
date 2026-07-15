@@ -1,6 +1,7 @@
 use crate::camera::default_cam_pos;
 use crate::shapes::dodecahedron::Dodecahedron;
 use crate::shapes::icosahedron::Icosahedron;
+use crate::shapes::octahedron::Octahedron;
 use bevy::asset::Assets;
 use bevy::camera::{Camera3d, Exposure, PhysicalCameraParameters};
 use bevy::color::Color;
@@ -69,6 +70,15 @@ pub fn startup(
     commands.spawn((
         Transform::from_xyz(0.5, 0.0, 0.0),
         Mesh3d(meshes.add(Cuboid::from_length(0.5))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            ..StandardMaterial::default()
+        })),
+        Pickable::default(),
+    ));
+    commands.spawn((
+        Transform::from_xyz(1.0, 0.0, 0.0),
+        Mesh3d(meshes.add(Octahedron::new(0.5))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::WHITE,
             ..StandardMaterial::default()
