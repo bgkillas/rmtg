@@ -1,8 +1,8 @@
 use crate::APP_NAME;
-use crate::camera::camera_rotation;
+use crate::camera::{camera_rotation, camera_translation};
 use crate::focus::Menu;
 use crate::keybinds::KeybindsList;
-use crate::net::{Msg, connect_failed, on_connect, on_disconnect, receive_message};
+use crate::net::{Msg, Peers, connect_failed, on_connect, on_disconnect, receive_message};
 use crate::startup::startup;
 use avian3d::PhysicsPlugins;
 use bevy::DefaultPlugins;
@@ -86,8 +86,9 @@ pub fn app_run() -> AppExit {
     );
     app.insert_resource(Menu::default());
     app.insert_resource(KeybindsList::default());
+    app.insert_resource(Peers::default());
     app.add_systems(Startup, startup);
-    app.add_systems(Update, camera_rotation);
+    app.add_systems(Update, (camera_translation, camera_rotation));
     app.add_systems(FixedUpdate, (connect_failed, on_connect, receive_message));
     app.add_systems(FixedPostUpdate, on_disconnect);
     app.run()

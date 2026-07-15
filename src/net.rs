@@ -1,6 +1,8 @@
-use bevy::prelude::PopulatedMessageReader;
+use bevy::prelude::{PopulatedMessageReader, Resource};
 use bevy_p2p::bitcode::{self, Decode, Encode};
+use bevy_p2p::iroh::EndpointId;
 use bevy_p2p::message::{ConnectFailed, MessageReceived, PeerConnected, PeerDisconnected};
+use rustc_hash::FxHashMap;
 #[derive(Encode, Decode)]
 pub enum Msg {
     Empty,
@@ -26,4 +28,10 @@ pub fn receive_message(mut reader: PopulatedMessageReader<MessageReceived<Msg>>)
             Msg::Empty => {}
         }
     }
+}
+#[derive(Resource, Default)]
+pub struct Peers {
+    pub my_id: Option<usize>,
+    pub peer_to_id: FxHashMap<EndpointId, usize>,
+    pub id_to_peer: FxHashMap<usize, EndpointId>,
 }

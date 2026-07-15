@@ -20,12 +20,12 @@ impl<'w> Focus<'w> {
     pub fn key_lock(&self) -> bool {
         self.active_input
             .get()
-            .is_some_and(|e| e.to_bits() != u32::MAX as u64)
+            .is_some_and(|e| e.to_bits() == u32::MAX as u64)
             || matches!(*self.menu, Menu::Esc)
     }
     pub fn mouse_lock(&self) -> bool {
         self.hover_map
             .values()
-            .all(|a| a.keys().all(|e| e.to_bits() != u32::MAX as u64))
+            .any(|a| a.keys().any(|e| e.to_bits() == u32::MAX as u64))
     }
 }

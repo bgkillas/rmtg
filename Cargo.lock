@@ -7271,6 +7271,7 @@ dependencies = [
  "reqwest",
  "rodio",
  "rules",
+ "rustc-hash 2.1.3",
  "ucalc_lib",
  "uuid",
  "winapi",

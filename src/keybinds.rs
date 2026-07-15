@@ -7,9 +7,9 @@ use std::fmt;
 use std::fmt::{Display, Formatter};
 #[derive(SystemParam)]
 pub struct Keybinds<'w> {
-    keyboard: Res<'w, ButtonInput<KeyCode>>,
-    mouse: Res<'w, ButtonInput<MouseButton>>,
-    keybinds: ResMut<'w, KeybindsList>,
+    pub keyboard: Res<'w, ButtonInput<KeyCode>>,
+    pub mouse: Res<'w, ButtonInput<MouseButton>>,
+    pub keybinds: ResMut<'w, KeybindsList>,
 }
 impl Keybinds<'_> {
     pub fn just_pressed(&self, keybind: Keybind) -> bool {

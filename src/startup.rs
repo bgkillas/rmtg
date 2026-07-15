@@ -1,3 +1,4 @@
+use crate::camera::default_cam_pos;
 use crate::shapes::dodecahedron::Dodecahedron;
 use crate::shapes::icosahedron::Icosahedron;
 use bevy::asset::Assets;
@@ -5,7 +6,7 @@ use bevy::camera::{Camera3d, Exposure, PhysicalCameraParameters};
 use bevy::color::Color;
 use bevy::light::light_consts::lux::OVERCAST_DAY;
 use bevy::light::{CascadeShadowConfigBuilder, DirectionalLight};
-use bevy::math::{Dir3, Quat, Vec3};
+use bevy::math::{Quat, Vec3};
 use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::picking::Pickable;
@@ -37,7 +38,7 @@ pub fn startup(
         .build(),
     ));
     commands.spawn((
-        Transform::from_xyz(1.0, 1.0, 1.0).looking_at(Vec3::splat(0.0), Dir3::Y),
+        default_cam_pos(0),
         Camera3d::default(),
         Exposure::from_physical_camera(PhysicalCameraParameters {
             aperture_f_stops: 1.0,
