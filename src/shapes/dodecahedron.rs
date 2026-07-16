@@ -2,6 +2,7 @@ use crate::shapes::average_normalized;
 use avian3d::parry::glamx::{Quat, Vec3};
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
+use bevy_polyline::polyline::Polyline;
 use std::f32::consts::GOLDEN_RATIO;
 pub struct Dodecahedron {
     pub unit_length: f32,
@@ -25,41 +26,43 @@ impl Meshable for Dodecahedron {
         }
     }
 }
+fn pos(unit_length: f32) -> [[f32; 3]; 20] {
+    let grt = GOLDEN_RATIO * unit_length;
+    let rgr = GOLDEN_RATIO.recip() * unit_length;
+    let one = unit_length;
+    let position_pre: [[f32; 3]; _] = [
+        [one, one, one],
+        [-one, one, one],
+        [one, -one, one],
+        [one, one, -one],
+        [-one, one, -one],
+        [-one, -one, one],
+        [one, -one, -one],
+        [-one, -one, -one],
+        [0.0, rgr, grt],
+        [rgr, grt, 0.0],
+        [grt, 0.0, rgr],
+        [0.0, rgr, -grt],
+        [rgr, -grt, 0.0],
+        [-grt, 0.0, rgr],
+        [0.0, -rgr, grt],
+        [-rgr, grt, 0.0],
+        [grt, 0.0, -rgr],
+        [0.0, -rgr, -grt],
+        [-rgr, -grt, 0.0],
+        [-grt, 0.0, -rgr],
+    ];
+    let dir = Quat::from_rotation_arc(
+        average_normalized(position_pre[0], position_pre[15], position_pre[8]),
+        -Vec3::Y,
+    );
+    position_pre
+        .map(|p| dir * Vec3::new(p[0], p[1], p[2]))
+        .map(|v| [v.x, v.y, v.z])
+}
 impl MeshBuilder for DodecahedronMeshBuilder {
     fn build(&self) -> Mesh {
-        let grt = GOLDEN_RATIO * self.unit_length;
-        let rgr = GOLDEN_RATIO.recip() * self.unit_length;
-        let one = self.unit_length;
-        let position_pre: [[f32; 3]; _] = [
-            [one, one, one],
-            [-one, one, one],
-            [one, -one, one],
-            [one, one, -one],
-            [-one, one, -one],
-            [-one, -one, one],
-            [one, -one, -one],
-            [-one, -one, -one],
-            [0.0, rgr, grt],
-            [rgr, grt, 0.0],
-            [grt, 0.0, rgr],
-            [0.0, rgr, -grt],
-            [rgr, -grt, 0.0],
-            [-grt, 0.0, rgr],
-            [0.0, -rgr, grt],
-            [-rgr, grt, 0.0],
-            [grt, 0.0, -rgr],
-            [0.0, -rgr, -grt],
-            [-rgr, -grt, 0.0],
-            [-grt, 0.0, -rgr],
-        ];
-        let dir = Quat::from_rotation_arc(
-            average_normalized(position_pre[0], position_pre[15], position_pre[8]),
-            -Vec3::Y,
-        );
-        let position = position_pre
-            .map(|p| dir * Vec3::new(p[0], p[1], p[2]))
-            .map(|v| [v.x, v.y, v.z])
-            .to_vec();
+        let position = pos(self.unit_length).to_vec();
         #[rustfmt::skip]
         let indices = Indices::U32(vec![
             0, 15,  8,  8, 15,  1, 15,  0,  9,
@@ -88,5 +91,38 @@ impl MeshBuilder for DodecahedronMeshBuilder {
 impl From<Dodecahedron> for Mesh {
     fn from(dodec: Dodecahedron) -> Self {
         dodec.mesh().build()
+    }
+}
+pub struct DodecahedronOutline {
+    pub unit_length: f32,
+}
+impl DodecahedronOutline {
+    #[must_use]
+    pub fn new(length: f32) -> Self {
+        Self {
+            unit_length: length / (5.0f32.sqrt() - 1.0),
+        }
+    }
+}
+impl DodecahedronOutline {
+    #[must_use]
+    pub fn build(&self) -> Polyline {
+        let position = pos(self.unit_length);
+        #[rustfmt::skip]
+        let ind = [
+             0,  1, 15,  0,  9,  8,  8, 14,
+             2, 10,  3, 16,  0, 10,  8, 14,
+             5, 13, 13, 19,  4, 10, 16,  6,
+            12, 12, 18,  5,  9, 15,  4, 11,
+            11, 17,  6, 11, 17,  7, 13, 19,
+             7, 12, 18,  7,  8,  8,  1,  9,
+            15,  0, 14,  2, 10,  0,  9,  3,
+            10, 16,  1,  5, 13,  1, 19,  4,
+            15,  2,  6, 12,  2, 18,  5, 14,
+             3,  4, 11,  3, 17,  6, 16,  4,
+             7, 19,  5,  7, 18,  6,  7, 17
+        ];
+        let vertices = ind.map(|i| position[i]).map(Vec3::from).to_vec();
+        Polyline { vertices }
     }
 }

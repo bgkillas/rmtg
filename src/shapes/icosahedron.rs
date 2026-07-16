@@ -96,54 +96,21 @@ impl IcosahedronOutline {
 impl IcosahedronOutline {
     #[must_use]
     pub fn build(&self) -> Polyline {
-        let mesh = Icosahedron {
-            unit_length: self.unit_length,
-        }
-        .mesh()
-        .build();
-        let mut vertices = Vec::new();
-        let pos =
-            Vec::<[f32; 3]>::try_from(mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap().clone())
-                .unwrap();
-        let mut indices = mesh.indices().unwrap().iter();
-        let mut used = Vec::new();
-        let mut end = Vec::new();
-        let mut i = 0;
-        let mut ind = Vec::new();
-        let mut ind_end = Vec::new();
-        while let Some(x) = indices.next()
-            && let Some(y) = indices.next()
-            && let Some(z) = indices.next()
-        {
-            let mut arr = [x, y, z];
-            arr.sort_unstable();
-            let [a, b, c] = arr;
-            if !used.contains(&(a, b)) {
-                used.push((a, b));
-                vertices.push(Vec3::from(pos[a]));
-                end.push(Vec3::from(pos[b]));
-                ind.push(i);
-                ind_end.push(i + 1);
-            }
-            if !used.contains(&(b, c)) {
-                used.push((b, c));
-                vertices.push(Vec3::from(pos[b]));
-                end.push(Vec3::from(pos[c]));
-                ind.push(i + 1);
-                ind_end.push(i + 2);
-            }
-            if !used.contains(&(c, a)) {
-                used.push((c, a));
-                vertices.push(Vec3::from(pos[c]));
-                end.push(Vec3::from(pos[a]));
-                ind.push(i + 2);
-                ind_end.push(i);
-            }
-            i += 3;
-        }
-        ind.extend(ind_end);
-        println!("{ind:?}");
-        vertices.extend(end);
+        let position = pos(self.unit_length);
+        #[rustfmt::skip]
+        let ind = [
+             0,  1,  2,  1,  6,  0,  2,  8,
+             0,  4,  2,  3,  8,  3,  7,  2,
+             7,  4,  6, 11,  5, 11,  1,  5,
+             4, 10,  8, 10, 10,  3,  9, 11,
+             5,  9,  7,  9,  9,  6,  1,  2,
+             0,  6,  0,  2,  8,  0,  4,  8,
+             3,  8,  2,  7,  2,  7,  1,  6,
+            11,  4,  6,  5,  5,  7, 10, 11,
+            10,  4,  3,  9, 10,  9,  9, 11,
+             9,  5,  3,  1
+        ];
+        let vertices = ind.map(|i| position[i]).map(Vec3::from).to_vec();
         Polyline { vertices }
     }
 }
