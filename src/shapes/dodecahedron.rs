@@ -1,3 +1,5 @@
+use crate::shapes::average_normalized;
+use avian3d::parry::glamx::{Quat, Vec3};
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
 use std::f32::consts::GOLDEN_RATIO;
@@ -28,7 +30,7 @@ impl MeshBuilder for DodecahedronMeshBuilder {
         let grt = GOLDEN_RATIO * self.unit_length;
         let rgr = GOLDEN_RATIO.recip() * self.unit_length;
         let one = self.unit_length;
-        let position: Vec<[f32; 3]> = vec![
+        let position_pre: [[f32; 3]; _] = [
             [one, one, one],
             [-one, one, one],
             [one, -one, one],
@@ -50,6 +52,14 @@ impl MeshBuilder for DodecahedronMeshBuilder {
             [-rgr, -grt, 0.0],
             [-grt, 0.0, -rgr],
         ];
+        let dir = Quat::from_rotation_arc(
+            average_normalized(position_pre[0], position_pre[15], position_pre[8]),
+            -Vec3::Y,
+        );
+        let position = position_pre
+            .map(|p| dir * Vec3::new(p[0], p[1], p[2]))
+            .map(|v| [v.x, v.y, v.z])
+            .to_vec();
         #[rustfmt::skip]
         let indices = Indices::U32(vec![
             0, 15,  8,  8, 15,  1, 15,  0,  9,

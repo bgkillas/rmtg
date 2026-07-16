@@ -1,4 +1,6 @@
+use crate::shapes::average_normalized;
 use bevy::asset::RenderAssetUsages;
+use bevy::math::{Quat, Vec3};
 use bevy::mesh::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
 pub struct Octahedron {
     pub unit_length: f32,
@@ -25,7 +27,7 @@ impl Meshable for Octahedron {
 impl MeshBuilder for OctahedronMeshBuilder {
     fn build(&self) -> Mesh {
         let one = self.unit_length;
-        let position: Vec<[f32; 3]> = vec![
+        let position_pre: [[f32; 3]; _] = [
             [one, 0.0, 0.0],
             [0.0, one, 0.0],
             [0.0, 0.0, one],
@@ -33,6 +35,14 @@ impl MeshBuilder for OctahedronMeshBuilder {
             [0.0, -one, 0.0],
             [0.0, 0.0, -one],
         ];
+        let dir = Quat::from_rotation_arc(
+            average_normalized(position_pre[0], position_pre[1], position_pre[2]),
+            -Vec3::Y,
+        );
+        let position = position_pre
+            .map(|p| dir * Vec3::new(p[0], p[1], p[2]))
+            .map(|v| [v.x, v.y, v.z])
+            .to_vec();
         #[rustfmt::skip]
         let indices = Indices::U32(vec![
             0, 1, 2,

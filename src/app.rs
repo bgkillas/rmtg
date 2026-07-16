@@ -18,10 +18,11 @@ use bevy::prelude::MeshPickingPlugin;
 use bevy::settings::SettingsPlugin;
 use bevy::window::{PresentMode, Window, WindowPlugin};
 use bevy_p2p::plugin::P2PPlugin;
+use bevy_polyline::PolylinePlugin;
 #[must_use]
 pub fn app_run() -> AppExit {
     let mut app = App::new();
-    app.add_plugins((
+    app.add_plugins(
         DefaultPlugins
             .set(WindowPlugin {
                 primary_window: Some(Window {
@@ -65,15 +66,16 @@ pub fn app_run() -> AppExit {
                     },
                 },
             }),
-        PhysicsPlugins::default(),
-        SettingsPlugin::new(APP_NAME),
-        P2PPlugin::<Msg>::new(),
-        MeshPickingPlugin,
-        #[cfg(feature = "colliders")]
-        avian2d::debug_render::PhysicsDebugPlugin,
-        #[cfg(feature = "fps")]
-        bevy::dev_tools::fps_overlay::FpsOverlayPlugin::default(),
-    ));
+    );
+    app.add_plugins(PhysicsPlugins::default());
+    app.add_plugins(SettingsPlugin::new(APP_NAME));
+    app.add_plugins(P2PPlugin::<Msg>::new());
+    app.add_plugins(MeshPickingPlugin);
+    app.add_plugins(PolylinePlugin);
+    #[cfg(feature = "colliders")]
+    app.add_plugins(avian2d::debug_render::PhysicsDebugPlugin);
+    #[cfg(feature = "fps")]
+    app.add_plugins(bevy::dev_tools::fps_overlay::FpsOverlayPlugin::default());
     #[cfg(feature = "colliders")]
     app.insert_gizmo_config(
         avian2d::debug_render::PhysicsGizmos {

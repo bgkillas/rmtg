@@ -1,6 +1,6 @@
 use crate::camera::default_cam_pos;
 use crate::shapes::dodecahedron::Dodecahedron;
-use crate::shapes::icosahedron::Icosahedron;
+use crate::shapes::icosahedron::{Icosahedron, IcosahedronOutline};
 use crate::shapes::octahedron::Octahedron;
 use bevy::asset::Assets;
 use bevy::camera::{Camera3d, Exposure, PhysicalCameraParameters};
@@ -12,11 +12,15 @@ use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::picking::Pickable;
 use bevy::prelude::{Commands, Cuboid, MeshPickingCamera, MeshPickingSettings, ResMut, Transform};
+use bevy_polyline::material::{PolylineMaterial, PolylineMaterialHandle};
+use bevy_polyline::polyline::{Polyline, PolylineHandle};
 use std::f32::consts::PI;
 pub fn startup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut polylines: ResMut<Assets<Polyline>>,
+    mut polyline_materials: ResMut<Assets<PolylineMaterial>>,
     mut pick: ResMut<MeshPickingSettings>,
 ) {
     pick.require_markers = true;
@@ -27,8 +31,8 @@ pub fn startup(
             ..DirectionalLight::default()
         },
         Transform {
-            translation: Vec3::new(0.0, 2.0, 0.0),
-            rotation: Quat::from_rotation_x(-PI / 4.),
+            translation: Vec3::new(0.0, 4.0, 0.0),
+            rotation: Quat::from_rotation_x(-PI / 4.0),
             ..Transform::default()
         },
         CascadeShadowConfigBuilder {
@@ -50,7 +54,7 @@ pub fn startup(
         MeshPickingCamera,
     ));
     commands.spawn((
-        Transform::from_xyz(-0.5, 0.0, 0.0),
+        Transform::from_xyz(-0.5, 2.0, 0.0),
         Mesh3d(meshes.add(Dodecahedron::new(0.25))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::WHITE,
@@ -58,17 +62,27 @@ pub fn startup(
         })),
         Pickable::default(),
     ));
+    commands
+        .spawn((
+            Transform::from_xyz(0.0, 2.0, 0.0),
+            Mesh3d(meshes.add(Icosahedron::new(0.25))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::WHITE,
+                ..StandardMaterial::default()
+            })),
+            Pickable::default(),
+        ))
+        .with_child((
+            PolylineHandle(polylines.add(IcosahedronOutline::new(0.25).build())),
+            PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
+                width: 8.0,
+                color: Color::BLACK.to_linear(),
+                perspective: true,
+                depth_bias: -0.00001,
+            })),
+        ));
     commands.spawn((
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        Mesh3d(meshes.add(Icosahedron::new(0.25))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::WHITE,
-            ..StandardMaterial::default()
-        })),
-        Pickable::default(),
-    ));
-    commands.spawn((
-        Transform::from_xyz(0.5, 0.0, 0.0),
+        Transform::from_xyz(0.5, 2.0, 0.0),
         Mesh3d(meshes.add(Cuboid::from_length(0.5))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::WHITE,
@@ -77,7 +91,7 @@ pub fn startup(
         Pickable::default(),
     ));
     commands.spawn((
-        Transform::from_xyz(1.0, 0.0, 0.0),
+        Transform::from_xyz(1.0, 2.0, 0.0),
         Mesh3d(meshes.add(Octahedron::new(0.5))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::WHITE,
