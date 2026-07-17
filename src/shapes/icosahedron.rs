@@ -9,7 +9,7 @@ pub struct Icosahedron {
 }
 impl Icosahedron {
     #[must_use]
-    pub fn new(length: f32) -> Self {
+    pub fn from_length(length: f32) -> Self {
         Self {
             unit_length: length / 2.0,
         }
@@ -87,7 +87,7 @@ pub struct IcosahedronOutline {
 }
 impl IcosahedronOutline {
     #[must_use]
-    pub fn new(length: f32) -> Self {
+    pub fn from_length(length: f32) -> Self {
         Self {
             unit_length: length / 2.0,
         }

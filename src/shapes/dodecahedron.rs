@@ -9,7 +9,7 @@ pub struct Dodecahedron {
 }
 impl Dodecahedron {
     #[must_use]
-    pub fn new(length: f32) -> Self {
+    pub fn from_length(length: f32) -> Self {
         Self {
             unit_length: length / (5.0f32.sqrt() - 1.0),
         }
@@ -98,7 +98,7 @@ pub struct DodecahedronOutline {
 }
 impl DodecahedronOutline {
     #[must_use]
-    pub fn new(length: f32) -> Self {
+    pub fn from_length(length: f32) -> Self {
         Self {
             unit_length: length / (5.0f32.sqrt() - 1.0),
         }

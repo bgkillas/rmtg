@@ -1,29 +1,29 @@
-use crate::shapes::average_normalized;
+use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized};
 use bevy::asset::RenderAssetUsages;
 use bevy::math::{Quat, Vec3};
-use bevy::mesh::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
+use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
 use bevy_polyline::polyline::Polyline;
 pub struct Tetrahedron {
     pub unit_length: f32,
 }
-impl Tetrahedron {
-    #[must_use]
-    pub fn new(length: f32) -> Self {
+impl NewShape for Tetrahedron {
+    fn from_length(length: f32) -> Self {
         Self {
             unit_length: length / 8.0f32.sqrt(),
         }
     }
-}
-pub struct TetrahedronMeshBuilder {
-    pub unit_length: f32,
-}
-impl Meshable for Tetrahedron {
-    type Output = TetrahedronMeshBuilder;
-    fn mesh(&self) -> Self::Output {
-        TetrahedronMeshBuilder {
-            unit_length: self.unit_length,
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: height / (16.0f32 / 3.0f32).sqrt(),
         }
     }
+}
+impl ShapeMesh for Tetrahedron {
+    type Outline = TetrahedronOutline;
+}
+impl ShapeOutline for TetrahedronOutline {
+    type Mesh = Tetrahedron;
+    const DEPTH_BIAS: f32 = 0.0;
 }
 fn pos(unit_length: f32) -> [[f32; 3]; 4] {
     let one = unit_length;
@@ -41,9 +41,9 @@ fn pos(unit_length: f32) -> [[f32; 3]; 4] {
         .map(|p| dir * Vec3::new(p[0], p[1], p[2]))
         .map(|v| [v.x, v.y, v.z])
 }
-impl MeshBuilder for TetrahedronMeshBuilder {
-    fn build(&self) -> Mesh {
-        let position = pos(self.unit_length).to_vec();
+impl From<Tetrahedron> for Mesh {
+    fn from(tetra: Tetrahedron) -> Self {
+        let position = pos(tetra.unit_length).to_vec();
         #[rustfmt::skip]
         let indices = Indices::U32(vec![
             0, 2, 1,
@@ -61,26 +61,24 @@ impl MeshBuilder for TetrahedronMeshBuilder {
         mesh
     }
 }
-impl From<Tetrahedron> for Mesh {
-    fn from(ico: Tetrahedron) -> Self {
-        ico.mesh().build()
-    }
-}
 pub struct TetrahedronOutline {
     pub unit_length: f32,
 }
-impl TetrahedronOutline {
-    #[must_use]
-    pub fn new(length: f32) -> Self {
+impl NewShape for TetrahedronOutline {
+    fn from_length(length: f32) -> Self {
         Self {
             unit_length: length / 8.0f32.sqrt(),
         }
     }
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: height / (16.0f32 / 3.0f32).sqrt(),
+        }
+    }
 }
-impl TetrahedronOutline {
-    #[must_use]
-    pub fn build(&self) -> Polyline {
-        let position = pos(self.unit_length);
+impl From<TetrahedronOutline> for Polyline {
+    fn from(value: TetrahedronOutline) -> Self {
+        let position = pos(value.unit_length);
         #[rustfmt::skip]
         let ind = [
             0, 0, 0,

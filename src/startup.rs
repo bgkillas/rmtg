@@ -1,4 +1,5 @@
 use crate::camera::default_cam_pos;
+use crate::shapes::NewShape as _;
 use crate::shapes::cube::CubeOutline;
 use crate::shapes::dodecahedron::{Dodecahedron, DodecahedronOutline};
 use crate::shapes::icosahedron::{Icosahedron, IcosahedronOutline};
@@ -57,8 +58,27 @@ pub fn startup(
     ));
     commands
         .spawn((
+            Transform::from_xyz(-2.0, 2.0, 0.0),
+            Mesh3d(meshes.add(Dodecahedron::from_length(0.5))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::WHITE,
+                ..StandardMaterial::default()
+            })),
+            Pickable::default(),
+        ))
+        .with_child((
+            PolylineHandle(polylines.add(DodecahedronOutline::from_length(0.5).build())),
+            PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
+                width: 8.0,
+                color: Color::BLACK.to_linear(),
+                perspective: true,
+                depth_bias: -0.00001,
+            })),
+        ));
+    commands
+        .spawn((
             Transform::from_xyz(-0.5, 2.0, 0.0),
-            Mesh3d(meshes.add(Dodecahedron::new(0.25))),
+            Mesh3d(meshes.add(Icosahedron::from_length(0.5))),
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: Color::WHITE,
                 ..StandardMaterial::default()
@@ -66,7 +86,7 @@ pub fn startup(
             Pickable::default(),
         ))
         .with_child((
-            PolylineHandle(polylines.add(DodecahedronOutline::new(0.25).build())),
+            PolylineHandle(polylines.add(IcosahedronOutline::from_length(0.5).build())),
             PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
                 width: 8.0,
                 color: Color::BLACK.to_linear(),
@@ -76,26 +96,7 @@ pub fn startup(
         ));
     commands
         .spawn((
-            Transform::from_xyz(0.0, 2.0, 0.0),
-            Mesh3d(meshes.add(Icosahedron::new(0.25))),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: Color::WHITE,
-                ..StandardMaterial::default()
-            })),
-            Pickable::default(),
-        ))
-        .with_child((
-            PolylineHandle(polylines.add(IcosahedronOutline::new(0.25).build())),
-            PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
-                width: 8.0,
-                color: Color::BLACK.to_linear(),
-                perspective: true,
-                depth_bias: -0.00001,
-            })),
-        ));
-    commands
-        .spawn((
-            Transform::from_xyz(0.5, 2.0, 0.0),
+            Transform::from_xyz(0.25, 2.0, 0.0),
             Mesh3d(meshes.add(Cuboid::from_length(0.5))),
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: Color::WHITE,
@@ -104,7 +105,7 @@ pub fn startup(
             Pickable::default(),
         ))
         .with_child((
-            PolylineHandle(polylines.add(CubeOutline::new(0.5).build())),
+            PolylineHandle(polylines.add(CubeOutline::from_length(0.5).build())),
             PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
                 width: 8.0,
                 color: Color::BLACK.to_linear(),
@@ -115,7 +116,7 @@ pub fn startup(
     commands
         .spawn((
             Transform::from_xyz(1.5, 2.0, 0.0),
-            Mesh3d(meshes.add(Tetrahedron::new(0.5))),
+            Mesh3d(meshes.add(Tetrahedron::from_height(0.5))),
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: Color::WHITE,
                 ..StandardMaterial::default()
@@ -123,18 +124,18 @@ pub fn startup(
             Pickable::default(),
         ))
         .with_child((
-            PolylineHandle(polylines.add(TetrahedronOutline::new(0.5).build())),
+            PolylineHandle(polylines.add(TetrahedronOutline::from_height(0.5))),
             PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
                 width: 8.0,
                 color: Color::BLACK.to_linear(),
                 perspective: true,
-                depth_bias: -0.00001,
+                depth_bias: 0.0,
             })),
         ));
     commands
         .spawn((
             Transform::from_xyz(1.0, 2.0, 0.0),
-            Mesh3d(meshes.add(Octahedron::new(0.5))),
+            Mesh3d(meshes.add(Octahedron::from_length(0.5))),
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: Color::WHITE,
                 ..StandardMaterial::default()
@@ -142,7 +143,7 @@ pub fn startup(
             Pickable::default(),
         ))
         .with_child((
-            PolylineHandle(polylines.add(OctahedronOutline::new(0.5).build())),
+            PolylineHandle(polylines.add(OctahedronOutline::from_length(0.5).build())),
             PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
                 width: 8.0,
                 color: Color::BLACK.to_linear(),
