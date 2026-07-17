@@ -1,27 +1,38 @@
-use crate::shapes::average_normalized;
+use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized};
 use bevy::asset::RenderAssetUsages;
 use bevy::math::{Quat, Vec3};
-use bevy::mesh::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
+use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
 use bevy_polyline::polyline::Polyline;
 pub struct Octahedron {
     pub unit_length: f32,
 }
-impl Octahedron {
-    #[must_use]
-    pub fn from_length(length: f32) -> Self {
+impl ShapeMesh for Octahedron {
+    type Outline = OctahedronOutline;
+}
+impl ShapeOutline for OctahedronOutline {
+    type Mesh = Octahedron;
+}
+impl NewShape for Octahedron {
+    fn from_length(length: f32) -> Self {
         Self {
             unit_length: length / 2.0f32.sqrt(),
         }
     }
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: height / 2.0f32.sqrt(), //TODO
+        }
+    }
 }
-pub struct OctahedronMeshBuilder {
-    pub unit_length: f32,
-}
-impl Meshable for Octahedron {
-    type Output = OctahedronMeshBuilder;
-    fn mesh(&self) -> Self::Output {
-        OctahedronMeshBuilder {
-            unit_length: self.unit_length,
+impl NewShape for OctahedronOutline {
+    fn from_length(length: f32) -> Self {
+        Self {
+            unit_length: length / 2.0f32.sqrt(),
+        }
+    }
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: height / 2.0f32.sqrt(), //TODO
         }
     }
 }
@@ -43,9 +54,9 @@ fn pos(unit_length: f32) -> [[f32; 3]; 6] {
         .map(|p| dir * Vec3::new(p[0], p[1], p[2]))
         .map(|v| [v.x, v.y, v.z])
 }
-impl MeshBuilder for OctahedronMeshBuilder {
-    fn build(&self) -> Mesh {
-        let position = pos(self.unit_length).to_vec();
+impl From<Octahedron> for Mesh {
+    fn from(oct: Octahedron) -> Self {
+        let position = pos(oct.unit_length).to_vec();
         #[rustfmt::skip]
         let indices = Indices::U32(vec![
             0, 1, 2,
@@ -67,26 +78,12 @@ impl MeshBuilder for OctahedronMeshBuilder {
         mesh
     }
 }
-impl From<Octahedron> for Mesh {
-    fn from(ico: Octahedron) -> Self {
-        ico.mesh().build()
-    }
-}
 pub struct OctahedronOutline {
     pub unit_length: f32,
 }
-impl OctahedronOutline {
-    #[must_use]
-    pub fn from_length(length: f32) -> Self {
-        Self {
-            unit_length: length / 2.0f32.sqrt(),
-        }
-    }
-}
-impl OctahedronOutline {
-    #[must_use]
-    pub fn build(&self) -> Polyline {
-        let position = pos(self.unit_length);
+impl From<OctahedronOutline> for Polyline {
+    fn from(value: OctahedronOutline) -> Self {
+        let position = pos(value.unit_length);
         #[rustfmt::skip]
         let ind = [
             0, 1, 2, 2,

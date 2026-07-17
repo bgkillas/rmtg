@@ -1,28 +1,39 @@
-use crate::shapes::average_normalized;
+use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized};
 use avian3d::parry::glamx::{Quat, Vec3};
 use bevy::asset::RenderAssetUsages;
-use bevy::mesh::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
+use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
 use bevy_polyline::polyline::Polyline;
 use std::f32::consts::GOLDEN_RATIO;
 pub struct Dodecahedron {
     pub unit_length: f32,
 }
-impl Dodecahedron {
-    #[must_use]
-    pub fn from_length(length: f32) -> Self {
+impl ShapeMesh for Dodecahedron {
+    type Outline = DodecahedronOutline;
+}
+impl ShapeOutline for DodecahedronOutline {
+    type Mesh = Dodecahedron;
+}
+impl NewShape for Dodecahedron {
+    fn from_length(length: f32) -> Self {
         Self {
             unit_length: length / (5.0f32.sqrt() - 1.0),
         }
     }
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: height / (5.0f32.sqrt() - 1.0), //TODO
+        }
+    }
 }
-pub struct DodecahedronMeshBuilder {
-    pub unit_length: f32,
-}
-impl Meshable for Dodecahedron {
-    type Output = DodecahedronMeshBuilder;
-    fn mesh(&self) -> Self::Output {
-        DodecahedronMeshBuilder {
-            unit_length: self.unit_length,
+impl NewShape for DodecahedronOutline {
+    fn from_length(length: f32) -> Self {
+        Self {
+            unit_length: length / (5.0f32.sqrt() - 1.0),
+        }
+    }
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: height / (5.0f32.sqrt() - 1.0), //TODO
         }
     }
 }
@@ -60,9 +71,9 @@ fn pos(unit_length: f32) -> [[f32; 3]; 20] {
         .map(|p| dir * Vec3::new(p[0], p[1], p[2]))
         .map(|v| [v.x, v.y, v.z])
 }
-impl MeshBuilder for DodecahedronMeshBuilder {
-    fn build(&self) -> Mesh {
-        let position = pos(self.unit_length).to_vec();
+impl From<Dodecahedron> for Mesh {
+    fn from(dodec: Dodecahedron) -> Self {
+        let position = pos(dodec.unit_length).to_vec();
         #[rustfmt::skip]
         let indices = Indices::U32(vec![
             0, 15,  8,  8, 15,  1, 15,  0,  9,
@@ -88,26 +99,12 @@ impl MeshBuilder for DodecahedronMeshBuilder {
         mesh
     }
 }
-impl From<Dodecahedron> for Mesh {
-    fn from(dodec: Dodecahedron) -> Self {
-        dodec.mesh().build()
-    }
-}
 pub struct DodecahedronOutline {
     pub unit_length: f32,
 }
-impl DodecahedronOutline {
-    #[must_use]
-    pub fn from_length(length: f32) -> Self {
-        Self {
-            unit_length: length / (5.0f32.sqrt() - 1.0),
-        }
-    }
-}
-impl DodecahedronOutline {
-    #[must_use]
-    pub fn build(&self) -> Polyline {
-        let position = pos(self.unit_length);
+impl From<DodecahedronOutline> for Polyline {
+    fn from(value: DodecahedronOutline) -> Self {
+        let position = pos(value.unit_length);
         #[rustfmt::skip]
         let ind = [
             15,  0,  9,

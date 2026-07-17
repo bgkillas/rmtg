@@ -1,20 +1,52 @@
+use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
 use avian3d::parry::glamx::Vec3;
+use bevy::mesh::Mesh;
+use bevy::prelude::Cuboid;
 use bevy_polyline::polyline::Polyline;
+pub struct Cube {
+    pub unit_length: f32,
+}
+impl ShapeMesh for Cube {
+    type Outline = CubeOutline;
+}
+impl ShapeOutline for CubeOutline {
+    type Mesh = Cube;
+}
 pub struct CubeOutline {
     pub unit_length: f32,
 }
-impl CubeOutline {
-    #[must_use]
-    pub fn from_length(length: f32) -> Self {
+impl From<Cube> for Mesh {
+    fn from(value: Cube) -> Self {
+        Mesh::from(Cuboid::from_length(value.unit_length))
+    }
+}
+impl NewShape for Cube {
+    fn from_length(length: f32) -> Self {
         Self {
             unit_length: length / 2.0,
         }
     }
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: height / 2.0, //TODO
+        }
+    }
 }
-impl CubeOutline {
-    #[must_use]
-    pub fn build(&self) -> Polyline {
-        let one = self.unit_length;
+impl NewShape for CubeOutline {
+    fn from_length(length: f32) -> Self {
+        Self {
+            unit_length: length / 2.0,
+        }
+    }
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: height / 2.0, //TODO
+        }
+    }
+}
+impl From<CubeOutline> for Polyline {
+    fn from(value: CubeOutline) -> Self {
+        let one = value.unit_length;
         let v = [
             Vec3::new(one, one, one),
             Vec3::new(-one, one, one),

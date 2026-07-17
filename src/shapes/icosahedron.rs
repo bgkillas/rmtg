@@ -1,28 +1,39 @@
-use crate::shapes::average_normalized;
+use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized};
 use avian3d::parry::glamx::{Quat, Vec3};
 use bevy::asset::RenderAssetUsages;
-use bevy::mesh::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
+use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
 use bevy_polyline::polyline::Polyline;
 use std::f32::consts::GOLDEN_RATIO;
 pub struct Icosahedron {
     pub unit_length: f32,
 }
-impl Icosahedron {
-    #[must_use]
-    pub fn from_length(length: f32) -> Self {
+impl ShapeMesh for Icosahedron {
+    type Outline = IcosahedronOutline;
+}
+impl ShapeOutline for IcosahedronOutline {
+    type Mesh = Icosahedron;
+}
+impl NewShape for Icosahedron {
+    fn from_length(length: f32) -> Self {
         Self {
             unit_length: length / 2.0,
         }
     }
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: height / 2.0, //TODO
+        }
+    }
 }
-pub struct IcosahedronMeshBuilder {
-    pub unit_length: f32,
-}
-impl Meshable for Icosahedron {
-    type Output = IcosahedronMeshBuilder;
-    fn mesh(&self) -> Self::Output {
-        IcosahedronMeshBuilder {
-            unit_length: self.unit_length,
+impl NewShape for IcosahedronOutline {
+    fn from_length(length: f32) -> Self {
+        Self {
+            unit_length: length / 2.0,
+        }
+    }
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: height / 2.0, //TODO
         }
     }
 }
@@ -51,9 +62,9 @@ fn pos(unit_length: f32) -> [[f32; 3]; 12] {
         .map(|p| dir * Vec3::new(p[0], p[1], p[2]))
         .map(|v| [v.x, v.y, v.z])
 }
-impl MeshBuilder for IcosahedronMeshBuilder {
-    fn build(&self) -> Mesh {
-        let position = pos(self.unit_length).to_vec();
+impl From<Icosahedron> for Mesh {
+    fn from(ico: Icosahedron) -> Self {
+        let position = pos(ico.unit_length).to_vec();
         #[rustfmt::skip]
         let indices = Indices::U32(vec![
              0,  1,  2,  0,  6,  1,
@@ -77,26 +88,12 @@ impl MeshBuilder for IcosahedronMeshBuilder {
         mesh
     }
 }
-impl From<Icosahedron> for Mesh {
-    fn from(ico: Icosahedron) -> Self {
-        ico.mesh().build()
-    }
-}
 pub struct IcosahedronOutline {
     pub unit_length: f32,
 }
-impl IcosahedronOutline {
-    #[must_use]
-    pub fn from_length(length: f32) -> Self {
-        Self {
-            unit_length: length / 2.0,
-        }
-    }
-}
-impl IcosahedronOutline {
-    #[must_use]
-    pub fn build(&self) -> Polyline {
-        let position = pos(self.unit_length);
+impl From<IcosahedronOutline> for Polyline {
+    fn from(value: IcosahedronOutline) -> Self {
+        let position = pos(value.unit_length);
         #[rustfmt::skip]
         let ind = [
              0,  1,  2,  1,  6,

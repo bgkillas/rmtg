@@ -67,7 +67,7 @@ pub fn startup(
             Pickable::default(),
         ))
         .with_child((
-            PolylineHandle(polylines.add(DodecahedronOutline::from_length(0.5).build())),
+            PolylineHandle(polylines.add(DodecahedronOutline::from_length(0.5))),
             PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
                 width: 8.0,
                 color: Color::BLACK.to_linear(),
@@ -86,7 +86,7 @@ pub fn startup(
             Pickable::default(),
         ))
         .with_child((
-            PolylineHandle(polylines.add(IcosahedronOutline::from_length(0.5).build())),
+            PolylineHandle(polylines.add(IcosahedronOutline::from_length(0.5))),
             PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
                 width: 8.0,
                 color: Color::BLACK.to_linear(),
@@ -105,7 +105,7 @@ pub fn startup(
             Pickable::default(),
         ))
         .with_child((
-            PolylineHandle(polylines.add(CubeOutline::from_length(0.5).build())),
+            PolylineHandle(polylines.add(CubeOutline::from_length(0.5))),
             PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
                 width: 8.0,
                 color: Color::BLACK.to_linear(),
@@ -143,7 +143,7 @@ pub fn startup(
             Pickable::default(),
         ))
         .with_child((
-            PolylineHandle(polylines.add(OctahedronOutline::from_length(0.5).build())),
+            PolylineHandle(polylines.add(OctahedronOutline::from_length(0.5))),
             PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
                 width: 8.0,
                 color: Color::BLACK.to_linear(),
