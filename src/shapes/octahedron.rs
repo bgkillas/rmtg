@@ -2,12 +2,16 @@ use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized};
 use bevy::asset::RenderAssetUsages;
 use bevy::math::{Quat, Vec3};
 use bevy::mesh::{Indices, Mesh, MeshBuilder, PrimitiveTopology};
+use bevy::prelude::Transform;
 use bevy_polyline::polyline::Polyline;
 pub struct Octahedron {
     pub unit_length: f32,
 }
 impl ShapeMesh for Octahedron {
     type Outline = OctahedronOutline;
+    fn faces(height: f32) -> impl ExactSizeIterator<Item = Transform> {
+        [].into_iter()
+    }
 }
 impl ShapeOutline for OctahedronOutline {
     type Mesh = Octahedron;

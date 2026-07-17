@@ -2,6 +2,7 @@ use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized};
 use avian3d::parry::glamx::{Quat, Vec3};
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, Mesh, MeshBuilder, PrimitiveTopology};
+use bevy::prelude::Transform;
 use bevy_polyline::polyline::Polyline;
 use std::f32::consts::GOLDEN_RATIO;
 pub struct Icosahedron {
@@ -9,6 +10,9 @@ pub struct Icosahedron {
 }
 impl ShapeMesh for Icosahedron {
     type Outline = IcosahedronOutline;
+    fn faces(height: f32) -> impl ExactSizeIterator<Item = Transform> {
+        [].into_iter()
+    }
 }
 impl ShapeOutline for IcosahedronOutline {
     type Mesh = Icosahedron;

@@ -1,11 +1,11 @@
 use crate::assets::Asset;
-use crate::physics::physics;
+use crate::physics::{bounce, physics};
 use bevy::color::Color;
 use bevy::ecs::children;
 use bevy::math::Vec3;
 use bevy::mesh::{Mesh, Mesh3d, MeshBuilder};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::Bundle;
+use bevy::prelude::{Bundle, Transform};
 use bevy_polyline::material::{PolylineMaterial, PolylineMaterialHandle};
 use bevy_polyline::polyline::{Polyline, PolylineHandle};
 pub mod cube;
@@ -21,6 +21,7 @@ pub trait NewShape {
 }
 pub trait ShapeMesh: NewShape + MeshBuilder + Sized {
     type Outline: ShapeOutline;
+    #[must_use]
     fn bundle(
         height: f32,
         base_color: Color,
@@ -46,6 +47,23 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized {
             )],
         )
     }
+    #[must_use]
+    fn bundle_dice(
+        height: f32,
+        base_color: Color,
+        outline_color: Color,
+        asset: &mut Asset,
+    ) -> impl Bundle {
+        (
+            Self::bundle(height, base_color, outline_color, asset),
+            Self::numbers(height),
+            bounce(),
+        )
+    }
+    #[must_use]
+    fn numbers(height: f32) -> impl Bundle {}
+    #[must_use]
+    fn faces(height: f32) -> impl ExactSizeIterator<Item = Transform>;
 }
 pub trait ShapeOutline: NewShape + Into<Polyline> {
     type Mesh: ShapeMesh;

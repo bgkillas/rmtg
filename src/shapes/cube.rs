@@ -1,13 +1,16 @@
 use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
 use avian3d::parry::glamx::Vec3;
 use bevy::mesh::{Mesh, MeshBuilder};
-use bevy::prelude::Cuboid;
+use bevy::prelude::{Cuboid, Transform};
 use bevy_polyline::polyline::Polyline;
 pub struct Cube {
     pub unit_length: f32,
 }
 impl ShapeMesh for Cube {
     type Outline = CubeOutline;
+    fn faces(height: f32) -> impl ExactSizeIterator<Item = Transform> {
+        [].into_iter()
+    }
 }
 impl ShapeOutline for CubeOutline {
     type Mesh = Cube;
