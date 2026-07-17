@@ -1,4 +1,5 @@
 use bevy::math::Vec3;
+pub mod cube;
 pub mod dodecahedron;
 pub mod icosahedron;
 pub mod octahedron;

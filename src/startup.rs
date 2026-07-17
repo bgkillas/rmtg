@@ -1,4 +1,5 @@
 use crate::camera::default_cam_pos;
+use crate::shapes::cube::CubeOutline;
 use crate::shapes::dodecahedron::{Dodecahedron, DodecahedronOutline};
 use crate::shapes::icosahedron::{Icosahedron, IcosahedronOutline};
 use crate::shapes::octahedron::{Octahedron, OctahedronOutline};
@@ -91,15 +92,25 @@ pub fn startup(
                 depth_bias: -0.00001,
             })),
         ));
-    commands.spawn((
-        Transform::from_xyz(0.5, 2.0, 0.0),
-        Mesh3d(meshes.add(Cuboid::from_length(0.5))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::WHITE,
-            ..StandardMaterial::default()
-        })),
-        Pickable::default(),
-    ));
+    commands
+        .spawn((
+            Transform::from_xyz(0.5, 2.0, 0.0),
+            Mesh3d(meshes.add(Cuboid::from_length(0.5))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::WHITE,
+                ..StandardMaterial::default()
+            })),
+            Pickable::default(),
+        ))
+        .with_child((
+            PolylineHandle(polylines.add(CubeOutline::new(0.5).build())),
+            PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
+                width: 8.0,
+                color: Color::BLACK.to_linear(),
+                perspective: true,
+                depth_bias: -0.00001,
+            })),
+        ));
     commands
         .spawn((
             Transform::from_xyz(1.0, 2.0, 0.0),

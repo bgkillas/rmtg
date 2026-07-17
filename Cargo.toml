@@ -28,10 +28,9 @@ name = "rmtg_lib"
 wasm-opt = false
 
 [features]
-default = ["bin", "calc", "mic", "fps"]
+default = ["bin", "mic", "fps"]
 bin = ["dep:arboard"]
 mic = ["dep:bevy_microphone", "dep:rodio"]
-calc = ["dep:ucalc_lib"]
 debug = ["bevy/debug"]
 colliders = ["avian3d/debug-plugin"]
 fps = ["bevy/bevy_dev_tools"]
@@ -54,7 +53,7 @@ bevy_rich_text3d = {version = "0.7.0", git = "https://github.com/mintlu8/bevy_ri
 bevy_p2p = {git = "https://github.com/bgkillas/bevy_p2p"}
 rand = { version = "0.10.2", default-features = false, features = ["std", "alloc", "simd_support", "sys_rng"] }
 bevy_mod_mipmap_generator = {git = "https://github.com/DGriffin91/bevy_mod_mipmap_generator", default-features = false}
-ucalc_lib = {git = "https://github.com/bgkillas/ucalc", optional = true}
+ucalc_lib = {git = "https://github.com/bgkillas/ucalc"}
 rules = {path = "rules"}
 uuid = "1.23.5"
 bevy_microphone = {git = "https://github.com/bgkillas/bevy_microphone", optional = true}
