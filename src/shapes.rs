@@ -1,8 +1,9 @@
 use crate::assets::Asset;
+use crate::physics::physics;
 use bevy::color::Color;
 use bevy::ecs::children;
 use bevy::math::Vec3;
-use bevy::mesh::{Mesh, Mesh3d};
+use bevy::mesh::{Mesh, Mesh3d, MeshBuilder};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::Bundle;
 use bevy_polyline::material::{PolylineMaterial, PolylineMaterialHandle};
@@ -18,7 +19,7 @@ fn average_normalized<const N: usize>(elems: [[f32; 3]; N]) -> Vec3 {
 pub trait NewShape {
     fn from_height(height: f32) -> Self;
 }
-pub trait ShapeMesh: NewShape + Into<Mesh> {
+pub trait ShapeMesh: NewShape + MeshBuilder + Sized {
     type Outline: ShapeOutline;
     fn bundle(
         height: f32,
@@ -26,8 +27,10 @@ pub trait ShapeMesh: NewShape + Into<Mesh> {
         outline_color: Color,
         asset: &mut Asset,
     ) -> impl Bundle {
+        let mesh = Mesh::from(Self::from_height(height));
         (
-            Mesh3d(asset.meshes.add(Self::from_height(height))),
+            physics(&mesh),
+            Mesh3d(asset.meshes.add(mesh)),
             MeshMaterial3d(asset.materials.add(StandardMaterial {
                 base_color,
                 ..StandardMaterial::default()

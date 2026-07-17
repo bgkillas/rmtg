@@ -1,18 +1,23 @@
 use crate::assets::Asset;
 use crate::camera::default_cam_pos;
+use crate::physics::bounce;
 use crate::shapes::ShapeMesh as _;
 use crate::shapes::cube::Cube;
 use crate::shapes::dodecahedron::Dodecahedron;
 use crate::shapes::icosahedron::Icosahedron;
 use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
+use crate::{FLOOR_COLOR, T, W};
+use avian3d::prelude::{Collider, RigidBody};
 use bevy::camera::{Camera3d, Exposure, PhysicalCameraParameters};
 use bevy::color::Color;
 use bevy::light::light_consts::lux::OVERCAST_DAY;
 use bevy::light::{CascadeShadowConfigBuilder, DirectionalLight};
 use bevy::math::{Quat, Vec3};
+use bevy::mesh::Mesh3d;
+use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::picking::Pickable;
-use bevy::prelude::{Commands, MeshPickingCamera, MeshPickingSettings, ResMut, Transform};
+use bevy::prelude::{Commands, Cuboid, MeshPickingCamera, MeshPickingSettings, ResMut, Transform};
 use std::f32::consts::PI;
 pub fn startup(mut commands: Commands, mut pick: ResMut<MeshPickingSettings>, mut asset: Asset) {
     pick.require_markers = true;
@@ -47,27 +52,44 @@ pub fn startup(mut commands: Commands, mut pick: ResMut<MeshPickingSettings>, mu
     ));
     commands.spawn((
         Cube::bundle(1.0, Color::WHITE, Color::BLACK, &mut asset),
+        bounce(),
         Transform::from_xyz(-8.0, 1.0, 0.0),
         Pickable::default(),
     ));
     commands.spawn((
         Dodecahedron::bundle(1.0, Color::WHITE, Color::BLACK, &mut asset),
+        bounce(),
         Transform::from_xyz(-6.0, 1.0, 0.0),
         Pickable::default(),
     ));
     commands.spawn((
         Icosahedron::bundle(1.0, Color::WHITE, Color::BLACK, &mut asset),
+        bounce(),
         Transform::from_xyz(-4.0, 1.0, 0.0),
         Pickable::default(),
     ));
     commands.spawn((
         Octahedron::bundle(1.0, Color::WHITE, Color::BLACK, &mut asset),
+        bounce(),
         Transform::from_xyz(-2.0, 1.0, 0.0),
         Pickable::default(),
     ));
     commands.spawn((
         Tetrahedron::bundle(1.0, Color::WHITE, Color::BLACK, &mut asset),
+        bounce(),
         Transform::from_xyz(0.0, 1.0, 0.0),
         Pickable::default(),
+    ));
+    commands.spawn((
+        Transform::from_xyz(0.0, -T / 2.0, 0.0),
+        Collider::cuboid(2.0 * W + T, T, 2.0 * W + T),
+        RigidBody::Static,
+        Mesh3d(asset.meshes.add(Cuboid::new(2.0 * W, T, 2.0 * W))),
+        MeshMaterial3d(asset.materials.add(StandardMaterial {
+            base_color: FLOOR_COLOR,
+            unlit: true,
+            depth_bias: f32::NEG_INFINITY,
+            ..StandardMaterial::default()
+        })),
     ));
 }

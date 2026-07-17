@@ -1,7 +1,7 @@
 use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized};
 use bevy::asset::RenderAssetUsages;
 use bevy::math::{Quat, Vec3};
-use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
+use bevy::mesh::{Indices, Mesh, MeshBuilder, PrimitiveTopology};
 use bevy_polyline::polyline::Polyline;
 pub struct Octahedron {
     pub unit_length: f32,
@@ -44,9 +44,9 @@ fn pos(unit_length: f32) -> [[f32; 3]; 6] {
         .map(|p| dir * Vec3::new(p[0], p[1], p[2]))
         .map(|v| [v.x, v.y, v.z])
 }
-impl From<Octahedron> for Mesh {
-    fn from(oct: Octahedron) -> Self {
-        let position = pos(oct.unit_length).to_vec();
+impl MeshBuilder for Octahedron {
+    fn build(&self) -> Mesh {
+        let position = pos(self.unit_length).to_vec();
         #[rustfmt::skip]
         let indices = Indices::U32(vec![
             0, 1, 2,

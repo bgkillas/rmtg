@@ -1,7 +1,7 @@
 use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized};
 use avian3d::parry::glamx::{Quat, Vec3};
 use bevy::asset::RenderAssetUsages;
-use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
+use bevy::mesh::{Indices, Mesh, MeshBuilder, PrimitiveTopology};
 use bevy_polyline::polyline::Polyline;
 use std::f32::consts::GOLDEN_RATIO;
 pub struct Icosahedron {
@@ -52,9 +52,9 @@ fn pos(unit_length: f32) -> [[f32; 3]; 12] {
         .map(|p| dir * Vec3::new(p[0], p[1], p[2]))
         .map(|v| [v.x, v.y, v.z])
 }
-impl From<Icosahedron> for Mesh {
-    fn from(ico: Icosahedron) -> Self {
-        let position = pos(ico.unit_length).to_vec();
+impl MeshBuilder for Icosahedron {
+    fn build(&self) -> Mesh {
+        let position = pos(self.unit_length).to_vec();
         #[rustfmt::skip]
         let indices = Indices::U32(vec![
              0,  1,  2,  0,  6,  1,

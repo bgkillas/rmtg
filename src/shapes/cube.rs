@@ -1,6 +1,6 @@
 use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
 use avian3d::parry::glamx::Vec3;
-use bevy::mesh::Mesh;
+use bevy::mesh::{Mesh, MeshBuilder};
 use bevy::prelude::Cuboid;
 use bevy_polyline::polyline::Polyline;
 pub struct Cube {
@@ -15,9 +15,9 @@ impl ShapeOutline for CubeOutline {
 pub struct CubeOutline {
     pub unit_length: f32,
 }
-impl From<Cube> for Mesh {
-    fn from(value: Cube) -> Self {
-        Mesh::from(Cuboid::from_length(value.unit_length))
+impl MeshBuilder for Cube {
+    fn build(&self) -> Mesh {
+        Mesh::from(Cuboid::from_length(self.unit_length))
     }
 }
 impl NewShape for Cube {
