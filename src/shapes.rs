@@ -1,20 +1,48 @@
+use crate::assets::Asset;
+use bevy::color::Color;
+use bevy::ecs::children;
 use bevy::math::Vec3;
-use bevy::mesh::Mesh;
-use bevy_polyline::polyline::Polyline;
+use bevy::mesh::{Mesh, Mesh3d};
+use bevy::pbr::{MeshMaterial3d, StandardMaterial};
+use bevy::prelude::Bundle;
+use bevy_polyline::material::{PolylineMaterial, PolylineMaterialHandle};
+use bevy_polyline::polyline::{Polyline, PolylineHandle};
 pub mod cube;
 pub mod dodecahedron;
 pub mod icosahedron;
 pub mod octahedron;
 pub mod tetrahedron;
-fn average_normalized(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> Vec3 {
-    (Vec3::from(a) + Vec3::from(b) + Vec3::from(c)).normalize()
+fn average_normalized<const N: usize>(elems: [[f32; 3]; N]) -> Vec3 {
+    elems.map(Vec3::from).into_iter().sum::<Vec3>().normalize()
 }
 pub trait NewShape {
-    fn from_length(length: f32) -> Self;
     fn from_height(height: f32) -> Self;
 }
 pub trait ShapeMesh: NewShape + Into<Mesh> {
     type Outline: ShapeOutline;
+    fn bundle(
+        height: f32,
+        base_color: Color,
+        outline_color: Color,
+        asset: &mut Asset,
+    ) -> impl Bundle {
+        (
+            Mesh3d(asset.meshes.add(Self::from_height(height))),
+            MeshMaterial3d(asset.materials.add(StandardMaterial {
+                base_color,
+                ..StandardMaterial::default()
+            })),
+            children![(
+                PolylineHandle(asset.polylines.add(Self::Outline::from_height(height))),
+                PolylineMaterialHandle(asset.polyline_materials.add(PolylineMaterial {
+                    width: 16.0 * height,
+                    color: outline_color.to_linear(),
+                    perspective: true,
+                    depth_bias: Self::Outline::DEPTH_BIAS,
+                })),
+            )],
+        )
+    }
 }
 pub trait ShapeOutline: NewShape + Into<Polyline> {
     type Mesh: ShapeMesh;

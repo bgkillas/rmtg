@@ -14,26 +14,16 @@ impl ShapeOutline for IcosahedronOutline {
     type Mesh = Icosahedron;
 }
 impl NewShape for Icosahedron {
-    fn from_length(length: f32) -> Self {
-        Self {
-            unit_length: length / 2.0,
-        }
-    }
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / 2.0, //TODO
+            unit_length: height / (48.0f32.sqrt() / GOLDEN_RATIO.powi(2)),
         }
     }
 }
 impl NewShape for IcosahedronOutline {
-    fn from_length(length: f32) -> Self {
-        Self {
-            unit_length: length / 2.0,
-        }
-    }
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / 2.0, //TODO
+            unit_length: height / (48.0f32.sqrt() / GOLDEN_RATIO.powi(2)),
         }
     }
 }
@@ -55,7 +45,7 @@ fn pos(unit_length: f32) -> [[f32; 3]; 12] {
         [-grt, 0.0, -one],
     ];
     let dir = Quat::from_rotation_arc(
-        average_normalized(position_pre[0], position_pre[1], position_pre[2]),
+        average_normalized([position_pre[0], position_pre[1], position_pre[2]]),
         -Vec3::Y,
     );
     position_pre

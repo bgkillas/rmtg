@@ -1,31 +1,20 @@
+use crate::assets::Asset;
 use crate::camera::default_cam_pos;
-use crate::shapes::NewShape as _;
-use crate::shapes::cube::CubeOutline;
-use crate::shapes::dodecahedron::{Dodecahedron, DodecahedronOutline};
-use crate::shapes::icosahedron::{Icosahedron, IcosahedronOutline};
-use crate::shapes::octahedron::{Octahedron, OctahedronOutline};
-use crate::shapes::tetrahedron::{Tetrahedron, TetrahedronOutline};
-use bevy::asset::Assets;
+use crate::shapes::ShapeMesh as _;
+use crate::shapes::cube::Cube;
+use crate::shapes::dodecahedron::Dodecahedron;
+use crate::shapes::icosahedron::Icosahedron;
+use crate::shapes::octahedron::Octahedron;
+use crate::shapes::tetrahedron::Tetrahedron;
 use bevy::camera::{Camera3d, Exposure, PhysicalCameraParameters};
 use bevy::color::Color;
 use bevy::light::light_consts::lux::OVERCAST_DAY;
 use bevy::light::{CascadeShadowConfigBuilder, DirectionalLight};
 use bevy::math::{Quat, Vec3};
-use bevy::mesh::{Mesh, Mesh3d};
-use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::picking::Pickable;
-use bevy::prelude::{Commands, Cuboid, MeshPickingCamera, MeshPickingSettings, ResMut, Transform};
-use bevy_polyline::material::{PolylineMaterial, PolylineMaterialHandle};
-use bevy_polyline::polyline::{Polyline, PolylineHandle};
+use bevy::prelude::{Commands, MeshPickingCamera, MeshPickingSettings, ResMut, Transform};
 use std::f32::consts::PI;
-pub fn startup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut polylines: ResMut<Assets<Polyline>>,
-    mut polyline_materials: ResMut<Assets<PolylineMaterial>>,
-    mut pick: ResMut<MeshPickingSettings>,
-) {
+pub fn startup(mut commands: Commands, mut pick: ResMut<MeshPickingSettings>, mut asset: Asset) {
     pick.require_markers = true;
     commands.spawn((
         DirectionalLight {
@@ -56,99 +45,29 @@ pub fn startup(
         }),
         MeshPickingCamera,
     ));
-    commands
-        .spawn((
-            Transform::from_xyz(-2.0, 2.0, 0.0),
-            Mesh3d(meshes.add(Dodecahedron::from_length(0.5))),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: Color::WHITE,
-                ..StandardMaterial::default()
-            })),
-            Pickable::default(),
-        ))
-        .with_child((
-            PolylineHandle(polylines.add(DodecahedronOutline::from_length(0.5))),
-            PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
-                width: 8.0,
-                color: Color::BLACK.to_linear(),
-                perspective: true,
-                depth_bias: -0.00001,
-            })),
-        ));
-    commands
-        .spawn((
-            Transform::from_xyz(-0.5, 2.0, 0.0),
-            Mesh3d(meshes.add(Icosahedron::from_length(0.5))),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: Color::WHITE,
-                ..StandardMaterial::default()
-            })),
-            Pickable::default(),
-        ))
-        .with_child((
-            PolylineHandle(polylines.add(IcosahedronOutline::from_length(0.5))),
-            PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
-                width: 8.0,
-                color: Color::BLACK.to_linear(),
-                perspective: true,
-                depth_bias: -0.00001,
-            })),
-        ));
-    commands
-        .spawn((
-            Transform::from_xyz(0.25, 2.0, 0.0),
-            Mesh3d(meshes.add(Cuboid::from_length(0.5))),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: Color::WHITE,
-                ..StandardMaterial::default()
-            })),
-            Pickable::default(),
-        ))
-        .with_child((
-            PolylineHandle(polylines.add(CubeOutline::from_length(0.5))),
-            PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
-                width: 8.0,
-                color: Color::BLACK.to_linear(),
-                perspective: true,
-                depth_bias: -0.00001,
-            })),
-        ));
-    commands
-        .spawn((
-            Transform::from_xyz(1.5, 2.0, 0.0),
-            Mesh3d(meshes.add(Tetrahedron::from_height(0.5))),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: Color::WHITE,
-                ..StandardMaterial::default()
-            })),
-            Pickable::default(),
-        ))
-        .with_child((
-            PolylineHandle(polylines.add(TetrahedronOutline::from_height(0.5))),
-            PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
-                width: 8.0,
-                color: Color::BLACK.to_linear(),
-                perspective: true,
-                depth_bias: 0.0,
-            })),
-        ));
-    commands
-        .spawn((
-            Transform::from_xyz(1.0, 2.0, 0.0),
-            Mesh3d(meshes.add(Octahedron::from_length(0.5))),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: Color::WHITE,
-                ..StandardMaterial::default()
-            })),
-            Pickable::default(),
-        ))
-        .with_child((
-            PolylineHandle(polylines.add(OctahedronOutline::from_length(0.5))),
-            PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
-                width: 8.0,
-                color: Color::BLACK.to_linear(),
-                perspective: true,
-                depth_bias: -0.00001,
-            })),
-        ));
+    commands.spawn((
+        Cube::bundle(1.0, Color::WHITE, Color::BLACK, &mut asset),
+        Transform::from_xyz(-8.0, 1.0, 0.0),
+        Pickable::default(),
+    ));
+    commands.spawn((
+        Dodecahedron::bundle(1.0, Color::WHITE, Color::BLACK, &mut asset),
+        Transform::from_xyz(-6.0, 1.0, 0.0),
+        Pickable::default(),
+    ));
+    commands.spawn((
+        Icosahedron::bundle(1.0, Color::WHITE, Color::BLACK, &mut asset),
+        Transform::from_xyz(-4.0, 1.0, 0.0),
+        Pickable::default(),
+    ));
+    commands.spawn((
+        Octahedron::bundle(1.0, Color::WHITE, Color::BLACK, &mut asset),
+        Transform::from_xyz(-2.0, 1.0, 0.0),
+        Pickable::default(),
+    ));
+    commands.spawn((
+        Tetrahedron::bundle(1.0, Color::WHITE, Color::BLACK, &mut asset),
+        Transform::from_xyz(0.0, 1.0, 0.0),
+        Pickable::default(),
+    ));
 }

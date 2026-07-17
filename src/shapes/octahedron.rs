@@ -13,26 +13,16 @@ impl ShapeOutline for OctahedronOutline {
     type Mesh = Octahedron;
 }
 impl NewShape for Octahedron {
-    fn from_length(length: f32) -> Self {
-        Self {
-            unit_length: length / 2.0f32.sqrt(),
-        }
-    }
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / 2.0f32.sqrt(), //TODO
+            unit_length: height / (6.0f32 / 4.0f32).sqrt(),
         }
     }
 }
 impl NewShape for OctahedronOutline {
-    fn from_length(length: f32) -> Self {
-        Self {
-            unit_length: length / 2.0f32.sqrt(),
-        }
-    }
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / 2.0f32.sqrt(), //TODO
+            unit_length: height / (6.0f32 / 4.0f32).sqrt(),
         }
     }
 }
@@ -47,7 +37,7 @@ fn pos(unit_length: f32) -> [[f32; 3]; 6] {
         [0.0, 0.0, -one],
     ];
     let dir = Quat::from_rotation_arc(
-        average_normalized(position_pre[0], position_pre[1], position_pre[2]),
+        average_normalized([position_pre[0], position_pre[1], position_pre[2]]),
         -Vec3::Y,
     );
     position_pre

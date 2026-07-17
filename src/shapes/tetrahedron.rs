@@ -7,11 +7,13 @@ pub struct Tetrahedron {
     pub unit_length: f32,
 }
 impl NewShape for Tetrahedron {
-    fn from_length(length: f32) -> Self {
+    fn from_height(height: f32) -> Self {
         Self {
-            unit_length: length / 8.0f32.sqrt(),
+            unit_length: height / (16.0f32 / 3.0f32).sqrt(),
         }
     }
+}
+impl NewShape for TetrahedronOutline {
     fn from_height(height: f32) -> Self {
         Self {
             unit_length: height / (16.0f32 / 3.0f32).sqrt(),
@@ -34,7 +36,7 @@ fn pos(unit_length: f32) -> [[f32; 3]; 4] {
         [-one, -one, one],
     ];
     let dir = Quat::from_rotation_arc(
-        average_normalized(position_pre[0], position_pre[1], position_pre[2]),
+        average_normalized([position_pre[0], position_pre[1], position_pre[2]]),
         -Vec3::Y,
     );
     position_pre
@@ -63,18 +65,6 @@ impl From<Tetrahedron> for Mesh {
 }
 pub struct TetrahedronOutline {
     pub unit_length: f32,
-}
-impl NewShape for TetrahedronOutline {
-    fn from_length(length: f32) -> Self {
-        Self {
-            unit_length: length / 8.0f32.sqrt(),
-        }
-    }
-    fn from_height(height: f32) -> Self {
-        Self {
-            unit_length: height / (16.0f32 / 3.0f32).sqrt(),
-        }
-    }
 }
 impl From<TetrahedronOutline> for Polyline {
     fn from(value: TetrahedronOutline) -> Self {

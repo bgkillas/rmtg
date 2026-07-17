@@ -1,5 +1,6 @@
 use bevy::color::Color;
 pub mod app;
+mod assets;
 pub mod camera;
 pub mod focus;
 pub mod keybinds;

@@ -14,26 +14,20 @@ impl ShapeOutline for DodecahedronOutline {
     type Mesh = Dodecahedron;
 }
 impl NewShape for Dodecahedron {
-    fn from_length(length: f32) -> Self {
-        Self {
-            unit_length: length / (5.0f32.sqrt() - 1.0),
-        }
-    }
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / (5.0f32.sqrt() - 1.0), //TODO
+            unit_length: height * ((25.0f32 + 11.0f32 * 5.0f32.sqrt()) / 10.0f32).sqrt()
+                / 4.0
+                / (5.0f32.sqrt() - 1.0),
         }
     }
 }
 impl NewShape for DodecahedronOutline {
-    fn from_length(length: f32) -> Self {
-        Self {
-            unit_length: length / (5.0f32.sqrt() - 1.0),
-        }
-    }
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / (5.0f32.sqrt() - 1.0), //TODO
+            unit_length: height * ((25.0f32 + 11.0f32 * 5.0f32.sqrt()) / 10.0f32).sqrt()
+                / 4.0
+                / (5.0f32.sqrt() - 1.0),
         }
     }
 }
@@ -64,7 +58,13 @@ fn pos(unit_length: f32) -> [[f32; 3]; 20] {
         [-grt, 0.0, -rgr],
     ];
     let dir = Quat::from_rotation_arc(
-        average_normalized(position_pre[0], position_pre[15], position_pre[8]),
+        average_normalized([
+            position_pre[0],
+            position_pre[1],
+            position_pre[8],
+            position_pre[9],
+            position_pre[15],
+        ]),
         -Vec3::Y,
     );
     position_pre

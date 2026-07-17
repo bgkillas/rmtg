@@ -21,26 +21,16 @@ impl From<Cube> for Mesh {
     }
 }
 impl NewShape for Cube {
-    fn from_length(length: f32) -> Self {
-        Self {
-            unit_length: length / 2.0,
-        }
-    }
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / 2.0, //TODO
+            unit_length: height,
         }
     }
 }
 impl NewShape for CubeOutline {
-    fn from_length(length: f32) -> Self {
-        Self {
-            unit_length: length / 2.0,
-        }
-    }
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / 2.0, //TODO
+            unit_length: height / 2.0,
         }
     }
 }
