@@ -89,11 +89,12 @@ impl OctahedronOutline {
         let position = pos(self.unit_length);
         #[rustfmt::skip]
         let ind = [
-            0, 1, 2, 0, 2, 4, 1, 5,
-            0, 4, 2, 3, 3, 4, 1, 3,
-            5, 5, 1, 2, 0, 2, 4, 0,
-            5, 0, 4, 5, 3, 1, 4, 2,
-            3, 5, 1, 3
+            0, 1, 2, 2,
+            4, 1, 5, 4,
+            2, 3, 3, 3,
+            1, 2, 0, 4,
+            0, 5, 0, 5,
+            3, 1, 4, 5,
         ];
         let vertices = ind.map(|i| position[i]).map(Vec3::from).to_vec();
         Polyline { vertices }
