@@ -3,6 +3,7 @@ use crate::shapes::cube::CubeOutline;
 use crate::shapes::dodecahedron::{Dodecahedron, DodecahedronOutline};
 use crate::shapes::icosahedron::{Icosahedron, IcosahedronOutline};
 use crate::shapes::octahedron::{Octahedron, OctahedronOutline};
+use crate::shapes::tetrahedron::{Tetrahedron, TetrahedronOutline};
 use bevy::asset::Assets;
 use bevy::camera::{Camera3d, Exposure, PhysicalCameraParameters};
 use bevy::color::Color;
@@ -104,6 +105,25 @@ pub fn startup(
         ))
         .with_child((
             PolylineHandle(polylines.add(CubeOutline::new(0.5).build())),
+            PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
+                width: 8.0,
+                color: Color::BLACK.to_linear(),
+                perspective: true,
+                depth_bias: -0.00001,
+            })),
+        ));
+    commands
+        .spawn((
+            Transform::from_xyz(1.5, 2.0, 0.0),
+            Mesh3d(meshes.add(Tetrahedron::new(0.5))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::WHITE,
+                ..StandardMaterial::default()
+            })),
+            Pickable::default(),
+        ))
+        .with_child((
+            PolylineHandle(polylines.add(TetrahedronOutline::new(0.5).build())),
             PolylineMaterialHandle(polyline_materials.add(PolylineMaterial {
                 width: 8.0,
                 color: Color::BLACK.to_linear(),
