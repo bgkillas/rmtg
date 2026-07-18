@@ -1,11 +1,11 @@
 run:
-    cargo run
+    cargo run --features "debug"
 run_tracy:
     cargo run --release --features "tracy,debug"
 run_rel:
     cargo run --release
 build:
-    cargo build
+    cargo build --features "debug"
 build_rel:
     cargo build --release
 build_full:

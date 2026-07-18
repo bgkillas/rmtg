@@ -1,9 +1,9 @@
-use crate::APP_NAME;
 use crate::camera::{camera_rotation, camera_translation};
 use crate::focus::Menu;
 use crate::keybinds::KeybindsList;
 use crate::net::{Msg, Peers, connect_failed, on_connect, on_disconnect, receive_message};
 use crate::startup::startup;
+use crate::{APP_NAME, FONT};
 use avian3d::PhysicsPlugins;
 use bevy::DefaultPlugins;
 use bevy::app::{
@@ -19,7 +19,7 @@ use bevy::settings::SettingsPlugin;
 use bevy::window::{PresentMode, Window, WindowPlugin};
 use bevy_p2p::plugin::P2PPlugin;
 use bevy_polyline::PolylinePlugin;
-use bevy_rich_text3d::Text3dPlugin;
+use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
 #[must_use]
 pub fn app_run() -> AppExit {
     let mut app = App::new();
@@ -74,6 +74,10 @@ pub fn app_run() -> AppExit {
     app.add_plugins(MeshPickingPlugin);
     app.add_plugins(PolylinePlugin);
     app.add_plugins(Text3dPlugin::default());
+    app.insert_resource(LoadFonts {
+        font_embedded: vec![FONT],
+        ..LoadFonts::default()
+    });
     #[cfg(feature = "colliders")]
     app.add_plugins(avian2d::debug_render::PhysicsDebugPlugin);
     #[cfg(feature = "fps")]

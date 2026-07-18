@@ -1,13 +1,13 @@
-use crate::WORLD_FONT_SIZE;
 use crate::assets::Asset;
 use crate::physics::{bounce, physics};
-use bevy::color::Color;
+use crate::{CARD_THICKNESS, WORLD_FONT_SIZE};
+use bevy::color::{Color, Srgba};
 use bevy::ecs::children;
 use bevy::material::AlphaMode;
 use bevy::math::{Vec2, Vec3};
 use bevy::mesh::{Mesh, Mesh3d, MeshBuilder};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{Bundle, EntityCommands, Rectangle, Transform};
+use bevy::prelude::{Bundle, EntityCommands, InheritedVisibility, Transform};
 use bevy_polyline::material::{PolylineMaterial, PolylineMaterialHandle};
 use bevy_polyline::polyline::{Polyline, PolylineHandle};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
@@ -27,7 +27,9 @@ fn face<const N: usize>(elems: [[f32; 3]; N]) -> Transform {
     } else {
         vecs[0]
     };
-    Transform::from_translation(pos).looking_to(pos, end - pos)
+    let (n, l) = pos.normalize_and_length();
+    let pos_epsilon = n * (l + CARD_THICKNESS);
+    Transform::from_translation(pos_epsilon).looking_to(-pos, end - pos)
 }
 pub trait NewShape {
     fn from_height(height: f32) -> Self;
@@ -58,6 +60,7 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized {
                     depth_bias: Self::Outline::DEPTH_BIAS,
                 })),
             )],
+            InheritedVisibility::VISIBLE,
         )
     }
     fn spawn_dice(
@@ -76,18 +79,18 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized {
                 parent.spawn((
                     t,
                     Text3d::new((i + 1).to_string()),
-                    Mesh3d(asset.meshes.add(Rectangle::new(1.0, 1.0))),
+                    Mesh3d::default(),
                     MeshMaterial3d(asset.materials.add(StandardMaterial {
                         base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
+                        alpha_mode: AlphaMode::Blend,
                         unlit: true,
-                        alpha_mode: AlphaMode::Multiply,
-                        base_color: Color::BLACK,
                         ..StandardMaterial::default()
                     })),
                     Text3dStyling {
                         size: WORLD_FONT_SIZE,
-                        world_scale: Some(Vec2::splat(1.0)),
                         anchor: TextAnchor::CENTER,
+                        color: Srgba::BLACK,
+                        world_scale: Some(Vec2::splat(1.0)),
                         ..Text3dStyling::default()
                     },
                 ));
@@ -99,5 +102,5 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized {
 }
 pub trait ShapeOutline: NewShape + Into<Polyline> {
     type Mesh: ShapeMesh;
-    const DEPTH_BIAS: f32 = -0.00001;
+    const DEPTH_BIAS: f32 = -1.0 / 65536.0;
 }

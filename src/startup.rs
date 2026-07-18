@@ -6,8 +6,9 @@ use crate::shapes::dodecahedron::Dodecahedron;
 use crate::shapes::icosahedron::Icosahedron;
 use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
-use crate::{FLOOR_COLOR, T, W};
+use crate::{FLOOR_COLOR, FONT, T, W};
 use avian3d::prelude::{Collider, RigidBody};
+use bevy::asset::{AssetId, Assets};
 use bevy::camera::{Camera3d, Exposure, PhysicalCameraParameters};
 use bevy::color::Color;
 use bevy::light::light_consts::lux::OVERCAST_DAY;
@@ -17,8 +18,16 @@ use bevy::mesh::Mesh3d;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::picking::Pickable;
 use bevy::prelude::{Commands, Cuboid, MeshPickingCamera, MeshPickingSettings, ResMut, Transform};
+use bevy::text::Font;
 use std::f32::consts::PI;
-pub fn startup(mut commands: Commands, mut pick: ResMut<MeshPickingSettings>, mut asset: Asset) {
+pub fn startup(
+    mut commands: Commands,
+    mut pick: ResMut<MeshPickingSettings>,
+    mut asset: Asset,
+    mut fonts: ResMut<Assets<Font>>,
+) {
+    let font = Font::from_bytes(FONT.to_vec());
+    fonts.insert(AssetId::<Font>::DEFAULT_UUID, font).unwrap();
     pick.require_markers = true;
     commands.spawn((
         DirectionalLight {
