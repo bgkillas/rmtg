@@ -19,6 +19,7 @@ use bevy::settings::SettingsPlugin;
 use bevy::window::{PresentMode, Window, WindowPlugin};
 use bevy_p2p::plugin::P2PPlugin;
 use bevy_polyline::PolylinePlugin;
+use bevy_rich_text3d::Text3dPlugin;
 #[must_use]
 pub fn app_run() -> AppExit {
     let mut app = App::new();
@@ -72,6 +73,7 @@ pub fn app_run() -> AppExit {
     app.add_plugins(P2PPlugin::<Msg>::new());
     app.add_plugins(MeshPickingPlugin);
     app.add_plugins(PolylinePlugin);
+    app.add_plugins(Text3dPlugin::default());
     #[cfg(feature = "colliders")]
     app.add_plugins(avian2d::debug_render::PhysicsDebugPlugin);
     #[cfg(feature = "fps")]

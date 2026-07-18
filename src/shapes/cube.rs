@@ -1,4 +1,4 @@
-use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
+use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, face};
 use avian3d::parry::glamx::Vec3;
 use bevy::mesh::{Mesh, MeshBuilder};
 use bevy::prelude::{Cuboid, Transform};
@@ -9,7 +9,9 @@ pub struct Cube {
 impl ShapeMesh for Cube {
     type Outline = CubeOutline;
     fn faces(height: f32) -> impl ExactSizeIterator<Item = Transform> {
-        [].into_iter()
+        let one = height / 2.0;
+        let v = pos(one);
+        [face([v[0], v[1], v[2], v[5]])].into_iter()
     }
 }
 impl ShapeOutline for CubeOutline {
@@ -37,19 +39,21 @@ impl NewShape for CubeOutline {
         }
     }
 }
+fn pos(one: f32) -> [[f32; 3]; 8] {
+    [
+        [one, one, one],
+        [-one, one, one],
+        [one, -one, one],
+        [one, one, -one],
+        [-one, one, -one],
+        [-one, -one, one],
+        [one, -one, -one],
+        [-one, -one, -one],
+    ]
+}
 impl From<CubeOutline> for Polyline {
     fn from(value: CubeOutline) -> Self {
-        let one = value.unit_length;
-        let v = [
-            Vec3::new(one, one, one),
-            Vec3::new(-one, one, one),
-            Vec3::new(one, -one, one),
-            Vec3::new(one, one, -one),
-            Vec3::new(-one, one, -one),
-            Vec3::new(-one, -one, one),
-            Vec3::new(one, -one, -one),
-            Vec3::new(-one, -one, -one),
-        ];
+        let v = pos(value.unit_length).map(Vec3::from);
         #[rustfmt::skip]
         let vertices = vec![
             v[0], v[0], v[0],

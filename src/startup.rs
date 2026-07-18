@@ -49,31 +49,41 @@ pub fn startup(mut commands: Commands, mut pick: ResMut<MeshPickingSettings>, mu
         }),
         MeshPickingCamera,
     ));
-    commands.spawn((
-        Cube::bundle_dice(1.0, Color::WHITE, Color::BLACK, &mut asset),
-        Transform::from_xyz(-8.0, 1.0, 0.0),
-        Pickable::default(),
-    ));
-    commands.spawn((
-        Dodecahedron::bundle_dice(1.0, Color::WHITE, Color::BLACK, &mut asset),
-        Transform::from_xyz(-6.0, 1.0, 0.0),
-        Pickable::default(),
-    ));
-    commands.spawn((
-        Icosahedron::bundle_dice(1.0, Color::WHITE, Color::BLACK, &mut asset),
-        Transform::from_xyz(-4.0, 1.0, 0.0),
-        Pickable::default(),
-    ));
-    commands.spawn((
-        Octahedron::bundle_dice(1.0, Color::WHITE, Color::BLACK, &mut asset),
-        Transform::from_xyz(-2.0, 1.0, 0.0),
-        Pickable::default(),
-    ));
-    commands.spawn((
-        Tetrahedron::bundle_dice(1.0, Color::WHITE, Color::BLACK, &mut asset),
-        Transform::from_xyz(0.0, 1.0, 0.0),
-        Pickable::default(),
-    ));
+    Cube::spawn_dice(
+        1.0,
+        Color::WHITE,
+        Color::BLACK,
+        &mut asset,
+        commands.spawn((Transform::from_xyz(-8.0, 1.0, 0.0), Pickable::default())),
+    );
+    Dodecahedron::spawn_dice(
+        1.0,
+        Color::WHITE,
+        Color::BLACK,
+        &mut asset,
+        commands.spawn((Transform::from_xyz(-6.0, 1.0, 0.0), Pickable::default())),
+    );
+    Icosahedron::spawn_dice(
+        1.0,
+        Color::WHITE,
+        Color::BLACK,
+        &mut asset,
+        commands.spawn((Transform::from_xyz(-4.0, 1.0, 0.0), Pickable::default())),
+    );
+    Octahedron::spawn_dice(
+        1.0,
+        Color::WHITE,
+        Color::BLACK,
+        &mut asset,
+        commands.spawn((Transform::from_xyz(-2.0, 1.0, 0.0), Pickable::default())),
+    );
+    Tetrahedron::spawn_dice(
+        1.0,
+        Color::WHITE,
+        Color::BLACK,
+        &mut asset,
+        commands.spawn((Transform::from_xyz(0.0, 1.0, 0.0), Pickable::default())),
+    );
     commands.spawn((
         Transform::from_xyz(0.0, -T / 2.0, 0.0),
         Collider::cuboid(2.0 * W + T, T, 2.0 * W + T),
