@@ -5,14 +5,13 @@ use avian3d::parry::glamx::Quat;
 use bevy::asset::RenderAssetUsages;
 use bevy::color::{Color, Srgba};
 use bevy::ecs::children;
-use bevy::material::AlphaMode;
 use bevy::math::{Vec2, Vec3};
 use bevy::mesh::{Indices, Mesh, Mesh3d, MeshBuilder, PrimitiveTopology};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Bundle, EntityCommands, InheritedVisibility, Transform};
 use bevy_polyline::material::{PolylineMaterial, PolylineMaterialHandle};
 use bevy_polyline::polyline::{Polyline, PolylineHandle};
-use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor, TextAtlas};
+use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor};
 pub mod cube;
 pub mod dodecahedron;
 pub mod icosahedron;
@@ -90,12 +89,7 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
                     t,
                     Text3d::new((i + 1).to_string()),
                     Mesh3d::default(),
-                    MeshMaterial3d(asset.materials.add(StandardMaterial {
-                        base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
-                        alpha_mode: AlphaMode::Blend,
-                        unlit: true,
-                        ..StandardMaterial::default()
-                    })),
+                    MeshMaterial3d(asset.text_mesh.mesh.clone()),
                     Text3dStyling {
                         size: WORLD_FONT_SIZE,
                         anchor: TextAnchor::CENTER,

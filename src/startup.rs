@@ -1,4 +1,4 @@
-use crate::assets::Asset;
+use crate::assets::{Asset, TextMesh};
 use crate::camera::default_cam_pos;
 use crate::shapes::ShapeMesh as _;
 use crate::shapes::cube::Cube;
@@ -13,19 +13,28 @@ use bevy::camera::{Camera3d, Exposure, PhysicalCameraParameters};
 use bevy::color::Color;
 use bevy::light::light_consts::lux::OVERCAST_DAY;
 use bevy::light::{CascadeShadowConfigBuilder, DirectionalLight};
+use bevy::material::AlphaMode;
 use bevy::math::{Quat, Vec3};
 use bevy::mesh::Mesh3d;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::picking::Pickable;
 use bevy::prelude::{Commands, Cuboid, MeshPickingCamera, MeshPickingSettings, ResMut, Transform};
 use bevy::text::Font;
+use bevy_rich_text3d::TextAtlas;
 use std::f32::consts::PI;
 pub fn startup(
     mut commands: Commands,
     mut pick: ResMut<MeshPickingSettings>,
-    mut asset: Asset,
     mut fonts: ResMut<Assets<Font>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    let mesh = materials.add(StandardMaterial {
+        base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..StandardMaterial::default()
+    });
+    commands.insert_resource(TextMesh { mesh });
     let font = Font::from_bytes(FONT.to_vec());
     fonts.insert(AssetId::<Font>::DEFAULT_UUID, font).unwrap();
     pick.require_markers = true;
@@ -58,6 +67,8 @@ pub fn startup(
         }),
         MeshPickingCamera,
     ));
+}
+pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
     Cube::insert_dice(
         1.0,
         Color::WHITE,
