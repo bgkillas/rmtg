@@ -10,9 +10,10 @@ impl ShapeMesh for Tetrahedron {
     type Outline = TetrahedronOutline;
     type const VERTICES: usize = 4;
     type const FACES: usize = 4;
-    type const FACE_VERTICES: usize = 3;
-    type const TRIANGLES: usize = 1;
     const IS_REVERSED: bool = true;
+    fn text_size(height: f32) -> f32 {
+        height / 1.5
+    }
     fn convert_height(height: f32) -> f32 {
         height / (16.0f32 / 3.0f32).sqrt()
     }

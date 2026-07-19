@@ -12,6 +12,9 @@ impl ShapeMesh for Cube {
     type const FACES: usize = 6;
     type const FACE_VERTICES: usize = 4;
     type const TRIANGLES: usize = 2;
+    fn text_size(height: f32) -> f32 {
+        height
+    }
     fn convert_height(height: f32) -> f32 {
         height / 2.0
     }

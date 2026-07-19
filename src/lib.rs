@@ -1,6 +1,7 @@
 #![allow(incomplete_features)]
 #![feature(min_generic_const_args)]
 #![feature(inherent_associated_types)]
+#![feature(associated_type_defaults)]
 use bevy::color::Color;
 pub mod app;
 pub mod assets;
@@ -12,7 +13,7 @@ pub mod physics;
 pub mod shapes;
 pub mod startup;
 pub const APP_NAME: &str = "com.github.bgkillas.rmtg";
-pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+pub const USER_AGENT: &str = concat!("rmtg/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = CARD_HEIGHT * IMAGE_WIDTH / IMAGE_HEIGHT;
 pub const CARD_HEIGHT: f32 = (MAT_HEIGHT - MAT_BAR) / 5.0 - MAT_BAR;
 pub const IMAGE_WIDTH: f32 = 500.0;

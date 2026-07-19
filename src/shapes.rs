@@ -43,8 +43,8 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
     type Outline: ShapeOutline;
     type const VERTICES: usize;
     type const FACES: usize;
-    type const FACE_VERTICES: usize;
-    type const TRIANGLES: usize;
+    type const FACE_VERTICES: usize = 3;
+    type const TRIANGLES: usize = 1;
     const IS_REVERSED: bool = false;
     #[must_use]
     fn bundle(
@@ -100,13 +100,15 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
                         size: WORLD_FONT_SIZE,
                         anchor: TextAnchor::CENTER,
                         color: Srgba::BLACK,
-                        world_scale: Some(Vec2::splat(0.5)),
+                        world_scale: Some(Vec2::splat(Self::text_size(height))),
                         ..Text3dStyling::default()
                     },
                 ));
             }
         });
     }
+    #[must_use]
+    fn text_size(height: f32) -> f32;
     #[must_use]
     fn faces(height: f32) -> [Transform; Self::FACES] {
         let v = Self::oriented_vertices(Self::convert_height(height)).map(Vec3::from);

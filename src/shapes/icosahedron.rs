@@ -11,8 +11,9 @@ impl ShapeMesh for Icosahedron {
     type Outline = IcosahedronOutline;
     type const VERTICES: usize = 12;
     type const FACES: usize = 20;
-    type const FACE_VERTICES: usize = 3;
-    type const TRIANGLES: usize = 1;
+    fn text_size(height: f32) -> f32 {
+        height / 3.0
+    }
     fn convert_height(height: f32) -> f32 {
         height / (48.0f32.sqrt() / GOLDEN_RATIO.powi(2))
     }

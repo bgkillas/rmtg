@@ -13,6 +13,9 @@ impl ShapeMesh for Dodecahedron {
     type const FACES: usize = 12;
     type const FACE_VERTICES: usize = 5;
     type const TRIANGLES: usize = 3;
+    fn text_size(height: f32) -> f32 {
+        height / 2.0
+    }
     fn convert_height(height: f32) -> f32 {
         height * ((25.0f32 + 11.0f32 * 5.0f32.sqrt()) / 10.0f32).sqrt()
             / 4.0

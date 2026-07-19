@@ -10,10 +10,11 @@ impl ShapeMesh for Octahedron {
     type Outline = OctahedronOutline;
     type const VERTICES: usize = 6;
     type const FACES: usize = 8;
-    type const FACE_VERTICES: usize = 3;
-    type const TRIANGLES: usize = 1;
+    fn text_size(height: f32) -> f32 {
+        height / 1.5
+    }
     fn convert_height(height: f32) -> f32 {
-        height / (6.0f32 / 4.0f32).sqrt()
+        height / (3.0f32 / 2.0f32).sqrt()
     }
     fn face_indices() -> [[u16; 3]; 8] {
         [
