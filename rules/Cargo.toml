@@ -1,7 +1,9 @@
 [package]
 name = "rules"
 version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [lib]
 proc-macro = true
@@ -9,3 +11,6 @@ proc-macro = true
 [dependencies]
 quote = "1.0.42"
 proc-macro2 = "1.0.103"
+
+[lints]
+workspace = true

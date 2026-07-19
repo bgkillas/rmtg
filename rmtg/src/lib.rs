@@ -36,4 +36,4 @@ pub const W: f32 = MAT_WIDTH * 2.0;
 pub const WALL_COLOR: Color = Color::srgb_u8(103, 73, 40);
 pub const FLOOR_COLOR: Color = Color::srgb_u8(103, 73, 40);
 pub const WORLD_FONT_SIZE: f32 = 120.0;
-pub const FONT: &[u8] = include_bytes!("../assets/noto.ttf");
+pub const FONT: &[u8] = include_bytes!("../../assets/noto.ttf");

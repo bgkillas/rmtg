@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 fn fix(ty: &str) -> String {
-    ty.replace("-", "").replace("’", "").replace(" ", "")
+    ty.replace(['-', '’', ' '], "")
 }
 fn ident(ty: &str) -> proc_macro2::TokenStream {
     let ident = Ident::new(&fix(ty), Span::call_site());
@@ -17,9 +17,9 @@ fn match_arms(ty: &str) -> proc_macro2::TokenStream {
 }
 fn match_arms_to(ty: &str) -> proc_macro2::TokenStream {
     let ident = Ident::new(&fix(ty), Span::call_site());
-    let literal = ty.to_string();
+    let literal = ty.to_owned();
     quote! {
-        Self::#ident => #literal.to_string()
+        Self::#ident => #literal.to_owned()
     }
 }
 fn split(s: &str) -> Vec<String> {
@@ -27,13 +27,13 @@ fn split(s: &str) -> Vec<String> {
         .unwrap()
         .1
         .replace(" and ", " ")
-        .replace(".", "")
+        .replace('.', "")
         .split(", ")
         .map(|a| {
-            if let Some((a, _)) = a.split_once(" (") {
-                a.to_string()
+            if let Some((v, _)) = a.split_once(" (") {
+                v.to_owned()
             } else {
-                a.to_string()
+                a.to_owned()
             }
         })
         .collect::<Vec<String>>()
@@ -60,19 +60,19 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
     let one_word_creature_types = split
         .1
         .replace(" and ", " ")
-        .replace(".", "")
+        .replace('.', "")
         .split(", ")
-        .map(|a| a.to_string())
+        .map(ToOwned::to_owned)
         .collect::<Vec<String>>();
     let split = creature_types.split_once(": ").unwrap();
     let two_word_creature_types = split
         .1
         .replace(" and ", " ")
-        .split_once(".")
+        .split_once('.')
         .unwrap()
         .0
         .split(", ")
-        .map(|a| a.to_string())
+        .map(ToOwned::to_owned)
         .collect::<Vec<String>>();
     let types = [
         plane_types
@@ -86,8 +86,8 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
         artifact_types,
         one_word_creature_types,
         two_word_creature_types,
-        vec!["Undercity".to_string()],
-        vec!["Siege".to_string()],
+        vec!["Undercity".to_owned()],
+        vec!["Siege".to_owned()],
     ];
     let idents: Vec<_> = types.iter().flatten().map(|s| ident(s)).collect();
     let matchs = types.iter().flatten().map(|s| match_arms(s));

@@ -1,8 +1,5 @@
-[package]
-name = "rmtg"
-version = "0.1.0"
+[workspace.package]
 edition = "2024"
-description = "a magic the gathering card game player"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/bgkillas/rmtg"
 
@@ -20,52 +17,15 @@ opt-level = 3
 [profile.dev]
 opt-level = 1
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-name = "rmtg_lib"
+[workspace]
+resolver = "3"
+members = ["rmtg", "rules", "importer"]
 
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = false
-
-[features]
-default = ["bin", "mic", "fps"]
-bin = ["dep:arboard"]
-mic = ["dep:bevy_microphone", "dep:rodio"]
-debug = ["bevy/debug"]
-colliders = ["avian3d/debug-plugin"]
-fps = ["bevy/bevy_dev_tools"]
-tracy = ["bevy/trace_tracy"]
-
-[dependencies]
-bevy = {version = "0.19.0", default-features = false, features = [
-  "3d",
-  "ui",
-  "bevy_settings",
-  "webgpu",
-]}
-enumset = "1.1.13"
-enum-map = "2.7.3"
-arboard = {version = "3.6.1", features = ["wayland-data-control"], default-features = false, optional = true}
-reqwest = {version = "0.13.4", features = ["rustls"], default-features = false}
-json = "0.12.4"
-image = {version = "0.25.10", default-features = false, features = ["jpeg"]}
-avian3d = {version = "0.7.0", features = ["simd", "parallel", "f32", "collider-from-mesh", "3d", "parry-f32"], default-features = false}
-bevy_rich_text3d = {version = "0.7.0", git = "https://github.com/mintlu8/bevy_rich_text3d", default-features = false, features = ["2d"]}
-bevy_p2p = {git = "https://github.com/bgkillas/bevy_p2p"}
-rand = { version = "0.10.2", default-features = false, features = ["std", "alloc", "simd_support", "sys_rng"] }
-bevy_mod_mipmap_generator = {git = "https://github.com/DGriffin91/bevy_mod_mipmap_generator", default-features = false}
-ucalc_lib = {git = "https://github.com/bgkillas/ucalc"}
+[workspace.dependencies]
 rules = {path = "rules"}
-uuid = "1.24.0"
-bevy_microphone = {git = "https://github.com/bgkillas/bevy_microphone", optional = true}
-rodio = {version = "0.22.2",default-features = false, optional = true}
-rustc-hash = "2.1.3"
-bevy_polyline = {git = "https://github.com/bgkillas/bevy_polyline", branch = "bevy-0.19"}
+importer = {path = "importer"}
 
-[target.'cfg(windows)'.dependencies]
-winapi = {version = "0.3.9",features = ["wincon"]}
-
-[lints.clippy]
+[workspace.lints.clippy]
 pedantic = {level = "warn", priority = -1}
 shadow_reuse = "warn"
 unused_trait_names = "warn"
