@@ -2,11 +2,12 @@ use crate::assets::Asset;
 use crate::physics::{bounce, physics};
 use crate::{CARD_THICKNESS, WORLD_FONT_SIZE};
 use avian3d::parry::glamx::Quat;
+use bevy::asset::RenderAssetUsages;
 use bevy::color::{Color, Srgba};
 use bevy::ecs::children;
 use bevy::material::AlphaMode;
 use bevy::math::{Vec2, Vec3};
-use bevy::mesh::{Mesh, Mesh3d, MeshBuilder};
+use bevy::mesh::{Indices, Mesh, Mesh3d, MeshBuilder, PrimitiveTopology};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Bundle, EntityCommands, InheritedVisibility, Transform};
 use bevy_polyline::material::{PolylineMaterial, PolylineMaterialHandle};
@@ -42,7 +43,8 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
     type Outline: ShapeOutline;
     type const VERTICES: usize;
     type const FACES: usize;
-    type const FACE: usize;
+    type const FACE_VERTICES: usize;
+    type const TRIANGLES: usize;
     const IS_REVERSED: bool = false;
     #[must_use]
     fn bundle(
@@ -115,9 +117,11 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
     #[must_use]
     fn convert_height(height: f32) -> f32;
     #[must_use]
-    fn face_indices() -> [[u16; Self::FACE]; Self::FACES];
+    fn face_indices() -> [[u16; Self::FACE_VERTICES]; Self::FACES];
     #[must_use]
     fn vertices(one: f32) -> [[f32; 3]; Self::VERTICES];
+    #[must_use]
+    fn convert_to_triangles(face: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES];
     #[must_use]
     fn oriented_vertices(one: f32) -> [[f32; 3]; Self::VERTICES] {
         let vertices = Self::vertices(one);
@@ -129,6 +133,25 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
     }
     #[must_use]
     fn unit_length(self) -> f32;
+    #[must_use]
+    fn mesh(self) -> Mesh {
+        let position = Self::oriented_vertices(self.unit_length()).to_vec();
+        let indices = Indices::U16(
+            Self::face_indices()
+                .map(|v| Self::convert_to_triangles(v))
+                .as_flattened()
+                .as_flattened()
+                .to_vec(),
+        );
+        let mut mesh = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::default(),
+        );
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, position);
+        mesh.insert_indices(indices);
+        mesh.compute_normals();
+        mesh
+    }
 }
 pub trait ShapeOutline: NewShape + Into<Polyline> {
     type Mesh: ShapeMesh;

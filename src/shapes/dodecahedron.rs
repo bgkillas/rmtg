@@ -1,7 +1,6 @@
 use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
 use avian3d::parry::glamx::Vec3;
-use bevy::asset::RenderAssetUsages;
-use bevy::mesh::{Indices, Mesh, MeshBuilder, PrimitiveTopology};
+use bevy::mesh::{Mesh, MeshBuilder};
 use bevy_polyline::polyline::Polyline;
 use std::f32::consts::GOLDEN_RATIO;
 #[derive(Clone, Copy)]
@@ -12,27 +11,27 @@ impl ShapeMesh for Dodecahedron {
     type Outline = DodecahedronOutline;
     type const VERTICES: usize = 20;
     type const FACES: usize = 12;
-    type const FACE: usize = 5;
+    type const FACE_VERTICES: usize = 5;
+    type const TRIANGLES: usize = 3;
     fn convert_height(height: f32) -> f32 {
         height * ((25.0f32 + 11.0f32 * 5.0f32.sqrt()) / 10.0f32).sqrt()
             / 4.0
             / (5.0f32.sqrt() - 1.0)
     }
-    //TODO
     fn face_indices() -> [[u16; 5]; 12] {
         [
-            [0, 15, 8, 1, 9],
-            [0, 8, 2, 14, 10],
-            [0, 16, 9, 3, 10],
-            [1, 5, 8, 14, 13],
-            [1, 4, 13, 19, 15],
-            [2, 6, 10, 16, 12],
-            [2, 5, 12, 18, 14],
-            [3, 4, 9, 15, 11],
-            [3, 6, 11, 17, 16],
-            [4, 11, 7, 17, 19],
-            [5, 13, 19, 7, 5],
-            [6, 12, 18, 7, 6],
+            [15, 1, 8, 0, 9],
+            [2, 10, 0, 8, 14],
+            [16, 3, 9, 0, 10],
+            [5, 14, 8, 1, 13],
+            [4, 19, 13, 1, 15],
+            [6, 16, 10, 2, 12],
+            [5, 18, 12, 2, 14],
+            [4, 15, 9, 3, 11],
+            [6, 17, 11, 3, 16],
+            [17, 7, 19, 4, 11],
+            [19, 7, 18, 5, 13],
+            [18, 7, 17, 6, 12],
         ]
     }
     fn vertices(one: f32) -> [[f32; 3]; 20] {
@@ -61,6 +60,9 @@ impl ShapeMesh for Dodecahedron {
             [-grt, 0.0, -rgr],
         ]
     }
+    fn convert_to_triangles(face: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES] {
+        [[0, 1, 3], [1, 2, 3], [3, 4, 0]].map(|a| a.map(|i| face[i]))
+    }
     fn unit_length(self) -> f32 {
         self.unit_length
     }
@@ -84,36 +86,7 @@ impl NewShape for DodecahedronOutline {
 }
 impl MeshBuilder for Dodecahedron {
     fn build(&self) -> Mesh {
-        let position = Self::oriented_vertices(self.unit_length).to_vec();
-        /*TODO let indices = Indices::U16(
-            face_indices()
-                .map(|v| [v[0], v[3], v[1], v[1], v[3], v[2], v[3], v[0], v[4]])
-                .as_flattened()
-                .to_vec(),
-        );*/
-        #[rustfmt::skip]
-        let indices = Indices::U32(vec![
-            0, 15,  8,  8, 15,  1, 15,  0,  9,
-            0,  8,  2,  8, 14,  2,  2, 10,  0,
-            0, 16,  9,  9, 16,  3, 16,  0, 10,
-            1,  5,  8,  8,  5, 14,  5,  1, 13,
-            1,  4, 13, 13,  4, 19,  4,  1, 15,
-            2,  6, 10, 10,  6, 16,  6,  2, 12,
-            2,  5, 12, 12,  5, 18,  5,  2, 14,
-            3,  4,  9,  9,  4, 15,  4,  3, 11,
-            3,  6, 11, 11,  6, 17,  6,  3, 16,
-            4, 11,  7, 11, 17,  7,  7, 19,  4,
-            5, 13,  7, 13, 19,  7,  7, 18,  5,
-            6, 12,  7, 12, 18,  7,  7, 17,  6,
-        ]);
-        let mut mesh = Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        );
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, position);
-        mesh.insert_indices(indices);
-        mesh.compute_normals();
-        mesh
+        self.mesh()
     }
 }
 pub struct DodecahedronOutline {

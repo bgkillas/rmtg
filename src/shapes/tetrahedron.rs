@@ -1,7 +1,6 @@
 use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
-use bevy::asset::RenderAssetUsages;
 use bevy::math::Vec3;
-use bevy::mesh::{Indices, Mesh, MeshBuilder, PrimitiveTopology};
+use bevy::mesh::{Mesh, MeshBuilder};
 use bevy_polyline::polyline::Polyline;
 #[derive(Clone, Copy)]
 pub struct Tetrahedron {
@@ -11,7 +10,8 @@ impl ShapeMesh for Tetrahedron {
     type Outline = TetrahedronOutline;
     type const VERTICES: usize = 4;
     type const FACES: usize = 4;
-    type const FACE: usize = 3;
+    type const FACE_VERTICES: usize = 3;
+    type const TRIANGLES: usize = 1;
     const IS_REVERSED: bool = true;
     fn convert_height(height: f32) -> f32 {
         height / (16.0f32 / 3.0f32).sqrt()
@@ -26,6 +26,9 @@ impl ShapeMesh for Tetrahedron {
             [-one, one, -one],
             [-one, -one, one],
         ]
+    }
+    fn convert_to_triangles(face: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES] {
+        [face]
     }
     fn unit_length(self) -> f32 {
         self.unit_length
@@ -51,16 +54,7 @@ impl NewShape for TetrahedronOutline {
 }
 impl MeshBuilder for Tetrahedron {
     fn build(&self) -> Mesh {
-        let position = Self::oriented_vertices(self.unit_length).to_vec();
-        let indices = Indices::U16(Self::face_indices().as_flattened().to_vec());
-        let mut mesh = Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        );
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, position);
-        mesh.insert_indices(indices);
-        mesh.compute_normals();
-        mesh
+        self.mesh()
     }
 }
 pub struct TetrahedronOutline {
