@@ -1,36 +1,45 @@
-use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized, face};
+use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
 use bevy::asset::RenderAssetUsages;
-use bevy::math::{Quat, Vec3};
+use bevy::math::Vec3;
 use bevy::mesh::{Indices, Mesh, MeshBuilder, PrimitiveTopology};
-use bevy::prelude::Transform;
 use bevy_polyline::polyline::Polyline;
+#[derive(Clone, Copy)]
 pub struct Octahedron {
     pub unit_length: f32,
 }
 impl ShapeMesh for Octahedron {
     type Outline = OctahedronOutline;
-    fn faces(height: f32) -> impl ExactSizeIterator<Item = Transform> {
-        let v = pos(to_height(height)).map(Vec3::from);
-        face_indices()
-            .map(|l| l.map(|i| v[usize::from(i)]))
-            .map(|vec| face(vec, false))
-            .into_iter()
+    type const VERTICES: usize = 6;
+    type const FACES: usize = 8;
+    type const FACE: usize = 3;
+    fn convert_height(height: f32) -> f32 {
+        height / (6.0f32 / 4.0f32).sqrt()
     }
-}
-fn to_height(height: f32) -> f32 {
-    height / (6.0f32 / 4.0f32).sqrt()
-}
-fn face_indices() -> [[u16; 3]; 8] {
-    [
-        [0, 1, 2],
-        [0, 2, 4],
-        [0, 5, 1],
-        [0, 4, 5],
-        [3, 2, 1],
-        [3, 4, 2],
-        [3, 1, 5],
-        [3, 5, 4],
-    ]
+    fn face_indices() -> [[u16; 3]; 8] {
+        [
+            [0, 1, 2],
+            [0, 2, 4],
+            [0, 5, 1],
+            [0, 4, 5],
+            [3, 2, 1],
+            [3, 4, 2],
+            [3, 1, 5],
+            [3, 5, 4],
+        ]
+    }
+    fn vertices(one: f32) -> [[f32; 3]; 6] {
+        [
+            [one, 0.0, 0.0],
+            [0.0, one, 0.0],
+            [0.0, 0.0, one],
+            [-one, 0.0, 0.0],
+            [0.0, -one, 0.0],
+            [0.0, 0.0, -one],
+        ]
+    }
+    fn unit_length(self) -> f32 {
+        self.unit_length
+    }
 }
 impl ShapeOutline for OctahedronOutline {
     type Mesh = Octahedron;
@@ -38,39 +47,21 @@ impl ShapeOutline for OctahedronOutline {
 impl NewShape for Octahedron {
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: to_height(height),
+            unit_length: Self::convert_height(height),
         }
     }
 }
 impl NewShape for OctahedronOutline {
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: to_height(height),
+            unit_length: <Self as ShapeOutline>::Mesh::convert_height(height),
         }
     }
 }
-fn pos(unit_length: f32) -> [[f32; 3]; 6] {
-    let one = unit_length;
-    let position_pre: [[f32; 3]; _] = [
-        [one, 0.0, 0.0],
-        [0.0, one, 0.0],
-        [0.0, 0.0, one],
-        [-one, 0.0, 0.0],
-        [0.0, -one, 0.0],
-        [0.0, 0.0, -one],
-    ];
-    let dir = Quat::from_rotation_arc(
-        average_normalized([position_pre[0], position_pre[1], position_pre[2]]),
-        -Vec3::Y,
-    );
-    position_pre
-        .map(|p| dir * Vec3::new(p[0], p[1], p[2]))
-        .map(|v| [v.x, v.y, v.z])
-}
 impl MeshBuilder for Octahedron {
     fn build(&self) -> Mesh {
-        let position = pos(self.unit_length).to_vec();
-        let indices = Indices::U16(face_indices().as_flattened().to_vec());
+        let position = Self::oriented_vertices(self.unit_length).to_vec();
+        let indices = Indices::U16(Self::face_indices().as_flattened().to_vec());
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),
@@ -86,7 +77,7 @@ pub struct OctahedronOutline {
 }
 impl From<OctahedronOutline> for Polyline {
     fn from(value: OctahedronOutline) -> Self {
-        let position = pos(value.unit_length);
+        let position = Octahedron::oriented_vertices(value.unit_length);
         #[rustfmt::skip]
         let ind = [
             0, 1, 2, 2,

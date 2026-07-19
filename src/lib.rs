@@ -1,3 +1,6 @@
+#![allow(incomplete_features)]
+#![feature(min_generic_const_args)]
+#![feature(inherent_associated_types)]
 use bevy::color::Color;
 pub mod app;
 pub mod assets;

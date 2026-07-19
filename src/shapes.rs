@@ -1,6 +1,7 @@
 use crate::assets::Asset;
 use crate::physics::{bounce, physics};
 use crate::{CARD_THICKNESS, WORLD_FONT_SIZE};
+use avian3d::parry::glamx::Quat;
 use bevy::color::{Color, Srgba};
 use bevy::ecs::children;
 use bevy::material::AlphaMode;
@@ -37,8 +38,12 @@ fn face<const N: usize>(elems: [Vec3; N], rev: bool) -> Transform {
 pub trait NewShape {
     fn from_height(height: f32) -> Self;
 }
-pub trait ShapeMesh: NewShape + MeshBuilder + Sized {
+pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
     type Outline: ShapeOutline;
+    type const VERTICES: usize;
+    type const FACES: usize;
+    type const FACE: usize;
+    const IS_REVERSED: bool = false;
     #[must_use]
     fn bundle(
         height: f32,
@@ -78,7 +83,7 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized {
             bounce(),
         ));
         ent.with_children(|parent| {
-            for (i, t) in Self::faces(height).enumerate() {
+            for (i, t) in Self::faces(height).into_iter().enumerate() {
                 parent.spawn((
                     t,
                     Text3d::new((i + 1).to_string()),
@@ -101,7 +106,29 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized {
         });
     }
     #[must_use]
-    fn faces(height: f32) -> impl ExactSizeIterator<Item = Transform>;
+    fn faces(height: f32) -> [Transform; Self::FACES] {
+        let v = Self::oriented_vertices(Self::convert_height(height)).map(Vec3::from);
+        Self::face_indices()
+            .map(|l| l.map(|i| v[usize::from(i)]))
+            .map(|vec| face(vec, Self::IS_REVERSED))
+    }
+    #[must_use]
+    fn convert_height(height: f32) -> f32;
+    #[must_use]
+    fn face_indices() -> [[u16; Self::FACE]; Self::FACES];
+    #[must_use]
+    fn vertices(one: f32) -> [[f32; 3]; Self::VERTICES];
+    #[must_use]
+    fn oriented_vertices(one: f32) -> [[f32; 3]; Self::VERTICES] {
+        let vertices = Self::vertices(one);
+        let dir = Quat::from_rotation_arc(
+            average_normalized(Self::face_indices()[0].map(|i| vertices[usize::from(i)])),
+            -Vec3::Y,
+        );
+        vertices.map(|p| dir * Vec3::from(p)).map(|v| v.to_array())
+    }
+    #[must_use]
+    fn unit_length(self) -> f32;
 }
 pub trait ShapeOutline: NewShape + Into<Polyline> {
     type Mesh: ShapeMesh;

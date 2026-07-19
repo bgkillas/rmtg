@@ -1,33 +1,45 @@
-use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, face};
+use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
 use avian3d::parry::glamx::Vec3;
 use bevy::mesh::{Mesh, MeshBuilder};
-use bevy::prelude::{Cuboid, Transform};
+use bevy::prelude::Cuboid;
 use bevy_polyline::polyline::Polyline;
+#[derive(Clone, Copy)]
 pub struct Cube {
     pub unit_length: f32,
 }
 impl ShapeMesh for Cube {
     type Outline = CubeOutline;
-    fn faces(height: f32) -> impl ExactSizeIterator<Item = Transform> {
-        let v = pos(to_height(height)).map(Vec3::from);
-        face_indices()
-            .map(|l| l.map(|i| v[usize::from(i)]))
-            .map(|vec| face(vec, false))
-            .into_iter()
+    type const VERTICES: usize = 8;
+    type const FACES: usize = 6;
+    type const FACE: usize = 4;
+    fn convert_height(height: f32) -> f32 {
+        height / 2.0
     }
-}
-fn to_height(height: f32) -> f32 {
-    height / 2.0
-}
-fn face_indices() -> [[u16; 4]; 6] {
-    [
-        [0, 1, 2, 5],
-        [0, 1, 3, 4],
-        [0, 2, 3, 6],
-        [7, 6, 5, 2],
-        [7, 6, 4, 3],
-        [7, 5, 4, 1],
-    ]
+    fn face_indices() -> [[u16; Self::FACE]; Self::FACES] {
+        [
+            [0, 1, 2, 5],
+            [0, 1, 3, 4],
+            [0, 2, 3, 6],
+            [7, 6, 5, 2],
+            [7, 6, 4, 3],
+            [7, 5, 4, 1],
+        ]
+    }
+    fn vertices(one: f32) -> [[f32; 3]; Self::VERTICES] {
+        [
+            [one, one, one],
+            [-one, one, one],
+            [one, -one, one],
+            [one, one, -one],
+            [-one, one, -one],
+            [-one, -one, one],
+            [one, -one, -one],
+            [-one, -one, -one],
+        ]
+    }
+    fn unit_length(self) -> f32 {
+        self.unit_length
+    }
 }
 impl ShapeOutline for CubeOutline {
     type Mesh = Cube;
@@ -50,25 +62,13 @@ impl NewShape for Cube {
 impl NewShape for CubeOutline {
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: to_height(height),
+            unit_length: Cube::convert_height(height),
         }
     }
 }
-fn pos(one: f32) -> [[f32; 3]; 8] {
-    [
-        [one, one, one],
-        [-one, one, one],
-        [one, -one, one],
-        [one, one, -one],
-        [-one, one, -one],
-        [-one, -one, one],
-        [one, -one, -one],
-        [-one, -one, -one],
-    ]
-}
 impl From<CubeOutline> for Polyline {
     fn from(value: CubeOutline) -> Self {
-        let v = pos(value.unit_length).map(Vec3::from);
+        let v = Cube::oriented_vertices(value.unit_length).map(Vec3::from);
         #[rustfmt::skip]
         let vertices = vec![
             v[0], v[0], v[0],

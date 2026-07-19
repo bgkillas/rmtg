@@ -1,42 +1,69 @@
-use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized, face};
-use avian3d::parry::glamx::{Quat, Vec3};
+use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
+use avian3d::parry::glamx::Vec3;
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, Mesh, MeshBuilder, PrimitiveTopology};
-use bevy::prelude::Transform;
 use bevy_polyline::polyline::Polyline;
 use std::f32::consts::GOLDEN_RATIO;
+#[derive(Clone, Copy)]
 pub struct Dodecahedron {
     pub unit_length: f32,
 }
 impl ShapeMesh for Dodecahedron {
     type Outline = DodecahedronOutline;
-    fn faces(height: f32) -> impl ExactSizeIterator<Item = Transform> {
-        let v = pos(to_height(height)).map(Vec3::from);
-        face_indices()
-            .map(|l| l.map(|i| v[usize::from(i)]))
-            .map(|vec| face(vec, false))
-            .into_iter()
+    type const VERTICES: usize = 20;
+    type const FACES: usize = 12;
+    type const FACE: usize = 5;
+    fn convert_height(height: f32) -> f32 {
+        height * ((25.0f32 + 11.0f32 * 5.0f32.sqrt()) / 10.0f32).sqrt()
+            / 4.0
+            / (5.0f32.sqrt() - 1.0)
     }
-}
-fn to_height(height: f32) -> f32 {
-    height * ((25.0f32 + 11.0f32 * 5.0f32.sqrt()) / 10.0f32).sqrt() / 4.0 / (5.0f32.sqrt() - 1.0)
-}
-//TODO
-fn face_indices() -> [[u16; 5]; 12] {
-    [
-        [0, 15, 8, 1, 9],
-        [0, 8, 2, 14, 10],
-        [0, 16, 9, 3, 10],
-        [1, 5, 8, 14, 13],
-        [1, 4, 13, 19, 15],
-        [2, 6, 10, 16, 12],
-        [2, 5, 12, 18, 14],
-        [3, 4, 9, 15, 11],
-        [3, 6, 11, 17, 16],
-        [4, 11, 7, 17, 19],
-        [5, 13, 19, 7, 5],
-        [6, 12, 18, 7, 6],
-    ]
+    //TODO
+    fn face_indices() -> [[u16; 5]; 12] {
+        [
+            [0, 15, 8, 1, 9],
+            [0, 8, 2, 14, 10],
+            [0, 16, 9, 3, 10],
+            [1, 5, 8, 14, 13],
+            [1, 4, 13, 19, 15],
+            [2, 6, 10, 16, 12],
+            [2, 5, 12, 18, 14],
+            [3, 4, 9, 15, 11],
+            [3, 6, 11, 17, 16],
+            [4, 11, 7, 17, 19],
+            [5, 13, 19, 7, 5],
+            [6, 12, 18, 7, 6],
+        ]
+    }
+    fn vertices(one: f32) -> [[f32; 3]; 20] {
+        let grt = GOLDEN_RATIO * one;
+        let rgr = GOLDEN_RATIO.recip() * one;
+        [
+            [one, one, one],
+            [-one, one, one],
+            [one, -one, one],
+            [one, one, -one],
+            [-one, one, -one],
+            [-one, -one, one],
+            [one, -one, -one],
+            [-one, -one, -one],
+            [0.0, rgr, grt],
+            [rgr, grt, 0.0],
+            [grt, 0.0, rgr],
+            [0.0, rgr, -grt],
+            [rgr, -grt, 0.0],
+            [-grt, 0.0, rgr],
+            [0.0, -rgr, grt],
+            [-rgr, grt, 0.0],
+            [grt, 0.0, -rgr],
+            [0.0, -rgr, -grt],
+            [-rgr, -grt, 0.0],
+            [-grt, 0.0, -rgr],
+        ]
+    }
+    fn unit_length(self) -> f32 {
+        self.unit_length
+    }
 }
 impl ShapeOutline for DodecahedronOutline {
     type Mesh = Dodecahedron;
@@ -44,54 +71,20 @@ impl ShapeOutline for DodecahedronOutline {
 impl NewShape for Dodecahedron {
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: to_height(height),
+            unit_length: Self::convert_height(height),
         }
     }
 }
 impl NewShape for DodecahedronOutline {
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: to_height(height),
+            unit_length: <Self as ShapeOutline>::Mesh::convert_height(height),
         }
     }
 }
-fn pos(unit_length: f32) -> [[f32; 3]; 20] {
-    let grt = GOLDEN_RATIO * unit_length;
-    let rgr = GOLDEN_RATIO.recip() * unit_length;
-    let one = unit_length;
-    let position_pre: [[f32; 3]; _] = [
-        [one, one, one],
-        [-one, one, one],
-        [one, -one, one],
-        [one, one, -one],
-        [-one, one, -one],
-        [-one, -one, one],
-        [one, -one, -one],
-        [-one, -one, -one],
-        [0.0, rgr, grt],
-        [rgr, grt, 0.0],
-        [grt, 0.0, rgr],
-        [0.0, rgr, -grt],
-        [rgr, -grt, 0.0],
-        [-grt, 0.0, rgr],
-        [0.0, -rgr, grt],
-        [-rgr, grt, 0.0],
-        [grt, 0.0, -rgr],
-        [0.0, -rgr, -grt],
-        [-rgr, -grt, 0.0],
-        [-grt, 0.0, -rgr],
-    ];
-    let dir = Quat::from_rotation_arc(
-        average_normalized([0, 1, 8, 9, 15].map(|i| position_pre[i])),
-        -Vec3::Y,
-    );
-    position_pre
-        .map(|p| dir * Vec3::new(p[0], p[1], p[2]))
-        .map(|v| [v.x, v.y, v.z])
-}
 impl MeshBuilder for Dodecahedron {
     fn build(&self) -> Mesh {
-        let position = pos(self.unit_length).to_vec();
+        let position = Self::oriented_vertices(self.unit_length).to_vec();
         /*TODO let indices = Indices::U16(
             face_indices()
                 .map(|v| [v[0], v[3], v[1], v[1], v[3], v[2], v[3], v[0], v[4]])
@@ -128,7 +121,7 @@ pub struct DodecahedronOutline {
 }
 impl From<DodecahedronOutline> for Polyline {
     fn from(value: DodecahedronOutline) -> Self {
-        let position = pos(value.unit_length);
+        let position = Dodecahedron::oriented_vertices(value.unit_length);
         #[rustfmt::skip]
         let ind = [
             15,  0,  9,
