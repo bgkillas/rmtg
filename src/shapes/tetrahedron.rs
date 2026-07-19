@@ -1,4 +1,4 @@
-use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized};
+use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized, face};
 use bevy::asset::RenderAssetUsages;
 use bevy::math::{Quat, Vec3};
 use bevy::mesh::{Indices, Mesh, MeshBuilder, PrimitiveTopology};
@@ -10,21 +10,31 @@ pub struct Tetrahedron {
 impl NewShape for Tetrahedron {
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / (16.0f32 / 3.0f32).sqrt(),
+            unit_length: to_height(height),
         }
     }
 }
 impl NewShape for TetrahedronOutline {
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / (16.0f32 / 3.0f32).sqrt(),
+            unit_length: to_height(height),
         }
     }
+}
+fn to_height(height: f32) -> f32 {
+    height / (16.0f32 / 3.0f32).sqrt()
+}
+fn face_indices() -> [[u16; 3]; 4] {
+    [[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]]
 }
 impl ShapeMesh for Tetrahedron {
     type Outline = TetrahedronOutline;
     fn faces(height: f32) -> impl ExactSizeIterator<Item = Transform> {
-        [].into_iter()
+        let v = pos(to_height(height)).map(Vec3::from);
+        face_indices()
+            .map(|l| l.map(|i| v[usize::from(i)]))
+            .map(|vec| face(vec, true))
+            .into_iter()
     }
 }
 impl ShapeOutline for TetrahedronOutline {
@@ -50,13 +60,7 @@ fn pos(unit_length: f32) -> [[f32; 3]; 4] {
 impl MeshBuilder for Tetrahedron {
     fn build(&self) -> Mesh {
         let position = pos(self.unit_length).to_vec();
-        #[rustfmt::skip]
-        let indices = Indices::U32(vec![
-            0, 2, 1,
-            0, 1, 3,
-            0, 3, 2,
-            1, 2, 3,
-        ]);
+        let indices = Indices::U16(face_indices().as_flattened().to_vec());
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),

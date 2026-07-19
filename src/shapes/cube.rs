@@ -9,10 +9,25 @@ pub struct Cube {
 impl ShapeMesh for Cube {
     type Outline = CubeOutline;
     fn faces(height: f32) -> impl ExactSizeIterator<Item = Transform> {
-        let one = height / 2.0;
-        let v = pos(one);
-        [face([v[0], v[1], v[2], v[5]])].into_iter()
+        let v = pos(to_height(height)).map(Vec3::from);
+        face_indices()
+            .map(|l| l.map(|i| v[usize::from(i)]))
+            .map(|vec| face(vec, false))
+            .into_iter()
     }
+}
+fn to_height(height: f32) -> f32 {
+    height / 2.0
+}
+fn face_indices() -> [[u16; 4]; 6] {
+    [
+        [0, 1, 2, 5],
+        [0, 1, 3, 4],
+        [0, 2, 3, 6],
+        [7, 6, 5, 2],
+        [7, 6, 4, 3],
+        [7, 5, 4, 1],
+    ]
 }
 impl ShapeOutline for CubeOutline {
     type Mesh = Cube;
@@ -35,7 +50,7 @@ impl NewShape for Cube {
 impl NewShape for CubeOutline {
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / 2.0,
+            unit_length: to_height(height),
         }
     }
 }

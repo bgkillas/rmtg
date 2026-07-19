@@ -1,4 +1,4 @@
-use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized};
+use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized, face};
 use avian3d::parry::glamx::{Quat, Vec3};
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, Mesh, MeshBuilder, PrimitiveTopology};
@@ -11,8 +11,39 @@ pub struct Icosahedron {
 impl ShapeMesh for Icosahedron {
     type Outline = IcosahedronOutline;
     fn faces(height: f32) -> impl ExactSizeIterator<Item = Transform> {
-        [].into_iter()
+        let v = pos(to_height(height)).map(Vec3::from);
+        face_indices()
+            .map(|l| l.map(|i| v[usize::from(i)]))
+            .map(|vec| face(vec, false))
+            .into_iter()
     }
+}
+fn to_height(height: f32) -> f32 {
+    height / (48.0f32.sqrt() / GOLDEN_RATIO.powi(2))
+}
+fn face_indices() -> [[u16; 3]; 20] {
+    [
+        [0, 1, 2],
+        [0, 6, 1],
+        [8, 0, 2],
+        [8, 4, 0],
+        [3, 8, 2],
+        [3, 2, 7],
+        [7, 2, 1],
+        [0, 4, 6],
+        [4, 11, 6],
+        [6, 11, 5],
+        [1, 5, 7],
+        [4, 10, 11],
+        [4, 8, 10],
+        [10, 8, 3],
+        [10, 3, 9],
+        [11, 10, 9],
+        [11, 9, 5],
+        [5, 9, 7],
+        [9, 3, 7],
+        [1, 6, 5],
+    ]
 }
 impl ShapeOutline for IcosahedronOutline {
     type Mesh = Icosahedron;
@@ -20,14 +51,14 @@ impl ShapeOutline for IcosahedronOutline {
 impl NewShape for Icosahedron {
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / (48.0f32.sqrt() / GOLDEN_RATIO.powi(2)),
+            unit_length: to_height(height),
         }
     }
 }
 impl NewShape for IcosahedronOutline {
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / (48.0f32.sqrt() / GOLDEN_RATIO.powi(2)),
+            unit_length: to_height(height),
         }
     }
 }
@@ -59,19 +90,7 @@ fn pos(unit_length: f32) -> [[f32; 3]; 12] {
 impl MeshBuilder for Icosahedron {
     fn build(&self) -> Mesh {
         let position = pos(self.unit_length).to_vec();
-        #[rustfmt::skip]
-        let indices = Indices::U32(vec![
-             0,  1,  2,  0,  6,  1,
-             8,  0,  2,  8,  4,  0,
-             3,  8,  2,  3,  2,  7,
-             7,  2,  1,  0,  4,  6,
-             4, 11,  6,  6, 11,  5,
-             1,  5,  7,  4, 10, 11,
-             4,  8, 10, 10,  8,  3,
-            10,  3,  9, 11, 10,  9,
-            11,  9,  5,  5,  9,  7,
-             9,  3,  7,  1,  6,  5,
-        ]);
+        let indices = Indices::U16(face_indices().as_flattened().to_vec());
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),

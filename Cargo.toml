@@ -56,7 +56,7 @@ rand = { version = "0.10.2", default-features = false, features = ["std", "alloc
 bevy_mod_mipmap_generator = {git = "https://github.com/DGriffin91/bevy_mod_mipmap_generator", default-features = false}
 ucalc_lib = {git = "https://github.com/bgkillas/ucalc"}
 rules = {path = "rules"}
-uuid = "1.23.5"
+uuid = "1.24.0"
 bevy_microphone = {git = "https://github.com/bgkillas/bevy_microphone", optional = true}
 rodio = {version = "0.22.2",default-features = false, optional = true}
 rustc-hash = "2.1.3"

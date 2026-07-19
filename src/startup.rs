@@ -58,35 +58,35 @@ pub fn startup(
         }),
         MeshPickingCamera,
     ));
-    Cube::spawn_dice(
+    Cube::insert_dice(
         1.0,
         Color::WHITE,
         Color::BLACK,
         &mut asset,
         commands.spawn((Transform::from_xyz(-8.0, 1.0, 0.0), Pickable::default())),
     );
-    Dodecahedron::spawn_dice(
+    Dodecahedron::insert_dice(
         1.0,
         Color::WHITE,
         Color::BLACK,
         &mut asset,
         commands.spawn((Transform::from_xyz(-6.0, 1.0, 0.0), Pickable::default())),
     );
-    Icosahedron::spawn_dice(
+    Icosahedron::insert_dice(
         1.0,
         Color::WHITE,
         Color::BLACK,
         &mut asset,
         commands.spawn((Transform::from_xyz(-4.0, 1.0, 0.0), Pickable::default())),
     );
-    Octahedron::spawn_dice(
+    Octahedron::insert_dice(
         1.0,
         Color::WHITE,
         Color::BLACK,
         &mut asset,
         commands.spawn((Transform::from_xyz(-2.0, 1.0, 0.0), Pickable::default())),
     );
-    Tetrahedron::spawn_dice(
+    Tetrahedron::insert_dice(
         1.0,
         Color::WHITE,
         Color::BLACK,

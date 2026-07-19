@@ -19,17 +19,20 @@ pub mod tetrahedron;
 fn average_normalized<const N: usize>(elems: [[f32; 3]; N]) -> Vec3 {
     elems.map(Vec3::from).into_iter().sum::<Vec3>().normalize()
 }
-fn face<const N: usize>(elems: [[f32; 3]; N]) -> Transform {
-    let vecs = elems.map(Vec3::from);
-    let pos = vecs.into_iter().sum::<Vec3>() / N as f32;
+fn face<const N: usize>(elems: [Vec3; N], rev: bool) -> Transform {
+    let pos = elems.into_iter().sum::<Vec3>() / N as f32;
     let end = if N.is_multiple_of(2) {
-        (vecs[0] + vecs[1]) / 2.0
+        (elems[0] + elems[1]) / 2.0
     } else {
-        vecs[0]
+        elems[0]
     };
     let (n, l) = pos.normalize_and_length();
-    let pos_epsilon = n * (l + CARD_THICKNESS);
-    Transform::from_translation(pos_epsilon).looking_to(-pos, end - pos)
+    let pos_epsilon = n * if rev {
+        l - CARD_THICKNESS
+    } else {
+        l + CARD_THICKNESS
+    };
+    Transform::from_translation(pos_epsilon).looking_to(if rev { pos } else { -pos }, end - pos)
 }
 pub trait NewShape {
     fn from_height(height: f32) -> Self;
@@ -63,7 +66,7 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized {
             InheritedVisibility::VISIBLE,
         )
     }
-    fn spawn_dice(
+    fn insert_dice(
         height: f32,
         base_color: Color,
         outline_color: Color,
@@ -90,7 +93,7 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized {
                         size: WORLD_FONT_SIZE,
                         anchor: TextAnchor::CENTER,
                         color: Srgba::BLACK,
-                        world_scale: Some(Vec2::splat(1.0)),
+                        world_scale: Some(Vec2::splat(0.5)),
                         ..Text3dStyling::default()
                     },
                 ));

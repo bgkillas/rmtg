@@ -1,4 +1,4 @@
-use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized};
+use crate::shapes::{NewShape, ShapeMesh, ShapeOutline, average_normalized, face};
 use bevy::asset::RenderAssetUsages;
 use bevy::math::{Quat, Vec3};
 use bevy::mesh::{Indices, Mesh, MeshBuilder, PrimitiveTopology};
@@ -10,8 +10,27 @@ pub struct Octahedron {
 impl ShapeMesh for Octahedron {
     type Outline = OctahedronOutline;
     fn faces(height: f32) -> impl ExactSizeIterator<Item = Transform> {
-        [].into_iter()
+        let v = pos(to_height(height)).map(Vec3::from);
+        face_indices()
+            .map(|l| l.map(|i| v[usize::from(i)]))
+            .map(|vec| face(vec, false))
+            .into_iter()
     }
+}
+fn to_height(height: f32) -> f32 {
+    height / (6.0f32 / 4.0f32).sqrt()
+}
+fn face_indices() -> [[u16; 3]; 8] {
+    [
+        [0, 1, 2],
+        [0, 2, 4],
+        [0, 5, 1],
+        [0, 4, 5],
+        [3, 2, 1],
+        [3, 4, 2],
+        [3, 1, 5],
+        [3, 5, 4],
+    ]
 }
 impl ShapeOutline for OctahedronOutline {
     type Mesh = Octahedron;
@@ -19,14 +38,14 @@ impl ShapeOutline for OctahedronOutline {
 impl NewShape for Octahedron {
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / (6.0f32 / 4.0f32).sqrt(),
+            unit_length: to_height(height),
         }
     }
 }
 impl NewShape for OctahedronOutline {
     fn from_height(height: f32) -> Self {
         Self {
-            unit_length: height / (6.0f32 / 4.0f32).sqrt(),
+            unit_length: to_height(height),
         }
     }
 }
@@ -51,17 +70,7 @@ fn pos(unit_length: f32) -> [[f32; 3]; 6] {
 impl MeshBuilder for Octahedron {
     fn build(&self) -> Mesh {
         let position = pos(self.unit_length).to_vec();
-        #[rustfmt::skip]
-        let indices = Indices::U32(vec![
-            0, 1, 2,
-            0, 2, 4,
-            0, 5, 1,
-            0, 4, 5,
-            3, 2, 1,
-            3, 4, 2,
-            3, 1, 5,
-            3, 5, 4,
-        ]);
+        let indices = Indices::U16(face_indices().as_flattened().to_vec());
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),
