@@ -13,14 +13,14 @@ rules::generate_types!();
 type Value = f64;
 #[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct Card {
-    subcard: SubCard,
-    equiped: Vec<SubCard>,
-    power: Option<Value>,
-    toughness: Option<Value>,
-    counters: Option<Value>,
-    loyalty: Option<Value>,
-    misc: Option<Value>,
-    is_token: bool,
+    pub subcard: SubCard,
+    pub equiped: Vec<SubCard>,
+    pub power: Option<Value>,
+    pub toughness: Option<Value>,
+    pub counters: Option<Value>,
+    pub loyalty: Option<Value>,
+    pub misc: Option<Value>,
+    pub is_token: bool,
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct SubCard {
@@ -32,7 +32,7 @@ pub struct SubCard {
 #[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct CardData {
     pub face: CardInfo,
-    pub back: Option<CardInfo>,
+    pub back: Option<Box<CardInfo>>,
     pub layout: Layout,
 }
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
@@ -126,9 +126,9 @@ pub enum Color {
     Green,
 }
 pub struct CardIter<'a> {
-    subcard: &'a SubCard,
-    equiped: Iter<'a, SubCard>,
-    started: bool,
+    pub subcard: &'a SubCard,
+    pub equiped: Iter<'a, SubCard>,
+    pub started: bool,
 }
 pub struct CardIterMut<'a> {
     pub subcard: *mut SubCard,
@@ -405,7 +405,10 @@ impl CardData {
     pub fn clone_no_image(&self) -> Self {
         Self {
             face: self.face.clone_no_image(),
-            back: self.back.as_ref().map(CardInfo::clone_no_image),
+            back: self
+                .back
+                .as_ref()
+                .map(|c| CardInfo::clone_no_image(c).into()),
             layout: self.layout,
         }
     }
@@ -580,7 +583,7 @@ impl SubCard {
         if self.flipped {
             Some(&self.data.face)
         } else {
-            self.data.back.as_ref()
+            self.data.back.as_deref()
         }
     }
     #[must_use]
@@ -837,4 +840,12 @@ fn get_key(key: &str) -> Option<SearchKey> {
         "toughness" | "h" => SearchKey::Toughness,
         _ => return None,
     })
+}
+impl From<SubCard> for Card {
+    fn from(subcard: SubCard) -> Self {
+        Self {
+            subcard,
+            ..Card::default()
+        }
+    }
 }

@@ -11,10 +11,12 @@ uuid = "1.24.0"
 image = {version = "0.25.10", default-features = false, features = ["jpeg"]}
 bevy_mod_mipmap_generator = {git = "https://github.com/DGriffin91/bevy_mod_mipmap_generator", default-features = false}
 json = "0.12.4"
+rand = { version = "0.10.2", default-features = false, features = ["std", "alloc", "simd_support", "sys_rng"] }
 bitcode = {git = "https://github.com/SoftbearStudios/bitcode", branch = "custom_encoder"}
 bevy = {version="0.19.0", default-features = false}
 rules = {workspace = true}
 enumset = "1.1.13"
+itertools = "0.15.0"
 
 [lints]
 workspace = true
