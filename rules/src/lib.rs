@@ -122,9 +122,9 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
             #( #idents, )*
         }
         pub const SUBTYPES: &[SubType] = &[#( SubType::#idents, )*];
-        impl std::str::FromStr for SubType {
-            type Err = ();
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
+        impl TryFrom<&str> for SubType {
+            type Error = ();
+            fn try_from(s: &str) -> Result<Self, Self::Error> {
                 match s.to_ascii_lowercase().as_str() {
                     #( #matchs, )*
                     _ => Err(()),
@@ -143,9 +143,9 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
             #( #nidents, )*
         }
         pub const TYPES: &[MainType] = &[#( MainType::#nidents, )*];
-        impl std::str::FromStr for MainType {
-            type Err = ();
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
+        impl TryFrom<&str> for MainType {
+            type Error = ();
+            fn try_from(s: &str) -> Result<Self, Self::Error> {
                 match s.to_ascii_lowercase().as_str() {
                     #( #nmatchs, )*
                     _ => Err(()),
@@ -164,9 +164,9 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
             #( #sidents, )*
         }
         pub const SUPERTYPES: &[SuperType] = &[#( SuperType::#sidents, )*];
-        impl std::str::FromStr for SuperType {
-            type Err = ();
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
+        impl TryFrom<&str> for SuperType {
+            type Error = ();
+            fn try_from(s: &str) -> Result<Self, Self::Error> {
                 match s.to_ascii_lowercase().as_str() {
                     #( #smatchs, )*
                     _ => Err(()),

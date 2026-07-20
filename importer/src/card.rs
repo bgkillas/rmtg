@@ -8,7 +8,6 @@ use enumset::{EnumSet, EnumSetType};
 use std::cmp::Ordering;
 use std::mem;
 use std::slice::{Iter, IterMut};
-use std::str::FromStr;
 rules::generate_types!();
 type Value = f64;
 #[derive(Debug, Default, Clone, Encode, Decode)]
@@ -58,17 +57,18 @@ pub struct Cost {
 pub struct CardInfo {
     pub name: String,
     pub mana_cost: Cost,
-    pub card_type: Types,
-    pub text: String,
-    pub color: ColorIdentity,
+    pub type_line: Types,
+    pub oracle_text: String,
+    pub colors: Colors,
+    pub color_identity: Colors,
     pub power: Option<u8>,
     pub toughness: Option<u8>,
     pub loyalty: Option<u8>,
     #[bitcode(skip)]
-    pub image: UninitImage,
+    pub image: MaybeImage,
 }
 #[derive(Debug, Clone, Default)]
-pub struct UninitImage {
+pub struct MaybeImage {
     pub image: Option<Handle<Image>>,
 }
 #[derive(Debug, Default, Clone, PartialOrd, Encode, Decode, Eq, PartialEq)]
@@ -108,13 +108,13 @@ struct SubTypesCoder {
     bytes: [u8; size_of::<EnumSet<SubType>>()],
 }
 #[derive(Debug, Default, Clone, Copy, PartialOrd, Encode, Decode, PartialEq)]
-pub struct ColorIdentity {
-    #[bitcode(with = "ColorIdentityCoder")]
+pub struct Colors {
+    #[bitcode(with = "ColorsCoder")]
     pub colors: EnumSet<Color>,
 }
 #[derive(Debug, Default, Clone, Copy, Encode, Decode, PartialEq)]
 #[repr(transparent)]
-struct ColorIdentityCoder {
+struct ColorsCoder {
     bytes: [u8; size_of::<EnumSet<Color>>()],
 }
 #[derive(Debug, Encode, Decode, EnumSetType)]
@@ -187,12 +187,12 @@ impl From<&EnumSet<SubType>> for SubTypesCoder {
         unsafe { mem::transmute(*value) }
     }
 }
-impl From<ColorIdentityCoder> for EnumSet<Color> {
-    fn from(value: ColorIdentityCoder) -> Self {
+impl From<ColorsCoder> for EnumSet<Color> {
+    fn from(value: ColorsCoder) -> Self {
         unsafe { mem::transmute(value) }
     }
 }
-impl From<&EnumSet<Color>> for ColorIdentityCoder {
+impl From<&EnumSet<Color>> for ColorsCoder {
     fn from(value: &EnumSet<Color>) -> Self {
         unsafe { mem::transmute(*value) }
     }
@@ -203,13 +203,14 @@ impl CardInfo {
         Self {
             name: self.name.clone(),
             mana_cost: self.mana_cost,
-            card_type: self.card_type.clone(),
-            text: self.text.clone(),
-            color: self.color,
+            type_line: self.type_line.clone(),
+            oracle_text: self.oracle_text.clone(),
+            colors: self.colors,
+            color_identity: self.color_identity,
             power: self.power,
             loyalty: self.loyalty,
             toughness: self.toughness,
-            image: UninitImage::default(),
+            image: MaybeImage::default(),
         }
     }
     #[must_use]
@@ -217,12 +218,12 @@ impl CardInfo {
         self.image.clone_handle()
     }
 }
-impl From<Handle<Image>> for UninitImage {
+impl From<Handle<Image>> for MaybeImage {
     fn from(value: Handle<Image>) -> Self {
         Self { image: Some(value) }
     }
 }
-impl UninitImage {
+impl MaybeImage {
     #[must_use]
     pub fn clone_handle(&self) -> Handle<Image> {
         self.handle().clone()
@@ -254,63 +255,59 @@ impl Types {
         self.main_type.types.iter().any(MainType::is_permanent)
     }
 }
-impl FromStr for Types {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl From<&str> for Types {
+    fn from(s: &str) -> Self {
         let mut ret = Self::default();
         for word in s.split(' ') {
-            if let Ok(super_type) = SuperType::from_str(word) {
+            if let Ok(super_type) = SuperType::try_from(word) {
                 ret.super_type.types.insert(super_type);
-            } else if let Ok(ty) = MainType::from_str(word) {
+            } else if let Ok(ty) = MainType::try_from(word) {
                 ret.main_type.types.insert(ty);
-            } else if let Ok(sub_type) = SubType::from_str(word) {
+            } else if let Ok(sub_type) = SubType::try_from(word) {
                 ret.sub_type.types.insert(sub_type);
             }
         }
-        Ok(ret)
+        ret
     }
 }
-impl FromStr for SuperTypes {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl From<&str> for SuperTypes {
+    fn from(s: &str) -> Self {
         let mut ret = Self::default();
         for word in s.split(' ') {
-            if let Ok(super_type) = SuperType::from_str(word) {
+            if let Ok(super_type) = SuperType::try_from(word) {
                 ret.types.insert(super_type);
             }
         }
-        Ok(ret)
+        ret
     }
 }
-impl FromStr for MainTypes {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl From<&str> for MainTypes {
+    fn from(s: &str) -> Self {
         let mut ret = Self::default();
         for word in s.split(' ') {
-            if let Ok(main_type) = MainType::from_str(word) {
+            if let Ok(main_type) = MainType::try_from(word) {
                 ret.types.insert(main_type);
             }
         }
-        Ok(ret)
+        ret
     }
 }
-impl FromStr for SubTypes {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl From<&str> for SubTypes {
+    fn from(s: &str) -> Self {
         let mut ret = Self::default();
         for word in s.split(' ') {
-            if let Ok(sub_type) = SubType::from_str(word) {
+            if let Ok(sub_type) = SubType::try_from(word) {
                 ret.types.insert(sub_type);
             }
         }
-        Ok(ret)
+        ret
     }
 }
-impl FromStr for ColorIdentity {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl TryFrom<&str> for Colors {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
         let mut cost = Self::default();
-        for c in s.chars() {
+        for c in value.chars() {
             match c {
                 'w' => {
                     cost.colors.insert(Color::White);
@@ -333,7 +330,7 @@ impl FromStr for ColorIdentity {
         Ok(cost)
     }
 }
-impl ColorIdentity {
+impl Colors {
     pub fn parse<'a>(value: impl Iterator<Item = &'a str>) -> Self {
         let mut cost = Self::default();
         for c in value {
@@ -359,7 +356,7 @@ impl ColorIdentity {
         cost
     }
 }
-impl ColorIdentity {
+impl Colors {
     #[must_use]
     pub fn len(&self) -> usize {
         self.colors.len()
@@ -640,10 +637,8 @@ impl CardInfo {
             }
             SearchKey::Type => {
                 if let Ok(count) = value.parse::<usize>() {
-                    self.card_type.len() == count
-                } else if let Ok(types) = value.parse()
-                    && let Some(order) = self.card_type.partial_cmp(&types)
-                {
+                    self.type_line.len() == count
+                } else if let Some(order) = self.type_line.partial_cmp(&Types::from(value)) {
                     order == ordering
                 } else {
                     return false;
@@ -651,9 +646,11 @@ impl CardInfo {
             }
             SearchKey::SuperType => {
                 if let Ok(count) = value.parse::<usize>() {
-                    self.card_type.super_type.types.len() == count
-                } else if let Ok(types) = value.parse()
-                    && let Some(order) = self.card_type.super_type.partial_cmp(&types)
+                    self.type_line.super_type.types.len() == count
+                } else if let Some(order) = self
+                    .type_line
+                    .super_type
+                    .partial_cmp(&SuperTypes::from(value))
                 {
                     order == ordering
                 } else {
@@ -662,9 +659,11 @@ impl CardInfo {
             }
             SearchKey::MainType => {
                 if let Ok(count) = value.parse::<usize>() {
-                    self.card_type.main_type.types.len() == count
-                } else if let Ok(types) = value.parse()
-                    && let Some(order) = self.card_type.main_type.partial_cmp(&types)
+                    self.type_line.main_type.types.len() == count
+                } else if let Some(order) = self
+                    .type_line
+                    .main_type
+                    .partial_cmp(&MainTypes::from(value))
                 {
                     order == ordering
                 } else {
@@ -673,21 +672,21 @@ impl CardInfo {
             }
             SearchKey::SubType => {
                 if let Ok(count) = value.parse::<usize>() {
-                    self.card_type.sub_type.types.len() == count
-                } else if let Ok(types) = value.parse()
-                    && let Some(order) = self.card_type.sub_type.partial_cmp(&types)
+                    self.type_line.sub_type.types.len() == count
+                } else if let Some(order) =
+                    self.type_line.sub_type.partial_cmp(&SubTypes::from(value))
                 {
                     order == ordering
                 } else {
                     return false;
                 }
             }
-            SearchKey::Text => self.text.to_ascii_lowercase().contains(value),
+            SearchKey::Text => self.oracle_text.to_ascii_lowercase().contains(value),
             SearchKey::Color => {
                 if let Ok(count) = value.parse::<usize>() {
-                    self.color.len() == count
-                } else if let Ok(types) = value.parse()
-                    && let Some(order) = self.color.partial_cmp(&types)
+                    self.colors.len() == count
+                } else if let Ok(col) = Colors::try_from(value)
+                    && let Some(order) = self.colors.partial_cmp(&col)
                 {
                     order == ordering
                 } else {

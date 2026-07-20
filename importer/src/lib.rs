@@ -1,3 +1,4 @@
+#![feature(array_try_map)]
 use bevy::math::Vec3;
 use bevy::prelude::Transform;
 pub mod card;

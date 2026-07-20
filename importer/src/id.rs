@@ -11,13 +11,18 @@ struct IdCoder {
 }
 impl From<&Uuid> for IdCoder {
     fn from(value: &Uuid) -> Self {
-        IdCoder {
+        Self {
             bytes: value.as_u128(),
         }
     }
 }
+impl From<Uuid> for Id {
+    fn from(id: Uuid) -> Self {
+        Self { id }
+    }
+}
 impl From<IdCoder> for Uuid {
     fn from(value: IdCoder) -> Self {
-        Uuid::from_u128(value.bytes)
+        Self::from_u128(value.bytes)
     }
 }
