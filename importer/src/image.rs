@@ -57,18 +57,13 @@ fn generate_mips_texture(
     #[allow(unused)] added_cache_size: &mut usize,
 ) -> Option<()> {
     let mut dyn_image = try_into_dynamic(image.clone())?;
-    let has_alpha = false;
-    let loaded_from_cache = false;
-    let mut new_image_data = Vec::new();
     let mip_count = calculate_mip_count(
         dyn_image.width(),
         dyn_image.height(),
         settings.minimum_mip_resolution,
         u32::MAX,
     );
-    if !loaded_from_cache {
-        new_image_data = generate_mips(&mut dyn_image, has_alpha, mip_count, settings);
-    }
+    let new_image_data = generate_mips(&mut dyn_image, mip_count, settings);
     image.texture_descriptor.mip_level_count = mip_count;
     image.data = Some(new_image_data);
     Some(())
@@ -83,7 +78,6 @@ fn try_into_dynamic(image: Image) -> Option<RgbaImage> {
 }
 fn generate_mips(
     dyn_image: &mut RgbaImage,
-    has_alpha: bool,
     mip_count: u32,
     settings: &MipmapGeneratorSettings,
 ) -> Vec<u8> {
@@ -102,7 +96,7 @@ fn generate_mips(
             FilterType::Gaussian => ResizeAlg::Convolution(fast_image_resize::FilterType::Gaussian),
             FilterType::Lanczos3 => ResizeAlg::Convolution(fast_image_resize::FilterType::Lanczos3),
         })
-        .use_alpha(has_alpha);
+        .use_alpha(false);
     for _ in 0..mip_count {
         width /= 2;
         height /= 2;
