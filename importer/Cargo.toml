@@ -13,10 +13,11 @@ bevy_mod_mipmap_generator = {git = "https://github.com/DGriffin91/bevy_mod_mipma
 json = "0.12.4"
 rand = { version = "0.10.2", default-features = false, features = ["std", "alloc", "simd_support", "sys_rng"] }
 bitcode = {git = "https://github.com/SoftbearStudios/bitcode", branch = "custom_encoder"}
-bevy = {version="0.19.0", default-features = false}
+bevy = {version="0.19.0", features = ["ui"], default-features = false}
 rules = {workspace = true}
 enumset = "1.1.13"
 itertools = "0.15.0"
+tokio = {version = "1.53.0", features = ["macros", "rt-multi-thread"]}
 
 [lints]
 workspace = true

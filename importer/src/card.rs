@@ -2,7 +2,7 @@ use crate::id::Id;
 use bevy::asset::Handle;
 use bevy::image::Image;
 use bevy::pbr::StandardMaterial;
-use bevy::prelude::ImageNode;
+use bevy::ui::widget::ImageNode;
 use bitcode::{Decode, Encode};
 use enumset::{EnumSet, EnumSetType};
 use std::cmp::Ordering;
