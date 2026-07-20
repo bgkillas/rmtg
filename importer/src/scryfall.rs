@@ -1,20 +1,44 @@
 use crate::card::{CardData, CardInfo, Layout, MaybeImage};
 use crate::card::{Colors, Cost, SubCard, Types};
 use crate::id::Id;
+use crate::image::parse_bytes;
+use bevy::image::Image;
 use json::{JsonValue, parse};
 use reqwest::Client;
 use uuid::Uuid;
+const URL: &str = "api.scryfall.com";
+const CARD_URL: &str = "cards.scryfall.io";
+const QUALITY: &str = "large";
+const EXTENSION: &str = "jpg";
 impl SubCard {
     #[must_use]
-    pub async fn get(client: &Client, uuid: Uuid) -> Option<Self> {
-        let request = client
-            .get(format!("https://api.scryfall.com/cards/{uuid}"))
-            .send()
-            .await
-            .ok()?;
-        let json_raw = request.text().await.ok()?;
-        let json = parse(&json_raw).unwrap();
-        Self::from_scryfall(json, uuid)
+    pub async fn get(client: &Client, uuid: Uuid) -> Option<(Self, Image)> {
+        async fn get_card(client: &Client, uuid: Uuid) -> Option<SubCard> {
+            let request = client
+                .get(format!("https://{URL}/cards/{uuid}"))
+                .send()
+                .await
+                .ok()?;
+            let json_raw = request.text().await.ok()?;
+            let json = parse(&json_raw).unwrap();
+            SubCard::from_scryfall(json, uuid)
+        }
+        async fn get_image(client: &Client, uuid: Uuid) -> Option<Image> {
+            let [f, ..] = uuid.as_u128().to_be_bytes();
+            let request = client
+                .get(dbg!(format!(
+                    "https://{CARD_URL}/{QUALITY}/front/{:x}/{:x}/{uuid}.{EXTENSION}",
+                    f / 16,
+                    f % 16
+                )))
+                .send()
+                .await
+                .ok()?;
+            let bytes_raw = request.bytes().await.ok()?;
+            parse_bytes(&bytes_raw)
+        }
+        let (card, image) = tokio::join!(get_card(client, uuid), get_image(client, uuid),);
+        card.zip(image)
     }
     #[must_use]
     pub fn from_scryfall(json: JsonValue, uuid: Uuid) -> Option<Self> {
