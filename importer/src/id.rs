@@ -1,23 +1,23 @@
 use bitcode::{Decode, Encode};
-use std::fmt;
-use std::fmt::{Debug, Formatter};
-use std::str::FromStr;
 use uuid::Uuid;
-#[derive(Default, PartialEq, Clone, Copy, Encode, Decode, Eq, Hash)]
-pub struct Id(u128);
-impl FromStr for Id {
-    type Err = uuid::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Uuid::from_str(s).map(|a| Id(a.as_u128()))
+#[derive(Debug, Default, PartialEq, Clone, Copy, Encode, Decode, Eq, Hash)]
+pub struct Id {
+    #[bitcode(with = "IdCoder")]
+    pub id: Uuid,
+}
+#[derive(Debug, Default, PartialEq, Clone, Copy, Encode, Decode, Eq, Hash)]
+struct IdCoder {
+    bytes: u128,
+}
+impl From<&Uuid> for IdCoder {
+    fn from(value: &Uuid) -> Self {
+        IdCoder {
+            bytes: value.as_u128(),
+        }
     }
 }
-impl fmt::Display for Id {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", Uuid::from_u128(self.0))
-    }
-}
-impl Debug for Id {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{self}")
+impl From<IdCoder> for Uuid {
+    fn from(value: IdCoder) -> Self {
+        Uuid::from_u128(value.bytes)
     }
 }

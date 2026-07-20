@@ -11,9 +11,9 @@ build_rel:
 build_full:
     cargo build --profile release_lto
 miri:
-    cargo miri test -- --nocapture
+    cargo miri test -- --nocapture --test-threads=1
 test:
-    cargo test -- --nocapture
+    cargo test --quiet -- --nocapture --test-threads=1
 bench:
     cargo bench --lib --quiet -- --color always --test-threads=1 --nocapture
 clippy:
