@@ -153,6 +153,7 @@ pub enum SearchKey {
     SubType,
     Text,
     Color,
+    Identity,
     Power,
     Toughness,
     Loyalty,
@@ -687,6 +688,17 @@ impl CardInfo {
                     self.colors.len() == count
                 } else if let Ok(col) = Colors::try_from(value)
                     && let Some(order) = self.colors.partial_cmp(&col)
+                {
+                    order == ordering
+                } else {
+                    return false;
+                }
+            }
+            SearchKey::Identity => {
+                if let Ok(count) = value.parse::<usize>() {
+                    self.color_identity.len() == count
+                } else if let Ok(col) = Colors::try_from(value)
+                    && let Some(order) = self.color_identity.partial_cmp(&col)
                 {
                     order == ordering
                 } else {

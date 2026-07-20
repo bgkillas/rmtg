@@ -242,12 +242,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "940b3a0ca603d1eade50a4846a2afffd5ef57a9feac2c0e2ec2e14f9ead76000"
 
 [[package]]
-name = "anyhow"
-version = "1.0.104"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
-
-[[package]]
 name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1464,19 +1458,6 @@ name = "bevy_mikktspace"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bff34eb29ff4b8a8688bc7299f14fb6b597461ca80fec03ed7d22939ab33e48f"
-
-[[package]]
-name = "bevy_mod_mipmap_generator"
-version = "0.1.0"
-source = "git+https://github.com/DGriffin91/bevy_mod_mipmap_generator#5f9c33a058fac212d568ac97b26ea1aa67489687"
-dependencies = [
- "anyhow",
- "bevy",
- "fast_image_resize",
- "futures-lite",
- "image",
- "tracing",
-]
 
 [[package]]
 name = "bevy_p2p"
@@ -3444,9 +3425,9 @@ dependencies = [
 
 [[package]]
 name = "fast_image_resize"
-version = "5.5.0"
+version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbc7fe45cf92b43817ff62a3723e862b85bd1d06288f63007f7645d1d2f7a060"
+checksum = "12dd43e5011e8d8411a3215a0d57a2ec5c68282fb90eb5d7221fab0113442174"
 dependencies = [
  "bytemuck",
  "cfg-if",
@@ -4600,9 +4581,9 @@ name = "importer"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "bevy_mod_mipmap_generator",
  "bitcode 0.6.9 (git+https://github.com/SoftbearStudios/bitcode?branch=custom_encoder)",
  "enumset",
+ "fast_image_resize",
  "image",
  "itertools 0.15.0",
  "jzon",
