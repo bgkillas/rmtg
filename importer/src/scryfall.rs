@@ -3,7 +3,7 @@ use crate::card::{Colors, Cost, SubCard, Types};
 use crate::id::Id;
 use crate::image::parse_bytes;
 use bevy::image::Image;
-use json::{JsonValue, parse};
+use jzon::{JsonValue, parse};
 use reqwest::Client;
 use uuid::Uuid;
 const URL: &str = "api.scryfall.com";
@@ -24,20 +24,20 @@ impl SubCard {
             SubCard::from_scryfall(json, uuid)
         }
         async fn get_image(client: &Client, uuid: Uuid) -> Option<Image> {
-            let [f, ..] = uuid.as_u128().to_be_bytes();
+            let byte = uuid.as_bytes()[0];
             let request = client
-                .get(dbg!(format!(
+                .get(format!(
                     "https://{CARD_URL}/{QUALITY}/front/{:x}/{:x}/{uuid}.{EXTENSION}",
-                    f / 16,
-                    f % 16
-                )))
+                    byte / 16,
+                    byte % 16
+                ))
                 .send()
                 .await
                 .ok()?;
             let bytes_raw = request.bytes().await.ok()?;
             parse_bytes(&bytes_raw)
         }
-        let (card, image) = tokio::join!(get_card(client, uuid), get_image(client, uuid),);
+        let (card, image) = tokio::join!(get_card(client, uuid), get_image(client, uuid));
         card.zip(image)
     }
     #[must_use]

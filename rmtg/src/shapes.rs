@@ -141,7 +141,7 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
         );
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
+            RenderAssetUsages::RENDER_WORLD,
         );
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, position);
         mesh.insert_indices(indices);

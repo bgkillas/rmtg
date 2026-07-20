@@ -26,7 +26,7 @@ pub fn make_img(rgba: Vec<u8>, width: u32, height: u32) -> Image {
         },
         TextureDimension::D2,
         rgba,
-        TextureFormat::Rgba8UnormSrgb,
+        TextureFormat::Rgba8Unorm,
         RenderAssetUsages::RENDER_WORLD,
     )
 }
