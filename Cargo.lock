@@ -1487,7 +1487,7 @@ dependencies = [
  "bevy_app",
  "bevy_ecs",
  "bevy_log",
- "bitcode",
+ "bitcode 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "iroh",
  "rustc-hash 2.1.3",
  "zerocopy 0.9.0-alpha.0",
@@ -2201,9 +2201,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a6ed1b54d8dc333e7be604d00fa9262f4635485ffea923647b6521a5fff045d"
 dependencies = [
  "arrayvec",
- "bitcode_derive",
+ "bitcode_derive 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytemuck",
  "glam 0.33.2",
+ "serde",
+]
+
+[[package]]
+name = "bitcode"
+version = "0.6.9"
+source = "git+https://github.com/SoftbearStudios/bitcode?branch=custom_encoder#452cd0cc97138a76e1dc7451cc627d7b96d92d17"
+dependencies = [
+ "arrayvec",
+ "bitcode_derive 0.6.9 (git+https://github.com/SoftbearStudios/bitcode?branch=custom_encoder)",
+ "bytemuck",
+ "glam 0.32.1",
  "serde",
 ]
 
@@ -2212,6 +2224,16 @@ name = "bitcode_derive"
 version = "0.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "238b90427dfad9da4a9abd60f3ec1cdee6b80454bde49ed37f1781dd8e9dc7f9"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "bitcode_derive"
+version = "0.6.9"
+source = "git+https://github.com/SoftbearStudios/bitcode?branch=custom_encoder#452cd0cc97138a76e1dc7451cc627d7b96d92d17"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4642,10 +4664,14 @@ dependencies = [
 name = "importer"
 version = "0.1.0"
 dependencies = [
+ "bevy",
  "bevy_mod_mipmap_generator",
+ "bitcode 0.6.9 (git+https://github.com/SoftbearStudios/bitcode?branch=custom_encoder)",
+ "enumset",
  "image",
  "json",
  "reqwest",
+ "rules",
  "uuid",
 ]
 
@@ -7309,7 +7335,6 @@ dependencies = [
  "importer",
  "rand",
  "rodio",
- "rules",
  "rustc-hash 2.1.3",
  "ucalc_lib",
  "winapi",

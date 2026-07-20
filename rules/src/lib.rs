@@ -117,12 +117,12 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
     let nmatchs = types.iter().map(|s| match_arms(s));
     let nmatchs_to = types.iter().map(|s| match_arms_to(s));
     quote! {
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode)]
+        #[derive(Debug, Encode, Decode, enumset::EnumSetType)]
         pub enum SubType {
             #( #idents, )*
         }
         pub const SUBTYPES: &[SubType] = &[#( SubType::#idents, )*];
-        impl FromStr for SubType {
+        impl std::str::FromStr for SubType {
             type Err = ();
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s.to_ascii_lowercase().as_str() {
@@ -131,19 +131,19 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
                 }
             }
         }
-        impl fmt::Display for SubType {
-            fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        impl std::fmt::Display for SubType {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
                 write!(f, "{}", match self {
                     #( #matchs_to, )*
                 })
             }
         }
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode)]
-        pub enum Type {
+        #[derive(Debug, Encode, Decode, enumset::EnumSetType)]
+        pub enum MainType {
             #( #nidents, )*
         }
-        pub const TYPES: &[Type] = &[#( Type::#nidents, )*];
-        impl FromStr for Type {
+        pub const TYPES: &[MainType] = &[#( MainType::#nidents, )*];
+        impl std::str::FromStr for MainType {
             type Err = ();
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s.to_ascii_lowercase().as_str() {
@@ -152,19 +152,19 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
                 }
             }
         }
-        impl fmt::Display for Type {
-            fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        impl std::fmt::Display for MainType {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
                 write!(f, "{}", match self {
                     #( #nmatchs_to, )*
                 })
             }
         }
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode)]
+        #[derive(Debug, Encode, Decode, enumset::EnumSetType)]
         pub enum SuperType {
             #( #sidents, )*
         }
         pub const SUPERTYPES: &[SuperType] = &[#( SuperType::#sidents, )*];
-        impl FromStr for SuperType {
+        impl std::str::FromStr for SuperType {
             type Err = ();
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s.to_ascii_lowercase().as_str() {
@@ -173,8 +173,8 @@ pub fn generate_types(_item: TokenStream) -> TokenStream {
                 }
             }
         }
-        impl fmt::Display for SuperType {
-            fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        impl std::fmt::Display for SuperType {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
                 write!(f, "{}", match self {
                     #( #smatchs_to, )*
                 })

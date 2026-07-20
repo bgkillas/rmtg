@@ -37,7 +37,6 @@ bevy_rich_text3d = {version = "0.7.0", git = "https://github.com/mintlu8/bevy_ri
 bevy_p2p = {git = "https://github.com/bgkillas/bevy_p2p"}
 rand = { version = "0.10.2", default-features = false, features = ["std", "alloc", "simd_support", "sys_rng"] }
 ucalc_lib = {git = "https://github.com/bgkillas/ucalc"}
-rules = {workspace = true}
 importer = {workspace = true}
 bevy_microphone = {git = "https://github.com/bgkillas/bevy_microphone", optional = true}
 rodio = {version = "0.22.2",default-features = false, optional = true}
