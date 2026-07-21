@@ -42,7 +42,7 @@ pub enum Layout {
     Flip,
     Side,
 }
-#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
+#[derive(Default, Clone, Copy, Encode, Decode)]
 pub struct Cost {
     pub has_cost: bool,
     pub white: u8,
@@ -74,11 +74,46 @@ pub struct CardInfo {
 pub struct MaybeImage {
     pub image: Option<Handle<Image>>,
 }
-#[derive(Debug, Default, Clone, PartialOrd, Encode, Decode, Eq, PartialEq)]
+#[derive(Default, Clone, PartialOrd, Encode, Decode, Eq, PartialEq)]
 pub struct Types {
     pub super_type: SuperTypes,
     pub main_type: MainTypes,
     pub sub_type: SubTypes,
+}
+impl Debug for Types {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\"")?;
+        let mut first = true;
+        for ty in self.super_type.types {
+            if first {
+                first = false;
+            } else {
+                write!(f, "|")?;
+            }
+            write!(f, "{ty:?}")?;
+        }
+        write!(f, "-")?;
+        first = true;
+        for ty in self.main_type.types {
+            if first {
+                first = false;
+            } else {
+                write!(f, "|")?;
+            }
+            write!(f, "{ty:?}")?;
+        }
+        write!(f, "-")?;
+        first = true;
+        for ty in self.sub_type.types {
+            if first {
+                first = false;
+            } else {
+                write!(f, "|")?;
+            }
+            write!(f, "{ty:?}")?;
+        }
+        write!(f, "\"")
+    }
 }
 #[derive(Debug, Default, Clone, PartialOrd, Encode, Decode, Eq, PartialEq)]
 pub struct SuperTypes {
@@ -163,15 +198,65 @@ pub enum SearchKey {
 }
 impl Debug for Colors {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}{}{}{}{}",
-            if self.is_white() { "w" } else { "" },
-            if self.is_black() { "u" } else { "" },
-            if self.is_blue() { "b" } else { "" },
-            if self.is_red() { "r" } else { "" },
-            if self.is_green() { "g" } else { "" }
-        )
+        write!(f, "\"")?;
+        if self.is_white() {
+            write!(f, "w")?;
+        }
+        if self.is_black() {
+            write!(f, "u")?;
+        }
+        if self.is_blue() {
+            write!(f, "b")?;
+        }
+        if self.is_red() {
+            write!(f, "r")?;
+        }
+        if self.is_green() {
+            write!(f, "g")?;
+        }
+        write!(f, "\"")
+    }
+}
+impl Debug for Cost {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\"")?;
+        if self.has_cost {
+            if self.total() == 0 {
+                write!(f, "0")?;
+            } else {
+                for _ in 0..self.var {
+                    write!(f, "x")?;
+                }
+                if self.any != 0 {
+                    write!(f, "{}", self.any)?;
+                }
+                for _ in 0..self.colorless {
+                    write!(f, "c")?;
+                }
+                for _ in 0..self.white {
+                    write!(f, "w")?;
+                }
+                for _ in 0..self.blue {
+                    write!(f, "u")?;
+                }
+                for _ in 0..self.black {
+                    write!(f, "b")?;
+                }
+                for _ in 0..self.red {
+                    write!(f, "r")?;
+                }
+                for _ in 0..self.green {
+                    write!(f, "g")?;
+                }
+                for _ in 0..self.pay {
+                    write!(f, "p")?;
+                }
+                for _ in 0..self.hybrid {
+                    write!(f, "h")?;
+                }
+            }
+        }
+        write!(f, "\"")
     }
 }
 impl From<&str> for Layout {

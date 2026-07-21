@@ -81,17 +81,14 @@ impl SubCard {
         }
         let layout_str = json["layout"].as_str()?;
         let layout = Layout::from(layout_str);
-        let mut members = json["card_faces"].members();
-        let (front, back) = if matches!(
-            layout_str,
-            "transform" | "modal_dfc" | "double_faced_token" | "reversible_card"
-        ) {
+        let (front, back) = if json["card_faces"].is_null() {
+            let front = get_face(&json, &JsonValue::Null)?;
+            (front, None)
+        } else {
+            let mut members = json["card_faces"].members();
             let front = get_face(&json, members.next()?)?;
             let back = get_face(&json, members.next()?)?;
             (front, Some(Box::new(back)))
-        } else {
-            let front = get_face(&json, members.next().unwrap_or(&JsonValue::Null))?;
-            (front, None)
         };
         let data = CardData {
             front,
