@@ -1,9 +1,15 @@
 use bitcode::{Decode, Encode};
+use std::fmt::{Debug, Formatter};
 use uuid::Uuid;
-#[derive(Debug, Default, PartialEq, Clone, Copy, Encode, Decode, Eq, Hash)]
+#[derive(Default, PartialEq, Clone, Copy, Encode, Decode, Eq, Hash)]
 pub struct Id {
     #[bitcode(with = "IdCoder")]
     pub id: Uuid,
+}
+impl Debug for Id {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.id)
+    }
 }
 #[derive(Debug, Default, PartialEq, Clone, Copy, Encode, Decode, Eq, Hash)]
 struct IdCoder {

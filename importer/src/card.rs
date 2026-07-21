@@ -6,6 +6,7 @@ use bevy::ui::widget::ImageNode;
 use bitcode::{Decode, Encode};
 use enumset::{EnumSet, EnumSetType};
 use std::cmp::Ordering;
+use std::fmt::{Debug, Formatter};
 use std::mem;
 use std::slice::{Iter, IterMut};
 rules::generate_types!();
@@ -41,9 +42,9 @@ pub enum Layout {
     Flip,
     Side,
 }
-//TODO does not do {2/W} and {W/R/P} and empty correctly
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
 pub struct Cost {
+    pub has_cost: bool,
     pub white: u8,
     pub blue: u8,
     pub black: u8,
@@ -53,6 +54,7 @@ pub struct Cost {
     pub any: u8,
     pub pay: u8,
     pub var: u8,
+    pub hybrid: u8,
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct CardInfo {
@@ -108,7 +110,7 @@ struct MainTypesCoder {
 struct SubTypesCoder {
     bytes: [u8; size_of::<EnumSet<SubType>>()],
 }
-#[derive(Debug, Default, Clone, Copy, PartialOrd, Encode, Decode, PartialEq)]
+#[derive(Default, Clone, Copy, PartialOrd, Encode, Decode, PartialEq)]
 pub struct Colors {
     #[bitcode(with = "ColorsCoder")]
     pub colors: EnumSet<Color>,
@@ -158,6 +160,19 @@ pub enum SearchKey {
     Power,
     Toughness,
     Loyalty,
+}
+impl Debug for Colors {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}{}{}{}{}",
+            if self.is_white() { "w" } else { "" },
+            if self.is_black() { "u" } else { "" },
+            if self.is_blue() { "b" } else { "" },
+            if self.is_red() { "r" } else { "" },
+            if self.is_green() { "g" } else { "" }
+        )
+    }
 }
 impl From<&str> for Layout {
     fn from(value: &str) -> Self {
@@ -366,8 +381,6 @@ impl Colors {
         }
         cost
     }
-}
-impl Colors {
     #[must_use]
     pub fn len(&self) -> usize {
         self.colors.len()
@@ -376,6 +389,26 @@ impl Colors {
     pub fn is_empty(&self) -> bool {
         self.colors.is_empty()
     }
+    #[must_use]
+    pub fn is_white(&self) -> bool {
+        self.colors.contains(Color::White)
+    }
+    #[must_use]
+    pub fn is_black(&self) -> bool {
+        self.colors.contains(Color::Black)
+    }
+    #[must_use]
+    pub fn is_blue(&self) -> bool {
+        self.colors.contains(Color::Blue)
+    }
+    #[must_use]
+    pub fn is_red(&self) -> bool {
+        self.colors.contains(Color::Red)
+    }
+    #[must_use]
+    pub fn is_green(&self) -> bool {
+        self.colors.contains(Color::Green)
+    }
 }
 impl From<&str> for Cost {
     fn from(value: &str) -> Self {
@@ -383,9 +416,14 @@ impl From<&str> for Cost {
         if value.is_empty() {
             return cost;
         }
+        cost.has_cost = true;
         let valueinner = &value[1..value.len() - 1];
         for c in valueinner.split("}{") {
+            let mut next = false;
             for c in c.split('/') {
+                if next && matches!(c, "W" | "U" | "B" | "R" | "G") {
+                    cost.hybrid += 1;
+                }
                 match c {
                     "W" => cost.white += 1,
                     "U" => cost.blue += 1,
@@ -397,6 +435,7 @@ impl From<&str> for Cost {
                     "X" => cost.var += 1,
                     c => cost.any += c.parse::<u8>().unwrap(),
                 }
+                next = true;
             }
         }
         cost
@@ -406,6 +445,7 @@ impl Cost {
     #[must_use]
     pub fn total(&self) -> u8 {
         self.white + self.blue + self.black + self.red + self.green + self.colorless + self.any
+            - self.hybrid
     }
 }
 impl CardData {
