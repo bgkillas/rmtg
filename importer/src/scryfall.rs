@@ -8,8 +8,8 @@ use reqwest::Client;
 use uuid::Uuid;
 const URL: &str = "api.scryfall.com";
 const CARD_URL: &str = "cards.scryfall.io";
-const QUALITY: &str = "large";
-const EXTENSION: &str = "jpg";
+const QUALITY: &str = "png";
+const EXTENSION: &str = "png";
 impl SubCard {
     #[must_use]
     pub async fn get(client: &Client, uuid: Uuid) -> Option<(Self, Image)> {
