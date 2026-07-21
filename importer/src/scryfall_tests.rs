@@ -13,18 +13,19 @@ async fn test() {
     let aclazotz_uuid = uuid!("627c392c-4d18-4eb2-a4e8-c668f61f5487");
     let bruce_uuid = uuid!("e0dbbdcf-84e1-494f-8b8c-0a094f603fa9");
     let gisela_uuid = uuid!("04506bad-3856-4184-8dda-941ded60f41a");
-    let arr = <[_; _]>::from(tokio::join!(
-        SubCard::get(&client, kiki_uuid),
-        SubCard::get(&client, reaper_uuid),
-        SubCard::get(&client, tamiyo_uuid),
-        SubCard::get(&client, charred_uuid),
-        SubCard::get(&client, erayo_uuid),
-        SubCard::get(&client, aclazotz_uuid),
-        SubCard::get(&client, bruce_uuid),
-        SubCard::get(&client, gisela_uuid),
-    ));
-    for opt in arr {
-        let (card, _) = opt.unwrap();
+    let tmr = std::time::Instant::now();
+    let uuids = [
+        kiki_uuid,
+        reaper_uuid,
+        tamiyo_uuid,
+        charred_uuid,
+        erayo_uuid,
+        aclazotz_uuid,
+        bruce_uuid,
+        gisela_uuid,
+    ];
+    for (card, _) in SubCard::get_list(client, &uuids).await {
         println!("{card:#?}");
     }
+    println!("{}", tmr.elapsed().as_nanos());
 }
