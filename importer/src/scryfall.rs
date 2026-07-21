@@ -5,6 +5,7 @@ use crate::image::parse_bytes;
 use bevy::image::Image;
 use jzon::{JsonValue, parse};
 use reqwest::Client;
+use std::str::FromStr as _;
 use uuid::Uuid;
 const URL: &str = "api.scryfall.com";
 const CARD_URL: &str = "cards.scryfall.io";
@@ -90,6 +91,13 @@ impl SubCard {
             let back = get_face(&json, members.next()?)?;
             (front, Some(Box::new(back)))
         };
+        let tokens = json["all_parts"]
+            .members()
+            .filter(|p| p["component"].as_str() == Some("token"))
+            .filter_map(|p| p["id"].as_str())
+            .filter_map(|s| Uuid::from_str(s).ok())
+            .map(Id::from)
+            .collect();
         let data = CardData {
             front,
             back,
@@ -97,7 +105,7 @@ impl SubCard {
         };
         Some(Self {
             id: Id::from(uuid),
-            tokens: Vec::new(),
+            tokens,
             data,
             flipped: false,
         })
