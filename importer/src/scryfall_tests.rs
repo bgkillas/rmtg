@@ -13,7 +13,7 @@ async fn test() {
     )
     .await
     .unwrap();
-    //println!("{kiki:#?}");
+    println!("{kiki:#?}");
     println!("{}", tmr.elapsed().as_nanos());
     let tmr = std::time::Instant::now();
     let (reaper, _) = SubCard::get(
@@ -22,6 +22,6 @@ async fn test() {
     )
     .await
     .unwrap();
-    //println!("{reaper:#?}");
+    println!("{reaper:#?}");
     println!("{}", tmr.elapsed().as_nanos());
 }

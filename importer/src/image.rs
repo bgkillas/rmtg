@@ -12,7 +12,7 @@ pub fn parse_bytes(bytes: &[u8]) -> Option<Image> {
     Some(make_img(data, width, height, mips))
 }
 #[must_use]
-pub fn parse_no_mips(bytes: &[u8]) -> Option<RgbaImage> {
+fn parse_no_mips(bytes: &[u8]) -> Option<RgbaImage> {
     let image = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
         .ok()?
@@ -22,7 +22,7 @@ pub fn parse_no_mips(bytes: &[u8]) -> Option<RgbaImage> {
     Some(rgba)
 }
 #[must_use]
-pub fn make_img(rgba: Vec<u8>, width: u32, height: u32, mips: u32) -> Image {
+fn make_img(rgba: Vec<u8>, width: u32, height: u32, mips: u32) -> Image {
     let mut image = Image::new_uninit(
         Extent3d {
             width,
@@ -42,11 +42,11 @@ fn generate_mips_texture(image: RgbaImage) -> (Vec<u8>, u32) {
     let new_image_data = generate_mips(image, mip_count);
     (new_image_data, mip_count)
 }
-fn generate_mips(dyn_image: RgbaImage, mip_count: u32) -> Vec<u8> {
+fn generate_mips(mut dyn_image: RgbaImage, mip_count: u32) -> Vec<u8> {
     let mut width = dyn_image.width();
     let mut height = dyn_image.height();
-    let mut image_data = dyn_image.to_vec();
-    image_data.reserve_exact(image_data.len().div_ceil(3));
+    let mut image_data = Vec::with_capacity(dyn_image.len() + dyn_image.len().div_ceil(3));
+    image_data.extend(dyn_image.as_raw());
     let mut resizer = Resizer::new();
     let resize_alg = ResizeOptions::new()
         .resize_alg(ResizeAlg::Convolution(
@@ -63,8 +63,8 @@ fn generate_mips(dyn_image: RgbaImage, mip_count: u32) -> Vec<u8> {
         )
         .unwrap();
         resizer.resize(&dyn_image, &mut new, &resize_alg).unwrap();
-        new.save(format!("{width:03}_{height:03}.png")).unwrap();
-        image_data.append(&mut new.to_vec());
+        image_data.extend(new.as_raw());
+        dyn_image = new;
     }
     image_data
 }
