@@ -2249,7 +2249,7 @@ pub fn update_search_deck(
                                 .into(),
                         )],
                         unparsed: counter.1.0.to_string(),
-                        funcvars: vec![],
+                        funcvars: Vec::new(),
                     }],
                     &mut Vec::new(),
                     &mut 0,

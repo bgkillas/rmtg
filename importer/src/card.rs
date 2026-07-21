@@ -30,7 +30,7 @@ pub struct SubCard {
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct CardData {
-    pub face: CardInfo,
+    pub front: CardInfo,
     pub back: Option<Box<CardInfo>>,
     pub layout: Layout,
 }
@@ -39,8 +39,9 @@ pub enum Layout {
     #[default]
     Normal,
     Flip,
-    Room,
+    Side,
 }
+//TODO does not do {2/W} and {W/R/P} and empty correctly
 #[derive(Debug, Default, Clone, Copy, Encode, Decode)]
 pub struct Cost {
     pub white: u8,
@@ -157,6 +158,15 @@ pub enum SearchKey {
     Power,
     Toughness,
     Loyalty,
+}
+impl From<&str> for Layout {
+    fn from(value: &str) -> Self {
+        match value {
+            "flip" => Self::Flip,
+            "planar" | "split" => Self::Side,
+            _ => Self::Normal,
+        }
+    }
 }
 impl From<SuperTypesCoder> for EnumSet<SuperType> {
     fn from(value: SuperTypesCoder) -> Self {
@@ -402,7 +412,7 @@ impl CardData {
     #[must_use]
     pub fn clone_no_image(&self) -> Self {
         Self {
-            face: self.face.clone_no_image(),
+            front: self.front.clone_no_image(),
             back: self
                 .back
                 .as_ref()
@@ -566,52 +576,50 @@ impl SubCard {
     }
     #[must_use]
     pub fn filter(&self, text: &str) -> bool {
-        self.data.face.filter(text) || self.data.back.as_ref().is_some_and(|c| c.filter(text))
+        self.data.front.filter(text) || self.data.back.as_ref().is_some_and(|c| c.filter(text))
     }
     #[must_use]
     pub fn face(&self) -> &CardInfo {
         if self.flipped {
             self.data.back.as_ref().unwrap()
         } else {
-            &self.data.face
+            &self.data.front
         }
     }
     #[must_use]
     pub fn back(&self) -> Option<&CardInfo> {
         if self.flipped {
-            Some(&self.data.face)
+            Some(&self.data.front)
         } else {
             self.data.back.as_deref()
         }
     }
     #[must_use]
     pub fn image_node(&self) -> ImageNode {
-        if matches!(self.data.layout, Layout::Flip) && self.flipped {
-            ImageNode {
-                image: self.data.face.clone_image(),
+        match self.data.layout {
+            Layout::Flip if self.flipped => ImageNode {
+                image: self.data.front.clone_image(),
                 flip_x: true,
                 flip_y: true,
                 ..ImageNode::default()
-            }
-        } else {
-            ImageNode::new(self.face().clone_image())
+            },
+            _ => ImageNode::new(self.face().clone_image()),
         }
     }
     #[must_use]
     pub fn material(&self) -> StandardMaterial {
-        if matches!(self.data.layout, Layout::Flip) && self.flipped {
-            StandardMaterial {
-                base_color_texture: Some(self.data.face.clone_image()),
+        match self.data.layout {
+            Layout::Flip if self.flipped => StandardMaterial {
+                base_color_texture: Some(self.data.front.clone_image()),
                 unlit: true,
                 uv_transform: StandardMaterial::FLIP_VERTICAL * StandardMaterial::FLIP_HORIZONTAL,
                 ..StandardMaterial::default()
-            }
-        } else {
-            StandardMaterial {
+            },
+            _ => StandardMaterial {
                 base_color_texture: Some(self.face().clone_image()),
                 unlit: true,
                 ..StandardMaterial::default()
-            }
+            },
         }
     }
 }
