@@ -14,7 +14,7 @@ async fn test() {
     let bruce_uuid = uuid!("e0dbbdcf-84e1-494f-8b8c-0a094f603fa9");
     let gisela_uuid = uuid!("04506bad-3856-4184-8dda-941ded60f41a");
     let tmr = std::time::Instant::now();
-    let uuids = [
+    let uuids = [[
         kiki_uuid,
         reaper_uuid,
         tamiyo_uuid,
@@ -23,9 +23,11 @@ async fn test() {
         aclazotz_uuid,
         bruce_uuid,
         gisela_uuid,
-    ];
-    for (card, _) in SubCard::get_list(client, &uuids).await {
-        println!("{card:#?}");
+    ]; 64];
+    let list = SubCard::get_list(client, uuids.as_flattened()).await;
+    println!("{} {}", uuids.as_flattened().len(), list.len());
+    for (card, _) in list {
+        //println!("{card:#?}");
     }
     println!("{}", tmr.elapsed().as_nanos());
 }
