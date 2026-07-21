@@ -35,8 +35,8 @@ impl SubCard {
                 .send()
                 .await
                 .ok()?;
-            let bytes_raw = request.bytes().await.ok()?;
-            parse_bytes(&bytes_raw)
+            let bytes = request.bytes().await.ok()?;
+            parse_bytes(&bytes)
         }
         let (card, image) = tokio::join!(get_card(client, uuid), get_image(client, uuid));
         card.zip(image)
