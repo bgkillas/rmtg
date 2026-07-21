@@ -6,6 +6,7 @@ use bevy::image::Image;
 use jzon::{JsonValue, parse};
 use reqwest::Client;
 use std::str::FromStr as _;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
@@ -15,6 +16,25 @@ const URL: &str = "api.scryfall.com";
 const CARD_URL: &str = "cards.scryfall.io";
 const QUALITY: &str = "png";
 const EXTENSION: &str = "png";
+static TIMER: LazyLock<Arc<Mutex<Instant>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(Instant::now())));
+static COUNT: AtomicU32 = AtomicU32::new(0);
+async fn limit(lock: &mut Instant) {
+    let last = COUNT.fetch_add(1, Ordering::Relaxed);
+    if last == 8 {
+        if let Some(dur) = 1_000_000_000u128
+            .checked_sub(lock.elapsed().as_nanos())
+            .map(u32::try_from)
+            .transpose()
+            .ok()
+            .flatten()
+        {
+            tokio::time::sleep(Duration::new(0, dur)).await;
+        }
+        COUNT.store(0, Ordering::Relaxed);
+        *lock = Instant::now();
+    }
+}
 impl SubCard {
     #[must_use]
     pub async fn get_list(client: Client, iter: &[Uuid]) -> Vec<(Self, Image)> {
@@ -31,19 +51,8 @@ impl SubCard {
     #[must_use]
     pub async fn get(client: Client, uuid: Uuid) -> Option<(Self, Image)> {
         async fn get_card(client: &Client, uuid: Uuid) -> Option<SubCard> {
-            static TIMER: LazyLock<Arc<Mutex<Instant>>> =
-                LazyLock::new(|| Arc::new(Mutex::new(Instant::now())));
             let mut lock = TIMER.lock().await;
-            if let Some(dur) = 111_111_111u128
-                .checked_sub(lock.elapsed().as_nanos())
-                .map(u32::try_from)
-                .transpose()
-                .ok()
-                .flatten()
-            {
-                tokio::time::sleep(Duration::new(0, dur)).await;
-            }
-            *lock = Instant::now();
+            limit(&mut lock).await;
             let request = client
                 .get(format!("https://{URL}/cards/{uuid}"))
                 .send()

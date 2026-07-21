@@ -23,11 +23,15 @@ async fn test() {
         aclazotz_uuid,
         bruce_uuid,
         gisela_uuid,
-    ]; 64];
+    ]; 1];
     let list = SubCard::get_list(client, uuids.as_flattened()).await;
-    println!("{} {}", uuids.as_flattened().len(), list.len());
-    for (card, _) in list {
-        //println!("{card:#?}");
+    for (card, _) in &list {
+        println!("{card:#?}");
     }
-    println!("{}", tmr.elapsed().as_nanos());
+    println!(
+        "{} {} {}",
+        uuids.as_flattened().len(),
+        list.len(),
+        tmr.elapsed().as_nanos()
+    );
 }
