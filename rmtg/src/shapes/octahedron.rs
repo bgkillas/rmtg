@@ -1,4 +1,4 @@
-use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
+use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
 use bevy::math::Vec3;
 use bevy::mesh::{Mesh, MeshBuilder};
 use bevy_polyline::polyline::Polyline;
@@ -10,6 +10,7 @@ impl ShapeMesh for Octahedron {
     type Outline = OctahedronOutline;
     type const VERTICES: usize = 6;
     type const FACES: usize = 8;
+    const SHAPE: Shape = Shape::Octahedron;
     fn text_size(height: f32) -> f32 {
         height / 1.5
     }

@@ -42,6 +42,7 @@ bevy_microphone = {git = "https://github.com/bgkillas/bevy_microphone", optional
 rodio = {version = "0.22.2",default-features = false, optional = true}
 rustc-hash = "2.1.3"
 bevy_polyline = {git = "https://github.com/bgkillas/bevy_polyline", branch = "bevy-0.19"}
+fdlimit = "0.3.0"
 
 [target.'cfg(windows)'.dependencies]
 winapi = {version = "0.3.9",features = ["wincon"]}

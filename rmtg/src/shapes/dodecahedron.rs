@@ -1,4 +1,4 @@
-use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
+use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
 use avian3d::parry::glamx::Vec3;
 use bevy::mesh::{Mesh, MeshBuilder};
 use bevy_polyline::polyline::Polyline;
@@ -13,6 +13,7 @@ impl ShapeMesh for Dodecahedron {
     type const FACES: usize = 12;
     type const FACE_VERTICES: usize = 5;
     type const TRIANGLES: usize = 3;
+    const SHAPE: Shape = Shape::Dodecahedron;
     fn text_size(height: f32) -> f32 {
         height / 2.0
     }

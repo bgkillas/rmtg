@@ -1,4 +1,4 @@
-use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
+use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
 use avian3d::parry::glamx::Vec3;
 use bevy::mesh::{Mesh, MeshBuilder};
 use bevy_polyline::polyline::Polyline;
@@ -12,6 +12,7 @@ impl ShapeMesh for Cube {
     type const FACES: usize = 6;
     type const FACE_VERTICES: usize = 4;
     type const TRIANGLES: usize = 2;
+    const SHAPE: Shape = Shape::Cube;
     fn text_size(height: f32) -> f32 {
         height
     }

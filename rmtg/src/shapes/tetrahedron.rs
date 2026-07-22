@@ -1,4 +1,4 @@
-use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
+use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
 use bevy::math::Vec3;
 use bevy::mesh::{Mesh, MeshBuilder};
 use bevy_polyline::polyline::Polyline;
@@ -11,6 +11,7 @@ impl ShapeMesh for Tetrahedron {
     type const VERTICES: usize = 4;
     type const FACES: usize = 4;
     const IS_REVERSED: bool = true;
+    const SHAPE: Shape = Shape::Tetrahedron;
     fn text_size(height: f32) -> f32 {
         height / 1.5
     }

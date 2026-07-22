@@ -1,4 +1,4 @@
-use crate::shapes::{NewShape, ShapeMesh, ShapeOutline};
+use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
 use avian3d::parry::glamx::Vec3;
 use bevy::mesh::{Mesh, MeshBuilder};
 use bevy_polyline::polyline::Polyline;
@@ -11,6 +11,7 @@ impl ShapeMesh for Icosahedron {
     type Outline = IcosahedronOutline;
     type const VERTICES: usize = 12;
     type const FACES: usize = 20;
+    const SHAPE: Shape = Shape::Icosahedron;
     fn text_size(height: f32) -> f32 {
         height / 3.0
     }

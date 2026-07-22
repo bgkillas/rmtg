@@ -3429,6 +3429,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fdlimit"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e182f7dbc2ef73d9ef67351c5fbbea084729c48362d3ce9dd44c28e32e277fe5"
+dependencies = [
+ "libc",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "fiat-crypto"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4560,6 +4570,7 @@ dependencies = [
  "bitcode",
  "enumset",
  "fast_image_resize",
+ "fdlimit",
  "image",
  "itertools 0.15.0",
  "jzon",
@@ -7224,6 +7235,7 @@ dependencies = [
  "bevy_rich_text3d",
  "enum-map",
  "enumset",
+ "fdlimit",
  "importer",
  "rand",
  "rodio",

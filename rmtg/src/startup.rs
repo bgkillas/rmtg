@@ -70,35 +70,30 @@ pub fn startup(
 }
 pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
     Cube::insert_dice(
-        1.0,
         Color::WHITE,
         Color::BLACK,
         &mut asset,
         commands.spawn((Transform::from_xyz(-8.0, 1.0, 0.0), Pickable::default())),
     );
     Dodecahedron::insert_dice(
-        1.0,
         Color::WHITE,
         Color::BLACK,
         &mut asset,
         commands.spawn((Transform::from_xyz(-6.0, 1.0, 0.0), Pickable::default())),
     );
     Icosahedron::insert_dice(
-        1.0,
         Color::WHITE,
         Color::BLACK,
         &mut asset,
         commands.spawn((Transform::from_xyz(-4.0, 1.0, 0.0), Pickable::default())),
     );
     Octahedron::insert_dice(
-        1.0,
         Color::WHITE,
         Color::BLACK,
         &mut asset,
         commands.spawn((Transform::from_xyz(-2.0, 1.0, 0.0), Pickable::default())),
     );
     Tetrahedron::insert_dice(
-        1.0,
         Color::WHITE,
         Color::BLACK,
         &mut asset,

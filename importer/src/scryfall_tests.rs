@@ -1,10 +1,12 @@
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 use crate::card::SubCard;
 use crate::scryfall::Quality;
+use fdlimit::raise_fd_limit;
 use reqwest::Client;
 use uuid::uuid;
 #[tokio::test(flavor = "multi_thread")]
 async fn test_list() {
+    raise_fd_limit().unwrap();
     let client = Client::builder().user_agent(USER_AGENT).build().unwrap();
     let kiki_uuid = uuid!("0e6fc996-17ba-4090-bf82-0c2eba93a81e");
     let reaper_uuid = uuid!("502740bf-0bff-4358-8996-1a27e5f0343f");
@@ -34,6 +36,7 @@ async fn test_list() {
 }
 #[tokio::test(flavor = "multi_thread")]
 async fn test_prints() {
+    raise_fd_limit().unwrap();
     let client = Client::builder().user_agent(USER_AGENT).build().unwrap();
     let forest_uuid = uuid!("b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6");
     let tmr = std::time::Instant::now();

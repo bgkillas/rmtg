@@ -8,7 +8,7 @@ use bevy::ecs::children;
 use bevy::math::{Vec2, Vec3};
 use bevy::mesh::{Indices, Mesh, Mesh3d, MeshBuilder, PrimitiveTopology};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{Bundle, EntityCommands, InheritedVisibility, Transform};
+use bevy::prelude::{Bundle, Component, EntityCommands, InheritedVisibility, Transform};
 use bevy_polyline::material::{PolylineMaterial, PolylineMaterialHandle};
 use bevy_polyline::polyline::{Polyline, PolylineHandle};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor};
@@ -17,6 +17,14 @@ pub mod dodecahedron;
 pub mod icosahedron;
 pub mod octahedron;
 pub mod tetrahedron;
+#[derive(Component)]
+pub enum Shape {
+    Cube,
+    Dodecahedron,
+    Icosahedron,
+    Octahedron,
+    Tetrahedron,
+}
 fn average_normalized<const N: usize>(elems: [[f32; 3]; N]) -> Vec3 {
     elems.map(Vec3::from).into_iter().sum::<Vec3>().normalize()
 }
@@ -45,6 +53,8 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
     type const FACE_VERTICES: usize = 3;
     type const TRIANGLES: usize = 1;
     const IS_REVERSED: bool = false;
+    const HEIGHT: f32 = 1.0;
+    const SHAPE: Shape;
     #[must_use]
     fn bundle(
         height: f32,
@@ -54,6 +64,7 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
     ) -> impl Bundle {
         let mesh = Mesh::from(Self::from_height(height));
         (
+            Self::SHAPE,
             physics(&mesh),
             Mesh3d(asset.meshes.add(mesh)),
             MeshMaterial3d(asset.materials.add(StandardMaterial {
@@ -73,12 +84,12 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
         )
     }
     fn insert_dice(
-        height: f32,
         base_color: Color,
         outline_color: Color,
         asset: &mut Asset,
         mut ent: EntityCommands<'_>,
     ) {
+        let height = Self::HEIGHT;
         ent.insert((
             Self::bundle(height, base_color, outline_color, asset),
             bounce(),
