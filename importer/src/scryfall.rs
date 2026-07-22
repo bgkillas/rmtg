@@ -67,7 +67,7 @@ impl SubCard {
                 .ok()?;
             let json_raw = request.text().await.ok()?;
             let json = parse(&json_raw).unwrap();
-            SubCard::from_scryfall(json, uuid)
+            SubCard::from_scryfall(&json, uuid)
         }
         async fn get_image(
             client: &Client,
@@ -101,7 +101,7 @@ impl SubCard {
         }
     }
     #[must_use]
-    pub fn from_scryfall(json: JsonValue, uuid: Uuid) -> Option<Self> {
+    pub fn from_scryfall(json: &JsonValue, uuid: Uuid) -> Option<Self> {
         fn get_face(json: &JsonValue, face: &JsonValue) -> Option<CardInfo> {
             fn get<'a>(face: &'a JsonValue, json: &'a JsonValue, s: &str) -> &'a JsonValue {
                 if face[s].is_null() {
@@ -140,14 +140,15 @@ impl SubCard {
             })
         }
         let layout_str = json["layout"].as_str()?;
+        let oracle_id = Uuid::parse_str(json["oracle_id"].as_str()?).ok()?;
         let layout = Layout::from(layout_str);
         let (front, back) = if json["card_faces"].is_null() {
-            let front = get_face(&json, &JsonValue::Null)?;
+            let front = get_face(json, &JsonValue::Null)?;
             (front, None)
         } else {
             let mut members = json["card_faces"].members();
-            let front = get_face(&json, members.next()?)?;
-            let back = get_face(&json, members.next()?)?;
+            let front = get_face(json, members.next()?)?;
+            let back = get_face(json, members.next()?)?;
             (front, Some(Box::new(back)))
         };
         let tokens = json["all_parts"]
@@ -164,6 +165,7 @@ impl SubCard {
         };
         Some(Self {
             id: Id::from(uuid),
+            oracle_id: Id::from(oracle_id),
             tokens,
             data,
             flipped: false,

@@ -25,6 +25,7 @@ pub struct Card {
 #[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct SubCard {
     pub id: Id,
+    pub oracle_id: Id,
     pub tokens: Vec<Id>,
     pub data: CardData,
     pub flipped: bool,
@@ -694,6 +695,7 @@ impl SubCard {
     pub fn clone_no_image(&self) -> Self {
         Self {
             id: self.id,
+            oracle_id: self.oracle_id,
             tokens: self.tokens.clone(),
             data: self.data.clone_no_image(),
             flipped: self.flipped,

@@ -26,13 +26,9 @@ async fn test() {
         gisela_uuid,
     ]; 1];
     let mut list = SubCard::get_list(client, uuids.as_flattened(), Quality::Small);
-    while let Some(Ok(Ok((card, _, _)))) = list.join_next().await {
+    while let Some(Ok(opt)) = list.join_next().await {
+        let (card, _, _) = opt.unwrap();
         println!("{card:#?}");
     }
-    println!(
-        "{} {} {}",
-        uuids.as_flattened().len(),
-        list.len(),
-        tmr.elapsed().as_nanos()
-    );
+    println!("{}", tmr.elapsed().as_nanos());
 }
