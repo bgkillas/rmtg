@@ -116,11 +116,11 @@ impl SubCard {
             && let Some(image) = get_image(&client, uuid, quality, "front").await
         {
             let back = if has_back {
-                if let Some(back) = get_image(&client, uuid, quality, "back").await {
-                    Some(back)
-                } else {
-                    return Err(uuid);
-                }
+                Some(
+                    get_image(&client, uuid, quality, "back")
+                        .await
+                        .ok_or(uuid)?,
+                )
             } else {
                 None
             };
@@ -152,11 +152,11 @@ impl SubCard {
             get_image(&client, uuid, quality, "front")
         ) {
             let back = if has_back {
-                if let Some(back) = get_image(&client, uuid, quality, "back").await {
-                    Some(back)
-                } else {
-                    return Err(uuid);
-                }
+                Some(
+                    get_image(&client, uuid, quality, "back")
+                        .await
+                        .ok_or(uuid)?,
+                )
             } else {
                 None
             };
@@ -225,13 +225,16 @@ impl SubCard {
             )
         };
         let tokens = json["all_parts"]
-            .as_array()?
-            .iter()
-            .filter(|p| p["component"].as_str() == Some("token"))
-            .filter_map(|p| p["id"].as_str())
-            .filter_map(|s| Uuid::from_str(s).ok())
-            .map(Id::from)
-            .collect();
+            .as_array()
+            .map(|v| {
+                v.iter()
+                    .filter(|p| p["component"].as_str() == Some("token"))
+                    .filter_map(|p| p["id"].as_str())
+                    .filter_map(|s| Uuid::from_str(s).ok())
+                    .map(Id::from)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
         let data = CardData {
             front,
             back,

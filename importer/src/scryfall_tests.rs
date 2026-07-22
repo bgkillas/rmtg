@@ -40,6 +40,12 @@ async fn test_prints() {
     let list = SubCard::get_prints(client, forest_uuid, Quality::Small)
         .await
         .unwrap();
-    let len = list.join_all().await.len();
-    println!("{} {}", len, tmr.elapsed().as_nanos());
+    let vec = list.join_all().await;
+    let time = tmr.elapsed().as_nanos();
+    for res in &vec {
+        if let Err(uuid) = res {
+            println!("{uuid}");
+        }
+    }
+    println!("{} {}", vec.len(), time);
 }

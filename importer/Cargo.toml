@@ -17,7 +17,7 @@ rules = {workspace = true}
 enumset = "1.1.14"
 itertools = "0.15.0"
 tokio = {version = "1.53.1", features = ["macros", "rt-multi-thread"]}
-fast_image_resize = {version = "6.0.0", features = ["image"]}
+fast_image_resize = {version = "6.1.0", features = ["image"]}
 stream_throttle = "0.5.1"
 
 [lints]
