@@ -90,7 +90,7 @@ impl SubCard {
                     .ok()?;
                 request.text().await.ok()?
             };
-            let mut json = parse(&json_raw).unwrap();
+            let mut json = parse(&json_raw).ok()?;
             for card_json in json["data"].as_array_mut()? {
                 set.spawn(Self::get_json(
                     client.clone(),
@@ -135,19 +135,18 @@ impl SubCard {
                     .get(format!("https://{URL}/cards/{uuid}"))
                     .send()
                     .await
-                    .unwrap();
-                request.text().await.ok().unwrap()
+                    .ok()?;
+                request.text().await.ok()?
             };
-            let json = parse(&json_raw).unwrap();
-            println!("{json}");
-            Some(SubCard::from_scryfall(&json, uuid).unwrap())
+            let json = parse(&json_raw).ok()?;
+            SubCard::from_scryfall(&json, uuid)
         }
-        if let (Some(card), image, back) = tokio::join!(
+        if let (Some(card), Some(image), back) = tokio::join!(
             get_card(&client, uuid),
             get_image(&client, uuid, quality, "front"),
             get_image(&client, uuid, quality, "back")
         ) {
-            Ok((card, image.unwrap(), back))
+            Ok((card, image, back))
         } else {
             Err(uuid)
         }
