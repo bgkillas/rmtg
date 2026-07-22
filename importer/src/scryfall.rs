@@ -112,12 +112,18 @@ impl SubCard {
         let uuid = Uuid::parse_str(json["id"].as_str().unwrap_or_default())
             .ok()
             .unwrap_or_default();
-        if let Some(card) = SubCard::from_scryfall(&json, uuid)
-            && let (Some(image), back) = tokio::join!(
-                get_image(&client, uuid, quality, "front"),
-                get_image(&client, uuid, quality, "back")
-            )
+        if let Some((card, has_back)) = SubCard::from_scryfall(&json, uuid)
+            && let Some(image) = get_image(&client, uuid, quality, "front").await
         {
+            let back = if has_back {
+                if let Some(back) = get_image(&client, uuid, quality, "back").await {
+                    Some(back)
+                } else {
+                    return Err(uuid);
+                }
+            } else {
+                None
+            };
             Ok((card, image, back))
         } else {
             Err(uuid)
@@ -128,7 +134,7 @@ impl SubCard {
         uuid: Uuid,
         quality: Quality,
     ) -> Result<(Self, Image, Option<Image>), Uuid> {
-        async fn get_card(client: &Client, uuid: Uuid) -> Option<SubCard> {
+        async fn get_card(client: &Client, uuid: Uuid) -> Option<(SubCard, bool)> {
             let json_raw = {
                 let _hold = CARDS_THROTTLE.queue_with_hold().await;
                 let request = client
@@ -141,18 +147,26 @@ impl SubCard {
             let json = parse(&json_raw).ok()?;
             SubCard::from_scryfall(&json, uuid)
         }
-        if let (Some(card), Some(image), back) = tokio::join!(
+        if let (Some((card, has_back)), Some(image)) = tokio::join!(
             get_card(&client, uuid),
-            get_image(&client, uuid, quality, "front"),
-            get_image(&client, uuid, quality, "back")
+            get_image(&client, uuid, quality, "front")
         ) {
+            let back = if has_back {
+                if let Some(back) = get_image(&client, uuid, quality, "back").await {
+                    Some(back)
+                } else {
+                    return Err(uuid);
+                }
+            } else {
+                None
+            };
             Ok((card, image, back))
         } else {
             Err(uuid)
         }
     }
     #[must_use]
-    pub fn from_scryfall(json: &JsonValue, uuid: Uuid) -> Option<Self> {
+    pub fn from_scryfall(json: &JsonValue, uuid: Uuid) -> Option<(Self, bool)> {
         fn get_face(json: &JsonValue, face: &JsonValue) -> Option<CardInfo> {
             fn get<'a>(face: &'a JsonValue, json: &'a JsonValue, s: &str) -> &'a JsonValue {
                 if face[s].is_null() {
@@ -166,11 +180,14 @@ impl SubCard {
                 ["name", "mana_cost", "type_line", "oracle_text"]
                     .try_map(|s| get(face, json, s).as_str())?;
             let [colors, color_identity] = ["colors", "color_identity"]
-                .map(|s| {
-                    get(face, json, s)
-                        .members()
-                        .map(|c| c.as_str().unwrap_or_default())
-                })
+                .try_map(|s| {
+                    Some(
+                        get(face, json, s)
+                            .as_array()?
+                            .iter()
+                            .map(|c| c.as_str().unwrap_or_default()),
+                    )
+                })?
                 .map(Colors::parse);
             let [power, toughness, loyalty] = ["power", "toughness", "loyalty"]
                 .map(|s| get(face, json, s).as_str().and_then(|l| l.parse().ok()));
@@ -194,17 +211,22 @@ impl SubCard {
         }
         let layout_str = json["layout"].as_str()?;
         let layout = Layout::from(layout_str);
-        let (front, back) = if json["card_faces"].is_null() {
+        let (front, back, has_back) = if json["card_faces"].is_null() {
             let front = get_face(json, &JsonValue::Null)?;
-            (front, None)
+            (front, None, false)
         } else {
-            let mut members = json["card_faces"].members();
-            let front = get_face(json, members.next()?)?;
-            let back = get_face(json, members.next()?)?;
-            (front, Some(Box::new(back)))
+            let faces = json["card_faces"].as_array()?;
+            let front = get_face(json, &faces[0])?;
+            let back = get_face(json, &faces[1])?;
+            (
+                front,
+                Some(Box::new(back)),
+                !faces[1]["image_uris"].is_null(),
+            )
         };
         let tokens = json["all_parts"]
-            .members()
+            .as_array()?
+            .iter()
             .filter(|p| p["component"].as_str() == Some("token"))
             .filter_map(|p| p["id"].as_str())
             .filter_map(|s| Uuid::from_str(s).ok())
@@ -215,11 +237,14 @@ impl SubCard {
             back,
             layout,
         };
-        Some(Self {
-            id: Id::from(uuid),
-            tokens,
-            data,
-            flipped: false,
-        })
+        Some((
+            Self {
+                id: Id::from(uuid),
+                tokens,
+                data,
+                flipped: false,
+            },
+            has_back,
+        ))
     }
 }
