@@ -83,7 +83,7 @@ impl SubCard {
                 let _hold = SEARCH_THROTTLE.queue_with_hold().await;
                 let request = client
                     .get(format!(
-                        "https://api.scryfall.com/cards/search?q=oracleid%3A{oracle}&unique=prints&page={i}"
+                        "https://{URL}/cards/search?q=oracleid%3A{oracle}+game%3Apaper&unique=prints&page={i}"
                     ))
                     .send()
                     .await
