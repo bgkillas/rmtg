@@ -42,27 +42,22 @@ static THROTTLE: LazyLock<ThrottlePool> =
     LazyLock::new(|| ThrottlePool::new(ThrottleRate::new(9, Duration::new(1, 0))));
 impl SubCard {
     #[must_use]
-    pub async fn get_list(
+    pub fn get_list(
         client: Client,
         iter: &[Uuid],
         quality: Quality,
-    ) -> Vec<(Self, Image, Option<Image>)> {
-        let mut cards = Vec::with_capacity(iter.len());
-        let mut set = JoinSet::new();
-        for uuid in iter {
-            set.spawn(Self::get(client.clone(), *uuid, quality));
-        }
-        while let Some(Ok(Some(val))) = set.join_next().await {
-            cards.push(val);
-        }
-        cards
+    ) -> JoinSet<Result<(Self, Image, Option<Image>), Uuid>> {
+        JoinSet::from_iter(
+            iter.iter()
+                .copied()
+                .map(|uuid| Self::get(client.clone(), uuid, quality)),
+        )
     }
-    #[must_use]
     pub async fn get(
         client: Client,
         uuid: Uuid,
         quality: Quality,
-    ) -> Option<(Self, Image, Option<Image>)> {
+    ) -> Result<(Self, Image, Option<Image>), Uuid> {
         async fn get_card(client: &Client, uuid: Uuid) -> Option<SubCard> {
             let _hold = THROTTLE.queue_with_hold().await;
             let request = client
@@ -100,9 +95,9 @@ impl SubCard {
             get_image(&client, uuid, quality, "front"),
             get_image(&client, uuid, quality, "back")
         ) {
-            Some((card, image, back))
+            Ok((card, image, back))
         } else {
-            None
+            Err(uuid)
         }
     }
     #[must_use]

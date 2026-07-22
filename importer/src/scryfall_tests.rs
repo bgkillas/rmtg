@@ -25,8 +25,8 @@ async fn test() {
         bruce_uuid,
         gisela_uuid,
     ]; 1];
-    let list = SubCard::get_list(client, uuids.as_flattened(), Quality::Small).await;
-    for (card, _, _) in &list {
+    let mut list = SubCard::get_list(client, uuids.as_flattened(), Quality::Small);
+    while let Some(Ok(Ok((card, _, _)))) = list.join_next().await {
         println!("{card:#?}");
     }
     println!(
