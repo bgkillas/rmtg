@@ -5,6 +5,7 @@ use crate::image::parse_bytes;
 use bevy::image::Image;
 use jzon::{JsonValue, parse};
 use reqwest::Client;
+use std::mem;
 use std::str::FromStr as _;
 use std::sync::LazyLock;
 use std::time::Duration;
@@ -38,8 +39,26 @@ impl Quality {
         }
     }
 }
-static THROTTLE: LazyLock<ThrottlePool> =
+async fn get_image(client: &Client, uuid: Uuid, quality: Quality, side: &str) -> Option<Image> {
+    let byte = uuid.as_bytes()[0];
+    let request = client
+        .get(format!(
+            "https://{CARD_URL}/{}/{side}/{:x}/{:x}/{uuid}.{}",
+            quality.name(),
+            byte / 16,
+            byte % 16,
+            quality.extension(),
+        ))
+        .send()
+        .await
+        .ok()?;
+    let bytes = request.bytes().await.ok()?;
+    parse_bytes(&bytes)
+}
+static CARDS_THROTTLE: LazyLock<ThrottlePool> =
     LazyLock::new(|| ThrottlePool::new(ThrottleRate::new(9, Duration::new(1, 0))));
+static SEARCH_THROTTLE: LazyLock<ThrottlePool> =
+    LazyLock::new(|| ThrottlePool::new(ThrottleRate::new(1, Duration::new(1, 0))));
 impl SubCard {
     #[must_use]
     pub fn get_list(
@@ -53,49 +72,82 @@ impl SubCard {
                 .map(|uuid| Self::get(client.clone(), uuid, quality)),
         )
     }
+    pub async fn get_prints(
+        client: Client,
+        oracle: Uuid,
+        quality: Quality,
+    ) -> Option<JoinSet<Result<(Self, Image, Option<Image>), Uuid>>> {
+        let mut set = JoinSet::new();
+        for i in 1.. {
+            let json_raw = {
+                let _hold = SEARCH_THROTTLE.queue_with_hold().await;
+                let request = client
+                    .get(format!(
+                        "https://api.scryfall.com/cards/search?q=oracleid%3A{oracle}&unique=prints&page={i}"
+                    ))
+                    .send()
+                    .await
+                    .ok()?;
+                request.text().await.ok()?
+            };
+            let mut json = parse(&json_raw).unwrap();
+            for card_json in json["data"].as_array_mut()? {
+                set.spawn(Self::get_json(
+                    client.clone(),
+                    mem::replace(card_json, JsonValue::Null),
+                    quality,
+                ));
+            }
+            if !json["has_more"].as_bool()? {
+                break;
+            }
+        }
+        Some(set)
+    }
+    pub async fn get_json(
+        client: Client,
+        json: JsonValue,
+        quality: Quality,
+    ) -> Result<(Self, Image, Option<Image>), Uuid> {
+        let uuid = Uuid::parse_str(json["id"].as_str().unwrap_or_default())
+            .ok()
+            .unwrap_or_default();
+        if let Some(card) = SubCard::from_scryfall(&json, uuid)
+            && let (Some(image), back) = tokio::join!(
+                get_image(&client, uuid, quality, "front"),
+                get_image(&client, uuid, quality, "back")
+            )
+        {
+            Ok((card, image, back))
+        } else {
+            Err(uuid)
+        }
+    }
     pub async fn get(
         client: Client,
         uuid: Uuid,
         quality: Quality,
     ) -> Result<(Self, Image, Option<Image>), Uuid> {
         async fn get_card(client: &Client, uuid: Uuid) -> Option<SubCard> {
-            let _hold = THROTTLE.queue_with_hold().await;
-            let request = client
-                .get(format!("https://{URL}/cards/{uuid}"))
-                .send()
-                .await
-                .ok()?;
-            let json_raw = request.text().await.ok()?;
+            let json_raw = {
+                let _hold = CARDS_THROTTLE.queue_with_hold().await;
+                let request = client
+                    .get(format!("https://{URL}/cards/{uuid}"))
+                    .send()
+                    .await
+                    .unwrap();
+                request.text().await.ok().unwrap()
+            };
             let json = parse(&json_raw).unwrap();
-            SubCard::from_scryfall(&json, uuid)
+            println!("{json}");
+            Some(SubCard::from_scryfall(&json, uuid).unwrap())
         }
-        async fn get_image(
-            client: &Client,
-            uuid: Uuid,
-            quality: Quality,
-            side: &str,
-        ) -> Option<Image> {
-            let byte = uuid.as_bytes()[0];
-            let request = client
-                .get(format!(
-                    "https://{CARD_URL}/{}/{side}/{:x}/{:x}/{uuid}.{}",
-                    quality.name(),
-                    byte / 16,
-                    byte % 16,
-                    quality.extension(),
-                ))
-                .send()
-                .await
-                .ok()?;
-            let bytes = request.bytes().await.ok()?;
-            parse_bytes(&bytes)
-        }
-        if let (Some(card), Some(image), back) = tokio::join!(
+        if let (Some(card), image, back) = tokio::join!(
             get_card(&client, uuid),
             get_image(&client, uuid, quality, "front"),
             get_image(&client, uuid, quality, "back")
         ) {
-            Ok((card, image, back))
+            Ok((card, image.unwrap(), back))
         } else {
             Err(uuid)
         }
@@ -110,6 +162,7 @@ impl SubCard {
                     &face[s]
                 }
             }
+            let oracle_id = Uuid::parse_str(get(face, json, "oracle_id").as_str()?).ok()?;
             let [name_raw, mana_cost_raw, type_line_raw, oracle_text_raw] =
                 ["name", "mana_cost", "type_line", "oracle_text"]
                     .try_map(|s| get(face, json, s).as_str())?;
@@ -127,6 +180,7 @@ impl SubCard {
             let mana_cost = Cost::from(mana_cost_raw);
             let type_line = Types::from(type_line_raw);
             Some(CardInfo {
+                oracle_id: Id::from(oracle_id),
                 name,
                 mana_cost,
                 type_line,
@@ -140,7 +194,6 @@ impl SubCard {
             })
         }
         let layout_str = json["layout"].as_str()?;
-        let oracle_id = Uuid::parse_str(json["oracle_id"].as_str()?).ok()?;
         let layout = Layout::from(layout_str);
         let (front, back) = if json["card_faces"].is_null() {
             let front = get_face(json, &JsonValue::Null)?;
@@ -165,7 +218,6 @@ impl SubCard {
         };
         Some(Self {
             id: Id::from(uuid),
-            oracle_id: Id::from(oracle_id),
             tokens,
             data,
             flipped: false,

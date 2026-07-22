@@ -25,7 +25,6 @@ pub struct Card {
 #[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct SubCard {
     pub id: Id,
-    pub oracle_id: Id,
     pub tokens: Vec<Id>,
     pub data: CardData,
     pub flipped: bool,
@@ -59,6 +58,7 @@ pub struct Cost {
 }
 #[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct CardInfo {
+    pub oracle_id: Id,
     pub name: String,
     pub mana_cost: Cost,
     pub type_line: Types,
@@ -313,6 +313,7 @@ impl CardInfo {
     #[must_use]
     pub fn clone_no_image(&self) -> Self {
         Self {
+            oracle_id: self.oracle_id,
             name: self.name.clone(),
             mana_cost: self.mana_cost,
             type_line: self.type_line.clone(),
@@ -695,7 +696,6 @@ impl SubCard {
     pub fn clone_no_image(&self) -> Self {
         Self {
             id: self.id,
-            oracle_id: self.oracle_id,
             tokens: self.tokens.clone(),
             data: self.data.clone_no_image(),
             flipped: self.flipped,
