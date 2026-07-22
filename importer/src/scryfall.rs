@@ -8,25 +8,49 @@ use reqwest::Client;
 use std::str::FromStr as _;
 use std::sync::LazyLock;
 use std::time::Duration;
-use stream_throttle::{HoldHandle, ThrottlePool, ThrottleRate};
+use stream_throttle::{ThrottlePool, ThrottleRate};
 use tokio::task::JoinSet;
 use uuid::Uuid;
 const URL: &str = "api.scryfall.com";
 const CARD_URL: &str = "cards.scryfall.io";
-const QUALITY: &str = "png";
-const EXTENSION: &str = "png";
+#[derive(Clone, Copy)]
+pub enum Quality {
+    Small,
+    Normal,
+    Large,
+    Png,
+}
+impl Quality {
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Quality::Small => "small",
+            Quality::Normal => "normal",
+            Quality::Large => "large",
+            Quality::Png => "png",
+        }
+    }
+    #[must_use]
+    pub fn extension(self) -> &'static str {
+        match self {
+            Quality::Small | Quality::Normal | Quality::Large => "jpg",
+            Quality::Png => "png",
+        }
+    }
+}
 static THROTTLE: LazyLock<ThrottlePool> =
     LazyLock::new(|| ThrottlePool::new(ThrottleRate::new(9, Duration::new(1, 0))));
-async fn limit() -> HoldHandle {
-    THROTTLE.queue_with_hold().await
-}
 impl SubCard {
     #[must_use]
-    pub async fn get_list(client: Client, iter: &[Uuid]) -> Vec<(Self, Image)> {
+    pub async fn get_list(
+        client: Client,
+        iter: &[Uuid],
+        quality: Quality,
+    ) -> Vec<(Self, Image, Option<Image>)> {
         let mut cards = Vec::with_capacity(iter.len());
         let mut set = JoinSet::new();
         for uuid in iter {
-            set.spawn(Self::get(client.clone(), *uuid));
+            set.spawn(Self::get(client.clone(), *uuid, quality));
         }
         while let Some(Ok(Some(val))) = set.join_next().await {
             cards.push(val);
@@ -34,9 +58,13 @@ impl SubCard {
         cards
     }
     #[must_use]
-    pub async fn get(client: Client, uuid: Uuid) -> Option<(Self, Image)> {
+    pub async fn get(
+        client: Client,
+        uuid: Uuid,
+        quality: Quality,
+    ) -> Option<(Self, Image, Option<Image>)> {
         async fn get_card(client: &Client, uuid: Uuid) -> Option<SubCard> {
-            let _hold = limit().await;
+            let _hold = THROTTLE.queue_with_hold().await;
             let request = client
                 .get(format!("https://{URL}/cards/{uuid}"))
                 .send()
@@ -46,13 +74,20 @@ impl SubCard {
             let json = parse(&json_raw).unwrap();
             SubCard::from_scryfall(json, uuid)
         }
-        async fn get_image(client: &Client, uuid: Uuid) -> Option<Image> {
+        async fn get_image(
+            client: &Client,
+            uuid: Uuid,
+            quality: Quality,
+            side: &str,
+        ) -> Option<Image> {
             let byte = uuid.as_bytes()[0];
             let request = client
                 .get(format!(
-                    "https://{CARD_URL}/{QUALITY}/front/{:x}/{:x}/{uuid}.{EXTENSION}",
+                    "https://{CARD_URL}/{}/{side}/{:x}/{:x}/{uuid}.{}",
+                    quality.name(),
                     byte / 16,
-                    byte % 16
+                    byte % 16,
+                    quality.extension(),
                 ))
                 .send()
                 .await
@@ -60,8 +95,15 @@ impl SubCard {
             let bytes = request.bytes().await.ok()?;
             parse_bytes(&bytes)
         }
-        let (card, image) = tokio::join!(get_card(&client, uuid), get_image(&client, uuid));
-        card.zip(image)
+        if let (Some(card), Some(image), back) = tokio::join!(
+            get_card(&client, uuid),
+            get_image(&client, uuid, quality, "front"),
+            get_image(&client, uuid, quality, "back")
+        ) {
+            Some((card, image, back))
+        } else {
+            None
+        }
     }
     #[must_use]
     pub fn from_scryfall(json: JsonValue, uuid: Uuid) -> Option<Self> {

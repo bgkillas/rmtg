@@ -1,5 +1,6 @@
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 use crate::card::SubCard;
+use crate::scryfall::Quality;
 use reqwest::Client;
 use uuid::uuid;
 #[tokio::test(flavor = "multi_thread")]
@@ -24,8 +25,8 @@ async fn test() {
         bruce_uuid,
         gisela_uuid,
     ]; 1];
-    let list = SubCard::get_list(client, uuids.as_flattened()).await;
-    for (card, _) in &list {
+    let list = SubCard::get_list(client, uuids.as_flattened(), Quality::Small).await;
+    for (card, _, _) in &list {
         println!("{card:#?}");
     }
     println!(
