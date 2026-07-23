@@ -1,6 +1,6 @@
 use crate::focus::Focus;
 use crate::keybinds::{Keybind, Keybinds};
-use crate::net::Peers;
+use crate::net::{Peer, Peers};
 use crate::{CARD_THICKNESS, MAT_WIDTH, START_Y, W};
 use bevy::camera::{Camera, Camera3d};
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit};
@@ -95,13 +95,13 @@ pub fn camera_translation(
     }
 }
 #[must_use]
-pub fn default_cam_pos(n: usize) -> Transform {
-    let x = if n / 2 == 0 {
+pub fn default_cam_pos(n: Peer) -> Transform {
+    let x = if n.id / 2 == 0 {
         MAT_WIDTH / 2.0
     } else {
         -MAT_WIDTH / 2.0
     };
-    let z = if n.is_multiple_of(2) {
+    let z = if n.id.is_multiple_of(2) {
         MAT_WIDTH
     } else {
         -MAT_WIDTH

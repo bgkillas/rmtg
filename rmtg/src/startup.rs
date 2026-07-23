@@ -1,5 +1,6 @@
 use crate::assets::{Asset, TextMesh};
 use crate::camera::default_cam_pos;
+use crate::net::Peer;
 use crate::shapes::ShapeMesh as _;
 use crate::shapes::cube::Cube;
 use crate::shapes::dodecahedron::Dodecahedron;
@@ -57,7 +58,7 @@ pub fn startup(
         .build(),
     ));
     commands.spawn((
-        default_cam_pos(0),
+        default_cam_pos(Peer::default()),
         Camera3d::default(),
         Exposure::from_physical_camera(PhysicalCameraParameters {
             aperture_f_stops: 1.0,

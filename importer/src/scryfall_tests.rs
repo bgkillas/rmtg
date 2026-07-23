@@ -3,6 +3,7 @@ use crate::card::SubCard;
 use crate::scryfall::Quality;
 use fdlimit::raise_fd_limit;
 use reqwest::Client;
+use std::time::Instant;
 use uuid::uuid;
 #[tokio::test(flavor = "multi_thread")]
 async fn test_list() {
@@ -16,7 +17,7 @@ async fn test_list() {
     let aclazotz_uuid = uuid!("627c392c-4d18-4eb2-a4e8-c668f61f5487");
     let bruce_uuid = uuid!("e0dbbdcf-84e1-494f-8b8c-0a094f603fa9");
     let gisela_uuid = uuid!("04506bad-3856-4184-8dda-941ded60f41a");
-    let tmr = std::time::Instant::now();
+    let tmr = Instant::now();
     let uuids = [[
         kiki_uuid,
         reaper_uuid,
@@ -27,24 +28,24 @@ async fn test_list() {
         bruce_uuid,
         gisela_uuid,
     ]; 1];
-    let mut list = SubCard::get_list(client, uuids.as_flattened(), Quality::Small);
+    let mut list = SubCard::get_list(client, uuids.as_flattened(), Quality::Normal);
     while let Some(Ok(opt)) = list.join_next().await {
         let (card, _, _) = opt.unwrap();
         println!("{card:#?}");
     }
-    println!("{}", tmr.elapsed().as_nanos());
+    println!("{}", tmr.elapsed().as_millis());
 }
 #[tokio::test(flavor = "multi_thread")]
 async fn test_prints() {
     raise_fd_limit().unwrap();
     let client = Client::builder().user_agent(USER_AGENT).build().unwrap();
     let forest_uuid = uuid!("b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6");
-    let tmr = std::time::Instant::now();
-    let list = SubCard::get_prints(client, forest_uuid, Quality::Small)
+    let tmr = Instant::now();
+    let list = SubCard::get_prints(client, forest_uuid, Quality::Normal)
         .await
         .unwrap();
     let vec = list.join_all().await;
-    let time = tmr.elapsed().as_nanos();
+    let time = tmr.elapsed().as_millis();
     for res in &vec {
         if let Err(uuid) = res {
             println!("{uuid}");

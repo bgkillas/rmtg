@@ -1,6 +1,7 @@
 use crate::camera::{camera_rotation, camera_translation};
 use crate::focus::Menu;
 use crate::keybinds::KeybindsList;
+use crate::mat::create_mats;
 use crate::net::{Msg, Peers, connect_failed, on_connect, on_disconnect, receive_message};
 use crate::startup::{spawn_objects, startup};
 use crate::{APP_NAME, FONT};
@@ -96,7 +97,7 @@ pub fn app_run() -> AppExit {
     app.insert_resource(Menu::default());
     app.insert_resource(KeybindsList::default());
     app.insert_resource(Peers::default());
-    app.add_systems(Startup, (startup, spawn_objects).chain());
+    app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
     app.add_systems(Update, (camera_translation, camera_rotation));
     app.add_systems(FixedUpdate, (connect_failed, on_connect, receive_message));
     app.add_systems(FixedPostUpdate, on_disconnect);

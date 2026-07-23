@@ -1,4 +1,4 @@
-use bevy::prelude::{PopulatedMessageReader, Resource};
+use bevy::prelude::{Component, PopulatedMessageReader, Resource};
 use bevy_p2p::bitcode::{self, Decode, Encode};
 use bevy_p2p::iroh::EndpointId;
 use bevy_p2p::message::{ConnectFailed, MessageReceived, PeerConnected, PeerDisconnected};
@@ -29,9 +29,19 @@ pub fn receive_message(mut reader: PopulatedMessageReader<MessageReceived<Msg>>)
         }
     }
 }
+#[derive(Component, Default, Clone, Copy)]
+pub struct Peer {
+    pub id: u32,
+}
+impl Peer {
+    #[must_use]
+    pub fn new(id: u32) -> Self {
+        Peer { id }
+    }
+}
 #[derive(Resource, Default)]
 pub struct Peers {
-    pub my_id: Option<usize>,
-    pub peer_to_id: FxHashMap<EndpointId, usize>,
-    pub id_to_peer: FxHashMap<usize, EndpointId>,
+    pub my_id: Option<Peer>,
+    pub peer_to_id: FxHashMap<EndpointId, Peer>,
+    pub id_to_peer: FxHashMap<Peer, EndpointId>,
 }
