@@ -11,7 +11,6 @@ pub fn parse_bytes(bytes: &[u8]) -> Option<Image> {
     let (data, mips) = generate_mips_texture(image);
     Some(make_img(data, width, height, mips))
 }
-#[must_use]
 fn parse_no_mips(bytes: &[u8]) -> Option<RgbaImage> {
     let image = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
@@ -21,7 +20,6 @@ fn parse_no_mips(bytes: &[u8]) -> Option<RgbaImage> {
     let rgba = image.to_rgba8();
     Some(rgba)
 }
-#[must_use]
 fn make_img(rgba: Vec<u8>, width: u32, height: u32, mips: u32) -> Image {
     let mut image = Image::new_uninit(
         Extent3d {
@@ -69,5 +67,5 @@ fn generate_mips(mut dyn_image: RgbaImage, mip_count: u32) -> Vec<u8> {
     image_data
 }
 fn calculate_mip_count(width: u32, height: u32) -> u32 {
-    (width.min(height) as f32).log2().floor() as u32 + 1
+    ((width.min(height) as f32).log2().floor() as u32 + 1).min(12)
 }

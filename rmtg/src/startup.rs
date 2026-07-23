@@ -78,7 +78,7 @@ pub fn startup(
             ..PerspectiveProjection::default()
         }),
         Tonemapping::None,
-        Msaa::Sample8,
+        Msaa::Sample4,
     ));
 }
 pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {

@@ -16,7 +16,7 @@ use bevy::asset::{AssetMetaCheck, AssetPlugin};
 use bevy::ecs::schedule::IntoScheduleConfigs as _;
 #[cfg(feature = "colliders")]
 use bevy::gizmos::AppGizmoBuilder as _;
-use bevy::image::ImagePlugin;
+use bevy::image::{ImageFilterMode, ImagePlugin, ImageSamplerDescriptor};
 use bevy::prelude::{MeshPickingPlugin, Resource};
 use bevy::settings::SettingsPlugin;
 use bevy::window::{PresentMode, Window, WindowPlugin};
@@ -42,7 +42,14 @@ pub fn app_run() -> AppExit {
                 meta_check: AssetMetaCheck::Never,
                 ..AssetPlugin::default()
             })
-            .set(ImagePlugin::default_linear())
+            .set(ImagePlugin {
+                default_sampler: ImageSamplerDescriptor {
+                    mag_filter: ImageFilterMode::Linear,
+                    min_filter: ImageFilterMode::Linear,
+                    mipmap_filter: ImageFilterMode::Nearest,
+                    ..ImageSamplerDescriptor::default()
+                },
+            })
             .set(TaskPoolPlugin {
                 task_pool_options: TaskPoolOptions {
                     min_total_threads: 1,
