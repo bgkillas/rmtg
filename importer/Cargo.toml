@@ -12,7 +12,7 @@ image = {version = "0.25.10", default-features = false, features = ["jpeg", "png
 jzon = "0.12.5"
 rand = { version = "0.10.2", default-features = false, features = ["std", "alloc", "simd_support", "sys_rng", "std_rng"] }
 bitcode = {git = "https://github.com/SoftbearStudios/bitcode", branch = "custom_encoder"}
-bevy = {version="0.19.0", features = ["ui"], default-features = false}
+bevy = {version="0.19.0", features = ["ui", "bevy_pbr"], default-features = false}
 rules = {workspace = true}
 enumset = "1.1.14"
 tokio = {version = "1.53.1", features = ["macros", "rt-multi-thread"]}

@@ -5,6 +5,10 @@ use bevy::prelude::Transform;
 pub mod card;
 pub mod id;
 pub mod image;
+pub use bitcode;
+pub use reqwest;
+pub use tokio;
+pub use uuid;
 #[cfg(test)]
 mod image_bench;
 pub mod scryfall;

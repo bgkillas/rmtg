@@ -1,11 +1,14 @@
 use crate::assets::Asset;
 use crate::physics::physics_base;
+use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH};
 use avian3d::prelude::Collider;
 use bevy::ecs::children;
+use bevy::math::Dir3;
 use bevy::mesh::Mesh3d;
 use bevy::pbr::MeshMaterial3d;
-use bevy::prelude::{Bundle, Component, Transform};
+use bevy::prelude::{Bundle, Component, Rectangle, Transform};
 use bitcode::{Decode, Encode};
+use importer::bitcode;
 use importer::card::{Card, CardIter, CardIterMut, SubCard};
 use importer::is_reversed;
 use itertools::Either;
@@ -26,38 +29,57 @@ pub enum Pile {
 impl Pile {
     #[must_use]
     pub fn bundle(self, asset: &mut Asset) -> impl Bundle {
+        let (left, right) = self.left_right(asset);
+        let (front, back) = self.front_back(asset);
         (
-            children![
-                self.left(asset),
-                self.right(asset),
-                self.up(asset),
-                self.down(asset),
-                self.front(asset),
-                self.back(asset),
-            ],
+            children![self.up(asset), self.down(asset), left, right, front, back],
             self.collider(),
             self,
             physics_base(),
         )
     }
     #[must_use]
-    pub fn left(&self, asset: &Asset) -> impl Bundle + use<> {
+    pub fn left_right(&self, asset: &mut Asset) -> (impl Bundle + use<>, impl Bundle + use<>) {
+        let mesh = asset
+            .meshes
+            .add(Rectangle::new(self.thickness(), CARD_HEIGHT));
         (
-            Transform::default(),
-            MeshMaterial3d(asset.card.color.clone()),
+            (
+                Transform::from_xyz(-CARD_WIDTH / 2.0, 0.0, 0.0).looking_to(Dir3::X, Dir3::Z),
+                MeshMaterial3d(asset.card.color.clone()),
+                Mesh3d(mesh.clone()),
+            ),
+            (
+                Transform::from_xyz(CARD_WIDTH / 2.0, 0.0, 0.0).looking_to(Dir3::NEG_X, Dir3::Z),
+                MeshMaterial3d(asset.card.color.clone()),
+                Mesh3d(mesh),
+            ),
         )
     }
     #[must_use]
-    pub fn right(&self, asset: &Asset) -> impl Bundle + use<> {
+    pub fn front_back(&self, asset: &mut Asset) -> (impl Bundle + use<>, impl Bundle + use<>) {
+        let mesh = asset
+            .meshes
+            .add(Rectangle::new(CARD_WIDTH, self.thickness()));
         (
-            Transform::default(),
-            MeshMaterial3d(asset.card.color.clone()),
+            (
+                Transform::from_xyz(0.0, 0.0, -CARD_HEIGHT / 2.0).looking_to(Dir3::Z, Dir3::NEG_Y),
+                MeshMaterial3d(asset.card.color.clone()),
+                Mesh3d(mesh.clone()),
+            ),
+            (
+                Transform::from_xyz(0.0, 0.0, CARD_HEIGHT / 2.0)
+                    .looking_to(Dir3::NEG_Z, Dir3::NEG_Y),
+                MeshMaterial3d(asset.card.color.clone()),
+                Mesh3d(mesh),
+            ),
         )
     }
     #[must_use]
     pub fn up(&self, asset: &mut Asset) -> impl Bundle + use<> {
         (
-            Transform::default(),
+            Transform::from_xyz(0.0, self.thickness() / 2.0, 0.0)
+                .looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
             MeshMaterial3d(self.first().face().material()),
             Mesh3d(asset.card.stock.clone()),
         )
@@ -65,28 +87,18 @@ impl Pile {
     #[must_use]
     pub fn down(&self, asset: &Asset) -> impl Bundle + use<> {
         (
-            Transform::default(),
+            Transform::from_xyz(0.0, -self.thickness() / 2.0, 0.0).looking_to(Dir3::Y, Dir3::NEG_Z),
             MeshMaterial3d(asset.card.back.clone()),
             Mesh3d(asset.card.stock.clone()),
         )
     }
     #[must_use]
-    pub fn front(&self, asset: &Asset) -> impl Bundle + use<> {
-        (
-            Transform::default(),
-            MeshMaterial3d(asset.card.color.clone()),
-        )
-    }
-    #[must_use]
-    pub fn back(&self, asset: &Asset) -> impl Bundle + use<> {
-        (
-            Transform::default(),
-            MeshMaterial3d(asset.card.color.clone()),
-        )
-    }
-    #[must_use]
     pub fn collider(&self) -> Collider {
-        todo!()
+        Collider::cuboid(CARD_WIDTH, self.thickness(), CARD_HEIGHT)
+    }
+    #[must_use]
+    pub fn thickness(&self) -> f32 {
+        CARD_THICKNESS * self.len() as f32
     }
     pub fn sort_by<F>(&mut self, sort: F)
     where
@@ -478,5 +490,10 @@ impl<'a> IntoIterator for &'a mut Pile {
     type IntoIter = Either<IterMut<'a, SubCard>, CardIterMut<'a>>;
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
+    }
+}
+impl From<SubCard> for Pile {
+    fn from(value: SubCard) -> Self {
+        Self::Single(Box::new(Card::from(value)))
     }
 }

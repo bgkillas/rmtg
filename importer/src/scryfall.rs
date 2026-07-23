@@ -206,7 +206,7 @@ impl SubCard {
                 power,
                 toughness,
                 loyalty,
-                image: None,
+                handles: None,
             })
         }
         let layout_str = json["layout"].as_str()?;

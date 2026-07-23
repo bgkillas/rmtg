@@ -3,8 +3,9 @@ use crate::focus::Menu;
 use crate::keybinds::KeybindsList;
 use crate::mat::create_mats;
 use crate::net::{Msg, Peers, connect_failed, on_connect, on_disconnect, receive_message};
+use crate::paste::paste_card;
 use crate::startup::{spawn_objects, startup};
-use crate::{APP_NAME, FONT};
+use crate::{APP_NAME, FONT, USER_AGENT};
 use avian3d::PhysicsPlugins;
 use bevy::DefaultPlugins;
 use bevy::app::{
@@ -16,7 +17,7 @@ use bevy::ecs::schedule::IntoScheduleConfigs as _;
 #[cfg(feature = "colliders")]
 use bevy::gizmos::AppGizmoBuilder as _;
 use bevy::image::ImagePlugin;
-use bevy::prelude::MeshPickingPlugin;
+use bevy::prelude::{MeshPickingPlugin, Resource};
 use bevy::settings::SettingsPlugin;
 use bevy::window::{PresentMode, Window, WindowPlugin};
 use bevy_p2p::plugin::P2PPlugin;
@@ -41,7 +42,7 @@ pub fn app_run() -> AppExit {
                 meta_check: AssetMetaCheck::Never,
                 ..AssetPlugin::default()
             })
-            .set(ImagePlugin::default_nearest())
+            .set(ImagePlugin::default_linear())
             .set(TaskPoolPlugin {
                 task_pool_options: TaskPoolOptions {
                     min_total_threads: 1,
@@ -94,12 +95,41 @@ pub fn app_run() -> AppExit {
         },
         bevy::gizmos::config::GizmoConfig::default(),
     );
-    app.insert_resource(Menu::default());
-    app.insert_resource(KeybindsList::default());
-    app.insert_resource(Peers::default());
+    app.init_resource::<Menu>();
+    app.init_resource::<KeybindsList>();
+    app.init_resource::<Peers>();
+    app.init_resource::<Client>();
+    app.init_resource::<Runtime>();
     app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
-    app.add_systems(Update, (camera_translation, camera_rotation));
+    app.add_systems(Update, (camera_translation, camera_rotation, paste_card));
     app.add_systems(FixedUpdate, (connect_failed, on_connect, receive_message));
     app.add_systems(FixedPostUpdate, on_disconnect);
     app.run()
+}
+#[derive(Resource)]
+pub struct Client {
+    pub client: importer::reqwest::Client,
+}
+impl Default for Client {
+    fn default() -> Self {
+        Self {
+            client: importer::reqwest::Client::builder()
+                .user_agent(USER_AGENT)
+                .build()
+                .unwrap(),
+        }
+    }
+}
+#[derive(Resource)]
+pub struct Runtime {
+    pub runtime: importer::tokio::runtime::Runtime,
+}
+impl Default for Runtime {
+    fn default() -> Self {
+        Self {
+            runtime: importer::tokio::runtime::Builder::new_multi_thread()
+                .build()
+                .unwrap(),
+        }
+    }
 }

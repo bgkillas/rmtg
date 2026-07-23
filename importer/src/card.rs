@@ -69,7 +69,7 @@ pub struct CardInfo {
     pub toughness: Option<u8>,
     pub loyalty: Option<u8>,
     #[bitcode(skip)]
-    pub image: Option<Handles>,
+    pub handles: Option<Handles>,
 }
 #[derive(Debug, Clone, Default)]
 pub struct Handles {
@@ -324,16 +324,16 @@ impl CardInfo {
             power: self.power,
             loyalty: self.loyalty,
             toughness: self.toughness,
-            image: None,
+            handles: None,
         }
     }
     #[must_use]
     pub fn image(&self) -> Handle<Image> {
-        self.image.as_ref().unwrap().image()
+        self.handles.as_ref().unwrap().image()
     }
     #[must_use]
     pub fn material(&self) -> Handle<StandardMaterial> {
-        self.image.as_ref().unwrap().material()
+        self.handles.as_ref().unwrap().material()
     }
 }
 impl Handles {

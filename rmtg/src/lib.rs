@@ -12,6 +12,7 @@ pub mod focus;
 pub mod keybinds;
 pub mod mat;
 pub mod net;
+pub mod paste;
 pub mod physics;
 pub mod shapes;
 pub mod startup;
