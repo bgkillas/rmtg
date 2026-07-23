@@ -162,5 +162,5 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
 }
 pub trait ShapeOutline: NewShape + Into<Polyline> {
     type Mesh: ShapeMesh;
-    const DEPTH_BIAS: f32 = -1.0 / 65536.0;
+    const DEPTH_BIAS: f32 = -1.0 / 4096.0;
 }

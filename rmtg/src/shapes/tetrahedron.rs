@@ -38,7 +38,6 @@ impl ShapeMesh for Tetrahedron {
 }
 impl ShapeOutline for TetrahedronOutline {
     type Mesh = Tetrahedron;
-    const DEPTH_BIAS: f32 = 0.0;
 }
 impl NewShape for Tetrahedron {
     fn from_height(height: f32) -> Self {
