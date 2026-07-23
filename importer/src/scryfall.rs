@@ -79,17 +79,16 @@ impl SubCard {
     ) -> Option<JoinSet<Result<(Self, Image, Option<Image>), Uuid>>> {
         let mut set = JoinSet::new();
         for i in 1.. {
-            let json_raw = {
-                let _hold = SEARCH_THROTTLE.queue_with_hold().await;
-                let request = client
+            let lock = SEARCH_THROTTLE.queue_with_hold().await;
+            let request = client
                     .get(format!(
                         "https://{URL}/cards/search?q=oracleid%3A{oracle}+game%3Apaper&unique=prints&page={i}"
                     ))
                     .send()
                     .await
                     .ok()?;
-                request.text().await.ok()?
-            };
+            let json_raw = request.text().await.ok()?;
+            drop(lock);
             let mut json = parse(&json_raw).ok()?;
             for card_json in json["data"].as_array_mut()? {
                 set.spawn(Self::get_json(
@@ -135,15 +134,14 @@ impl SubCard {
         quality: Quality,
     ) -> Result<(Self, Image, Option<Image>), Uuid> {
         async fn get_card(client: &Client, uuid: Uuid) -> Option<(SubCard, bool)> {
-            let json_raw = {
-                let _hold = CARDS_THROTTLE.queue_with_hold().await;
-                let request = client
-                    .get(format!("https://{URL}/cards/{uuid}"))
-                    .send()
-                    .await
-                    .ok()?;
-                request.text().await.ok()?
-            };
+            let lock = CARDS_THROTTLE.queue_with_hold().await;
+            let request = client
+                .get(format!("https://{URL}/cards/{uuid}"))
+                .send()
+                .await
+                .ok()?;
+            let json_raw = request.text().await.ok()?;
+            drop(lock);
             let json = parse(&json_raw).ok()?;
             SubCard::from_scryfall(&json, uuid)
         }
@@ -180,15 +178,14 @@ impl SubCard {
         quality: Quality,
     ) -> Result<(Self, Image, Option<Image>), (String, u16)> {
         async fn get_card(client: &Client, set: &str, cn: u16) -> Option<(SubCard, bool)> {
-            let json_raw = {
-                let _hold = CARDS_THROTTLE.queue_with_hold().await;
-                let request = client
-                    .get(format!("https://{URL}/cards/{set}/{cn}"))
-                    .send()
-                    .await
-                    .ok()?;
-                request.text().await.ok()?
-            };
+            let lock = CARDS_THROTTLE.queue_with_hold().await;
+            let request = client
+                .get(format!("https://{URL}/cards/{set}/{cn}"))
+                .send()
+                .await
+                .ok()?;
+            let json_raw = request.text().await.ok()?;
+            drop(lock);
             let json = parse(&json_raw).ok()?;
             let uuid = Uuid::parse_str(json["id"].as_str()?).ok()?;
             SubCard::from_scryfall(&json, uuid)
