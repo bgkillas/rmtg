@@ -165,6 +165,51 @@ impl SubCard {
             Err(uuid)
         }
     }
+    pub async fn get_set_cn_owned(
+        client: Client,
+        set: String,
+        cn: u16,
+        quality: Quality,
+    ) -> Result<(Self, Image, Option<Image>), (String, u16)> {
+        Self::get_set_cn(client, &set, cn, quality).await
+    }
+    pub async fn get_set_cn(
+        client: Client,
+        set: &str,
+        cn: u16,
+        quality: Quality,
+    ) -> Result<(Self, Image, Option<Image>), (String, u16)> {
+        async fn get_card(client: &Client, set: &str, cn: u16) -> Option<(SubCard, bool)> {
+            let json_raw = {
+                let _hold = CARDS_THROTTLE.queue_with_hold().await;
+                let request = client
+                    .get(format!("https://{URL}/cards/{set}/{cn}"))
+                    .send()
+                    .await
+                    .ok()?;
+                request.text().await.ok()?
+            };
+            let json = parse(&json_raw).ok()?;
+            let uuid = Uuid::parse_str(json["id"].as_str()?).ok()?;
+            SubCard::from_scryfall(&json, uuid)
+        }
+        if let Some((card, has_back)) = get_card(&client, set, cn).await
+            && let Some(image) = get_image(&client, card.id.id, quality, "front").await
+        {
+            let back = if has_back {
+                Some(
+                    get_image(&client, card.id.id, quality, "back")
+                        .await
+                        .ok_or_else(|| (set.to_owned(), cn))?,
+                )
+            } else {
+                None
+            };
+            Ok((card, image, back))
+        } else {
+            Err((set.to_owned(), cn))
+        }
+    }
     #[must_use]
     pub fn from_scryfall(json: &JsonValue, uuid: Uuid) -> Option<(Self, bool)> {
         fn get_face(json: &JsonValue, face: &JsonValue) -> Option<CardInfo> {

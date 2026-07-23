@@ -46,7 +46,8 @@ pub fn app_run() -> AppExit {
                 default_sampler: ImageSamplerDescriptor {
                     mag_filter: ImageFilterMode::Linear,
                     min_filter: ImageFilterMode::Linear,
-                    mipmap_filter: ImageFilterMode::Nearest,
+                    mipmap_filter: ImageFilterMode::Linear,
+                    anisotropy_clamp: 16,
                     ..ImageSamplerDescriptor::default()
                 },
             })

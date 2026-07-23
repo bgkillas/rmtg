@@ -19,11 +19,28 @@ pub fn paste_card(
 ) {
     if keybind.just_pressed(Keybind::Paste)
         && let Some(Ok(str)) = clipboard.fetch_text().poll_result()
-        && let Ok(uuid) = Uuid::from_str(&str)
-        && let Ok((mut card, front, back)) =
+        && let Some((mut card, front, back)) = if let Ok(uuid) = Uuid::from_str(&str) {
             runtime
                 .runtime
                 .block_on(SubCard::get(client.client.clone(), uuid, Quality::Png))
+                .ok()
+        } else if let Some(rest) = str.strip_prefix("https://scryfall.com/card/")
+            && let Some((set, after)) = rest.split_once('/')
+            && let Some((cn_str, _)) = after.split_once('/')
+            && let Ok(cn) = cn_str.parse()
+        {
+            runtime
+                .runtime
+                .block_on(SubCard::get_set_cn(
+                    client.client.clone(),
+                    set,
+                    cn,
+                    Quality::Png,
+                ))
+                .ok()
+        } else {
+            None
+        }
     {
         asset.register(&mut card, front, back);
         commands.spawn((
