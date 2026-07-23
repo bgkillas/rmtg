@@ -128,6 +128,7 @@ impl Default for Runtime {
     fn default() -> Self {
         Self {
             runtime: importer::tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
                 .build()
                 .unwrap(),
         }

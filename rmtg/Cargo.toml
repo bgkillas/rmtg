@@ -29,6 +29,7 @@ bevy = {version = "0.19.0", default-features = false, features = [
   "webgpu",
   "system_clipboard"
 ]}
+arboard = {version = "3.6.1", features = ["wayland-data-control"]}
 enumset = "1.1.14"
 enum-map = "3.1.0"
 avian3d = {version = "0.7.0", features = ["simd", "parallel", "f32", "collider-from-mesh", "3d", "parry-f32"], default-features = false}

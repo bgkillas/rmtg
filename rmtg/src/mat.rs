@@ -53,7 +53,7 @@ fn make_mat(
         Transform::from_xyz(if right { x } else { -x }, y, z)
     };
     commands
-        .spawn((transform, InheritedVisibility::default()))
+        .spawn((transform, InheritedVisibility::VISIBLE))
         .with_children(|p| {
             p.spawn((
                 Mesh3d(assets.meshes.add(Rectangle::new(MAT_WIDTH, MAT_BAR))),

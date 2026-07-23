@@ -30,7 +30,7 @@ fn make_img(rgba: Vec<u8>, width: u32, height: u32, mips: u32) -> Image {
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
-        TextureFormat::Rgba8Unorm,
+        TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::RENDER_WORLD,
     );
     image.data = Some(rgba);

@@ -6,7 +6,7 @@ use bevy::ecs::children;
 use bevy::math::Dir3;
 use bevy::mesh::Mesh3d;
 use bevy::pbr::MeshMaterial3d;
-use bevy::prelude::{Bundle, Component, Rectangle, Transform};
+use bevy::prelude::{Bundle, Component, InheritedVisibility, Rectangle, Transform};
 use bitcode::{Decode, Encode};
 use importer::bitcode;
 use importer::card::{Card, CardIter, CardIterMut, SubCard};
@@ -36,6 +36,7 @@ impl Pile {
             self.collider(),
             self,
             physics_base(),
+            InheritedVisibility::VISIBLE,
         )
     }
     #[must_use]

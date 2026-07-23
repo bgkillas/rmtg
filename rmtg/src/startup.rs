@@ -16,10 +16,8 @@ use bevy::camera::{
 use bevy::color::Color;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::image::Image;
-use bevy::light::light_consts::lux::OVERCAST_DAY;
-use bevy::light::{CascadeShadowConfigBuilder, DirectionalLight};
+use bevy::light::GlobalAmbientLight;
 use bevy::material::AlphaMode;
-use bevy::math::{Quat, Vec3};
 use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::picking::Pickable;
@@ -37,7 +35,9 @@ pub fn startup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut images: ResMut<Assets<Image>>,
+    mut light: ResMut<GlobalAmbientLight>,
 ) {
+    light.brightness = 100.0;
     let mesh = materials.add(StandardMaterial {
         base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
         alpha_mode: AlphaMode::Blend,
@@ -48,7 +48,6 @@ pub fn startup(
     let back_img = parse_bytes(include_bytes!("../../assets/back.png")).unwrap();
     let back = materials.add(StandardMaterial {
         base_color_texture: Some(images.add(back_img)),
-        alpha_mode: AlphaMode::Opaque,
         unlit: true,
         ..StandardMaterial::default()
     });
@@ -62,24 +61,6 @@ pub fn startup(
     let font = Font::from_bytes(FONT.to_vec());
     fonts.insert(AssetId::<Font>::DEFAULT_UUID, font).unwrap();
     pick.require_markers = true;
-    commands.spawn((
-        DirectionalLight {
-            illuminance: OVERCAST_DAY,
-            shadow_maps_enabled: true,
-            ..DirectionalLight::default()
-        },
-        Transform {
-            translation: Vec3::new(0.0, 4.0, 0.0),
-            rotation: Quat::from_rotation_x(-PI / 4.0),
-            ..Transform::default()
-        },
-        CascadeShadowConfigBuilder {
-            first_cascade_far_bound: 4.0,
-            maximum_distance: 10.0,
-            ..CascadeShadowConfigBuilder::default()
-        }
-        .build(),
-    ));
     commands.spawn((
         default_cam_pos(Peer::default()),
         Camera3d::default(),
@@ -129,7 +110,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
         Color::WHITE,
         Color::BLACK,
         &mut asset,
-        commands.spawn((Transform::from_xyz(0.0, 1.0, 0.0), Pickable::default())),
+        commands.spawn((Transform::from_xyz(2.0, 1.0, 0.0), Pickable::default())),
     );
     commands.spawn((
         Transform::from_xyz(0.0, -T / 2.0, 0.0),

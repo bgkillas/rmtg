@@ -73,6 +73,7 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
             Mesh3d(asset.meshes.add(mesh)),
             MeshMaterial3d(asset.materials.add(StandardMaterial {
                 base_color,
+                unlit: true,
                 ..StandardMaterial::default()
             })),
             children![(
