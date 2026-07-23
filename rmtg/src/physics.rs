@@ -15,6 +15,12 @@ pub const BOUNCE: f32 = 0.5;
 pub fn physics(mesh: &Mesh) -> impl Bundle + use<> {
     (
         Collider::convex_hull_from_mesh(mesh).unwrap(),
+        physics_base(),
+    )
+}
+#[must_use]
+pub fn physics_base() -> impl Bundle + use<> {
+    (
         RigidBody::Dynamic,
         LinearDamping(LIN_DAMPING),
         AngularDamping(ANG_DAMPING),

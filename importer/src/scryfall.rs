@@ -1,4 +1,4 @@
-use crate::card::{CardData, CardInfo, Layout, MaybeImage};
+use crate::card::{CardData, CardInfo, Layout};
 use crate::card::{Colors, Cost, SubCard, Types};
 use crate::id::Id;
 use crate::image::parse_bytes;
@@ -206,7 +206,7 @@ impl SubCard {
                 power,
                 toughness,
                 loyalty,
-                image: MaybeImage::default(),
+                image: None,
             })
         }
         let layout_str = json["layout"].as_str()?;

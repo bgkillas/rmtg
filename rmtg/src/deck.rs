@@ -1,10 +1,16 @@
-use crate::card::{Card, CardIter, CardIterMut, SubCard};
-use crate::is_reversed;
-use bevy::prelude::{Component, Transform};
+use crate::assets::Asset;
+use crate::physics::physics_base;
+use avian3d::prelude::Collider;
+use bevy::ecs::children;
+use bevy::mesh::Mesh3d;
+use bevy::pbr::MeshMaterial3d;
+use bevy::prelude::{Bundle, Component, Transform};
 use bitcode::{Decode, Encode};
+use importer::card::{Card, CardIter, CardIterMut, SubCard};
+use importer::is_reversed;
 use itertools::Either;
 use rand::make_rng;
-use rand::rngs::SmallRng;
+use rand::rngs::StdRng;
 use rand::seq::SliceRandom as _;
 use std::cmp::Ordering;
 use std::ops::{Bound, RangeBounds};
@@ -18,6 +24,70 @@ pub enum Pile {
     Empty,
 }
 impl Pile {
+    #[must_use]
+    pub fn bundle(self, asset: &mut Asset) -> impl Bundle {
+        (
+            children![
+                self.left(asset),
+                self.right(asset),
+                self.up(asset),
+                self.down(asset),
+                self.front(asset),
+                self.back(asset),
+            ],
+            self.collider(),
+            self,
+            physics_base(),
+        )
+    }
+    #[must_use]
+    pub fn left(&self, asset: &Asset) -> impl Bundle + use<> {
+        (
+            Transform::default(),
+            MeshMaterial3d(asset.card.color.clone()),
+        )
+    }
+    #[must_use]
+    pub fn right(&self, asset: &Asset) -> impl Bundle + use<> {
+        (
+            Transform::default(),
+            MeshMaterial3d(asset.card.color.clone()),
+        )
+    }
+    #[must_use]
+    pub fn up(&self, asset: &mut Asset) -> impl Bundle + use<> {
+        (
+            Transform::default(),
+            MeshMaterial3d(self.first().face().material()),
+            Mesh3d(asset.card.stock.clone()),
+        )
+    }
+    #[must_use]
+    pub fn down(&self, asset: &Asset) -> impl Bundle + use<> {
+        (
+            Transform::default(),
+            MeshMaterial3d(asset.card.back.clone()),
+            Mesh3d(asset.card.stock.clone()),
+        )
+    }
+    #[must_use]
+    pub fn front(&self, asset: &Asset) -> impl Bundle + use<> {
+        (
+            Transform::default(),
+            MeshMaterial3d(asset.card.color.clone()),
+        )
+    }
+    #[must_use]
+    pub fn back(&self, asset: &Asset) -> impl Bundle + use<> {
+        (
+            Transform::default(),
+            MeshMaterial3d(asset.card.color.clone()),
+        )
+    }
+    #[must_use]
+    pub fn collider(&self) -> Collider {
+        todo!()
+    }
     pub fn sort_by<F>(&mut self, sort: F)
     where
         F: FnMut(&SubCard, &SubCard) -> Ordering,
@@ -306,7 +376,7 @@ impl Pile {
     }
     pub fn shuffle(&mut self) {
         if let Pile::Multiple(v) = self {
-            v.shuffle(&mut make_rng::<SmallRng>());
+            v.shuffle(&mut make_rng::<StdRng>());
         }
     }
     #[must_use]

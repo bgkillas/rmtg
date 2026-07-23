@@ -1,4 +1,4 @@
-use crate::assets::{Asset, TextMesh};
+use crate::assets::{Asset, CardBase, TextMesh};
 use crate::camera::default_cam_pos;
 use crate::net::Peer;
 use crate::shapes::ShapeMesh as _;
@@ -7,7 +7,7 @@ use crate::shapes::dodecahedron::Dodecahedron;
 use crate::shapes::icosahedron::Icosahedron;
 use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
-use crate::{CARD_THICKNESS, FLOOR_COLOR, FONT, T, W};
+use crate::{CARD_HEIGHT, CARD_STOCK_COLOR, CARD_THICKNESS, CARD_WIDTH, FLOOR_COLOR, FONT, T, W};
 use avian3d::prelude::{Collider, RigidBody};
 use bevy::asset::{AssetId, Assets};
 use bevy::camera::{
@@ -15,24 +15,28 @@ use bevy::camera::{
 };
 use bevy::color::Color;
 use bevy::core_pipeline::tonemapping::Tonemapping;
+use bevy::image::Image;
 use bevy::light::light_consts::lux::OVERCAST_DAY;
 use bevy::light::{CascadeShadowConfigBuilder, DirectionalLight};
 use bevy::material::AlphaMode;
 use bevy::math::{Quat, Vec3};
-use bevy::mesh::Mesh3d;
+use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::picking::Pickable;
 use bevy::prelude::{
-    Commands, Cuboid, MeshPickingCamera, MeshPickingSettings, Msaa, ResMut, Transform,
+    Commands, Cuboid, MeshPickingCamera, MeshPickingSettings, Msaa, Rectangle, ResMut, Transform,
 };
 use bevy::text::Font;
 use bevy_rich_text3d::TextAtlas;
+use importer::image::parse_bytes;
 use std::f32::consts::PI;
 pub fn startup(
     mut commands: Commands,
     mut pick: ResMut<MeshPickingSettings>,
     mut fonts: ResMut<Assets<Font>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut images: ResMut<Assets<Image>>,
 ) {
     let mesh = materials.add(StandardMaterial {
         base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
@@ -40,6 +44,20 @@ pub fn startup(
         unlit: true,
         ..StandardMaterial::default()
     });
+    let stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
+    let back_img = parse_bytes(include_bytes!("../../assets/back.png")).unwrap();
+    let back = materials.add(StandardMaterial {
+        base_color_texture: Some(images.add(back_img)),
+        alpha_mode: AlphaMode::Opaque,
+        unlit: true,
+        ..StandardMaterial::default()
+    });
+    let color = materials.add(StandardMaterial {
+        base_color: CARD_STOCK_COLOR,
+        unlit: true,
+        ..StandardMaterial::default()
+    });
+    commands.insert_resource(CardBase { stock, back, color });
     commands.insert_resource(TextMesh { mesh });
     let font = Font::from_bytes(FONT.to_vec());
     fonts.insert(AssetId::<Font>::DEFAULT_UUID, font).unwrap();

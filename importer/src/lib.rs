@@ -3,7 +3,6 @@
 use bevy::math::Vec3;
 use bevy::prelude::Transform;
 pub mod card;
-pub mod deck;
 pub mod id;
 pub mod image;
 #[cfg(test)]

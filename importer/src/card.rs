@@ -69,11 +69,12 @@ pub struct CardInfo {
     pub toughness: Option<u8>,
     pub loyalty: Option<u8>,
     #[bitcode(skip)]
-    pub image: MaybeImage,
+    pub image: Option<Handles>,
 }
 #[derive(Debug, Clone, Default)]
-pub struct MaybeImage {
-    pub image: Option<Handle<Image>>,
+pub struct Handles {
+    pub image: Handle<Image>,
+    pub material: Handle<StandardMaterial>,
 }
 #[derive(Default, Clone, PartialOrd, Encode, Decode, Eq, PartialEq)]
 pub struct Types {
@@ -323,27 +324,26 @@ impl CardInfo {
             power: self.power,
             loyalty: self.loyalty,
             toughness: self.toughness,
-            image: MaybeImage::default(),
+            image: None,
         }
     }
     #[must_use]
-    pub fn clone_image(&self) -> Handle<Image> {
-        self.image.clone_handle()
-    }
-}
-impl From<Handle<Image>> for MaybeImage {
-    fn from(value: Handle<Image>) -> Self {
-        Self { image: Some(value) }
-    }
-}
-impl MaybeImage {
-    #[must_use]
-    pub fn clone_handle(&self) -> Handle<Image> {
-        self.handle().clone()
+    pub fn image(&self) -> Handle<Image> {
+        self.image.as_ref().unwrap().image()
     }
     #[must_use]
-    pub fn handle(&self) -> &Handle<Image> {
-        self.image.as_ref().unwrap()
+    pub fn material(&self) -> Handle<StandardMaterial> {
+        self.image.as_ref().unwrap().material()
+    }
+}
+impl Handles {
+    #[must_use]
+    pub fn image(&self) -> Handle<Image> {
+        self.image.clone()
+    }
+    #[must_use]
+    pub fn material(&self) -> Handle<StandardMaterial> {
+        self.material.clone()
     }
 }
 impl MainType {
@@ -725,28 +725,12 @@ impl SubCard {
     pub fn image_node(&self) -> ImageNode {
         match self.data.layout {
             Layout::Flip if self.flipped => ImageNode {
-                image: self.data.front.clone_image(),
+                image: self.data.front.image(),
                 flip_x: true,
                 flip_y: true,
                 ..ImageNode::default()
             },
-            _ => ImageNode::new(self.face().clone_image()),
-        }
-    }
-    #[must_use]
-    pub fn material(&self) -> StandardMaterial {
-        match self.data.layout {
-            Layout::Flip if self.flipped => StandardMaterial {
-                base_color_texture: Some(self.data.front.clone_image()),
-                unlit: true,
-                uv_transform: StandardMaterial::FLIP_VERTICAL * StandardMaterial::FLIP_HORIZONTAL,
-                ..StandardMaterial::default()
-            },
-            _ => StandardMaterial {
-                base_color_texture: Some(self.face().clone_image()),
-                unlit: true,
-                ..StandardMaterial::default()
-            },
+            _ => ImageNode::new(self.face().image()),
         }
     }
 }
