@@ -25,6 +25,10 @@ pub enum Shape {
     Octahedron,
     Tetrahedron,
 }
+#[derive(Component)]
+pub struct FaceNumber {
+    pub num: u8,
+}
 fn average_normalized<const N: usize>(elems: [[f32; 3]; N]) -> Vec3 {
     elems.map(Vec3::from).into_iter().sum::<Vec3>().normalize()
 }
@@ -107,6 +111,9 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
                         color: Srgba::BLACK,
                         world_scale: Some(Vec2::splat(Self::text_size(height))),
                         ..Text3dStyling::default()
+                    },
+                    FaceNumber {
+                        num: u8::try_from(i + 1).unwrap(),
                     },
                 ));
             }
