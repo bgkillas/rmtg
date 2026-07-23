@@ -1,6 +1,6 @@
 use crate::assets::Asset;
 use crate::physics::{bounce, physics};
-use crate::{CARD_THICKNESS, WORLD_FONT_SIZE};
+use crate::{CARD_THICKNESS, CARD_WIDTH, WORLD_FONT_SIZE};
 use avian3d::parry::glamx::Quat;
 use bevy::asset::RenderAssetUsages;
 use bevy::color::{Color, Srgba};
@@ -53,7 +53,7 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
     type const FACE_VERTICES: usize = 3;
     type const TRIANGLES: usize = 1;
     const IS_REVERSED: bool = false;
-    const HEIGHT: f32 = 1.0;
+    const HEIGHT: f32 = CARD_WIDTH / 2.0;
     const SHAPE: Shape;
     #[must_use]
     fn bundle(

@@ -7,11 +7,14 @@ use crate::shapes::dodecahedron::Dodecahedron;
 use crate::shapes::icosahedron::Icosahedron;
 use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
-use crate::{FLOOR_COLOR, FONT, T, W};
+use crate::{CARD_THICKNESS, FLOOR_COLOR, FONT, T, W};
 use avian3d::prelude::{Collider, RigidBody};
 use bevy::asset::{AssetId, Assets};
-use bevy::camera::{Camera3d, Exposure, PhysicalCameraParameters};
+use bevy::camera::{
+    Camera3d, Exposure, PerspectiveProjection, PhysicalCameraParameters, Projection,
+};
 use bevy::color::Color;
+use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::light::light_consts::lux::OVERCAST_DAY;
 use bevy::light::{CascadeShadowConfigBuilder, DirectionalLight};
 use bevy::material::AlphaMode;
@@ -19,7 +22,9 @@ use bevy::math::{Quat, Vec3};
 use bevy::mesh::Mesh3d;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::picking::Pickable;
-use bevy::prelude::{Commands, Cuboid, MeshPickingCamera, MeshPickingSettings, ResMut, Transform};
+use bevy::prelude::{
+    Commands, Cuboid, MeshPickingCamera, MeshPickingSettings, Msaa, ResMut, Transform,
+};
 use bevy::text::Font;
 use bevy_rich_text3d::TextAtlas;
 use std::f32::consts::PI;
@@ -67,6 +72,14 @@ pub fn startup(
             sensor_height: 0.01866,
         }),
         MeshPickingCamera,
+        Projection::Perspective(PerspectiveProjection {
+            fov: PI / 3.0,
+            near: CARD_THICKNESS / 32.0,
+            far: W * 2.0,
+            ..PerspectiveProjection::default()
+        }),
+        Tonemapping::None,
+        Msaa::Sample8,
     ));
 }
 pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
