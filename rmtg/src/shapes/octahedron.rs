@@ -1,7 +1,5 @@
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
-use bevy::math::Vec3;
 use bevy::mesh::{Mesh, MeshBuilder};
-use bevy_polyline::polyline::Polyline;
 #[derive(Clone, Copy)]
 pub struct Octahedron {
     pub unit_length: f32,
@@ -48,6 +46,26 @@ impl ShapeMesh for Octahedron {
 }
 impl ShapeOutline for OctahedronOutline {
     type Mesh = Octahedron;
+    type const EDGES: usize = 12;
+    fn edge_indices() -> [[usize; 2]; Self::EDGES] {
+        [
+            [0, 1],
+            [1, 2],
+            [2, 0],
+            [2, 4],
+            [4, 0],
+            [1, 5],
+            [5, 0],
+            [4, 5],
+            [2, 3],
+            [3, 1],
+            [3, 4],
+            [3, 5],
+        ]
+    }
+    fn unit_length(self) -> f32 {
+        self.unit_length
+    }
 }
 impl NewShape for Octahedron {
     fn from_height(height: f32) -> Self {
@@ -68,22 +86,12 @@ impl MeshBuilder for Octahedron {
         self.mesh()
     }
 }
+#[derive(Clone, Copy)]
 pub struct OctahedronOutline {
     pub unit_length: f32,
 }
-impl From<OctahedronOutline> for Polyline {
-    fn from(value: OctahedronOutline) -> Self {
-        let position = Octahedron::oriented_vertices(value.unit_length);
-        #[rustfmt::skip]
-        let ind = [
-            0, 1, 2, 2,
-            4, 1, 5, 4,
-            2, 3, 3, 3,
-            1, 2, 0, 4,
-            0, 5, 0, 5,
-            3, 1, 4, 5,
-        ];
-        let vertices = ind.map(|i| position[i]).map(Vec3::from).to_vec();
-        Polyline { vertices }
+impl MeshBuilder for OctahedronOutline {
+    fn build(&self) -> Mesh {
+        self.mesh()
     }
 }

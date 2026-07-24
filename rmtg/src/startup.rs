@@ -9,6 +9,7 @@ use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
 use crate::{CARD_HEIGHT, CARD_STOCK_COLOR, CARD_THICKNESS, CARD_WIDTH, FLOOR_COLOR, FONT, T, W};
 use avian3d::prelude::{Collider, RigidBody};
+use bevy::anti_alias::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
 use bevy::asset::{AssetId, Assets};
 use bevy::camera::{
     Camera3d, Exposure, PerspectiveProjection, PhysicalCameraParameters, Projection,
@@ -79,6 +80,11 @@ pub fn startup(
         }),
         Tonemapping::None,
         Msaa::Sample4,
+        ContrastAdaptiveSharpening {
+            enabled: true,
+            sharpening_strength: 1.0,
+            denoise: false,
+        },
     ));
 }
 pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {

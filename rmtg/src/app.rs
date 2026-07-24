@@ -21,7 +21,6 @@ use bevy::prelude::{MeshPickingPlugin, Resource};
 use bevy::settings::SettingsPlugin;
 use bevy::window::{PresentMode, Window, WindowPlugin};
 use bevy_p2p::plugin::P2PPlugin;
-use bevy_polyline::PolylinePlugin;
 use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
 #[must_use]
 pub fn app_run() -> AppExit {
@@ -83,7 +82,6 @@ pub fn app_run() -> AppExit {
     app.add_plugins(SettingsPlugin::new(APP_NAME));
     app.add_plugins(P2PPlugin::<Msg>::new());
     app.add_plugins(MeshPickingPlugin);
-    app.add_plugins(PolylinePlugin);
     app.add_plugins(Text3dPlugin::default());
     app.insert_resource(LoadFonts {
         font_embedded: vec![FONT],

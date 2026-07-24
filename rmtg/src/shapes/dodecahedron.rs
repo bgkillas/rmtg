@@ -1,7 +1,5 @@
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
-use avian3d::parry::glamx::Vec3;
 use bevy::mesh::{Mesh, MeshBuilder};
-use bevy_polyline::polyline::Polyline;
 use std::f32::consts::GOLDEN_RATIO;
 #[derive(Clone, Copy)]
 pub struct Dodecahedron {
@@ -73,6 +71,44 @@ impl ShapeMesh for Dodecahedron {
 }
 impl ShapeOutline for DodecahedronOutline {
     type Mesh = Dodecahedron;
+    type const EDGES: usize = 30;
+    fn edge_indices() -> [[usize; 2]; Self::EDGES] {
+        [
+            [15, 1],
+            [0, 9],
+            [9, 15],
+            [8, 0],
+            [8, 14],
+            [14, 2],
+            [10, 0],
+            [3, 9],
+            [16, 3],
+            [10, 16],
+            [8, 1],
+            [14, 5],
+            [5, 13],
+            [13, 1],
+            [13, 19],
+            [19, 4],
+            [10, 2],
+            [16, 6],
+            [6, 12],
+            [12, 2],
+            [12, 18],
+            [18, 5],
+            [15, 4],
+            [11, 3],
+            [11, 17],
+            [17, 6],
+            [11, 4],
+            [19, 7],
+            [7, 18],
+            [7, 17],
+        ]
+    }
+    fn unit_length(self) -> f32 {
+        self.unit_length
+    }
 }
 impl NewShape for Dodecahedron {
     fn from_height(height: f32) -> Self {
@@ -93,36 +129,12 @@ impl MeshBuilder for Dodecahedron {
         self.mesh()
     }
 }
+#[derive(Clone, Copy)]
 pub struct DodecahedronOutline {
     pub unit_length: f32,
 }
-impl From<DodecahedronOutline> for Polyline {
-    fn from(value: DodecahedronOutline) -> Self {
-        let position = Dodecahedron::oriented_vertices(value.unit_length);
-        #[rustfmt::skip]
-        let ind = [
-            15,  0,  9,
-             8,  8, 14,
-            10,  3, 16,
-            10,  8, 14,
-             5, 13, 13,
-            19, 10, 16,
-             6, 12, 12,
-            18, 15, 11,
-            11, 17, 11,
-            19,  7,  7,
-             1,  9, 15,
-             0, 14,  2,
-             0,  9,  3,
-            16,  1,  5,
-            13,  1, 19,
-             4,  2,  6,
-            12,  2, 18,
-             5,  4,  3,
-            17,  6,  4,
-             7, 18, 17,
-        ];
-        let vertices = ind.map(|i| position[i]).map(Vec3::from).to_vec();
-        Polyline { vertices }
+impl MeshBuilder for DodecahedronOutline {
+    fn build(&self) -> Mesh {
+        self.mesh()
     }
 }

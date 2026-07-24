@@ -5,16 +5,12 @@ use bevy::image::Image;
 use bevy::mesh::Mesh;
 use bevy::pbr::StandardMaterial;
 use bevy::prelude::{Res, ResMut, Resource};
-use bevy_polyline::material::PolylineMaterial;
-use bevy_polyline::polyline::Polyline;
 use importer::card::{Handles, SubCard};
 #[derive(SystemParam)]
 pub struct Asset<'w> {
     pub meshes: ResMut<'w, Assets<Mesh>>,
     pub images: ResMut<'w, Assets<Image>>,
     pub materials: ResMut<'w, Assets<StandardMaterial>>,
-    pub polylines: ResMut<'w, Assets<Polyline>>,
-    pub polyline_materials: ResMut<'w, Assets<PolylineMaterial>>,
     pub text_mesh: Res<'w, TextMesh>,
     pub card: Res<'w, CardBase>,
 }

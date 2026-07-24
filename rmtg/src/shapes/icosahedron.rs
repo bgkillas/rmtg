@@ -1,7 +1,5 @@
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
-use avian3d::parry::glamx::Vec3;
 use bevy::mesh::{Mesh, MeshBuilder};
-use bevy_polyline::polyline::Polyline;
 use std::f32::consts::GOLDEN_RATIO;
 #[derive(Clone, Copy)]
 pub struct Icosahedron {
@@ -68,6 +66,44 @@ impl ShapeMesh for Icosahedron {
 }
 impl ShapeOutline for IcosahedronOutline {
     type Mesh = Icosahedron;
+    type const EDGES: usize = 30;
+    fn edge_indices() -> [[usize; 2]; Self::EDGES] {
+        [
+            [0, 1],
+            [1, 2],
+            [2, 0],
+            [1, 6],
+            [6, 0],
+            [2, 8],
+            [8, 0],
+            [0, 4],
+            [4, 8],
+            [2, 3],
+            [3, 8],
+            [3, 7],
+            [7, 2],
+            [7, 1],
+            [4, 6],
+            [11, 4],
+            [5, 6],
+            [11, 5],
+            [1, 5],
+            [5, 7],
+            [4, 10],
+            [10, 11],
+            [8, 10],
+            [10, 3],
+            [3, 9],
+            [9, 10],
+            [11, 9],
+            [5, 9],
+            [7, 9],
+            [6, 11],
+        ]
+    }
+    fn unit_length(self) -> f32 {
+        self.unit_length
+    }
 }
 impl NewShape for Icosahedron {
     fn from_height(height: f32) -> Self {
@@ -88,28 +124,12 @@ impl MeshBuilder for Icosahedron {
         self.mesh()
     }
 }
+#[derive(Clone, Copy)]
 pub struct IcosahedronOutline {
     pub unit_length: f32,
 }
-impl From<IcosahedronOutline> for Polyline {
-    fn from(value: IcosahedronOutline) -> Self {
-        let position = Icosahedron::oriented_vertices(value.unit_length);
-        #[rustfmt::skip]
-        let ind = [
-             0,  1,  2,  1,  6,
-             2,  8,  0,  4,  2,
-             3,  3,  7,  7,  4,
-            11,  5, 11,  1,  5,
-             4, 10,  8, 10,  3,
-             9, 11,  5,  7,  6,
-             1,  2,  0,  6,  0,
-             8,  0,  4,  8,  3,
-             8,  7,  2,  1,  6,
-             4,  6,  5,  5,  7,
-            10, 11, 10,  3,  9,
-            10,  9,  9,  9, 11,
-        ];
-        let vertices = ind.map(|i| position[i]).map(Vec3::from).to_vec();
-        Polyline { vertices }
+impl MeshBuilder for IcosahedronOutline {
+    fn build(&self) -> Mesh {
+        self.mesh()
     }
 }

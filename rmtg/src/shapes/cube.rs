@@ -1,7 +1,5 @@
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
-use avian3d::parry::glamx::Vec3;
 use bevy::mesh::{Mesh, MeshBuilder};
-use bevy_polyline::polyline::Polyline;
 #[derive(Clone, Copy)]
 pub struct Cube {
     pub unit_length: f32,
@@ -50,7 +48,28 @@ impl ShapeMesh for Cube {
 }
 impl ShapeOutline for CubeOutline {
     type Mesh = Cube;
+    type const EDGES: usize = 12;
+    fn edge_indices() -> [[usize; 2]; Self::EDGES] {
+        [
+            [0, 1],
+            [0, 2],
+            [0, 3],
+            [7, 4],
+            [7, 5],
+            [7, 6],
+            [1, 5],
+            [2, 6],
+            [3, 4],
+            [4, 1],
+            [5, 2],
+            [6, 3],
+        ]
+    }
+    fn unit_length(self) -> f32 {
+        self.unit_length
+    }
 }
+#[derive(Clone, Copy)]
 pub struct CubeOutline {
     pub unit_length: f32,
 }
@@ -73,21 +92,8 @@ impl NewShape for CubeOutline {
         }
     }
 }
-impl From<CubeOutline> for Polyline {
-    fn from(value: CubeOutline) -> Self {
-        let v = Cube::oriented_vertices(value.unit_length).map(Vec3::from);
-        #[rustfmt::skip]
-        let ind = [
-            0, 0, 0,
-            7, 7, 7,
-            1, 2, 3,
-            4, 5, 6,
-            1, 2, 3,
-            4, 5, 6,
-            5, 6, 4,
-            1, 2, 3,
-        ];
-        let vertices = ind.map(|i| v[i]).to_vec();
-        Polyline { vertices }
+impl MeshBuilder for CubeOutline {
+    fn build(&self) -> Mesh {
+        self.mesh()
     }
 }

@@ -8,9 +8,9 @@ use bevy::ecs::children;
 use bevy::math::{Vec2, Vec3};
 use bevy::mesh::{Indices, Mesh, Mesh3d, MeshBuilder, PrimitiveTopology};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{Bundle, Component, EntityCommands, InheritedVisibility, Transform};
-use bevy_polyline::material::{PolylineMaterial, PolylineMaterialHandle};
-use bevy_polyline::polyline::{Polyline, PolylineHandle};
+use bevy::prelude::{
+    Bundle, Component, Cylinder, EntityCommands, InheritedVisibility, Sphere, Transform,
+};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor};
 pub mod cube;
 pub mod dodecahedron;
@@ -47,10 +47,10 @@ fn face<const N: usize>(elems: [Vec3; N], rev: bool) -> Transform {
     };
     Transform::from_translation(pos_epsilon).looking_to(if rev { pos } else { -pos }, end - pos)
 }
-pub trait NewShape {
+pub trait NewShape: MeshBuilder + Sized + Copy {
     fn from_height(height: f32) -> Self;
 }
-pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
+pub trait ShapeMesh: NewShape {
     type Outline: ShapeOutline;
     type const VERTICES: usize;
     type const FACES: usize;
@@ -77,12 +77,12 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
                 ..StandardMaterial::default()
             })),
             children![(
-                PolylineHandle(asset.polylines.add(Self::Outline::from_height(height))),
-                PolylineMaterialHandle(asset.polyline_materials.add(PolylineMaterial {
-                    width: 16.0 * height,
-                    color: outline_color.to_linear(),
-                    perspective: true,
+                Mesh3d(asset.meshes.add(Self::Outline::from_height(height))),
+                MeshMaterial3d(asset.materials.add(StandardMaterial {
+                    base_color: outline_color,
+                    unlit: true,
                     depth_bias: Self::Outline::DEPTH_BIAS,
+                    ..StandardMaterial::default()
                 })),
             )],
             InheritedVisibility::VISIBLE,
@@ -164,11 +164,43 @@ pub trait ShapeMesh: NewShape + MeshBuilder + Sized + Copy {
         );
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, position);
         mesh.insert_indices(indices);
-        mesh.compute_normals();
         mesh
     }
 }
-pub trait ShapeOutline: NewShape + Into<Polyline> {
+pub trait ShapeOutline: NewShape {
     type Mesh: ShapeMesh;
-    const DEPTH_BIAS: f32 = -1.0 / 4096.0;
+    type const EDGES: usize;
+    const DEPTH_BIAS: f32 = 1.0 / 4096.0;
+    const THICKNESS: f32 = CARD_THICKNESS;
+    #[must_use]
+    fn edge_indices() -> [[usize; 2]; Self::EDGES];
+    #[must_use]
+    fn unit_length(self) -> f32;
+    #[must_use]
+    fn mesh(self) -> Mesh {
+        let position = Self::Mesh::oriented_vertices(self.unit_length()).map(Vec3::from);
+        let edges = Self::edge_indices();
+        let edges_computed = edges.map(|[a, b]| [position[a], position[b]]);
+        let height = (edges_computed[0][0] - edges_computed[0][1]).length();
+        let cylinder = Mesh::from(Cylinder::new(Self::THICKNESS, height));
+        let sphere = Mesh::from(Sphere::new(Self::THICKNESS));
+        let mut mesh = cylinder.clone();
+        mesh.rotate_by(Quat::from_rotation_arc(
+            Vec3::Y,
+            (edges_computed[0][1] - edges_computed[0][0]).normalize(),
+        ));
+        mesh.translate_by((edges_computed[0][0] + edges_computed[0][1]) / 2.0);
+        for [a, b] in &edges_computed[1..] {
+            let mut line = cylinder.clone();
+            line.rotate_by(Quat::from_rotation_arc(Vec3::Y, (b - a).normalize()));
+            line.translate_by((a + b) / 2.0);
+            mesh.merge(&line).unwrap();
+        }
+        for v in position {
+            let mut dot = sphere.clone();
+            dot.translate_by(v);
+            mesh.merge(&dot).unwrap();
+        }
+        mesh
+    }
 }
