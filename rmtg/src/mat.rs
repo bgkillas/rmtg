@@ -11,16 +11,16 @@ use bevy::prelude::{Commands, InheritedVisibility, Rectangle, Transform};
 use std::f32::consts::PI;
 pub fn create_mats(mut assets: Asset, mut commands: Commands) {
     let player0 = Transform::from_xyz(MAT_WIDTH / 2.0, -CARD_THICKNESS, MAT_HEIGHT / 2.0);
-    let mut player1 = Transform::from_xyz(MAT_WIDTH / 2.0, -CARD_THICKNESS, -MAT_HEIGHT / 2.0);
-    player1.rotate_y(PI);
-    let player2 = Transform::from_xyz(-MAT_WIDTH / 2.0, -CARD_THICKNESS, MAT_HEIGHT / 2.0);
-    let mut player3 = Transform::from_xyz(-MAT_WIDTH / 2.0, -CARD_THICKNESS, -MAT_HEIGHT / 2.0);
+    let player1 = Transform::from_xyz(-MAT_WIDTH / 2.0, -CARD_THICKNESS, MAT_HEIGHT / 2.0);
+    let mut player2 = Transform::from_xyz(-MAT_WIDTH / 2.0, -CARD_THICKNESS, -MAT_HEIGHT / 2.0);
+    player2.rotate_y(PI);
+    let mut player3 = Transform::from_xyz(MAT_WIDTH / 2.0, -CARD_THICKNESS, -MAT_HEIGHT / 2.0);
     player3.rotate_y(PI);
     for (i, (transform, right)) in [
         (player0, true),
         (player1, false),
-        (player2, false),
-        (player3, true),
+        (player2, true),
+        (player3, false),
     ]
     .into_iter()
     .enumerate()

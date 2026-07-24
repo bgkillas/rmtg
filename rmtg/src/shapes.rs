@@ -6,7 +6,10 @@ use bevy::asset::RenderAssetUsages;
 use bevy::color::{Color, Srgba};
 use bevy::ecs::children;
 use bevy::math::{Vec2, Vec3};
-use bevy::mesh::{Indices, Mesh, Mesh3d, MeshBuilder, PrimitiveTopology};
+use bevy::mesh::{
+    CylinderMeshBuilder, Indices, Mesh, Mesh3d, MeshBuilder, PrimitiveTopology, SphereKind,
+    SphereMeshBuilder,
+};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{
     Bundle, Component, Cylinder, EntityCommands, InheritedVisibility, Sphere, Transform,
@@ -182,8 +185,15 @@ pub trait ShapeOutline: NewShape {
         let edges = Self::edge_indices();
         let edges_computed = edges.map(|[a, b]| [position[a], position[b]]);
         let height = (edges_computed[0][0] - edges_computed[0][1]).length();
-        let cylinder = Mesh::from(Cylinder::new(Self::THICKNESS, height));
-        let sphere = Mesh::from(Sphere::new(Self::THICKNESS));
+        let cylinder = Mesh::from(CylinderMeshBuilder {
+            cylinder: Cylinder::new(Self::THICKNESS, height),
+            resolution: 8,
+            ..CylinderMeshBuilder::default()
+        });
+        let sphere = Mesh::from(SphereMeshBuilder {
+            sphere: Sphere::new(Self::THICKNESS),
+            kind: SphereKind::Ico { subdivisions: 3 },
+        });
         let mut mesh = cylinder.clone();
         mesh.rotate_by(Quat::from_rotation_arc(
             Vec3::Y,

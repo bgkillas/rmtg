@@ -88,36 +88,60 @@ pub fn startup(
     ));
 }
 pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
-    Cube::insert_dice(
-        Color::WHITE,
-        Color::BLACK,
-        &mut asset,
-        commands.spawn((Transform::from_xyz(-8.0, 1.0, 0.0), Pickable::default())),
-    );
-    Dodecahedron::insert_dice(
-        Color::WHITE,
-        Color::BLACK,
-        &mut asset,
-        commands.spawn((Transform::from_xyz(-6.0, 1.0, 0.0), Pickable::default())),
-    );
-    Icosahedron::insert_dice(
-        Color::WHITE,
-        Color::BLACK,
-        &mut asset,
-        commands.spawn((Transform::from_xyz(-4.0, 1.0, 0.0), Pickable::default())),
-    );
-    Octahedron::insert_dice(
-        Color::WHITE,
-        Color::BLACK,
-        &mut asset,
-        commands.spawn((Transform::from_xyz(-2.0, 1.0, 0.0), Pickable::default())),
-    );
-    Tetrahedron::insert_dice(
-        Color::WHITE,
-        Color::BLACK,
-        &mut asset,
-        commands.spawn((Transform::from_xyz(2.0, 1.0, 0.0), Pickable::default())),
-    );
+    for i in 0..4 {
+        let (rev_x, rev_z) = match i {
+            0 => (1.0, 1.0),
+            1 => (-1.0, 1.0),
+            2 => (-1.0, -1.0),
+            _ => (1.0, -1.0),
+        };
+        let color = Color::WHITE;
+        Icosahedron::insert_dice(
+            color,
+            Color::BLACK,
+            &mut asset,
+            commands.spawn((
+                Transform::from_xyz(rev_x * 9.0, Cube::HEIGHT / 2.0, rev_z * 1.0),
+                Pickable::default(),
+            )),
+        );
+        Dodecahedron::insert_dice(
+            color,
+            Color::BLACK,
+            &mut asset,
+            commands.spawn((
+                Transform::from_xyz(rev_x * 9.0, Cube::HEIGHT / 2.0, rev_z * 1.5),
+                Pickable::default(),
+            )),
+        );
+        Octahedron::insert_dice(
+            color,
+            Color::BLACK,
+            &mut asset,
+            commands.spawn((
+                Transform::from_xyz(rev_x * 9.0, Cube::HEIGHT / 2.0, rev_z * 2.0),
+                Pickable::default(),
+            )),
+        );
+        Cube::insert_dice(
+            color,
+            Color::BLACK,
+            &mut asset,
+            commands.spawn((
+                Transform::from_xyz(rev_x * 9.0, Cube::HEIGHT / 2.0, rev_z * 2.5),
+                Pickable::default(),
+            )),
+        );
+        Tetrahedron::insert_dice(
+            color,
+            Color::BLACK,
+            &mut asset,
+            commands.spawn((
+                Transform::from_xyz(rev_x * 9.0, Cube::HEIGHT / 2.0, rev_z * 3.0),
+                Pickable::default(),
+            )),
+        );
+    }
     commands.spawn((
         Transform::from_xyz(0.0, -T / 2.0, 0.0),
         Collider::cuboid(2.0 * W + T, T, 2.0 * W + T),

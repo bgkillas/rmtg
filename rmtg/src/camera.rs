@@ -96,16 +96,18 @@ pub fn camera_translation(
 }
 #[must_use]
 pub fn default_cam_pos(n: Peer) -> Transform {
-    let x = if n.id / 2 == 0 {
-        MAT_WIDTH / 2.0
-    } else {
+    let (rev_x, rev_z) = match n.id {
+        0 => (false, false),
+        1 => (true, false),
+        2 => (true, true),
+        _ => (false, true),
+    };
+    let x = if rev_x {
         -MAT_WIDTH / 2.0
-    };
-    let z = if n.id.is_multiple_of(2) {
-        MAT_WIDTH
     } else {
-        -MAT_WIDTH
+        MAT_WIDTH / 2.0
     };
+    let z = if rev_z { -MAT_WIDTH } else { MAT_WIDTH };
     Transform::from_xyz(x, START_Y, z).looking_at(Vec3::new(x, 0.0, 0.0), Vec3::Y)
 }
 pub fn camera_rotation(
