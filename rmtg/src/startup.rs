@@ -23,7 +23,8 @@ use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::picking::Pickable;
 use bevy::prelude::{
-    Commands, Cuboid, MeshPickingCamera, MeshPickingSettings, Msaa, Rectangle, ResMut, Transform,
+    Commands, Component, Cuboid, MeshPickingCamera, MeshPickingSettings, Msaa, Rectangle, ResMut,
+    Transform,
 };
 use bevy::text::Font;
 use bevy_rich_text3d::TextAtlas;
@@ -153,5 +154,12 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
             depth_bias: f32::NEG_INFINITY,
             ..StandardMaterial::default()
         })),
+        Floor,
     ));
 }
+#[derive(Component)]
+pub struct Floor;
+#[derive(Component)]
+pub struct Wall;
+#[derive(Component)]
+pub struct Ceiling;

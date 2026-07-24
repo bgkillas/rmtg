@@ -3,8 +3,8 @@ use crate::physics::physics_base;
 use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH};
 use avian3d::prelude::Collider;
 use bevy::ecs::children;
-use bevy::math::Dir3;
-use bevy::mesh::Mesh3d;
+use bevy::math::{Dir3, Quat, Vec3};
+use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::MeshMaterial3d;
 use bevy::prelude::{Bundle, Component, InheritedVisibility, Rectangle, Transform};
 use bitcode::{Decode, Encode};
@@ -16,6 +16,7 @@ use rand::make_rng;
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom as _;
 use std::cmp::Ordering;
+use std::f32::consts::PI;
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::{iter, mem};
@@ -26,13 +27,17 @@ pub enum Pile {
     #[default]
     Empty,
 }
+#[derive(Component)]
+pub struct CardSide;
+#[derive(Component)]
+pub struct CardBack;
+#[derive(Component)]
+pub struct CardTop;
 impl Pile {
     #[must_use]
     pub fn bundle(self, asset: &mut Asset) -> impl Bundle {
-        let (left, right) = self.left_right(asset);
-        let (front, back) = self.front_back(asset);
         (
-            children![self.up(asset), self.down(asset), left, right, front, back],
+            children![self.up(asset), self.down(asset), self.sides(asset)],
             self.collider(),
             self,
             physics_base(),
@@ -40,40 +45,29 @@ impl Pile {
         )
     }
     #[must_use]
-    pub fn left_right(&self, asset: &mut Asset) -> (impl Bundle + use<>, impl Bundle + use<>) {
-        let mesh = asset
-            .meshes
-            .add(Rectangle::new(self.thickness(), CARD_HEIGHT));
+    pub fn sides(&self, asset: &mut Asset) -> impl Bundle + use<> {
+        let left_right = Mesh::from(Rectangle::new(self.thickness(), CARD_HEIGHT));
+        let front_back = Mesh::from(Rectangle::new(CARD_WIDTH, self.thickness()));
+        let mut left = left_right.clone();
+        left.rotate_by(Quat::from_rotation_arc(Vec3::NEG_Z, Vec3::X));
+        left.rotate_by(Quat::from_rotation_x(PI / 2.0));
+        left.translate_by(Vec3::new(-CARD_WIDTH / 2.0, 0.0, 0.0));
+        let mut right = left_right.clone();
+        right.rotate_by(Quat::from_rotation_arc(Vec3::NEG_Z, Vec3::NEG_X));
+        right.rotate_by(Quat::from_rotation_x(PI / 2.0));
+        right.translate_by(Vec3::new(CARD_WIDTH / 2.0, 0.0, 0.0));
+        let mut front = front_back.clone();
+        front.rotate_by(Quat::from_rotation_arc(Vec3::NEG_Z, Vec3::Z));
+        front.translate_by(Vec3::new(0.0, 0.0, -CARD_HEIGHT / 2.0));
+        let mut back = front_back.clone();
+        back.translate_by(Vec3::new(0.0, 0.0, CARD_HEIGHT / 2.0));
+        left.merge(&right).unwrap();
+        left.merge(&front).unwrap();
+        left.merge(&back).unwrap();
         (
-            (
-                Transform::from_xyz(-CARD_WIDTH / 2.0, 0.0, 0.0).looking_to(Dir3::X, Dir3::Z),
-                MeshMaterial3d(asset.card.color.clone()),
-                Mesh3d(mesh.clone()),
-            ),
-            (
-                Transform::from_xyz(CARD_WIDTH / 2.0, 0.0, 0.0).looking_to(Dir3::NEG_X, Dir3::Z),
-                MeshMaterial3d(asset.card.color.clone()),
-                Mesh3d(mesh),
-            ),
-        )
-    }
-    #[must_use]
-    pub fn front_back(&self, asset: &mut Asset) -> (impl Bundle + use<>, impl Bundle + use<>) {
-        let mesh = asset
-            .meshes
-            .add(Rectangle::new(CARD_WIDTH, self.thickness()));
-        (
-            (
-                Transform::from_xyz(0.0, 0.0, -CARD_HEIGHT / 2.0).looking_to(Dir3::Z, Dir3::NEG_Y),
-                MeshMaterial3d(asset.card.color.clone()),
-                Mesh3d(mesh.clone()),
-            ),
-            (
-                Transform::from_xyz(0.0, 0.0, CARD_HEIGHT / 2.0)
-                    .looking_to(Dir3::NEG_Z, Dir3::NEG_Y),
-                MeshMaterial3d(asset.card.color.clone()),
-                Mesh3d(mesh),
-            ),
+            MeshMaterial3d(asset.card.color.clone()),
+            Mesh3d(asset.meshes.add(left)),
+            CardSide,
         )
     }
     #[must_use]
@@ -83,6 +77,7 @@ impl Pile {
                 .looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
             MeshMaterial3d(self.first().face().material()),
             Mesh3d(asset.card.stock.clone()),
+            CardTop,
         )
     }
     #[must_use]
@@ -91,6 +86,7 @@ impl Pile {
             Transform::from_xyz(0.0, -self.thickness() / 2.0, 0.0).looking_to(Dir3::Y, Dir3::NEG_Z),
             MeshMaterial3d(asset.card.back.clone()),
             Mesh3d(asset.card.stock.clone()),
+            CardBack,
         )
     }
     #[must_use]
