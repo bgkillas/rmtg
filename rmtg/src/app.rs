@@ -1,5 +1,6 @@
 use crate::camera::{camera_rotation, camera_translation};
 use crate::events::add_events;
+use crate::events::clipboard::poll_clipboards;
 use crate::focus::Menu;
 use crate::keybinds::KeybindsList;
 use crate::mat::create_mats;
@@ -110,7 +111,10 @@ pub fn app_run() -> AppExit {
     add_events(&mut app);
     app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
     app.add_systems(Update, (camera_translation, camera_rotation, paste_card));
-    app.add_systems(FixedUpdate, (connect_failed, on_connect, receive_message));
+    app.add_systems(
+        FixedUpdate,
+        (connect_failed, on_connect, receive_message, poll_clipboards),
+    );
     app.add_systems(FixedPostUpdate, on_disconnect);
     app.run()
 }
