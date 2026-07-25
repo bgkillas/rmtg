@@ -18,6 +18,7 @@ pub fn paste_card(
     mut commands: Commands,
 ) {
     if keybind.just_pressed(Keybind::Paste)
+        //TODO async
         && let Some(Ok(str)) = clipboard.fetch_text().poll_result()
         && let Some((mut card, front, back)) = if let Ok(uuid) = Uuid::from_str(&str) {
             runtime
@@ -29,6 +30,7 @@ pub fn paste_card(
             && let Some((cn_str, _)) = after.split_once('/')
             && let Ok(cn) = cn_str.parse()
         {
+            //TODO async
             runtime
                 .runtime
                 .block_on(SubCard::get_set_cn(
