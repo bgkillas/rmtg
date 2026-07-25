@@ -23,12 +23,16 @@ pub fn move_up(
     while some {
         some = false;
         spatial.aabb_intersections_with_aabb_callback(collider, |ent| {
-            some = true;
-            let aabb = aabbs.get(ent).unwrap();
-            let delta = aabb.max.y - collider.min.y;
-            collider.min.y += delta;
-            collider.max.y += delta;
-            transform.translation.y += delta;
+            if ent != entity.entity {
+                let aabb = aabbs.get(ent).unwrap();
+                let delta = aabb.max.y - collider.min.y;
+                if delta > 0.0 {
+                    some = true;
+                    collider.min.y += delta;
+                    collider.max.y += delta;
+                    transform.translation.y += delta;
+                }
+            }
             true
         });
     }

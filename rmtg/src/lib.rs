@@ -17,6 +17,7 @@ pub mod net;
 pub mod paste;
 pub mod physics;
 pub mod shapes;
+pub mod spatial;
 pub mod startup;
 pub const APP_NAME: &str = "com.github.bgkillas.rmtg";
 pub const USER_AGENT: &str = concat!("rmtg/", env!("CARGO_PKG_VERSION"));

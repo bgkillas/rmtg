@@ -101,49 +101,55 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
             color,
             Color::BLACK,
             &mut asset,
-            commands.spawn((
-                Transform::from_xyz(rev_x * 9.0, Cube::HEIGHT / 2.0, rev_z * 1.0),
-                Pickable::default(),
+            commands.spawn(Transform::from_xyz(
+                rev_x * 9.0,
+                Cube::HEIGHT / 2.0,
+                rev_z * 1.0,
             )),
         );
         Dodecahedron::insert_dice(
             color,
             Color::BLACK,
             &mut asset,
-            commands.spawn((
-                Transform::from_xyz(rev_x * 9.0, Cube::HEIGHT / 2.0, rev_z * 1.5),
-                Pickable::default(),
+            commands.spawn(Transform::from_xyz(
+                rev_x * 9.0,
+                Cube::HEIGHT / 2.0,
+                rev_z * 1.5,
             )),
         );
         Octahedron::insert_dice(
             color,
             Color::BLACK,
             &mut asset,
-            commands.spawn((
-                Transform::from_xyz(rev_x * 9.0, Cube::HEIGHT / 2.0, rev_z * 2.0),
-                Pickable::default(),
+            commands.spawn(Transform::from_xyz(
+                rev_x * 9.0,
+                Cube::HEIGHT / 2.0,
+                rev_z * 2.0,
             )),
         );
         Cube::insert_dice(
             color,
             Color::BLACK,
             &mut asset,
-            commands.spawn((
-                Transform::from_xyz(rev_x * 9.0, Cube::HEIGHT / 2.0, rev_z * 2.5),
-                Pickable::default(),
+            commands.spawn(Transform::from_xyz(
+                rev_x * 9.0,
+                Cube::HEIGHT / 2.0,
+                rev_z * 2.5,
             )),
         );
         Tetrahedron::insert_dice(
             color,
             Color::BLACK,
             &mut asset,
-            commands.spawn((
-                Transform::from_xyz(rev_x * 9.0, Cube::HEIGHT / 2.0, rev_z * 3.0),
-                Pickable::default(),
+            commands.spawn(Transform::from_xyz(
+                rev_x * 9.0,
+                Cube::HEIGHT / 2.0,
+                rev_z * 3.0,
             )),
         );
     }
     commands.spawn((
+        Pickable::default(),
         Transform::from_xyz(0.0, -T / 2.0, 0.0),
         Collider::cuboid(2.0 * W + T, T, 2.0 * W + T),
         RigidBody::Static,
