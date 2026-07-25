@@ -18,7 +18,7 @@ pub fn move_up(
     spatial: SpatialQuery,
 ) {
     let mut transform = transforms.get_mut(entity.entity).unwrap();
-    let &(mut collider) = aabbs.get(entity.entity).unwrap();
+    let mut collider = *aabbs.get(entity.entity).unwrap();
     let mut some = true;
     while some {
         some = false;

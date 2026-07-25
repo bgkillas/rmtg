@@ -2,6 +2,7 @@
 #![feature(min_generic_const_args)]
 #![feature(inherent_associated_types)]
 #![feature(associated_type_defaults)]
+extern crate core;
 use bevy::color::Color;
 pub mod app;
 pub mod assets;

@@ -15,6 +15,7 @@ use bevy::prelude::{
     Bundle, Component, Cylinder, EntityCommands, InheritedVisibility, Sphere, Transform,
 };
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor};
+use core::direct_const_arg;
 pub mod cube;
 pub mod dodecahedron;
 pub mod icosahedron;
@@ -126,7 +127,7 @@ pub trait ShapeMesh: NewShape {
     #[must_use]
     fn text_size(height: f32) -> f32;
     #[must_use]
-    fn faces(height: f32) -> [Transform; Self::FACES] {
+    fn faces(height: f32) -> [Transform; direct_const_arg!(Self::FACES)] {
         let v = Self::oriented_vertices(Self::convert_height(height)).map(Vec3::from);
         Self::face_indices()
             .map(|l| l.map(|i| v[usize::from(i)]))
@@ -135,13 +136,16 @@ pub trait ShapeMesh: NewShape {
     #[must_use]
     fn convert_height(height: f32) -> f32;
     #[must_use]
-    fn face_indices() -> [[u16; Self::FACE_VERTICES]; Self::FACES];
+    fn face_indices()
+    -> [[u16; direct_const_arg!(Self::FACE_VERTICES)]; direct_const_arg!(Self::FACES)];
     #[must_use]
-    fn vertices(one: f32) -> [[f32; 3]; Self::VERTICES];
+    fn vertices(one: f32) -> [[f32; 3]; direct_const_arg!(Self::VERTICES)];
     #[must_use]
-    fn convert_to_triangles(face: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES];
+    fn convert_to_triangles(
+        face: [u16; direct_const_arg!(Self::FACE_VERTICES)],
+    ) -> [[u16; 3]; direct_const_arg!(Self::TRIANGLES)];
     #[must_use]
-    fn oriented_vertices(one: f32) -> [[f32; 3]; Self::VERTICES] {
+    fn oriented_vertices(one: f32) -> [[f32; 3]; direct_const_arg!(Self::VERTICES)] {
         let vertices = Self::vertices(one);
         let dir = Quat::from_rotation_arc(
             average_normalized(Self::face_indices()[0].map(|i| vertices[usize::from(i)])),
@@ -176,7 +180,7 @@ pub trait ShapeOutline: NewShape {
     const DEPTH_BIAS: f32 = 1.0 / 4096.0;
     const THICKNESS: f32 = CARD_THICKNESS;
     #[must_use]
-    fn edge_indices() -> [[usize; 2]; Self::EDGES];
+    fn edge_indices() -> [[usize; 2]; direct_const_arg!(Self::EDGES)];
     #[must_use]
     fn unit_length(self) -> f32;
     #[must_use]

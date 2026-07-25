@@ -4,6 +4,7 @@ use crate::assets::Asset;
 use crate::deck::Pile;
 use crate::keybinds::{Keybind, Keybinds};
 use bevy::clipboard::Clipboard;
+use bevy::image::Image;
 use bevy::prelude::{Commands, Res, ResMut, Transform};
 use importer::card::SubCard;
 use importer::scryfall::Quality;
@@ -20,34 +21,50 @@ pub fn paste_card(
     if keybind.just_pressed(Keybind::Paste)
         //TODO async
         && let Some(Ok(str)) = clipboard.fetch_text().poll_result()
-        && let Some((mut card, front, back)) = if let Ok(uuid) = Uuid::from_str(&str) {
-            runtime
-                .runtime
-                .block_on(SubCard::get(client.client.clone(), uuid, Quality::Png))
-                .ok()
-        } else if let Some(rest) = str.strip_prefix("https://scryfall.com/card/")
-            && let Some((set, after)) = rest.split_once('/')
-            && let Some((cn_str, _)) = after.split_once('/')
-            && let Ok(cn) = cn_str.parse()
-        {
-            //TODO async
-            runtime
-                .runtime
-                .block_on(SubCard::get_set_cn(
-                    client.client.clone(),
-                    set,
-                    cn,
-                    Quality::Png,
-                ))
-                .ok()
-        } else {
-            None
-        }
+        && let Some((mut card, front, back)) = get_card(&client, &runtime, &str)
     {
         asset.register(&mut card, front, back);
         commands.spawn((
             Transform::from_xyz(0.0, CARD_HEIGHT, 0.0),
             Pile::from(card).bundle(&mut asset),
         ));
+    }
+}
+fn get_card(
+    client: &Client,
+    runtime: &Runtime,
+    str: &str,
+) -> Option<(SubCard, Image, Option<Image>)> {
+    if let Ok(uuid) = Uuid::from_str(str) {
+        //TODO async
+        runtime
+            .runtime
+            .block_on(SubCard::get(client.client.clone(), uuid, Quality::Png))
+            .ok()
+    } else if let Some(rest) = str.strip_prefix("https://scryfall.com/card/")
+        && let Some((set, after)) = rest.split_once('/')
+        && let Some((cn_str, _)) = after.split_once('/')
+        && let Ok(cn) = cn_str.parse()
+    {
+        //TODO async
+        runtime
+            .runtime
+            .block_on(SubCard::get_set_cn(
+                client.client.clone(),
+                set,
+                cn,
+                Quality::Png,
+            ))
+            .ok()
+    } else if let Some(rest) = str.strip_prefix("https://scryfall.com/card/")
+        && let Ok(uuid) = Uuid::from_str(rest)
+    {
+        //TODO async
+        runtime
+            .runtime
+            .block_on(SubCard::get(client.client.clone(), uuid, Quality::Png))
+            .ok()
+    } else {
+        None
     }
 }
