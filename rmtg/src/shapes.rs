@@ -11,7 +11,6 @@ use bevy::mesh::{
     SphereMeshBuilder,
 };
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::picking::Pickable;
 use bevy::prelude::{
     Bundle, Component, Cylinder, EntityCommands, InheritedVisibility, Sphere, Transform,
 };
@@ -73,7 +72,6 @@ pub trait ShapeMesh: NewShape {
     ) -> impl Bundle {
         let mesh = Mesh::from(Self::from_height(height));
         (
-            Pickable::default(),
             Self::SHAPE,
             physics(&mesh),
             Mesh3d(asset.meshes.add(mesh)),

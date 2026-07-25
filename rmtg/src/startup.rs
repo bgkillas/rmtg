@@ -21,10 +21,8 @@ use bevy::light::GlobalAmbientLight;
 use bevy::material::AlphaMode;
 use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::picking::Pickable;
 use bevy::prelude::{
-    Commands, Component, Cuboid, MeshPickingCamera, MeshPickingSettings, Msaa, Rectangle, ResMut,
-    Transform,
+    Commands, Component, Cuboid, MeshPickingCamera, Msaa, Rectangle, ResMut, Transform,
 };
 use bevy::text::Font;
 use bevy_rich_text3d::TextAtlas;
@@ -32,7 +30,6 @@ use importer::image::parse_bytes;
 use std::f32::consts::PI;
 pub fn startup(
     mut commands: Commands,
-    mut pick: ResMut<MeshPickingSettings>,
     mut fonts: ResMut<Assets<Font>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -62,7 +59,6 @@ pub fn startup(
     commands.insert_resource(TextMesh { mesh });
     let font = Font::from_bytes(FONT.to_vec());
     fonts.insert(AssetId::<Font>::DEFAULT_UUID, font).unwrap();
-    pick.require_markers = true;
     commands.spawn((
         default_cam_pos(Peer::default()),
         Camera3d::default(),
@@ -149,7 +145,6 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
         );
     }
     commands.spawn((
-        Pickable::default(),
         Transform::from_xyz(0.0, -T / 2.0, 0.0),
         Collider::cuboid(2.0 * W + T, T, 2.0 * W + T),
         RigidBody::Static,

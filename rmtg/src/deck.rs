@@ -6,7 +6,6 @@ use bevy::ecs::children;
 use bevy::math::{Dir3, Quat, Vec3};
 use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::MeshMaterial3d;
-use bevy::picking::Pickable;
 use bevy::prelude::{Bundle, Component, InheritedVisibility, Rectangle, Transform};
 use bitcode::{Decode, Encode};
 use importer::bitcode;
@@ -38,7 +37,6 @@ impl Pile {
     #[must_use]
     pub fn bundle(self, asset: &mut Asset) -> impl Bundle {
         (
-            Pickable::default(),
             children![self.up(asset), self.down(asset), self.sides(asset)],
             self.collider(),
             self,

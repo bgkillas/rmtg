@@ -19,7 +19,7 @@ use bevy::ecs::schedule::IntoScheduleConfigs as _;
 #[cfg(feature = "colliders")]
 use bevy::gizmos::AppGizmoBuilder as _;
 use bevy::image::{ImageFilterMode, ImagePlugin, ImageSamplerDescriptor};
-use bevy::prelude::{MeshPickingPlugin, Resource};
+use bevy::prelude::Resource;
 use bevy::settings::SettingsPlugin;
 use bevy::window::{PresentMode, Window, WindowPlugin};
 use bevy_p2p::plugin::P2PPlugin;
@@ -83,7 +83,6 @@ pub fn app_run() -> AppExit {
     app.add_plugins(PhysicsPlugins::default());
     app.add_plugins(SettingsPlugin::new(APP_NAME));
     app.add_plugins(P2PPlugin::<Msg>::new());
-    app.add_plugins(MeshPickingPlugin);
     app.add_plugins(Text3dPlugin::default());
     app.insert_resource(LoadFonts {
         font_embedded: vec![FONT],

@@ -189,7 +189,6 @@ pub fn spawn_modify(
     commands.entity(ent).with_child((
         Transform::from_translation(vec),
         counter,
-        Pickable::default(),
         Mesh3d(meshes.add(Cuboid::from_size(size))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::BLACK,
