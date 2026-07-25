@@ -45,9 +45,9 @@ fn face<const N: usize>(elems: [Vec3; N], rev: bool) -> Transform {
     };
     let (n, l) = pos.normalize_and_length();
     let pos_epsilon = n * if rev {
-        l - CARD_THICKNESS
+        l - CARD_THICKNESS / 2.0
     } else {
-        l + CARD_THICKNESS
+        l + CARD_THICKNESS / 2.0
     };
     Transform::from_translation(pos_epsilon).looking_to(if rev { pos } else { -pos }, end - pos)
 }
@@ -178,7 +178,7 @@ pub trait ShapeOutline: NewShape {
     type Mesh: ShapeMesh;
     type const EDGES: usize;
     const DEPTH_BIAS: f32 = 1.0 / 4096.0;
-    const THICKNESS: f32 = CARD_THICKNESS;
+    const THICKNESS: f32 = CARD_THICKNESS * 7.0 / 8.0;
     #[must_use]
     fn edge_indices() -> [[usize; 2]; direct_const_arg!(Self::EDGES)];
     #[must_use]
