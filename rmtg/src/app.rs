@@ -1,7 +1,9 @@
 use crate::camera::{camera_rotation, camera_translation};
 use crate::events::add_events;
 use crate::events::clipboard::poll_clipboards;
+use crate::events::roll::do_roll;
 use crate::focus::Menu;
+use crate::hover::update_hover;
 use crate::keybinds::KeybindsList;
 use crate::mat::create_mats;
 use crate::net::{Msg, Peers, connect_failed, on_connect, on_disconnect, receive_message};
@@ -110,7 +112,16 @@ pub fn app_run() -> AppExit {
     app.init_resource::<PollCardSpawn>();
     add_events(&mut app);
     app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
-    app.add_systems(Update, (camera_translation, camera_rotation, paste_card));
+    app.add_systems(
+        Update,
+        (
+            camera_translation,
+            camera_rotation,
+            paste_card,
+            update_hover,
+            do_roll,
+        ),
+    );
     app.add_systems(
         FixedUpdate,
         (

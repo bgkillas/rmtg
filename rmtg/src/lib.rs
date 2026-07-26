@@ -11,6 +11,7 @@ pub mod card_spot;
 pub mod deck;
 pub mod events;
 pub mod focus;
+pub mod hover;
 pub mod keybinds;
 pub mod mat;
 pub mod net;
