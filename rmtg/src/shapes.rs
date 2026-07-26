@@ -21,13 +21,25 @@ pub mod dodecahedron;
 pub mod icosahedron;
 pub mod octahedron;
 pub mod tetrahedron;
-#[derive(Component)]
+#[derive(Component, Clone, Copy)]
 pub enum Shape {
     Cube,
     Dodecahedron,
     Icosahedron,
     Octahedron,
     Tetrahedron,
+}
+impl Shape {
+    #[must_use]
+    pub fn faces(self) -> usize {
+        match self {
+            Shape::Cube => 6,
+            Shape::Dodecahedron => 12,
+            Shape::Icosahedron => 20,
+            Shape::Octahedron => 8,
+            Shape::Tetrahedron => 4,
+        }
+    }
 }
 #[derive(Component)]
 pub struct FaceNumber {
@@ -92,12 +104,12 @@ pub trait ShapeMesh: NewShape {
             InheritedVisibility::VISIBLE,
         )
     }
-    fn insert_dice(
+    fn insert_dice<'a>(
         base_color: Color,
         outline_color: Color,
         asset: &mut Asset,
-        mut ent: EntityCommands<'_>,
-    ) {
+        mut ent: EntityCommands<'a>,
+    ) -> EntityCommands<'a> {
         let height = Self::HEIGHT;
         ent.insert((
             Self::bundle(height, base_color, outline_color, asset),
@@ -123,6 +135,7 @@ pub trait ShapeMesh: NewShape {
                 ));
             }
         });
+        ent
     }
     #[must_use]
     fn text_size(height: f32) -> f32;
