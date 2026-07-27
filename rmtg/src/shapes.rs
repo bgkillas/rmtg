@@ -203,9 +203,11 @@ pub trait ShapeOutline: NewShape {
         let position = Self::Mesh::oriented_vertices(self.unit_length()).map(Vec3::from);
         let edges = Self::edge_indices();
         let edges_computed = edges.map(|[a, b]| [position[a], position[b]]);
-        let height = (edges_computed[0][0] - edges_computed[0][1]).length();
-        let cylinder = Mesh::from(CylinderMeshBuilder {
-            cylinder: Cylinder::new(Self::THICKNESS, height),
+        let mut mesh = Mesh::from(CylinderMeshBuilder {
+            cylinder: Cylinder::new(
+                Self::THICKNESS,
+                (edges_computed[0][0] - edges_computed[0][1]).length(),
+            ),
             resolution: 8,
             ..CylinderMeshBuilder::default()
         });
@@ -213,14 +215,18 @@ pub trait ShapeOutline: NewShape {
             sphere: Sphere::new(Self::THICKNESS),
             kind: SphereKind::Ico { subdivisions: 3 },
         });
-        let mut mesh = cylinder.clone();
         mesh.rotate_by(Quat::from_rotation_arc(
             Vec3::Y,
             (edges_computed[0][1] - edges_computed[0][0]).normalize(),
         ));
         mesh.translate_by((edges_computed[0][0] + edges_computed[0][1]) / 2.0);
         for [a, b] in &edges_computed[1..] {
-            let mut line = cylinder.clone();
+            let height = (a - b).length();
+            let mut line = Mesh::from(CylinderMeshBuilder {
+                cylinder: Cylinder::new(Self::THICKNESS, height),
+                resolution: 8,
+                ..CylinderMeshBuilder::default()
+            });
             line.rotate_by(Quat::from_rotation_arc(Vec3::Y, (b - a).normalize()));
             line.translate_by((a + b) / 2.0);
             mesh.merge(&line).unwrap();

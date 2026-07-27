@@ -9,7 +9,8 @@ use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
 use crate::shapes::{OUTLINE_COLOR, ShapeMesh as _};
 use crate::{
-    CARD_HEIGHT, CARD_STOCK_COLOR, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT, T, W, WALL_COLOR,
+    CARD_HEIGHT, CARD_STOCK_COLOR, CARD_THICKNESS, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT, T,
+    W, WALL_COLOR,
 };
 use avian3d::prelude::{Collider, CollisionLayers, RigidBody};
 use bevy::anti_alias::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
@@ -75,6 +76,8 @@ pub fn startup(
         MeshPickingCamera,
         Projection::Perspective(PerspectiveProjection {
             fov: PI / 3.0,
+            near: CARD_THICKNESS,
+            far: 4.0 * W,
             ..PerspectiveProjection::default()
         }),
         Tonemapping::None,

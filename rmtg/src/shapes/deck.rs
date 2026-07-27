@@ -1,4 +1,5 @@
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
+use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH};
 use bevy::mesh::{Mesh, MeshBuilder};
 #[derive(Clone, Copy)]
 pub struct Deck {
@@ -28,19 +29,24 @@ impl ShapeMesh for Deck {
         ]
     }
     fn vertices(one: f32) -> [[f32; 3]; Self::VERTICES] {
+        let wid = CARD_WIDTH / 2.0;
+        let hei = CARD_HEIGHT / 2.0;
         [
-            [one, one, one],
-            [-one, one, one],
-            [one, -one, one],
-            [one, one, -one],
-            [-one, one, -one],
-            [-one, -one, one],
-            [one, -one, -one],
-            [-one, -one, -one],
+            [wid, one, hei],
+            [-wid, one, hei],
+            [wid, -one, hei],
+            [wid, one, -hei],
+            [-wid, one, -hei],
+            [-wid, -one, hei],
+            [wid, -one, -hei],
+            [-wid, -one, -hei],
         ]
     }
     fn convert_to_triangles(face: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES] {
         [[0, 1, 2], [3, 2, 1]].map(|a| a.map(|i| face[i]))
+    }
+    fn oriented_vertices(one: f32) -> [[f32; 3]; Self::VERTICES] {
+        Self::vertices(one)
     }
     fn unit_length(self) -> f32 {
         self.unit_length
@@ -49,6 +55,7 @@ impl ShapeMesh for Deck {
 impl ShapeOutline for DeckOutline {
     type Mesh = Deck;
     type const EDGES: usize = 12;
+    const THICKNESS: f32 = CARD_THICKNESS / 4.0;
     fn edge_indices() -> [[usize; 2]; Self::EDGES] {
         [
             [0, 1],

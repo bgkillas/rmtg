@@ -1,11 +1,13 @@
 use crate::assets::Asset;
 use crate::physics::physics_base;
+use crate::shapes::deck::DeckOutline;
+use crate::shapes::{NewShape as _, OUTLINE_COLOR, OUTLINE_DEPTH_BIAS};
 use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH};
 use avian3d::prelude::Collider;
 use bevy::ecs::children;
 use bevy::math::{Dir3, Quat, Vec3};
 use bevy::mesh::{Mesh, Mesh3d};
-use bevy::pbr::MeshMaterial3d;
+use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Bundle, Component, InheritedVisibility, Rectangle, Transform};
 use bitcode::{Decode, Encode};
 use importer::bitcode;
@@ -51,7 +53,15 @@ impl Pile {
     }
     #[must_use]
     pub fn outline(&self, asset: &mut Asset) -> impl Bundle + use<> {
-        //TODO
+        (
+            Mesh3d(asset.meshes.add(DeckOutline::from_height(self.thickness()))),
+            MeshMaterial3d(asset.materials.add(StandardMaterial {
+                base_color: OUTLINE_COLOR,
+                unlit: true,
+                depth_bias: OUTLINE_DEPTH_BIAS,
+                ..StandardMaterial::default()
+            })),
+        )
     }
     #[must_use]
     pub fn sides(&self, asset: &mut Asset) -> impl Bundle + use<> {
