@@ -1,13 +1,13 @@
-use crate::CARD_HEIGHT;
+use crate::MAT_WIDTH;
 use crate::deck::Pile;
 use crate::events::repaint::Repaint;
 use crate::hover::Hovered;
 use crate::keybinds::{Keybind, Keybinds};
+use crate::physics::GameLayer;
 use crate::shapes::FaceNumber;
-use avian3d::prelude::{AngularVelocity, LinearVelocity};
-use bevy::math::Quat;
+use avian3d::prelude::{AngularVelocity, CollisionLayers, LinearVelocity};
 use bevy::prelude::{
-    Children, Commands, Entity, EntityEvent, On, Query, Single, Transform, With, Without,
+    Children, Commands, Component, Entity, EntityEvent, On, Query, Single, Transform, With, Without,
 };
 use rand::prelude::StdRng;
 use rand::{RngExt as _, make_rng};
@@ -16,6 +16,8 @@ use std::f32::consts::TAU;
 pub struct Roll {
     pub entity: Entity,
 }
+#[derive(Component)]
+pub struct Rolling;
 impl Roll {
     #[must_use]
     pub fn new(entity: Entity) -> Self {
@@ -46,8 +48,8 @@ pub fn on_roll(
         let i2 = rng.random_range(1..children.len());
         let t1 = faces.get(children[i1]).unwrap();
         let t2 = faces.get(children[i2]).unwrap();
-        transform.rotation *= Quat::from_rotation_arc(t1.translation, t2.translation);
-        vel.y = 2.0 * CARD_HEIGHT;
+        transform.rotation = t2.rotation * t1.rotation.inverse() * transform.rotation;
+        vel.y = MAT_WIDTH;
         ang.x = TAU * rng.random_range(10.0..20.0) + ang.x.abs();
         ang.y = TAU * rng.random_range(10.0..20.0) + ang.y.abs();
         ang.z = TAU * rng.random_range(10.0..20.0) + ang.z.abs();
@@ -59,6 +61,29 @@ pub fn on_roll(
         }
         if rng.random() {
             ang.z = -ang.z;
+        }
+        commands
+            .entity(on.entity)
+            .remove::<CollisionLayers>()
+            .insert((
+                Rolling,
+                CollisionLayers::new(GameLayer::Default, [GameLayer::Default]),
+            ));
+    }
+}
+pub fn update_rolling(
+    query: Query<(Entity, &LinearVelocity), With<Rolling>>,
+    mut commands: Commands,
+) {
+    for (ent, vel) in query {
+        if vel.y < 0.0 {
+            commands
+                .entity(ent)
+                .remove::<(Rolling, CollisionLayers)>()
+                .insert(CollisionLayers::new(
+                    GameLayer::Default,
+                    [GameLayer::Default, GameLayer::Floor],
+                ));
         }
     }
 }

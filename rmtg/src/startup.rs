@@ -1,6 +1,7 @@
 use crate::assets::{Asset, CardBase, TextMesh};
 use crate::camera::default_cam_pos;
 use crate::net::Peer;
+use crate::physics::GameLayer;
 use crate::shapes::ShapeMesh as _;
 use crate::shapes::cube::Cube;
 use crate::shapes::dodecahedron::Dodecahedron;
@@ -8,7 +9,7 @@ use crate::shapes::icosahedron::Icosahedron;
 use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
 use crate::{CARD_HEIGHT, CARD_STOCK_COLOR, CARD_THICKNESS, CARD_WIDTH, FLOOR_COLOR, FONT, T, W};
-use avian3d::prelude::{Collider, RigidBody};
+use avian3d::prelude::{Collider, CollisionLayers, RigidBody};
 use bevy::anti_alias::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
 use bevy::asset::{AssetId, Assets};
 use bevy::camera::{
@@ -156,6 +157,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
             ..StandardMaterial::default()
         })),
         Floor,
+        CollisionLayers::new(GameLayer::Floor, [GameLayer::Default, GameLayer::Floor]),
     ));
 }
 #[derive(Component)]

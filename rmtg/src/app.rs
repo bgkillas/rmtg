@@ -1,7 +1,7 @@
 use crate::camera::{camera_rotation, camera_translation};
 use crate::events::add_events;
 use crate::events::clipboard::poll_clipboards;
-use crate::events::roll::do_roll;
+use crate::events::roll::{do_roll, update_rolling};
 use crate::focus::Menu;
 use crate::hover::update_hover;
 use crate::keybinds::KeybindsList;
@@ -120,6 +120,7 @@ pub fn app_run() -> AppExit {
             paste_card,
             update_hover,
             do_roll,
+            update_rolling,
         ),
     );
     app.add_systems(
