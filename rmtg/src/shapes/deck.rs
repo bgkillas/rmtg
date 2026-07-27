@@ -1,0 +1,99 @@
+use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
+use bevy::mesh::{Mesh, MeshBuilder};
+#[derive(Clone, Copy)]
+pub struct Deck {
+    pub unit_length: f32,
+}
+impl ShapeMesh for Deck {
+    type Outline = DeckOutline;
+    type const VERTICES: usize = 8;
+    type const FACES: usize = 6;
+    type const FACE_VERTICES: usize = 4;
+    type const TRIANGLES: usize = 2;
+    const SHAPE: Shape = Shape::Cube;
+    fn text_size(height: f32) -> f32 {
+        height
+    }
+    fn convert_height(height: f32) -> f32 {
+        height / 2.0
+    }
+    fn face_indices() -> [[u16; Self::FACE_VERTICES]; Self::FACES] {
+        [
+            [0, 1, 2, 5],
+            [0, 3, 1, 4],
+            [0, 2, 3, 6],
+            [7, 6, 5, 2],
+            [7, 4, 6, 3],
+            [7, 5, 4, 1],
+        ]
+    }
+    fn vertices(one: f32) -> [[f32; 3]; Self::VERTICES] {
+        [
+            [one, one, one],
+            [-one, one, one],
+            [one, -one, one],
+            [one, one, -one],
+            [-one, one, -one],
+            [-one, -one, one],
+            [one, -one, -one],
+            [-one, -one, -one],
+        ]
+    }
+    fn convert_to_triangles(face: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES] {
+        [[0, 1, 2], [3, 2, 1]].map(|a| a.map(|i| face[i]))
+    }
+    fn unit_length(self) -> f32 {
+        self.unit_length
+    }
+}
+impl ShapeOutline for DeckOutline {
+    type Mesh = Deck;
+    type const EDGES: usize = 12;
+    fn edge_indices() -> [[usize; 2]; Self::EDGES] {
+        [
+            [0, 1],
+            [0, 2],
+            [0, 3],
+            [7, 4],
+            [7, 5],
+            [7, 6],
+            [1, 5],
+            [2, 6],
+            [3, 4],
+            [4, 1],
+            [5, 2],
+            [6, 3],
+        ]
+    }
+    fn unit_length(self) -> f32 {
+        self.unit_length
+    }
+}
+#[derive(Clone, Copy)]
+pub struct DeckOutline {
+    pub unit_length: f32,
+}
+impl MeshBuilder for Deck {
+    fn build(&self) -> Mesh {
+        self.mesh()
+    }
+}
+impl NewShape for Deck {
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: Self::convert_height(height),
+        }
+    }
+}
+impl NewShape for DeckOutline {
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: <Self as ShapeOutline>::Mesh::convert_height(height),
+        }
+    }
+}
+impl MeshBuilder for DeckOutline {
+    fn build(&self) -> Mesh {
+        self.mesh()
+    }
+}

@@ -17,10 +17,13 @@ use bevy::prelude::{
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor};
 use core::direct_const_arg;
 pub mod cube;
+pub mod deck;
 pub mod dodecahedron;
 pub mod icosahedron;
 pub mod octahedron;
 pub mod tetrahedron;
+pub const OUTLINE_COLOR: Color = Color::BLACK;
+pub const OUTLINE_DEPTH_BIAS: f32 = 1.0 / 4096.0;
 #[derive(Component, Clone, Copy)]
 pub enum Shape {
     Cube,
@@ -97,7 +100,7 @@ pub trait ShapeMesh: NewShape {
                 MeshMaterial3d(asset.materials.add(StandardMaterial {
                     base_color: outline_color,
                     unlit: true,
-                    depth_bias: Self::Outline::DEPTH_BIAS,
+                    depth_bias: OUTLINE_DEPTH_BIAS,
                     ..StandardMaterial::default()
                 })),
             )],
@@ -190,7 +193,6 @@ pub trait ShapeMesh: NewShape {
 pub trait ShapeOutline: NewShape {
     type Mesh: ShapeMesh;
     type const EDGES: usize;
-    const DEPTH_BIAS: f32 = 1.0 / 4096.0;
     const THICKNESS: f32 = CARD_THICKNESS * 7.0 / 8.0;
     #[must_use]
     fn edge_indices() -> [[usize; 2]; direct_const_arg!(Self::EDGES)];

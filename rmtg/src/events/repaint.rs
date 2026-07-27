@@ -17,6 +17,6 @@ pub fn on_repaint(
     mut top: Query<&mut MeshMaterial3d<StandardMaterial>>,
 ) {
     let (deck, children) = decks.get(on.entity).unwrap();
-    let mut mat = top.get_mut(children[0]).unwrap();
+    let mut mat = top.get_mut(children[1]).unwrap();
     mat.0 = deck.first().face().material();
 }

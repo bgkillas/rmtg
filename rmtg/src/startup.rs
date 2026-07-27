@@ -2,12 +2,12 @@ use crate::assets::{Asset, CardBase, TextMesh};
 use crate::camera::default_cam_pos;
 use crate::net::Peer;
 use crate::physics::GameLayer;
-use crate::shapes::ShapeMesh as _;
 use crate::shapes::cube::Cube;
 use crate::shapes::dodecahedron::Dodecahedron;
 use crate::shapes::icosahedron::Icosahedron;
 use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
+use crate::shapes::{OUTLINE_COLOR, ShapeMesh as _};
 use crate::{
     CARD_HEIGHT, CARD_STOCK_COLOR, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT, T, W, WALL_COLOR,
 };
@@ -97,7 +97,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
         let color = Color::WHITE;
         Icosahedron::insert_dice(
             color,
-            Color::BLACK,
+            OUTLINE_COLOR,
             &mut asset,
             commands.spawn(Transform::from_xyz(
                 rev_x * 9.0,
@@ -107,7 +107,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
         );
         Dodecahedron::insert_dice(
             color,
-            Color::BLACK,
+            OUTLINE_COLOR,
             &mut asset,
             commands.spawn(Transform::from_xyz(
                 rev_x * 9.0,
@@ -117,7 +117,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
         );
         Octahedron::insert_dice(
             color,
-            Color::BLACK,
+            OUTLINE_COLOR,
             &mut asset,
             commands.spawn(Transform::from_xyz(
                 rev_x * 9.0,
@@ -127,7 +127,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
         );
         Cube::insert_dice(
             color,
-            Color::BLACK,
+            OUTLINE_COLOR,
             &mut asset,
             commands.spawn(Transform::from_xyz(
                 rev_x * 9.0,
@@ -137,7 +137,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
         );
         Tetrahedron::insert_dice(
             color,
-            Color::BLACK,
+            OUTLINE_COLOR,
             &mut asset,
             commands.spawn(Transform::from_xyz(
                 rev_x * 9.0,

@@ -37,12 +37,21 @@ impl Pile {
     #[must_use]
     pub fn bundle(self, asset: &mut Asset) -> impl Bundle {
         (
-            children![self.up(asset), self.down(asset), self.sides(asset)],
+            children![
+                self.outline(asset),
+                self.up(asset),
+                self.down(asset),
+                self.sides(asset)
+            ],
             self.collider(),
             self,
             physics_base(),
             InheritedVisibility::VISIBLE,
         )
+    }
+    #[must_use]
+    pub fn outline(&self, asset: &mut Asset) -> impl Bundle + use<> {
+        //TODO
     }
     #[must_use]
     pub fn sides(&self, asset: &mut Asset) -> impl Bundle + use<> {

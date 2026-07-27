@@ -62,13 +62,10 @@ pub fn on_roll(
         if rng.random() {
             ang.z = -ang.z;
         }
-        commands
-            .entity(on.entity)
-            .remove::<CollisionLayers>()
-            .insert((
-                Rolling,
-                CollisionLayers::new(GameLayer::Default, [GameLayer::Default]),
-            ));
+        commands.entity(on.entity).insert((
+            Rolling,
+            CollisionLayers::new(GameLayer::Default, [GameLayer::Default]),
+        ));
     }
 }
 pub fn update_rolling(
@@ -79,7 +76,7 @@ pub fn update_rolling(
         if vel.y < 0.0 {
             commands
                 .entity(ent)
-                .remove::<(Rolling, CollisionLayers)>()
+                .remove::<Rolling>()
                 .insert(CollisionLayers::new(
                     GameLayer::Default,
                     [GameLayer::Default, GameLayer::Floor],
