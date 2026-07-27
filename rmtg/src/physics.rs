@@ -1,9 +1,8 @@
 use crate::{CARD_HEIGHT, CARD_THICKNESS};
 use avian3d::prelude::{
-    AngularDamping, CoefficientCombine, Collider, CollisionLayers, GravityScale, LinearDamping,
-    PhysicsLayer, Restitution, RigidBody, SleepThreshold,
+    AngularDamping, CoefficientCombine, CollisionLayers, GravityScale, LinearDamping, PhysicsLayer,
+    Restitution, RigidBody, SleepThreshold,
 };
-use bevy::mesh::Mesh;
 use bevy::prelude::Bundle;
 pub const GRAVITY: f32 = CARD_HEIGHT;
 pub const LIN_DAMPING: f32 = CARD_THICKNESS;
@@ -18,14 +17,6 @@ pub enum GameLayer {
     Floor,
 }
 #[must_use]
-pub fn physics(mesh: &Mesh) -> impl Bundle + use<> {
-    (
-        Collider::convex_hull_from_mesh(mesh).unwrap(),
-        physics_base(),
-        CollisionLayers::new(GameLayer::Default, [GameLayer::Default, GameLayer::Floor]),
-    )
-}
-#[must_use]
 pub fn physics_base() -> impl Bundle + use<> {
     (
         RigidBody::Dynamic,
@@ -36,6 +27,7 @@ pub fn physics_base() -> impl Bundle + use<> {
             angular: ANG_SLEEP,
         },
         GravityScale(GRAVITY),
+        CollisionLayers::new(GameLayer::Default, [GameLayer::Default, GameLayer::Floor]),
     )
 }
 #[must_use]

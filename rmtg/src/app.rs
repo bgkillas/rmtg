@@ -86,24 +86,24 @@ pub fn app_run() -> AppExit {
     app.add_plugins(SettingsPlugin::new(APP_NAME));
     app.add_plugins(P2PPlugin::<Msg>::new());
     app.add_plugins(Text3dPlugin::default());
+    #[cfg(feature = "fps")]
+    app.add_plugins(bevy::dev_tools::fps_overlay::FpsOverlayPlugin::default());
+    #[cfg(feature = "colliders")]
+    app.add_plugins(avian3d::debug_render::PhysicsDebugPlugin);
+    #[cfg(feature = "colliders")]
+    app.insert_gizmo_config(
+        avian3d::debug_render::PhysicsGizmos {
+            axis_lengths: None,
+            collider_color: Some(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
+            sleeping_color_multiplier: None,
+            ..avian3d::debug_render::PhysicsGizmos::default()
+        },
+        bevy::gizmos::config::GizmoConfig::default(),
+    );
     app.insert_resource(LoadFonts {
         font_embedded: vec![FONT],
         ..LoadFonts::default()
     });
-    #[cfg(feature = "colliders")]
-    app.add_plugins(avian2d::debug_render::PhysicsDebugPlugin);
-    #[cfg(feature = "fps")]
-    app.add_plugins(bevy::dev_tools::fps_overlay::FpsOverlayPlugin::default());
-    #[cfg(feature = "colliders")]
-    app.insert_gizmo_config(
-        avian2d::debug_render::PhysicsGizmos {
-            axis_lengths: None,
-            collider_color: Some(bevy::color::Color::srgba_u8(0, 0, 0, 127)),
-            sleeping_color_multiplier: None,
-            ..avian2d::debug_render::PhysicsGizmos::default()
-        },
-        bevy::gizmos::config::GizmoConfig::default(),
-    );
     app.init_resource::<Menu>();
     app.init_resource::<KeybindsList>();
     app.init_resource::<Peers>();

@@ -2,6 +2,7 @@ use crate::assets::{Asset, CardBase, TextMesh};
 use crate::camera::default_cam_pos;
 use crate::net::Peer;
 use crate::physics::GameLayer;
+use crate::shapes::coin::Coin;
 use crate::shapes::cube::Cube;
 use crate::shapes::dodecahedron::Dodecahedron;
 use crate::shapes::icosahedron::Icosahedron;
@@ -146,6 +147,16 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
                 rev_x * 9.0,
                 Cube::HEIGHT / 2.0,
                 rev_z * 3.0,
+            )),
+        );
+        Coin::insert_dice(
+            color,
+            OUTLINE_COLOR,
+            &mut asset,
+            commands.spawn(Transform::from_xyz(
+                rev_x * 9.0,
+                Cube::HEIGHT / 2.0,
+                rev_z * 3.5,
             )),
         );
     }

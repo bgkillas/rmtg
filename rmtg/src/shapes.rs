@@ -1,7 +1,8 @@
 use crate::assets::Asset;
-use crate::physics::{bounce, physics};
+use crate::physics::{bounce, physics_base};
 use crate::{CARD_THICKNESS, CARD_WIDTH, WORLD_FONT_SIZE};
 use avian3d::parry::glamx::Quat;
+use avian3d::prelude::Collider;
 use bevy::asset::RenderAssetUsages;
 use bevy::color::{Color, Srgba};
 use bevy::ecs::children;
@@ -16,6 +17,7 @@ use bevy::prelude::{
 };
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor};
 use core::direct_const_arg;
+pub mod coin;
 pub mod cube;
 pub mod deck;
 pub mod dodecahedron;
@@ -31,6 +33,7 @@ pub enum Shape {
     Icosahedron,
     Octahedron,
     Tetrahedron,
+    Coin,
 }
 impl Shape {
     #[must_use]
@@ -41,6 +44,7 @@ impl Shape {
             Shape::Icosahedron => 20,
             Shape::Octahedron => 8,
             Shape::Tetrahedron => 4,
+            Shape::Coin => 2,
         }
     }
 }
@@ -88,7 +92,8 @@ pub trait ShapeMesh: NewShape {
         let mesh = Mesh::from(Self::from_height(height));
         (
             Self::SHAPE,
-            physics(&mesh),
+            Self::collider(&mesh),
+            physics_base(),
             Mesh3d(asset.meshes.add(mesh)),
             MeshMaterial3d(asset.materials.add(StandardMaterial {
                 base_color,
@@ -106,6 +111,10 @@ pub trait ShapeMesh: NewShape {
             )],
             InheritedVisibility::VISIBLE,
         )
+    }
+    #[must_use]
+    fn collider(mesh: &Mesh) -> Collider {
+        Collider::convex_hull_from_mesh(mesh).unwrap()
     }
     fn insert_dice<'a>(
         base_color: Color,
