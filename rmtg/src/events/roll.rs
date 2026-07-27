@@ -1,11 +1,10 @@
-use crate::MAT_WIDTH;
+use crate::MAT_HEIGHT;
 use crate::deck::Pile;
 use crate::events::repaint::Repaint;
 use crate::hover::Hovered;
 use crate::keybinds::{Keybind, Keybinds};
-use crate::physics::GameLayer;
 use crate::shapes::FaceNumber;
-use avian3d::prelude::{AngularVelocity, CollisionLayers, LinearVelocity};
+use avian3d::prelude::{AngularVelocity, ColliderDisabled, LinearVelocity};
 use bevy::prelude::{
     Children, Commands, Component, Entity, EntityEvent, On, Query, Single, Transform, With, Without,
 };
@@ -49,10 +48,10 @@ pub fn on_roll(
         let t1 = faces.get(children[i1]).unwrap();
         let t2 = faces.get(children[i2]).unwrap();
         transform.rotation = t2.rotation * t1.rotation.inverse() * transform.rotation;
-        vel.y = MAT_WIDTH;
-        ang.x = TAU * rng.random_range(10.0..20.0) + ang.x.abs();
-        ang.y = TAU * rng.random_range(10.0..20.0) + ang.y.abs();
-        ang.z = TAU * rng.random_range(10.0..20.0) + ang.z.abs();
+        vel.y = MAT_HEIGHT;
+        ang.x = TAU * rng.random_range(2.0..4.0) + ang.x.abs();
+        ang.y = TAU * rng.random_range(2.0..4.0) + ang.y.abs();
+        ang.z = TAU * rng.random_range(2.0..4.0) + ang.z.abs();
         if rng.random() {
             ang.x = -ang.x;
         }
@@ -62,10 +61,9 @@ pub fn on_roll(
         if rng.random() {
             ang.z = -ang.z;
         }
-        commands.entity(on.entity).insert((
-            Rolling,
-            CollisionLayers::new(GameLayer::Default, [GameLayer::Default]),
-        ));
+        commands
+            .entity(on.entity)
+            .insert((Rolling, ColliderDisabled));
     }
 }
 pub fn update_rolling(
@@ -74,13 +72,7 @@ pub fn update_rolling(
 ) {
     for (ent, vel) in query {
         if vel.y < 0.0 {
-            commands
-                .entity(ent)
-                .remove::<Rolling>()
-                .insert(CollisionLayers::new(
-                    GameLayer::Default,
-                    [GameLayer::Default, GameLayer::Floor],
-                ));
+            commands.entity(ent).remove::<(Rolling, ColliderDisabled)>();
         }
     }
 }
