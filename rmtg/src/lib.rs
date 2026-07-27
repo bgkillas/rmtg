@@ -41,6 +41,7 @@ pub const MAT_HEIGHT: f32 = MAT_WIDTH * 9.0 / 16.0;
 pub const MAT_BAR: f32 = MAT_HEIGHT / 64.0;
 pub const T: f32 = W / 2.0;
 pub const W: f32 = MAT_WIDTH * 2.0;
+pub const CEILING_COLOR: Color = Color::srgb_u8(103, 73, 40);
 pub const WALL_COLOR: Color = Color::srgb_u8(103, 73, 40);
 pub const FLOOR_COLOR: Color = Color::srgb_u8(103, 73, 40);
 pub const CARD_STOCK_COLOR: Color = Color::srgb_u8(0, 0, 0);

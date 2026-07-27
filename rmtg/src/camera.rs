@@ -85,7 +85,7 @@ pub fn camera_translation(
             cam_transform.translation += translate;
         }
     }
-    let epsilon = Vec3::splat(CARD_THICKNESS);
+    let epsilon = Vec3::splat(32.0 * CARD_THICKNESS);
     cam_transform.translation = cam_transform.translation.clamp(
         Vec3::new(-W, 0.0, -W) + epsilon,
         Vec3::new(W, 2.0 * W, W) - epsilon,

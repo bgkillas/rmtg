@@ -8,7 +8,9 @@ use crate::shapes::dodecahedron::Dodecahedron;
 use crate::shapes::icosahedron::Icosahedron;
 use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
-use crate::{CARD_HEIGHT, CARD_STOCK_COLOR, CARD_THICKNESS, CARD_WIDTH, FLOOR_COLOR, FONT, T, W};
+use crate::{
+    CARD_HEIGHT, CARD_STOCK_COLOR, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT, T, W, WALL_COLOR,
+};
 use avian3d::prelude::{Collider, CollisionLayers, RigidBody};
 use bevy::anti_alias::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
 use bevy::asset::{AssetId, Assets};
@@ -20,6 +22,7 @@ use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::image::Image;
 use bevy::light::GlobalAmbientLight;
 use bevy::material::AlphaMode;
+use bevy::math::Vec3;
 use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{
@@ -72,8 +75,6 @@ pub fn startup(
         MeshPickingCamera,
         Projection::Perspective(PerspectiveProjection {
             fov: PI / 3.0,
-            near: CARD_THICKNESS / 32.0,
-            far: W * 2.0,
             ..PerspectiveProjection::default()
         }),
         Tonemapping::None,
@@ -145,11 +146,12 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
             )),
         );
     }
+    let mesh = asset.meshes.add(Cuboid::new(2.0 * W, T, 2.0 * W));
     commands.spawn((
         Transform::from_xyz(0.0, -T / 2.0, 0.0),
         Collider::cuboid(2.0 * W + T, T, 2.0 * W + T),
         RigidBody::Static,
-        Mesh3d(asset.meshes.add(Cuboid::new(2.0 * W, T, 2.0 * W))),
+        Mesh3d(mesh.clone()),
         MeshMaterial3d(asset.materials.add(StandardMaterial {
             base_color: FLOOR_COLOR,
             unlit: true,
@@ -158,6 +160,43 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
         })),
         Floor,
         CollisionLayers::new(GameLayer::Floor, [GameLayer::Default, GameLayer::Floor]),
+    ));
+    let wall = asset.materials.add(StandardMaterial {
+        base_color: WALL_COLOR,
+        unlit: true,
+        ..StandardMaterial::default()
+    });
+    for i in 0..4 {
+        let s = W + T / 2.0;
+        let (x, y) = match i {
+            0 => (s, 0.0),
+            1 => (-s, 0.0),
+            2 => (0.0, s),
+            3 => (0.0, -s),
+            _ => unreachable!(),
+        };
+        commands.spawn((
+            Transform::from_xyz(x, W, y).looking_to(Vec3::Y, -Vec3::new(x, 0.0, y)),
+            Collider::cuboid(2.0 * W + T, T, 2.0 * W + T),
+            RigidBody::Static,
+            Wall,
+            Mesh3d(mesh.clone()),
+            MeshMaterial3d(wall.clone()),
+            CollisionLayers::new(GameLayer::Default, [GameLayer::Default, GameLayer::Floor]),
+        ));
+    }
+    commands.spawn((
+        Transform::from_xyz(0.0, 2.0 * W + T / 2.0, 0.0),
+        Collider::cuboid(2.0 * W + T, T, 2.0 * W + T),
+        RigidBody::Static,
+        Ceiling,
+        Mesh3d(mesh),
+        MeshMaterial3d(asset.materials.add(StandardMaterial {
+            base_color: CEILING_COLOR,
+            unlit: true,
+            ..StandardMaterial::default()
+        })),
+        CollisionLayers::new(GameLayer::Default, [GameLayer::Default, GameLayer::Floor]),
     ));
 }
 #[derive(Component)]

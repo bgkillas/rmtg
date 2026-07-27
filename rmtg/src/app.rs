@@ -115,8 +115,7 @@ pub fn app_run() -> AppExit {
     app.add_systems(
         Update,
         (
-            camera_translation,
-            camera_rotation,
+            (camera_rotation, camera_translation).chain(),
             paste_card,
             update_hover,
             do_roll,
