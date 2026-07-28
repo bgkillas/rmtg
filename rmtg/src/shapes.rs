@@ -92,7 +92,7 @@ pub trait ShapeMesh: NewShape {
         let mesh = Mesh::from(Self::from_height(height));
         (
             Self::SHAPE,
-            Self::collider(&mesh),
+            Self::collider(height, &mesh),
             physics_base(),
             Mesh3d(asset.meshes.add(mesh)),
             MeshMaterial3d(asset.materials.add(StandardMaterial {
@@ -113,7 +113,7 @@ pub trait ShapeMesh: NewShape {
         )
     }
     #[must_use]
-    fn collider(mesh: &Mesh) -> Collider {
+    fn collider(_: f32, mesh: &Mesh) -> Collider {
         Collider::convex_hull_from_mesh(mesh).unwrap()
     }
     fn insert_dice<'a>(
@@ -208,21 +208,33 @@ pub trait ShapeOutline: NewShape {
     #[must_use]
     fn unit_length(self) -> f32;
     #[must_use]
-    fn mesh(self) -> Mesh {
+    fn edges(self) -> [[Vec3; 2]; direct_const_arg!(Self::EDGES)] {
         let position = Self::Mesh::oriented_vertices(self.unit_length()).map(Vec3::from);
         let edges = Self::edge_indices();
-        let edges_computed = edges.map(|[a, b]| [position[a], position[b]]);
+        edges.map(|[a, b]| [position[a], position[b]])
+    }
+    fn position(
+        self,
+    ) -> [Vec3; direct_const_arg!(<<Self as ShapeOutline>::Mesh as ShapeMesh>::VERTICES)] {
+        Self::Mesh::oriented_vertices(self.unit_length()).map(Vec3::from)
+    }
+    #[must_use]
+    fn mesh(self) -> Mesh {
+        let subdivisions = 4;
+        let resolution = 16;
+        let position = self.position();
+        let edges_computed = self.edges();
         let mut mesh = Mesh::from(CylinderMeshBuilder {
             cylinder: Cylinder::new(
                 Self::THICKNESS,
                 (edges_computed[0][0] - edges_computed[0][1]).length(),
             ),
-            resolution: 8,
+            resolution,
             ..CylinderMeshBuilder::default()
         });
         let sphere = Mesh::from(SphereMeshBuilder {
             sphere: Sphere::new(Self::THICKNESS),
-            kind: SphereKind::Ico { subdivisions: 3 },
+            kind: SphereKind::Ico { subdivisions },
         });
         mesh.rotate_by(Quat::from_rotation_arc(
             Vec3::Y,
@@ -233,7 +245,7 @@ pub trait ShapeOutline: NewShape {
             let height = (a - b).length();
             let mut line = Mesh::from(CylinderMeshBuilder {
                 cylinder: Cylinder::new(Self::THICKNESS, height),
-                resolution: 8,
+                resolution,
                 ..CylinderMeshBuilder::default()
             });
             line.rotate_by(Quat::from_rotation_arc(Vec3::Y, (b - a).normalize()));

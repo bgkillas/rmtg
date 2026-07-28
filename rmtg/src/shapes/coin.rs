@@ -1,9 +1,9 @@
 use crate::CARD_THICKNESS;
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
-use bevy::asset::RenderAssetUsages;
+use avian3d::prelude::Collider;
 use bevy::math::{Dir3, Vec3};
-use bevy::mesh::{Mesh, MeshBuilder, PrimitiveTopology};
-use bevy::prelude::{Cylinder, Transform};
+use bevy::mesh::{Mesh, MeshBuilder, TorusMeshBuilder};
+use bevy::prelude::{Cylinder, Torus, Transform};
 #[derive(Clone, Copy)]
 pub struct Coin {
     pub unit_length: f32,
@@ -16,6 +16,9 @@ impl ShapeMesh for Coin {
     type const FACE_VERTICES: usize = 4;
     type const TRIANGLES: usize = 2;
     const SHAPE: Shape = Shape::Coin;
+    fn collider(height: f32, _: &Mesh) -> Collider {
+        Collider::cylinder(height / 2.0, height * HEIGHT_MULT)
+    }
     fn text_size(height: f32) -> f32 {
         height
     }
@@ -49,31 +52,29 @@ impl ShapeMesh for Coin {
 }
 impl ShapeOutline for CoinOutline {
     type Mesh = Coin;
-    type const EDGES: usize = 12;
+    type const EDGES: usize = 2;
     fn edge_indices() -> [[usize; 2]; Self::EDGES] {
-        [
-            [0, 1],
-            [0, 2],
-            [0, 3],
-            [7, 4],
-            [7, 5],
-            [7, 6],
-            [1, 5],
-            [2, 6],
-            [3, 4],
-            [4, 1],
-            [5, 2],
-            [6, 3],
-        ]
+        unreachable!()
     }
     fn unit_length(self) -> f32 {
         self.unit_length
     }
+
     fn mesh(self) -> Mesh {
-        Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::RENDER_WORLD,
-        )
+        let mut mesh = Mesh::from(TorusMeshBuilder {
+            torus: Torus::new(
+                self.unit_length - Self::THICKNESS,
+                self.unit_length + Self::THICKNESS,
+            ),
+            minor_resolution: 32,
+            major_resolution: 64,
+            ..TorusMeshBuilder::default()
+        });
+        let mut bot = mesh.clone();
+        mesh.translate_by(Vec3::new(0.0, self.unit_length * HEIGHT_MULT, 0.0));
+        bot.translate_by(Vec3::new(0.0, -self.unit_length * HEIGHT_MULT, 0.0));
+        mesh.merge(&bot).unwrap();
+        mesh
     }
 }
 #[derive(Clone, Copy)]

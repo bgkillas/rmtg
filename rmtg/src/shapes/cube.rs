@@ -1,4 +1,5 @@
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
+use avian3d::prelude::Collider;
 use bevy::mesh::{Mesh, MeshBuilder};
 #[derive(Clone, Copy)]
 pub struct Cube {
@@ -11,6 +12,9 @@ impl ShapeMesh for Cube {
     type const FACE_VERTICES: usize = 4;
     type const TRIANGLES: usize = 2;
     const SHAPE: Shape = Shape::Cube;
+    fn collider(height: f32, _: &Mesh) -> Collider {
+        Collider::cuboid(height, height, height)
+    }
     fn text_size(height: f32) -> f32 {
         height
     }
