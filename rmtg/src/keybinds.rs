@@ -50,11 +50,9 @@ impl Keybinds<'_> {
 #[derive(Enum, Debug)]
 pub enum Keybind {
     Ping,
-    HostSteam,
-    HostIp,
-    JoinIp,
     SortHand,
     Select,
+    MultiSelect,
     Flip,
     Shuffle,
     Remove,
@@ -77,8 +75,6 @@ pub enum Keybind {
     Calc,
     Chat,
     Voice,
-    TakeTurn,
-    PassTurn,
     Menu,
     CalcClose,
     Left,
@@ -94,15 +90,7 @@ pub enum Keybind {
     Untap,
     ScaleUp,
     ScaleDown,
-    Mill,
-    Exile,
-    Reveal,
     Draw,
-    Loyalty,
-    Power,
-    Toughness,
-    MiscCounter,
-    Counters,
 }
 #[derive(Resource, Deref, DerefMut)]
 pub struct KeybindsList(EnumMap<Keybind, Bind>);
@@ -114,12 +102,10 @@ impl Default for KeybindsList {
         Self(enum_map! {
             Keybind::Ping => Bind::new(enum_set!(), MouseButton::Middle),
             Keybind::Select => Bind::new(enum_set!(), MouseButton::Left),
+            Keybind::MultiSelect => Bind::new(enum_set!(ctrl), MouseButton::Left),
             Keybind::Add => Bind::new(enum_set!(), MouseButton::Left),
             Keybind::Sub => Bind::new(enum_set!(), MouseButton::Right),
             Keybind::PickCard => Bind::new(enum_set!(ctrl), MouseButton::Left),
-            Keybind::HostSteam => Bind::new(enum_set!(ctrl | alt | shift), KeyCode::KeyN),
-            Keybind::HostIp => Bind::new(enum_set!(ctrl | alt | shift), KeyCode::KeyM),
-            Keybind::JoinIp => Bind::new(enum_set!(ctrl | alt | shift), KeyCode::KeyK),
             Keybind::SortHand => Bind::new(enum_set!(ctrl), KeyCode::KeyS),
             Keybind::Flip => Bind::new(enum_set!(), KeyCode::KeyF),
             Keybind::Shuffle => Bind::new(enum_set!(), KeyCode::KeyR),
@@ -140,8 +126,6 @@ impl Default for KeybindsList {
             Keybind::View => Bind::new(enum_set!(alt), Key::None),
             Keybind::Chat => Bind::new(enum_set!(), KeyCode::Enter),
             Keybind::Voice => Bind::new(enum_set!(), KeyCode::KeyB),
-            Keybind::TakeTurn => Bind::new(enum_set!(ctrl), KeyCode::KeyX),
-            Keybind::PassTurn => Bind::new(enum_set!(), KeyCode::KeyX),
             Keybind::Menu => Bind::new(enum_set!(), KeyCode::Escape),
             Keybind::CalcClose => Bind::new(enum_set!(), KeyCode::Enter),
             Keybind::Left => Bind::new(enum_set!(), KeyCode::KeyA),
@@ -157,15 +141,7 @@ impl Default for KeybindsList {
             Keybind::Untap => Bind::new(enum_set!(), KeyCode::KeyU),
             Keybind::ScaleUp => Bind::new(enum_set!(), KeyCode::Equal),
             Keybind::ScaleDown => Bind::new(enum_set!(), KeyCode::Minus),
-            Keybind::Mill => Bind::new(enum_set!(ctrl), Key::Numeric),
-            Keybind::Exile => Bind::new(enum_set!(ctrl | shift), Key::Numeric),
-            Keybind::Reveal => Bind::new(enum_set!(alt), Key::Numeric),
             Keybind::Draw => Bind::new(enum_set!(), Key::Numeric),
-            Keybind::Loyalty => Bind::new(enum_set!(alt), KeyCode::KeyL),
-            Keybind::Power => Bind::new(enum_set!(alt), KeyCode::KeyP),
-            Keybind::Toughness => Bind::new(enum_set!(alt), KeyCode::KeyT),
-            Keybind::MiscCounter => Bind::new(enum_set!(alt), KeyCode::KeyM),
-            Keybind::Counters => Bind::new(enum_set!(alt), KeyCode::KeyC),
         })
     }
 }

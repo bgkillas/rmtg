@@ -20,13 +20,10 @@ impl ShapeMesh for Coin {
         height
     }
     fn faces(height: f32) -> [Transform; 2] {
-        let one = Self::convert_height(height) * HEIGHT_MULT;
-        [
-            [0.0, one + CARD_THICKNESS / 2.0, 0.0],
-            [0.0, CARD_THICKNESS / 2.0 - one, 0.0],
-        ]
-        .map(Vec3::from)
-        .map(|v| Transform::from_translation(v).looking_to(-v, Dir3::NEG_Z))
+        let one = Self::convert_height(height) * HEIGHT_MULT + CARD_THICKNESS / 2.0;
+        [[0.0, one, 0.0], [0.0, -one, 0.0]]
+            .map(Vec3::from)
+            .map(|v| Transform::from_translation(v).looking_to(-v, Dir3::NEG_Z))
     }
     fn convert_height(height: f32) -> f32 {
         height / 2.0
@@ -37,8 +34,8 @@ impl ShapeMesh for Coin {
     fn vertices(_: f32) -> [[f32; 3]; Self::VERTICES] {
         unreachable!()
     }
-    fn convert_to_triangles(face: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES] {
-        [[0, 1, 2], [3, 2, 1]].map(|a| a.map(|i| face[i]))
+    fn convert_to_triangles(_: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES] {
+        unreachable!()
     }
     fn unit_length(self) -> f32 {
         self.unit_length
