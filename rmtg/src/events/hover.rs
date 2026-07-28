@@ -4,7 +4,7 @@ use crate::keybinds::{Keybind, Keybinds};
 use crate::shapes::{OUTLINE_COLOR, OUTLINE_DEPTH_BIAS};
 use crate::spatial::Spatial;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{Children, Commands, Component, Entity, EntityEvent, Local, On, Query, With};
+use bevy::prelude::{Children, Commands, Component, Entity, EntityEvent, On, Query, With};
 #[derive(Component)]
 pub struct Hoverable;
 #[derive(Component, Clone, Copy)]
@@ -72,7 +72,6 @@ pub fn update_hover(
     keybinds: Keybinds,
     spatial: Spatial,
     mut commands: Commands,
-    mut start_held: Local<bool>,
 ) {
     let Some((hit, _)) = spatial.ray() else {
         return;
@@ -89,25 +88,23 @@ pub fn update_hover(
         return;
     }
     if keybinds.just_pressed(Keybind::HoldSelect) {
-        *start_held = true;
         if olds.iter().any(|(e, h)| e == hit.entity && h.held) {
             commands.trigger(RemoveHover::new(hit.entity));
         } else {
             commands.trigger(AddHover::new(hit.entity, Hovered { held: true }));
         }
     } else if keybinds.pressed(Keybind::Select) {
-        if !*start_held {
+        if keybinds.just_pressed(Keybind::Select) {
             for (ent, _) in olds {
                 if ent != hit.entity {
                     commands.trigger(RemoveHover::new(ent));
                 }
             }
-            if !olds.contains(hit.entity) {
+            if !olds.iter().any(|(e, h)| e == hit.entity && !h.held) {
                 commands.trigger(AddHover::new(hit.entity, Hovered { held: false }));
             }
         }
     } else if olds.iter().all(|(e, _)| e != hit.entity) {
-        *start_held = false;
         for (ent, hovered) in olds {
             if !hovered.held {
                 commands.trigger(RemoveHover::new(ent));
