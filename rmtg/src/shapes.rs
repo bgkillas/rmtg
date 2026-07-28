@@ -1,4 +1,5 @@
 use crate::assets::Asset;
+use crate::events::hover::Hoverable;
 use crate::physics::{bounce, physics_base};
 use crate::{CARD_THICKNESS, CARD_WIDTH, WORLD_FONT_SIZE};
 use avian3d::parry::glamx::Quat;
@@ -126,6 +127,7 @@ pub trait ShapeMesh: NewShape {
         ent.insert((
             Self::bundle(height, base_color, outline_color, asset),
             bounce(),
+            Hoverable,
         ));
         ent.with_children(|parent| {
             for (i, t) in Self::faces(height).into_iter().enumerate() {

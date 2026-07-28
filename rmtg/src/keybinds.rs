@@ -52,7 +52,7 @@ pub enum Keybind {
     Ping,
     SortHand,
     Select,
-    MultiSelect,
+    HoldSelect,
     Flip,
     Shuffle,
     Remove,
@@ -102,7 +102,7 @@ impl Default for KeybindsList {
         Self(enum_map! {
             Keybind::Ping => Bind::new(enum_set!(), MouseButton::Middle),
             Keybind::Select => Bind::new(enum_set!(), MouseButton::Left),
-            Keybind::MultiSelect => Bind::new(enum_set!(ctrl), MouseButton::Left),
+            Keybind::HoldSelect => Bind::new(enum_set!(ctrl), MouseButton::Left),
             Keybind::Add => Bind::new(enum_set!(), MouseButton::Left),
             Keybind::Sub => Bind::new(enum_set!(), MouseButton::Right),
             Keybind::PickCard => Bind::new(enum_set!(ctrl), MouseButton::Left),

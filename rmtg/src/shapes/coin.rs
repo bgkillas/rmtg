@@ -2,8 +2,8 @@ use crate::CARD_THICKNESS;
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
 use avian3d::prelude::Collider;
 use bevy::math::{Dir3, Vec3};
-use bevy::mesh::{Mesh, MeshBuilder, TorusMeshBuilder};
-use bevy::prelude::{Cylinder, Torus, Transform};
+use bevy::mesh::{CylinderMeshBuilder, Mesh, MeshBuilder, TorusMeshBuilder};
+use bevy::prelude::{Torus, Transform};
 #[derive(Clone, Copy)]
 pub struct Coin {
     pub unit_length: f32,
@@ -44,9 +44,10 @@ impl ShapeMesh for Coin {
         self.unit_length
     }
     fn mesh(self) -> Mesh {
-        Mesh::from(Cylinder::new(
+        Mesh::from(CylinderMeshBuilder::new(
             self.unit_length,
             self.unit_length * HEIGHT_MULT * 2.0,
+            64,
         ))
     }
 }

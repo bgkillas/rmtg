@@ -1,4 +1,5 @@
 use crate::assets::Asset;
+use crate::events::hover::Hoverable;
 use crate::physics::physics_base;
 use crate::shapes::deck::DeckOutline;
 use crate::shapes::{NewShape as _, OUTLINE_COLOR, OUTLINE_DEPTH_BIAS};
@@ -49,6 +50,7 @@ impl Pile {
             self,
             physics_base(),
             InheritedVisibility::VISIBLE,
+            Hoverable,
         )
     }
     #[must_use]

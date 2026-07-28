@@ -1,12 +1,12 @@
 use crate::MAT_HEIGHT;
 use crate::deck::Pile;
+use crate::events::hover::Hovered;
 use crate::events::repaint::Repaint;
-use crate::hover::Hovered;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::shapes::FaceNumber;
 use avian3d::prelude::{AngularVelocity, ColliderDisabled, LinearVelocity};
 use bevy::prelude::{
-    Children, Commands, Component, Entity, EntityEvent, On, Query, Single, Transform, With, Without,
+    Children, Commands, Component, Entity, EntityEvent, On, Query, Transform, With, Without,
 };
 use rand::prelude::StdRng;
 use rand::{RngExt as _, make_rng};
@@ -76,8 +76,10 @@ pub fn update_rolling(
         }
     }
 }
-pub fn do_roll(hovered: Single<Entity, With<Hovered>>, mut commands: Commands, keybinds: Keybinds) {
-    if keybinds.just_pressed(Keybind::Shuffle) {
-        commands.trigger(Roll::new(*hovered));
+pub fn do_roll(hovered: Query<Entity, With<Hovered>>, mut commands: Commands, keybinds: Keybinds) {
+    for ent in hovered {
+        if keybinds.just_pressed(Keybind::Shuffle) {
+            commands.trigger(Roll::new(ent));
+        }
     }
 }
