@@ -109,4 +109,4 @@ jobs:
           name: rmtg-macos
           path: ./steam/macos/rmtg
       - name: deploy
-        run: just deploy ${{ secrets.STEAM_USERNAME }}  ${{ secrets.STEAM_PASSWORD }}
+        run: cd steam && steamcmd +login ${{ secrets.STEAM_USERNAME }}  ${{ secrets.STEAM_PASSWORD }} +run_app_build ./build.vdf +quit
