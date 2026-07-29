@@ -111,10 +111,10 @@ impl Default for KeybindsList {
             Keybind::Shuffle => Bind::new(enum_set!(), KeyCode::KeyR),
             Keybind::Calc => Bind::new(enum_set!(ctrl), KeyCode::KeyR),
             Keybind::Remove => Bind::new(enum_set!(), KeyCode::Delete),
-            Keybind::Copy => Bind::new(enum_set!(ctrl), KeyCode::KeyC),
-            Keybind::CopyObject => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyC),
-            Keybind::Paste => Bind::new(enum_set!(ctrl), KeyCode::KeyV),
-            Keybind::PasteObject => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyV),
+            Keybind::Copy => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyC),
+            Keybind::CopyObject => Bind::new(enum_set!(ctrl), KeyCode::KeyC),
+            Keybind::Paste => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyV),
+            Keybind::PasteObject => Bind::new(enum_set!(ctrl), KeyCode::KeyV),
             Keybind::Equip => Bind::new(enum_set!(ctrl), KeyCode::KeyE),
             Keybind::RotateLeft => Bind::new(enum_set!(), KeyCode::KeyQ),
             Keybind::RotateRight => Bind::new(enum_set!(), KeyCode::KeyE),
@@ -224,12 +224,14 @@ impl TryFrom<&KeyCode> for Modifier {
 pub struct Bind {
     modifiers: EnumSet<Modifier>,
     key: Key,
+    strict: bool,
 }
 impl From<KeyCode> for Bind {
     fn from(value: KeyCode) -> Self {
         Self {
             modifiers: EnumSet::default(),
             key: value.into(),
+            strict: false,
         }
     }
 }
@@ -238,6 +240,7 @@ impl From<MouseButton> for Bind {
         Self {
             modifiers: EnumSet::default(),
             key: value.into(),
+            strict: false,
         }
     }
 }
@@ -261,18 +264,12 @@ impl Bind {
             if mouse_pressed.next().is_some() {
                 return None;
             }
-            Some(Self {
-                modifiers,
-                key: key.into(),
-            })
+            Some(Self::new(modifiers, key))
         } else if let Some(key) = keyboard.copied() {
             if keyboard_pressed.next().is_some() {
                 return None;
             }
-            Some(Self {
-                modifiers,
-                key: key.into(),
-            })
+            Some(Self::new(modifiers, key))
         } else {
             None
         }
@@ -282,18 +279,20 @@ impl Bind {
         Self {
             modifiers,
             key: key.into(),
+            strict: false,
         }
     }
     #[must_use]
     pub fn modifiers_pressed(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
         self.modifiers.iter().all(|m| m.pressed(keyboard))
-        /*&& keyboard.get_pressed().all(|k| {
-            if let Ok(m) = k.try_into() {
-                self.modifiers.contains(m)
-            } else {
-                true
-            }
-        })*/
+            && (!self.strict
+                || keyboard.get_pressed().all(|k| {
+                    if let Ok(m) = k.try_into() {
+                        self.modifiers.contains(m)
+                    } else {
+                        true
+                    }
+                }))
     }
     #[must_use]
     pub fn just_pressed(
