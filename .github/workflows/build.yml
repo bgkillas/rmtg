@@ -107,7 +107,7 @@ jobs:
       - name: download windows
         uses: actions/download-artifact@v8
         with:
-          name: rmtg-windows
+          name: rmtg.exe
           path: ./steam/windows/rmtg.exe
       - name: download macos
         uses: actions/download-artifact@v8
