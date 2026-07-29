@@ -3,9 +3,6 @@ on:
   push:
     branches:
     - master
-  pull_request:
-    branches:
-    - master
 env:
   CARGO_TERM_COLOR: always
 jobs:
@@ -93,6 +90,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: extractions/setup-just@v3
+      - name: install steamcmd
+        run: |
+          sudo add-apt-repository multiverse
+          sudo dpkg --add-architecture i386
+          sudo apt update
+          sudo apt install steamcmd
       - name: download linux
         uses: actions/download-artifact@v8
         with:
@@ -109,4 +112,4 @@ jobs:
           name: rmtg-macos
           path: ./steam/macos/rmtg
       - name: deploy
-        run: cd steam && steamcmd +login ${{ secrets.STEAM_USERNAME }}  ${{ secrets.STEAM_PASSWORD }} +run_app_build ./build.vdf +quit
+        run: just deploy ${{ secrets.STEAM_USERNAME }}  ${{ secrets.STEAM_PASSWORD }}
