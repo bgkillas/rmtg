@@ -52,7 +52,7 @@ jobs:
       run: just build_full
     - uses: actions/upload-artifact@v7
       with:
-        name: rmtg-linux
+        name: rmtg
         path: target/release_lto/rmtg
   build-windows:
     runs-on: windows-latest
@@ -88,3 +88,25 @@ jobs:
       with:
         name: rmtg-macos
         path: target/release_lto/rmtg
+  deploy_to_steam:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: extractions/setup-just@v3
+      - name: download linux
+        uses: actions/download-artifact@v8
+        with:
+          name: rmtg
+          path: ./steam/linux/rmtg
+      - name: download windows
+        uses: actions/download-artifact@v8
+        with:
+          name: rmtg-windows
+          path: ./steam/windows/rmtg.exe
+      - name: download macos
+        uses: actions/download-artifact@v8
+        with:
+          name: rmtg-macos
+          path: ./steam/macos/rmtg
+      - name: deploy
+        run: just deploy ${{ secrets.STEAM_USERNAME }}  ${{ secrets.STEAM_PASSWORD }}
