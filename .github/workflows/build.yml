@@ -95,6 +95,9 @@ jobs:
           sudo add-apt-repository multiverse
           sudo dpkg --add-architecture i386
           sudo apt update
+          echo "steamcmd steam/question select I AGREE" | sudo debconf-set-selections
+          echo "steamcmd steam/license note ''" | sudo debconf-set-selections
+          export DEBIAN_FRONTEND=noninteractive
           sudo apt install steamcmd
       - name: download linux
         uses: actions/download-artifact@v8
