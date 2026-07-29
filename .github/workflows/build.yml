@@ -115,6 +115,12 @@ jobs:
         with:
           name: rmtg-macos
           path: ./steam/macos/rmtg
+      - name: install_config
+        env:
+          CONFIG: ${{ secrets.CONFIG_VDF }}
+        run: |
+          mkdir -p "$HOME/.steam/config"
+          echo "$CONFIG" | base64 -d | xz -d > "$HOME/.steam/config.vdf"
       - name: deploy
         env:
           USERNAME: ${{ secrets.STEAM_USERNAME }}
