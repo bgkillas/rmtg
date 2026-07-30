@@ -120,7 +120,7 @@ jobs:
           CONFIG: ${{ secrets.CONFIG_VDF }}
         run: |
           steamcmd +quit
-          echo "$CONFIG" | base64 -d | xz -d > "$HOME/.steam/config/config.vdf"
+          echo "$CONFIG" | base64 -d | xz -d > "$HOME/.local/share/Steam/config/config.vdf"
       - name: deploy
         env:
           USERNAME: ${{ secrets.STEAM_USERNAME }}
