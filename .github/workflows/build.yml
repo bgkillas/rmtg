@@ -115,14 +115,14 @@ jobs:
         with:
           name: rmtg-macos
           path: ./steam/macos/rmtg
-      - name: install_config
-        env:
-          CONFIG: ${{ secrets.CONFIG_VDF }}
-        run: |
-          steamcmd +quit
-          echo "$CONFIG" | base64 -d | xz -d > "$HOME/.local/share/Steam/config/config.vdf"
+      - uses: CyberAndrii/steam-totp@v1
+        name: generate totp
+        id: steam-totp
+        with:
+          shared_secret: ${{ secrets.STEAM_SHARED_SECRET }}
       - name: deploy
         env:
           USERNAME: ${{ secrets.STEAM_USERNAME }}
           PASSWORD: ${{ secrets.STEAM_PASSWORD }}
-        run: just deploy "$USERNAME" "$PASSWORD"
+          TOTP: ${{ steps.steam-totp.outputs.code }}
+        run: just deploy "$USERNAME" "$PASSWORD" "$TOTP"
