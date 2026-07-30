@@ -47,10 +47,15 @@ jobs:
       run: rustup update
     - name: Build
       run: just build_full
+    - name: package
+      run: |
+        mkdir rmtg
+        cp target/release_lto/rmtg rmtg/
+        cp steam/libsteam_api.so rmtg/
     - uses: actions/upload-artifact@v7
       with:
-        name: rmtg
-        path: target/release_lto/rmtg
+        name: rmtg-linux
+        path: rmtg
   build-windows:
     runs-on: windows-latest
     steps:
@@ -64,10 +69,15 @@ jobs:
       run: rustup update
     - name: Build
       run: just build_full
+    - name: package
+      run: |
+        mkdir rmtg
+        cp target/release_lto/rmtg.exe rmtg/
+        cp steam/steam_api64.dll rmtg/
     - uses: actions/upload-artifact@v7
       with:
-        name: rmtg.exe
-        path: target/release_lto/rmtg.exe
+        name: rmtg-windows
+        path: rmtg
   build-macos:
     runs-on: macos-latest
     steps:
@@ -81,10 +91,15 @@ jobs:
       run: rustup update
     - name: Build
       run: just build_full
+    - name: package
+      run: |
+        mkdir rmtg
+        cp target/release_lto/rmtg rmtg/
+        cp steam/libsteam_api.dylib rmtg/
     - uses: actions/upload-artifact@v7
       with:
         name: rmtg-macos
-        path: target/release_lto/rmtg
+        path: rmtg
   deploy_to_steam:
     needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
@@ -104,17 +119,17 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: rmtg
-          path: ./steam/linux/rmtg
+          path: ./steam/linux
       - name: download windows
         uses: actions/download-artifact@v8
         with:
           name: rmtg.exe
-          path: ./steam/windows/rmtg.exe
+          path: ./steam/windows
       - name: download macos
         uses: actions/download-artifact@v8
         with:
           name: rmtg-macos
-          path: ./steam/macos/rmtg
+          path: ./steam/macos
       - uses: CyberAndrii/steam-totp@v1
         name: generate totp
         id: steam-totp

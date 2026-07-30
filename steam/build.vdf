@@ -9,7 +9,7 @@
         {
             "FileMapping"
             {
-                "LocalPath"    "linux/*"
+                "LocalPath"    "linux/rmtg/*"
                 "DepotPath"    "."
                 "recursive"    "1"
             }
@@ -18,7 +18,7 @@
         {
             "FileMapping"
             {
-                "LocalPath"    "windows/*"
+                "LocalPath"    "windows/rmtg/*"
                 "DepotPath"    "."
                 "recursive"    "1"
             }
@@ -27,7 +27,7 @@
         {
             "FileMapping"
             {
-                "LocalPath"    "macos/*"
+                "LocalPath"    "macos/rmtg/*"
                 "DepotPath"    "."
                 "recursive"    "1"
             }
