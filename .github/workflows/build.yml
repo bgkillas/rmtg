@@ -118,12 +118,12 @@ jobs:
       - name: download linux
         uses: actions/download-artifact@v8
         with:
-          name: rmtg
+          name: rmtg-linux
           path: ./steam/linux
       - name: download windows
         uses: actions/download-artifact@v8
         with:
-          name: rmtg.exe
+          name: rmtg-windows
           path: ./steam/windows
       - name: download macos
         uses: actions/download-artifact@v8
