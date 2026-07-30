@@ -49,13 +49,13 @@ jobs:
       run: just build_full
     - name: package
       run: |
-        mkdir rmtg
-        cp target/release_lto/rmtg rmtg/
-        cp steam/libsteam_api.so rmtg/
+        mkdir out
+        cp target/release_lto/rmtg out/
+        cp steam/libsteam_api.so out/
     - uses: actions/upload-artifact@v7
       with:
         name: rmtg-linux
-        path: rmtg/*
+        path: out/*
   build-windows:
     runs-on: windows-latest
     steps:
@@ -71,13 +71,13 @@ jobs:
       run: just build_full
     - name: package
       run: |
-        mkdir rmtg
-        cp target/release_lto/rmtg.exe rmtg/
-        cp steam/steam_api64.dll rmtg/
+        mkdir out
+        cp target/release_lto/rmtg.exe out/
+        cp steam/steam_api64.dll out/
     - uses: actions/upload-artifact@v7
       with:
         name: rmtg-windows
-        path: rmtg/*
+        path: out/*
   build-macos:
     runs-on: macos-latest
     steps:
@@ -93,13 +93,13 @@ jobs:
       run: just build_full
     - name: package
       run: |
-        mkdir rmtg
-        cp target/release_lto/rmtg rmtg/
-        cp steam/libsteam_api.dylib rmtg/
+        mkdir out
+        cp target/release_lto/rmtg out/
+        cp steam/libsteam_api.dylib out/
     - uses: actions/upload-artifact@v7
       with:
         name: rmtg-macos
-        path: rmtg/*
+        path: out/*
   deploy_to_steam:
     needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
