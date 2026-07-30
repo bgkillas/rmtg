@@ -55,7 +55,7 @@ jobs:
     - uses: actions/upload-artifact@v7
       with:
         name: rmtg-linux
-        path: rmtg
+        path: rmtg/*
   build-windows:
     runs-on: windows-latest
     steps:
@@ -77,7 +77,7 @@ jobs:
     - uses: actions/upload-artifact@v7
       with:
         name: rmtg-windows
-        path: rmtg
+        path: rmtg/*
   build-macos:
     runs-on: macos-latest
     steps:
@@ -99,7 +99,7 @@ jobs:
     - uses: actions/upload-artifact@v7
       with:
         name: rmtg-macos
-        path: rmtg
+        path: rmtg/*
   deploy_to_steam:
     needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
