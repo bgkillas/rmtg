@@ -2,7 +2,7 @@
 {
     "AppID" "4046880"
     "ContentRoot" "."
-    "SetLive" "default"
+    "SetLive" "nightly"
     "BuildOutput" "./output"
     "Depots"
     {
