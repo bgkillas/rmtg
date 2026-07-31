@@ -1,3 +1,4 @@
+use crate::CARD_THICKNESS;
 use avian3d::prelude::ColliderAabb;
 use avian3d::spatial_query::SpatialQuery;
 use bevy::prelude::{Entity, EntityEvent, On, Query, Transform};
@@ -28,9 +29,10 @@ pub fn move_up(
                 let delta = aabb.max.y - collider.min.y;
                 if delta > 0.0 {
                     some = true;
-                    collider.min.y += delta;
-                    collider.max.y += delta;
-                    transform.translation.y += delta;
+                    let eps = delta + CARD_THICKNESS;
+                    collider.min.y += eps;
+                    collider.max.y += eps;
+                    transform.translation.y += eps;
                 }
             }
             true

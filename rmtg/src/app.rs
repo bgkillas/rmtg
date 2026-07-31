@@ -1,4 +1,5 @@
 use crate::camera::{camera_rotation, camera_translation};
+use crate::drag::drag;
 use crate::events::add_events;
 use crate::events::clipboard::poll_clipboards;
 use crate::events::hover::update_hover;
@@ -120,6 +121,7 @@ pub fn app_run() -> AppExit {
             update_hover,
             do_roll,
             update_rolling,
+            drag,
         ),
     );
     app.add_systems(

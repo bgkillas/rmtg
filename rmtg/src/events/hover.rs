@@ -78,7 +78,7 @@ pub fn update_hover(
     };
     if !hoverable.contains(hit.entity) {
         for (ent, hovered) in olds {
-            if !hovered.held
+            if (!hovered.held && !keybinds.pressed(Keybind::Select))
                 || (keybinds.just_pressed(Keybind::Select)
                     && !keybinds.just_pressed(Keybind::HoldSelect))
             {
@@ -94,15 +94,10 @@ pub fn update_hover(
             commands.trigger(AddHover::new(hit.entity, Hovered { held: true }));
         }
     } else if keybinds.pressed(Keybind::Select) {
-        if keybinds.just_pressed(Keybind::Select) {
-            for (ent, _) in olds {
-                if ent != hit.entity {
-                    commands.trigger(RemoveHover::new(ent));
-                }
-            }
-            if !olds.iter().any(|(e, h)| e == hit.entity && !h.held) {
-                commands.trigger(AddHover::new(hit.entity, Hovered { held: false }));
-            }
+        if keybinds.just_pressed(Keybind::Select)
+            && olds.iter().all(|(e, h)| e != hit.entity || h.held)
+        {
+            commands.trigger(AddHover::new(hit.entity, Hovered { held: false }));
         }
     } else if olds.iter().all(|(e, _)| e != hit.entity) {
         for (ent, hovered) in olds {

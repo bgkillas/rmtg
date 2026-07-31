@@ -9,6 +9,7 @@ pub mod assets;
 pub mod camera;
 pub mod card_spot;
 pub mod deck;
+pub mod drag;
 pub mod events;
 pub mod focus;
 pub mod keybinds;

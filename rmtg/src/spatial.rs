@@ -2,7 +2,7 @@
 use avian3d::spatial_query::{RayHitData, SpatialQuery, SpatialQueryFilter};
 use bevy::camera::{Camera, Camera3d};
 use bevy::ecs::system::SystemParam;
-use bevy::math::Vec3;
+use bevy::math::{Ray3d, Vec3};
 use bevy::prelude::{GlobalTransform, Single, With};
 use bevy::window::{PrimaryWindow, Window};
 #[derive(SystemParam)]
@@ -14,12 +14,7 @@ pub struct Spatial<'w, 's> {
 impl Spatial<'_, '_> {
     #[must_use]
     pub fn ray(&self) -> Option<(RayHitData, Vec3)> {
-        let cursor_position = self.window.cursor_position()?;
-        let ray = self
-            .camera
-            .0
-            .viewport_to_world(self.camera.1, cursor_position)
-            .ok()?;
+        let ray = self.cam_ray()?;
         let hit = self.spatial.cast_ray(
             ray.origin,
             ray.direction,
@@ -28,5 +23,13 @@ impl Spatial<'_, '_> {
             &SpatialQueryFilter::default(),
         );
         hit.map(|data| (data, ray.origin + ray.direction * data.distance))
+    }
+    #[must_use]
+    pub fn cam_ray(&self) -> Option<Ray3d> {
+        let cursor_position = self.window.cursor_position()?;
+        self.camera
+            .0
+            .viewport_to_world(self.camera.1, cursor_position)
+            .ok()
     }
 }
