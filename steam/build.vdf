@@ -1,35 +1,36 @@
 "AppBuild"
 {
-    "AppID"    "4046880"
-    "ContentRoot"    "."
-    "BuildOutput"    "./output"
+    "AppID" "4046880"
+    "ContentRoot" "."
+    "SetLive" "default"
+    "BuildOutput" "./output"
     "Depots"
     {
         "4046881"
         {
             "FileMapping"
             {
-                "LocalPath"    "linux/*"
-                "DepotPath"    "."
-                "recursive"    "1"
+                "LocalPath" "linux/*"
+                "DepotPath" "."
+                "recursive" "1"
             }
         }
         "4046882"
         {
             "FileMapping"
             {
-                "LocalPath"    "windows/*"
-                "DepotPath"    "."
-                "recursive"    "1"
+                "LocalPath" "windows/*"
+                "DepotPath" "."
+                "recursive" "1"
             }
         }
         "4046883"
         {
             "FileMapping"
             {
-                "LocalPath"    "macos/*"
-                "DepotPath"    "."
-                "recursive"    "1"
+                "LocalPath" "macos/*"
+                "DepotPath" "."
+                "recursive" "1"
             }
         }
     }
