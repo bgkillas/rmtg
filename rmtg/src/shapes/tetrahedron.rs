@@ -1,4 +1,6 @@
+use crate::CARD_THICKNESS;
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
+use avian3d::prelude::Collider;
 use bevy::mesh::{Mesh, MeshBuilder};
 #[derive(Clone, Copy)]
 pub struct Tetrahedron {
@@ -10,6 +12,10 @@ impl ShapeMesh for Tetrahedron {
     type const FACES: usize = 4;
     const IS_REVERSED: bool = true;
     const SHAPE: Shape = Shape::Tetrahedron;
+    fn collider(height: f32, _: &Mesh) -> Collider {
+        let mesh = Mesh::from(Self::from_height(height + CARD_THICKNESS * 8.0));
+        Collider::convex_hull_from_mesh(&mesh).unwrap()
+    }
     fn text_size(height: f32) -> f32 {
         height / 1.5
     }

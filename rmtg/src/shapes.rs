@@ -65,9 +65,9 @@ fn face<const N: usize>(elems: [Vec3; N], rev: bool) -> Transform {
     };
     let (n, l) = pos.normalize_and_length();
     let pos_epsilon = n * if rev {
-        l - CARD_THICKNESS / 2.0
+        l - CARD_THICKNESS / 64.0
     } else {
-        l + CARD_THICKNESS / 2.0
+        l + CARD_THICKNESS / 64.0
     };
     Transform::from_translation(pos_epsilon).looking_to(if rev { pos } else { -pos }, end - pos)
 }
