@@ -6,6 +6,7 @@ use bevy::camera::{Camera, Camera3d};
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::math::{Dir3, EulerRot, Quat, Vec2, Vec3};
 use bevy::prelude::{GlobalTransform, InfinitePlane3d, KeyCode, Res, Single, Transform, With};
+use bevy::time::Time;
 use bevy::window::{PrimaryWindow, Window};
 use std::f32::consts::PI;
 pub fn camera_translation(
@@ -15,12 +16,13 @@ pub fn camera_translation(
     window: Single<&Window, With<PrimaryWindow>>,
     focus: Focus,
     peers: Res<Peers>,
+    time: Res<Time>,
 ) {
     if focus.key_lock() {
         return;
     }
     let (mut cam_transform, cam, cam_global) = camera.into_inner();
-    let scale = CARD_THICKNESS * 4.0;
+    let scale = MAT_WIDTH * time.delta_secs();
     let apply = |trans: Vec3, cam: &mut Transform| {
         let mut norm = trans.normalize();
         norm.y = 0.0;

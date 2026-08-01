@@ -1,6 +1,6 @@
 use crate::CARD_THICKNESS;
 use crate::drag::Dragged;
-use avian3d::prelude::{Collider, ColliderAabb, ScalableCollider, SpatialQueryFilter};
+use avian3d::prelude::{Collider, ColliderAabb, ScalableCollider as _, SpatialQueryFilter};
 use avian3d::spatial_query::SpatialQuery;
 use bevy::math::Vec3;
 use bevy::prelude::{Entity, EntityEvent, On, Query, Transform, With};
