@@ -3,7 +3,8 @@ use bevy::prelude::{Component, PopulatedMessageReader, Resource};
 use bevy_p2p::bitcode::{self, Decode, Encode};
 use bevy_p2p::iroh::EndpointId;
 use bevy_p2p::message::{ConnectFailed, MessageReceived, PeerConnected, PeerDisconnected};
-use rustc_hash::FxHashMap;
+use rustc_hash::FxBuildHasher;
+use std::collections::HashMap;
 #[derive(Encode, Decode)]
 pub enum Msg {
     Empty,
@@ -43,6 +44,6 @@ impl Peer {
 #[derive(Resource, Default)]
 pub struct Peers {
     pub my_id: Option<Peer>,
-    pub peer_to_id: FxHashMap<EndpointId, Peer>,
-    pub id_to_peer: FxHashMap<Peer, EndpointId>,
+    pub peer_to_id: HashMap<EndpointId, Peer, FxBuildHasher>,
+    pub id_to_peer: HashMap<Peer, EndpointId, FxBuildHasher>,
 }
