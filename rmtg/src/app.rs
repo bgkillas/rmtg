@@ -2,6 +2,7 @@ use crate::camera::{camera_rotation, camera_translation};
 use crate::drag::drag;
 use crate::events::add_events;
 use crate::events::clipboard::poll_clipboards;
+use crate::events::clone::update_clone;
 use crate::events::hover::update_hover;
 use crate::events::roll::{do_roll, update_rolling};
 use crate::focus::Menu;
@@ -117,8 +118,9 @@ pub fn app_run() -> AppExit {
         Update,
         (
             (camera_rotation, camera_translation).chain(),
-            paste_card,
             (update_hover, (do_roll, drag)).chain(),
+            paste_card,
+            update_clone,
             update_rolling,
         ),
     );
