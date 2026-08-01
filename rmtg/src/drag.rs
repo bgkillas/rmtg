@@ -34,6 +34,12 @@ pub fn drag(
     time: Res<Time>,
 ) {
     if hovered.is_empty() {
+        for ent in last_ents.drain() {
+            if let Ok(mut grav) = gravity.get_mut(ent) {
+                grav.0 = GRAVITY;
+            }
+            commands.entity(ent).remove::<TargetPosition>();
+        }
         return;
     }
     if keybinds.just_pressed(Keybind::Select) && !keybinds.just_pressed(Keybind::HoldSelect) {
