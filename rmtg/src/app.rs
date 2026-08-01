@@ -118,10 +118,8 @@ pub fn app_run() -> AppExit {
         (
             (camera_rotation, camera_translation).chain(),
             paste_card,
-            update_hover,
-            do_roll,
+            (update_hover, (do_roll, drag)).chain(),
             update_rolling,
-            drag,
         ),
     );
     app.add_systems(
