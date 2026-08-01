@@ -22,9 +22,17 @@ impl ShapeMesh for Coin {
     fn text_size(height: f32) -> f32 {
         height
     }
+    fn face_string(i: usize) -> String {
+        match i {
+            0 => "T",
+            1 => "H",
+            _ => unreachable!(),
+        }
+        .to_owned()
+    }
     fn faces(height: f32) -> [Transform; 2] {
         let one = Self::convert_height(height) * HEIGHT_MULT + CARD_THICKNESS / 2.0;
-        [[0.0, one, 0.0], [0.0, -one, 0.0]]
+        [[0.0, -one, 0.0], [0.0, one, 0.0]]
             .map(Vec3::from)
             .map(|v| Transform::from_translation(v).looking_to(-v, Dir3::NEG_Z))
     }

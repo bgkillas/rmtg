@@ -65,7 +65,7 @@ pub fn drag(
                 pos
             };
             let delta = target - t.translation;
-            vel.0 = delta / time.delta_secs() * 1.0 / 24.0;
+            vel.0 = delta / time.delta_secs() * 1.0 / 8.0;
             last_ents.insert(ent);
         }
         *last = pos;

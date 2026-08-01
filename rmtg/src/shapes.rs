@@ -139,6 +139,10 @@ pub trait ShapeMesh: NewShape {
     fn collider(_: f32, mesh: &Mesh) -> Collider {
         Collider::convex_hull_from_mesh(mesh).unwrap()
     }
+    #[must_use]
+    fn face_string(i: usize) -> String {
+        (i + 1).to_string()
+    }
     fn insert_dice<'a>(
         base_color: Color,
         outline_color: Color,
@@ -155,7 +159,7 @@ pub trait ShapeMesh: NewShape {
             for (i, t) in Self::faces(height).into_iter().enumerate() {
                 parent.spawn((
                     t,
-                    Text3d::new((i + 1).to_string()),
+                    Text3d::new(Self::face_string(i)),
                     Mesh3d::default(),
                     MeshMaterial3d(asset.text_mesh.mesh.clone()),
                     Text3dStyling {
