@@ -54,6 +54,22 @@ impl Shape {
             Shape::Coin => 2,
         }
     }
+    pub fn insert_dice<'a>(
+        self,
+        base_color: Color,
+        outline_color: Color,
+        asset: &mut Asset,
+        ent: EntityCommands<'a>,
+    ) -> EntityCommands<'a> {
+        match self {
+            Shape::Cube => Cube::insert_dice(base_color, outline_color, asset, ent),
+            Shape::Dodecahedron => Dodecahedron::insert_dice(base_color, outline_color, asset, ent),
+            Shape::Icosahedron => Icosahedron::insert_dice(base_color, outline_color, asset, ent),
+            Shape::Octahedron => Octahedron::insert_dice(base_color, outline_color, asset, ent),
+            Shape::Tetrahedron => Tetrahedron::insert_dice(base_color, outline_color, asset, ent),
+            Shape::Coin => Coin::insert_dice(base_color, outline_color, asset, ent),
+        }
+    }
 }
 #[derive(Component, Clone)]
 pub struct FaceNumber {
@@ -79,22 +95,6 @@ fn face<const N: usize>(elems: [Vec3; N], rev: bool) -> Transform {
 }
 pub trait NewShape: MeshBuilder + Sized + Copy {
     fn from_height(height: f32) -> Self;
-}
-pub fn insert_dice<'a>(
-    shape: Shape,
-    base_color: Color,
-    outline_color: Color,
-    asset: &mut Asset,
-    ent: EntityCommands<'a>,
-) -> EntityCommands<'a> {
-    match shape {
-        Shape::Cube => Cube::insert_dice(base_color, outline_color, asset, ent),
-        Shape::Dodecahedron => Dodecahedron::insert_dice(base_color, outline_color, asset, ent),
-        Shape::Icosahedron => Icosahedron::insert_dice(base_color, outline_color, asset, ent),
-        Shape::Octahedron => Octahedron::insert_dice(base_color, outline_color, asset, ent),
-        Shape::Tetrahedron => Tetrahedron::insert_dice(base_color, outline_color, asset, ent),
-        Shape::Coin => Coin::insert_dice(base_color, outline_color, asset, ent),
-    }
 }
 pub trait ShapeMesh: NewShape {
     type Outline: ShapeOutline;
