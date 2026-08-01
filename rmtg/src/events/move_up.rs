@@ -1,9 +1,8 @@
 use crate::CARD_THICKNESS;
-use crate::drag::Dragged;
 use avian3d::prelude::{Collider, ColliderAabb, ScalableCollider as _, SpatialQueryFilter};
 use avian3d::spatial_query::SpatialQuery;
 use bevy::math::Vec3;
-use bevy::prelude::{Entity, EntityEvent, On, Query, Transform, With};
+use bevy::prelude::{Entity, EntityEvent, On, Query, Transform};
 #[derive(EntityEvent)]
 pub struct MoveUp {
     pub entity: Entity,
@@ -18,7 +17,6 @@ pub fn move_up(
     entity: On<MoveUp>,
     colliders: Query<&Collider>,
     aabbs: Query<&ColliderAabb>,
-    is_dragged: Query<(), With<Dragged>>,
     mut transforms: Query<&mut Transform>,
     spatial: SpatialQuery,
 ) {
@@ -35,7 +33,7 @@ pub fn move_up(
             transform.rotation,
             &SpatialQueryFilter::DEFAULT,
             |ent| {
-                if ent != entity.entity && !is_dragged.contains(ent) {
+                if ent != entity.entity {
                     let aabb = aabbs.get(ent).unwrap();
                     let delta = aabb.max.y - ent_aabb.min.y;
                     if delta > 0.0 {

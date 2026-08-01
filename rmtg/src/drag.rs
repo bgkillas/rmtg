@@ -1,23 +1,21 @@
 use crate::events::hover::Hovered;
-use crate::events::move_up::MoveUp;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::physics::GRAVITY;
 use crate::spatial::Spatial;
-use avian3d::prelude::{GravityScale, RigidBody};
+use avian3d::prelude::{GravityScale, LinearVelocity};
 use bevy::math::{Dir3, Vec3};
-use bevy::prelude::{Commands, Component, Entity, InfinitePlane3d, Local, Query, Transform, With};
+use bevy::prelude::{Entity, InfinitePlane3d, Local, Query, Res, Transform, With};
+use bevy::time::Time;
 use rustc_hash::FxHashSet;
-#[derive(Component)]
-pub struct Dragged;
 #[allow(clippy::implicit_hasher)]
 pub fn drag(
-    hovered: Query<(Entity, &mut Transform), With<Hovered>>,
-    mut commands: Commands,
+    hovered: Query<(Entity, &Transform, &mut LinearVelocity), With<Hovered>>,
     keybinds: Keybinds,
     spatial: Spatial,
     mut gravity: Query<&mut GravityScale>,
     mut last: Local<Vec3>,
     mut last_ents: Local<FxHashSet<Entity>>,
+    time: Res<Time>,
 ) {
     if hovered.is_empty() {
         return;
@@ -27,7 +25,8 @@ pub fn drag(
             return;
         };
         *last = pos;
-    } else if keybinds.pressed(Keybind::Select) && !keybinds.pressed(Keybind::HoldSelect) {
+    }
+    if keybinds.pressed(Keybind::Select) && !keybinds.pressed(Keybind::HoldSelect) {
         let Some(ray) = spatial.cam_ray() else {
             return;
         };
@@ -35,12 +34,10 @@ pub fn drag(
             return;
         };
         let pos = ray.origin + ray.direction * delta;
-        let delta = pos - *last;
-        for (ent, mut t) in hovered {
-            t.translation += delta;
-            commands.trigger(MoveUp::new(ent));
+        for (ent, t, mut vel) in hovered {
+            let delta = pos - t.translation;
+            vel.0 = delta / time.delta_secs() * 1.0 / 32.0;
             if let Ok(mut grav) = gravity.get_mut(ent) {
-                commands.entity(ent).insert((RigidBody::Static, Dragged));
                 grav.0 = 0.0;
             }
             last_ents.insert(ent);
@@ -49,10 +46,6 @@ pub fn drag(
     } else {
         for ent in last_ents.drain() {
             if let Ok(mut grav) = gravity.get_mut(ent) {
-                commands
-                    .entity(ent)
-                    .insert(RigidBody::Dynamic)
-                    .remove::<Dragged>();
                 grav.0 = GRAVITY;
             }
         }
