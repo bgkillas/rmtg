@@ -1,3 +1,4 @@
+use crate::CARD_THICKNESS;
 use crate::events::hover::Hovered;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::physics::GRAVITY;
@@ -48,7 +49,7 @@ pub fn drag(
         let Some(delta) = ray.intersect_plane(*last, InfinitePlane3d::new(Dir3::Y)) else {
             return;
         };
-        let mut pos = ray.origin + ray.direction * delta;
+        let pos = ray.origin + ray.direction * delta;
         let delta = pos - *last;
         for (ent, t, mut vel, opt_target) in hovered {
             let target = if let Some(mut target) = opt_target {
@@ -58,7 +59,8 @@ pub fn drag(
                 if let Ok(mut grav) = gravity.get_mut(ent) {
                     grav.0 = 0.0;
                 }
-                let pos = t.translation + delta;
+                let mut pos = t.translation + delta;
+                pos.y += 4.0 * CARD_THICKNESS;
                 commands.entity(ent).insert(TargetPosition { pos });
                 pos
             };
