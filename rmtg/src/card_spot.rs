@@ -1,5 +1,5 @@
 use bevy::prelude::{Component, Entity};
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum SpotType {
     CommanderMain,
     CommanderAlt,
@@ -7,7 +7,7 @@ pub enum SpotType {
     Main,
     Graveyard,
 }
-#[derive(Component, Debug)]
+#[derive(Component, Clone, Debug)]
 pub struct CardSpot {
     pub spot_type: SpotType,
     pub ent: Option<Entity>,

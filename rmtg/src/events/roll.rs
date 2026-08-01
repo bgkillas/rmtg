@@ -15,7 +15,7 @@ use std::f32::consts::TAU;
 pub struct Roll {
     pub entity: Entity,
 }
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Rolling;
 impl Roll {
     #[must_use]

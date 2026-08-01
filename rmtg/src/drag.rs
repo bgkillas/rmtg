@@ -11,7 +11,7 @@ use bevy::prelude::{
 use bevy::time::Time;
 use rustc_hash::FxBuildHasher;
 use std::collections::HashSet;
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct TargetPosition {
     pub pos: Vec3,
 }

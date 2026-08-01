@@ -1,6 +1,12 @@
 use crate::assets::Asset;
 use crate::events::hover::Hoverable;
 use crate::physics::{bounce, physics_base};
+use crate::shapes::coin::Coin;
+use crate::shapes::cube::Cube;
+use crate::shapes::dodecahedron::Dodecahedron;
+use crate::shapes::icosahedron::Icosahedron;
+use crate::shapes::octahedron::Octahedron;
+use crate::shapes::tetrahedron::Tetrahedron;
 use crate::{CARD_THICKNESS, CARD_WIDTH, WORLD_FONT_SIZE};
 use avian3d::parry::glamx::Quat;
 use avian3d::prelude::Collider;
@@ -49,7 +55,7 @@ impl Shape {
         }
     }
 }
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct FaceNumber {
     pub num: u8,
 }
@@ -73,6 +79,22 @@ fn face<const N: usize>(elems: [Vec3; N], rev: bool) -> Transform {
 }
 pub trait NewShape: MeshBuilder + Sized + Copy {
     fn from_height(height: f32) -> Self;
+}
+pub fn insert_dice<'a>(
+    shape: Shape,
+    base_color: Color,
+    outline_color: Color,
+    asset: &mut Asset,
+    ent: EntityCommands<'a>,
+) -> EntityCommands<'a> {
+    match shape {
+        Shape::Cube => Cube::insert_dice(base_color, outline_color, asset, ent),
+        Shape::Dodecahedron => Dodecahedron::insert_dice(base_color, outline_color, asset, ent),
+        Shape::Icosahedron => Icosahedron::insert_dice(base_color, outline_color, asset, ent),
+        Shape::Octahedron => Octahedron::insert_dice(base_color, outline_color, asset, ent),
+        Shape::Tetrahedron => Tetrahedron::insert_dice(base_color, outline_color, asset, ent),
+        Shape::Coin => Coin::insert_dice(base_color, outline_color, asset, ent),
+    }
 }
 pub trait ShapeMesh: NewShape {
     type Outline: ShapeOutline;

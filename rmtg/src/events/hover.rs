@@ -5,7 +5,7 @@ use crate::shapes::{OUTLINE_COLOR, OUTLINE_DEPTH_BIAS};
 use crate::spatial::Spatial;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Children, Commands, Component, Entity, EntityEvent, On, Query, With};
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Hoverable;
 #[derive(Component, Clone, Copy)]
 pub struct Hovered {

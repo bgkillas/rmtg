@@ -213,9 +213,9 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
         CollisionLayers::new(GameLayer::Default, [GameLayer::Default, GameLayer::Floor]),
     ));
 }
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Floor;
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Wall;
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Ceiling;

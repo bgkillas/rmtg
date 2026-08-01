@@ -30,11 +30,11 @@ pub enum Pile {
     #[default]
     Empty,
 }
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct CardSide;
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct CardBack;
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct CardTop;
 impl Pile {
     #[must_use]

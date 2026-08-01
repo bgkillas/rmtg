@@ -1,4 +1,5 @@
 use crate::events::clipboard::{PollClipboard, get_clipboard};
+use crate::events::clone::on_clone;
 use crate::events::hover::{add_hover, remove_hover};
 use crate::events::move_up::move_up;
 use crate::events::repaint::on_repaint;
@@ -6,6 +7,7 @@ use crate::events::roll::on_roll;
 use crate::paste::react_paste_card;
 use bevy::app::App;
 pub mod clipboard;
+pub mod clone;
 pub mod hover;
 pub mod move_up;
 pub mod repaint;
@@ -18,5 +20,6 @@ pub fn add_events(app: &mut App) {
     app.add_observer(on_repaint);
     app.add_observer(add_hover);
     app.add_observer(remove_hover);
+    app.add_observer(on_clone);
     app.init_resource::<PollClipboard>();
 }
