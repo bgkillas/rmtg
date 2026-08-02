@@ -45,6 +45,11 @@ pub fn drag(
             return;
         };
         *last = pos;
+        for ent in last_ents.drain() {
+            commands.trigger(NewGravity::new(ent, GRAVITY));
+            commands.entity(ent).remove::<TargetPosition>();
+        }
+        return;
     }
     if keybinds.pressed(Keybind::Select) {
         let Some(ray) = spatial.cam_ray() else {
