@@ -1,9 +1,10 @@
 use crate::CARD_THICKNESS;
+use crate::events::gravity::NewGravity;
 use crate::events::hover::Hovered;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::physics::GRAVITY;
 use crate::spatial::Spatial;
-use avian3d::prelude::{GravityScale, LinearVelocity};
+use avian3d::prelude::{LinearVelocity};
 use bevy::math::{Dir3, Vec3};
 use bevy::prelude::{
     Commands, Component, Entity, InfinitePlane3d, Local, Query, Res, Transform, With,
@@ -28,16 +29,13 @@ pub fn drag(
     mut commands: Commands,
     keybinds: Keybinds,
     spatial: Spatial,
-    mut gravity: Query<&mut GravityScale>,
     mut last: Local<Vec3>,
     mut last_ents: Local<HashSet<Entity, FxBuildHasher>>,
     time: Res<Time>,
 ) {
     if hovered.is_empty() {
         for ent in last_ents.drain() {
-            if let Ok(mut grav) = gravity.get_mut(ent) {
-                grav.0 = GRAVITY;
-            }
+            commands.trigger(NewGravity::new(ent, GRAVITY));
             commands.entity(ent).remove::<TargetPosition>();
         }
         return;
@@ -62,9 +60,7 @@ pub fn drag(
                 target.pos += delta;
                 target.pos
             } else {
-                if let Ok(mut grav) = gravity.get_mut(ent) {
-                    grav.0 = 0.0;
-                }
+                commands.trigger(NewGravity::new(ent, 0.0));
                 let mut pos = t.translation + delta;
                 pos.y += 4.0 * CARD_THICKNESS;
                 commands.entity(ent).insert(TargetPosition { pos });
@@ -77,9 +73,7 @@ pub fn drag(
         *last = pos;
     } else {
         for ent in last_ents.drain() {
-            if let Ok(mut grav) = gravity.get_mut(ent) {
-                grav.0 = GRAVITY;
-            }
+            commands.trigger(NewGravity::new(ent, GRAVITY));
             commands.entity(ent).remove::<TargetPosition>();
         }
     }
