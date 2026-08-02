@@ -5,7 +5,7 @@ use crate::{CARD_THICKNESS, MAT_WIDTH, START_Y, W};
 use bevy::camera::{Camera, Camera3d};
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::math::{Dir3, EulerRot, Quat, Vec2, Vec3};
-use bevy::prelude::{GlobalTransform, InfinitePlane3d, KeyCode, Res, Single, Transform, With};
+use bevy::prelude::{GlobalTransform, InfinitePlane3d, Res, Single, Transform, With};
 use bevy::time::Time;
 use bevy::window::{PrimaryWindow, Window};
 use std::f32::consts::PI;
@@ -31,43 +31,38 @@ pub fn camera_translation(
             cam.translation += norm * trans.length() / abs;
         }
     };
-    if !keybinds
-        .keyboard
-        .any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-    {
-        if keybinds.pressed(Keybind::Up) {
-            let translate = cam_transform.forward().as_vec3() * scale;
-            apply(translate, &mut cam_transform);
-        }
-        if keybinds.pressed(Keybind::Left) {
-            let translate = cam_transform.left().as_vec3() * scale;
-            apply(translate, &mut cam_transform);
-        }
-        if keybinds.pressed(Keybind::Right) {
-            let translate = cam_transform.right().as_vec3() * scale;
-            apply(translate, &mut cam_transform);
-        }
-        if keybinds.pressed(Keybind::Down) {
-            let translate = cam_transform.back().as_vec3() * scale;
-            apply(translate, &mut cam_transform);
-        }
-        let fast_scale = scale * 4.0;
-        if keybinds.pressed(Keybind::UpFast) {
-            let translate = cam_transform.forward().as_vec3() * fast_scale;
-            apply(translate, &mut cam_transform);
-        }
-        if keybinds.pressed(Keybind::LeftFast) {
-            let translate = cam_transform.left().as_vec3() * fast_scale;
-            apply(translate, &mut cam_transform);
-        }
-        if keybinds.pressed(Keybind::RightFast) {
-            let translate = cam_transform.right().as_vec3() * fast_scale;
-            apply(translate, &mut cam_transform);
-        }
-        if keybinds.pressed(Keybind::DownFast) {
-            let translate = cam_transform.back().as_vec3() * fast_scale;
-            apply(translate, &mut cam_transform);
-        }
+    if keybinds.pressed(Keybind::Up) {
+        let translate = cam_transform.forward().as_vec3() * scale;
+        apply(translate, &mut cam_transform);
+    }
+    if keybinds.pressed(Keybind::Left) {
+        let translate = cam_transform.left().as_vec3() * scale;
+        apply(translate, &mut cam_transform);
+    }
+    if keybinds.pressed(Keybind::Right) {
+        let translate = cam_transform.right().as_vec3() * scale;
+        apply(translate, &mut cam_transform);
+    }
+    if keybinds.pressed(Keybind::Down) {
+        let translate = cam_transform.back().as_vec3() * scale;
+        apply(translate, &mut cam_transform);
+    }
+    let fast_scale = scale * 4.0;
+    if keybinds.pressed(Keybind::UpFast) {
+        let translate = cam_transform.forward().as_vec3() * fast_scale;
+        apply(translate, &mut cam_transform);
+    }
+    if keybinds.pressed(Keybind::LeftFast) {
+        let translate = cam_transform.left().as_vec3() * fast_scale;
+        apply(translate, &mut cam_transform);
+    }
+    if keybinds.pressed(Keybind::RightFast) {
+        let translate = cam_transform.right().as_vec3() * fast_scale;
+        apply(translate, &mut cam_transform);
+    }
+    if keybinds.pressed(Keybind::DownFast) {
+        let translate = cam_transform.back().as_vec3() * fast_scale;
+        apply(translate, &mut cam_transform);
     }
     if mouse_motion.delta.y != 0.0 && !focus.mouse_lock() {
         let mut translate = cam_transform.forward().as_vec3() * scale * mouse_motion.delta.y * 16.0;

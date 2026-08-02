@@ -5,12 +5,12 @@ use crate::keybinds::{Keybind, Keybinds};
 use crate::physics::GRAVITY;
 use crate::spatial::Spatial;
 use avian3d::prelude::LinearVelocity;
+use bevy::ecs::entity::EntityHash;
 use bevy::math::{Dir3, Vec3};
 use bevy::prelude::{
     Commands, Component, Entity, InfinitePlane3d, Local, Query, Res, Transform, With,
 };
 use bevy::time::Time;
-use rustc_hash::FxBuildHasher;
 use std::collections::HashSet;
 #[derive(Component, Clone)]
 pub struct TargetPosition {
@@ -30,7 +30,7 @@ pub fn drag(
     keybinds: Keybinds,
     spatial: Spatial,
     mut last: Local<Vec3>,
-    mut last_ents: Local<HashSet<Entity, FxBuildHasher>>,
+    mut last_ents: Local<HashSet<Entity, EntityHash>>,
     time: Res<Time>,
 ) {
     if hovered.is_empty() {
@@ -40,13 +40,13 @@ pub fn drag(
         }
         return;
     }
-    if keybinds.just_pressed(Keybind::Select) && !keybinds.just_pressed(Keybind::HoldSelect) {
+    if keybinds.just_pressed(Keybind::Select) {
         let Some((_, pos)) = spatial.ray() else {
             return;
         };
         *last = pos;
     }
-    if keybinds.pressed(Keybind::Select) && !keybinds.pressed(Keybind::HoldSelect) {
+    if keybinds.pressed(Keybind::Select) {
         let Some(ray) = spatial.cam_ray() else {
             return;
         };
@@ -60,6 +60,7 @@ pub fn drag(
                 target.pos += delta;
                 target.pos
             } else {
+                last_ents.insert(ent);
                 commands.trigger(NewGravity::new(ent, 0.0));
                 let mut pos = t.translation + delta;
                 pos.y += 4.0 * CARD_THICKNESS;
@@ -68,7 +69,6 @@ pub fn drag(
             };
             let delta = target - t.translation;
             vel.0 = delta / time.delta_secs() * 1.0 / 8.0;
-            last_ents.insert(ent);
         }
         *last = pos;
     } else {

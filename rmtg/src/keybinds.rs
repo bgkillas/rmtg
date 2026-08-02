@@ -228,20 +228,12 @@ pub struct Bind {
 }
 impl From<KeyCode> for Bind {
     fn from(value: KeyCode) -> Self {
-        Self {
-            modifiers: EnumSet::default(),
-            key: value.into(),
-            strict: false,
-        }
+        Self::new(EnumSet::default(), value)
     }
 }
 impl From<MouseButton> for Bind {
     fn from(value: MouseButton) -> Self {
-        Self {
-            modifiers: EnumSet::default(),
-            key: value.into(),
-            strict: false,
-        }
+        Self::new(EnumSet::default(), value)
     }
 }
 impl Bind {
@@ -279,7 +271,7 @@ impl Bind {
         Self {
             modifiers,
             key: key.into(),
-            strict: false,
+            strict: true,
         }
     }
     #[must_use]
