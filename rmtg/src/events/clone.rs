@@ -1,11 +1,12 @@
 use crate::assets::Asset;
 use crate::deck::Pile;
+use crate::events::hover::Hovered;
 use crate::events::move_up::MoveUp;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::shapes::{OUTLINE_COLOR, Shape};
 use crate::spatial::Spatial;
 use bevy::color::Color;
-use bevy::prelude::{Commands, Event, Local, On, Query, Transform};
+use bevy::prelude::{Commands, Event, Local, On, Query, Transform, With};
 #[derive(Event, Clone)]
 pub struct Clone {
     pub clone_type: CloneType,
@@ -42,28 +43,29 @@ pub fn on_clone(clone: On<Clone>, mut commands: Commands, mut asset: Asset) {
 pub fn update_clone(
     keybinds: Keybinds,
     mut commands: Commands,
-    query: Query<(&Transform, Option<&Shape>, Option<&Pile>)>,
+    query: Query<(&Transform, Option<&Shape>, Option<&Pile>), With<Hovered>>,
     spatial: Spatial,
-    mut object: Local<Option<Clone>>,
+    mut objects: Local<Vec<Clone>>,
 ) {
-    let Some((hit, pos)) = spatial.ray() else {
+    let Some((_, pos)) = spatial.ray() else {
         return;
     };
     if keybinds.just_pressed(Keybind::CopyObject) {
-        *object = match query.get(hit.entity) {
-            Ok((&transform, Some(&shape), None)) => {
-                Some(Clone::new(CloneType::Shape(shape), transform))
-            }
-            Ok((&transform, None, Some(pile))) => {
-                Some(Clone::new(CloneType::Pile(pile.clone()), transform))
-            }
-            Ok(_) | Err(_) => None,
-        };
+        objects.clear();
+        for (&(mut transform), is_shape, is_pile) in query {
+            transform.translation -= pos;
+            let ty = match (is_shape, is_pile) {
+                (Some(&shape), None) => CloneType::Shape(shape),
+                (None, Some(pile)) => CloneType::Pile(pile.clone()),
+                _ => unreachable!(),
+            };
+            objects.push(Clone::new(ty, transform));
+        }
     }
-    if keybinds.just_pressed(Keybind::PasteObject)
-        && let Some(mut obj) = object.clone()
-    {
-        obj.transform.translation = pos;
-        commands.trigger(obj);
+    if keybinds.just_pressed(Keybind::PasteObject) {
+        for mut clone in objects.iter().cloned() {
+            clone.transform.translation += pos;
+            commands.trigger(clone);
+        }
     }
 }
