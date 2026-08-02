@@ -57,8 +57,7 @@ pub fn update_clone(
             Ok((&transform, None, Some(pile))) => {
                 Some(Clone::new(CloneType::Pile(pile.clone()), transform))
             }
-            Ok(_) => unreachable!(),
-            Err(_) => None,
+            Ok(_) | Err(_) => None,
         };
     }
     if keybinds.just_pressed(Keybind::PasteObject)

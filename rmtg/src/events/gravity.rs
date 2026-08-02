@@ -6,6 +6,7 @@ pub struct NewGravity {
     pub gravity: f32,
 }
 impl NewGravity {
+    #[must_use]
     pub fn new(entity: Entity, gravity: f32) -> Self {
         Self { entity, gravity }
     }

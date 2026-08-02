@@ -4,7 +4,7 @@ use crate::events::hover::Hovered;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::physics::GRAVITY;
 use crate::spatial::Spatial;
-use avian3d::prelude::{LinearVelocity};
+use avian3d::prelude::LinearVelocity;
 use bevy::math::{Dir3, Vec3};
 use bevy::prelude::{
     Commands, Component, Entity, InfinitePlane3d, Local, Query, Res, Transform, With,
