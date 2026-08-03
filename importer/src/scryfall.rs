@@ -12,7 +12,7 @@ use std::time::Duration;
 use stream_throttle::{ThrottlePool, ThrottleRate};
 use tokio::task::JoinSet;
 #[cfg(target_family = "wasm")]
-use tokio_with_wasm::alias as tokio;
+use tokio_with_wasm as tokio;
 use uuid::Uuid;
 const URL: &str = "api.scryfall.com";
 const CARD_URL: &str = "cards.scryfall.io";

@@ -7,9 +7,9 @@ use crate::pile::Pile;
 use crate::spatial::Spatial;
 use bevy::image::Image;
 use bevy::math::Vec3;
-use bevy::prelude::{Commands, On, Res, ResMut, Resource, Transform};
+use bevy::prelude::{Commands, On, Res, Transform};
+use bevy_ecs::system::{In, IntoSystem, System as _};
 use bevy_p2p::bevy_tokio_tasks::TokioTasksRuntime;
-use bevy_p2p::tokio::task::JoinHandle;
 use importer::card::SubCard;
 use importer::scryfall::Quality;
 use importer::uuid::Uuid;
@@ -23,7 +23,6 @@ pub fn react_paste_card(
     clipboard: On<GotClipboard>,
     client: Res<Client>,
     runtime: Res<TokioTasksRuntime>,
-    mut polls: ResMut<PollCardSpawn>,
     spatial: Spatial,
 ) {
     if !matches!(clipboard.event, ClipboardEvent::CardSpawn) {
@@ -36,78 +35,66 @@ pub fn react_paste_card(
         return;
     };
     if let Ok(uuid) = Uuid::from_str(str) {
-        let card = runtime
-            .runtime()
-            .spawn(SubCard::get(client.client.clone(), uuid, Quality::Png));
-        polls.uuid.push((card, pos));
+        let client_owned = client.client.clone();
+        runtime.spawn_background_task(move |mut tasks| async move {
+            if let Ok((card, front, back)) = SubCard::get(client_owned, uuid, Quality::Png).await {
+                tasks
+                    .run_on_main_thread(move |main| {
+                        let mut system = IntoSystem::into_system(on_paste_card);
+                        system.initialize(main.world);
+                        system.run((card, front, back, pos), main.world).unwrap();
+                    })
+                    .await;
+            }
+        });
     } else if let Some(rest) = str.strip_prefix("https://scryfall.com/card/")
         && let Some((set, after)) = rest.split_once('/')
         && let Some((cn_str, _)) = after.split_once('/')
         && let Ok(cn) = cn_str.parse()
     {
-        let card = runtime.runtime().spawn(SubCard::get_set_cn_owned(
-            client.client.clone(),
-            set.to_owned(),
-            cn,
-            Quality::Png,
-        ));
-        polls.set.push((card, pos));
+        let client_owned = client.client.clone();
+        let owned = set.to_owned();
+        runtime.spawn_background_task(move |mut tasks| async move {
+            if let Ok((card, front, back)) =
+                SubCard::get_set_cn_owned(client_owned, owned, cn, Quality::Png).await
+            {
+                tasks
+                    .run_on_main_thread(move |main| {
+                        let mut system = IntoSystem::into_system(on_paste_card);
+                        system.initialize(main.world);
+                        system.run((card, front, back, pos), main.world).unwrap();
+                    })
+                    .await;
+            }
+        });
     } else if let Some(rest) = str.strip_prefix("https://scryfall.com/card/")
         && let Ok(uuid) = Uuid::from_str(rest)
     {
-        let card = runtime
-            .runtime()
-            .spawn(SubCard::get(client.client.clone(), uuid, Quality::Png));
-        polls.uuid.push((card, pos));
+        let client_owned = client.client.clone();
+        runtime.spawn_background_task(move |mut tasks| async move {
+            if let Ok((card, front, back)) = SubCard::get(client_owned, uuid, Quality::Png).await {
+                tasks
+                    .run_on_main_thread(move |main| {
+                        let mut system = IntoSystem::into_system(on_paste_card);
+                        system.initialize(main.world);
+                        system.run((card, front, back, pos), main.world).unwrap();
+                    })
+                    .await;
+            }
+        });
     }
 }
-pub fn poll_paste_card(
-    runtime: Res<TokioTasksRuntime>,
+fn on_paste_card(
+    In((mut card, front, back, pos)): In<(SubCard, Image, Option<Image>, Vec3)>,
     mut asset: Asset,
     mut commands: Commands,
-    mut polls: ResMut<PollCardSpawn>,
 ) {
-    for i in (0..polls.set.len()).rev() {
-        let pos = polls.set[i].1;
-        if polls.set[i].0.is_finished()
-            && let Ok(Ok((mut card, front, back))) =
-                runtime.runtime().block_on(polls.set.remove(i).0)
-        {
-            asset.register(&mut card, front, back);
-            let ent = commands
-                .spawn((
-                    Transform::from_translation(pos),
-                    Pile::from(card).bundle(&mut asset),
-                ))
-                .id();
-            commands.trigger(MoveUp::new(ent));
-        }
-    }
-    for i in (0..polls.uuid.len()).rev() {
-        let pos = polls.uuid[i].1;
-        if polls.uuid[i].0.is_finished()
-            && let Ok(Ok((mut card, front, back))) =
-                runtime.runtime().block_on(polls.uuid.remove(i).0)
-        {
-            asset.register(&mut card, front, back);
-            let ent = commands
-                .spawn((
-                    Transform::from_translation(pos),
-                    Pile::from(card).bundle(&mut asset),
-                ))
-                .id();
-            commands.trigger(MoveUp::new(ent));
-        }
-    }
-}
-#[derive(Default, Resource)]
-pub struct PollCardSpawn {
-    pub uuid: Vec<(
-        JoinHandle<Result<(SubCard, Image, Option<Image>), Uuid>>,
-        Vec3,
-    )>,
-    pub set: Vec<(
-        JoinHandle<Result<(SubCard, Image, Option<Image>), (String, u16)>>,
-        Vec3,
-    )>,
+    asset.register(&mut card, front, back);
+    let ent = commands
+        .spawn((
+            Transform::from_translation(pos),
+            Pile::from(card).bundle(&mut asset),
+        ))
+        .id();
+    commands.trigger(MoveUp::new(ent));
 }

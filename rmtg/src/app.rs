@@ -9,7 +9,7 @@ use crate::focus::Menu;
 use crate::keybinds::KeybindsList;
 use crate::mat::create_mats;
 use crate::net::{Msg, Peers, connect_failed, on_connect, on_disconnect, receive_message};
-use crate::paste::{PollCardSpawn, paste_card, poll_paste_card};
+use crate::paste::paste_card;
 use crate::startup::{spawn_objects, startup};
 use crate::{APP_NAME, FONT, USER_AGENT};
 use avian3d::PhysicsPlugins;
@@ -110,7 +110,6 @@ pub fn app_run() -> AppExit {
     app.init_resource::<KeybindsList>();
     app.init_resource::<Peers>();
     app.init_resource::<Client>();
-    app.init_resource::<PollCardSpawn>();
     add_events(&mut app);
     app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
     app.add_systems(
@@ -127,13 +126,7 @@ pub fn app_run() -> AppExit {
     );
     app.add_systems(
         FixedUpdate,
-        (
-            connect_failed,
-            on_connect,
-            receive_message,
-            poll_clipboards,
-            poll_paste_card,
-        ),
+        (connect_failed, on_connect, receive_message, poll_clipboards),
     );
     app.add_systems(FixedPostUpdate, on_disconnect);
     app.run()
