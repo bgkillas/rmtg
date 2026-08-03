@@ -22,13 +22,13 @@ clippy:
     cargo fmt
     cargo clippy
 wasm:
-    cd www && wasm-pack build --no-opt --out-dir www/pkg --target web --debug --features "wasm"
+    cd rmtg && wasm-pack build --no-opt --out-dir ../www/pkg --target web --debug
 wasm_rel:
-    cd www && wasm-pack build --no-opt --out-dir www/pkg --target web --release --features "wasm"
-    cd www && wasm-opt -O4 -all -o pkg/noiter_lib_bg.wasm pkg/noiter_lib_bg.wasm
+    cd rmtg && wasm-pack build --no-opt --out-dir ../www/pkg --target web --release
+    wasm-opt -O4 -all -o www/pkg/rmtg_lib_bg.wasm www/pkg/rmtg_lib_bg.wasm
 wasm_full:
-    cd www && wasm-pack build --no-opt --out-dir www/pkg --target web --profile release_lto --features "wasm"
-    cd www && wasm-opt -O4 -all -o pkg/noiter_lib_bg.wasm pkg/noiter_lib_bg.wasm
+    cd rmtg && wasm-pack build --no-opt --out-dir ../www/pkg --target web --profile release_lto
+    wasm-opt -O4 -all -o www/pkg/rmtg_lib_bg.wasm www/pkg/rmtg_lib_bg.wasm
 run_wasm:
     cd www && python3 -m http.server 8080
 update:

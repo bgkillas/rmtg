@@ -19,11 +19,11 @@ use bevy::app::{
     TaskPoolPlugin, TaskPoolThreadAssignmentPolicy, Update,
 };
 use bevy::asset::{AssetMetaCheck, AssetPlugin};
+use bevy::ecs::resource::Resource;
 use bevy::ecs::schedule::IntoScheduleConfigs as _;
 #[cfg(feature = "colliders")]
 use bevy::gizmos::AppGizmoBuilder as _;
 use bevy::image::{ImageFilterMode, ImagePlugin, ImageSamplerDescriptor};
-use bevy::prelude::Resource;
 use bevy::settings::SettingsPlugin;
 use bevy::window::{PresentMode, Window, WindowPlugin};
 use bevy_p2p::plugin::P2PPlugin;

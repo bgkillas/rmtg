@@ -1,4 +1,4 @@
-use crate::deck::Pile;
+use crate::pile::Pile;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Children, Entity, EntityEvent, On, Query};
 #[derive(EntityEvent)]

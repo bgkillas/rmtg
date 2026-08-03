@@ -8,7 +8,6 @@ pub mod app;
 pub mod assets;
 pub mod camera;
 pub mod card_spot;
-pub mod deck;
 pub mod drag;
 pub mod events;
 pub mod focus;
@@ -17,6 +16,7 @@ pub mod mat;
 pub mod net;
 pub mod paste;
 pub mod physics;
+pub mod pile;
 pub mod shapes;
 pub mod spatial;
 pub mod startup;
@@ -47,3 +47,9 @@ pub const FLOOR_COLOR: Color = Color::srgb_u8(103, 73, 40);
 pub const CARD_STOCK_COLOR: Color = Color::srgb_u8(0, 0, 0);
 pub const WORLD_FONT_SIZE: f32 = 280.0;
 pub const FONT: &[u8] = include_bytes!("../../assets/noto.ttf");
+#[cfg(target_family = "wasm")]
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
+fn wasm_hook() {
+    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+    app::app_run();
+}
