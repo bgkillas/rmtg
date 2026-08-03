@@ -1,4 +1,4 @@
-use crate::app::{Client, Runtime};
+use crate::app::Client;
 use crate::assets::Asset;
 use crate::events::clipboard::{ClipboardData, ClipboardEvent, GetClipboard, GotClipboard};
 use crate::events::move_up::MoveUp;
@@ -8,9 +8,10 @@ use crate::spatial::Spatial;
 use bevy::image::Image;
 use bevy::math::Vec3;
 use bevy::prelude::{Commands, On, Res, ResMut, Resource, Transform};
+use bevy_p2p::bevy_tokio_tasks::TokioTasksRuntime;
+use bevy_p2p::tokio::task::JoinHandle;
 use importer::card::SubCard;
 use importer::scryfall::Quality;
-use importer::tokio::task::JoinHandle;
 use importer::uuid::Uuid;
 use std::str::FromStr as _;
 pub fn paste_card(keybind: Keybinds, mut commands: Commands) {
@@ -21,7 +22,7 @@ pub fn paste_card(keybind: Keybinds, mut commands: Commands) {
 pub fn react_paste_card(
     clipboard: On<GotClipboard>,
     client: Res<Client>,
-    runtime: Res<Runtime>,
+    runtime: Res<TokioTasksRuntime>,
     mut polls: ResMut<PollCardSpawn>,
     spatial: Spatial,
 ) {
@@ -36,7 +37,7 @@ pub fn react_paste_card(
     };
     if let Ok(uuid) = Uuid::from_str(str) {
         let card = runtime
-            .runtime
+            .runtime()
             .spawn(SubCard::get(client.client.clone(), uuid, Quality::Png));
         polls.uuid.push((card, pos));
     } else if let Some(rest) = str.strip_prefix("https://scryfall.com/card/")
@@ -44,7 +45,7 @@ pub fn react_paste_card(
         && let Some((cn_str, _)) = after.split_once('/')
         && let Ok(cn) = cn_str.parse()
     {
-        let card = runtime.runtime.spawn(SubCard::get_set_cn_owned(
+        let card = runtime.runtime().spawn(SubCard::get_set_cn_owned(
             client.client.clone(),
             set.to_owned(),
             cn,
@@ -55,13 +56,13 @@ pub fn react_paste_card(
         && let Ok(uuid) = Uuid::from_str(rest)
     {
         let card = runtime
-            .runtime
+            .runtime()
             .spawn(SubCard::get(client.client.clone(), uuid, Quality::Png));
         polls.uuid.push((card, pos));
     }
 }
 pub fn poll_paste_card(
-    runtime: Res<Runtime>,
+    runtime: Res<TokioTasksRuntime>,
     mut asset: Asset,
     mut commands: Commands,
     mut polls: ResMut<PollCardSpawn>,
@@ -69,7 +70,8 @@ pub fn poll_paste_card(
     for i in (0..polls.set.len()).rev() {
         let pos = polls.set[i].1;
         if polls.set[i].0.is_finished()
-            && let Ok(Ok((mut card, front, back))) = runtime.runtime.block_on(polls.set.remove(i).0)
+            && let Ok(Ok((mut card, front, back))) =
+                runtime.runtime().block_on(polls.set.remove(i).0)
         {
             asset.register(&mut card, front, back);
             let ent = commands
@@ -85,7 +87,7 @@ pub fn poll_paste_card(
         let pos = polls.uuid[i].1;
         if polls.uuid[i].0.is_finished()
             && let Ok(Ok((mut card, front, back))) =
-                runtime.runtime.block_on(polls.uuid.remove(i).0)
+                runtime.runtime().block_on(polls.uuid.remove(i).0)
         {
             asset.register(&mut card, front, back);
             let ent = commands

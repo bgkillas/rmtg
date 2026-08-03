@@ -110,7 +110,6 @@ pub fn app_run() -> AppExit {
     app.init_resource::<KeybindsList>();
     app.init_resource::<Peers>();
     app.init_resource::<Client>();
-    app.init_resource::<Runtime>();
     app.init_resource::<PollCardSpawn>();
     add_events(&mut app);
     app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
@@ -148,20 +147,6 @@ impl Default for Client {
         Self {
             client: importer::reqwest::Client::builder()
                 .user_agent(USER_AGENT)
-                .build()
-                .unwrap(),
-        }
-    }
-}
-#[derive(Resource)]
-pub struct Runtime {
-    pub runtime: importer::tokio::runtime::Runtime,
-}
-impl Default for Runtime {
-    fn default() -> Self {
-        Self {
-            runtime: importer::tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
                 .build()
                 .unwrap(),
         }

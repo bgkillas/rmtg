@@ -11,6 +11,8 @@ use std::sync::LazyLock;
 use std::time::Duration;
 use stream_throttle::{ThrottlePool, ThrottleRate};
 use tokio::task::JoinSet;
+#[cfg(target_family = "wasm")]
+use tokio_with_wasm::alias as tokio;
 use uuid::Uuid;
 const URL: &str = "api.scryfall.com";
 const CARD_URL: &str = "cards.scryfall.io";
@@ -66,11 +68,11 @@ impl SubCard {
         iter: &[Uuid],
         quality: Quality,
     ) -> JoinSet<Result<(Self, Image, Option<Image>), Uuid>> {
-        JoinSet::from_iter(
-            iter.iter()
-                .copied()
-                .map(|uuid| Self::get(client.clone(), uuid, quality)),
-        )
+        let mut set = JoinSet::new();
+        for &uuid in iter {
+            set.spawn(Self::get(client.clone(), uuid, quality));
+        }
+        set
     }
     pub async fn get_prints(
         client: Client,

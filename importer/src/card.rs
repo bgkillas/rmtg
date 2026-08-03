@@ -82,41 +82,6 @@ pub struct Types {
     pub main_type: MainTypes,
     pub sub_type: SubTypes,
 }
-impl Debug for Types {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\"")?;
-        let mut first = true;
-        for ty in self.super_type.types {
-            if first {
-                first = false;
-            } else {
-                write!(f, "|")?;
-            }
-            write!(f, "{ty:?}")?;
-        }
-        write!(f, "-")?;
-        first = true;
-        for ty in self.main_type.types {
-            if first {
-                first = false;
-            } else {
-                write!(f, "|")?;
-            }
-            write!(f, "{ty:?}")?;
-        }
-        write!(f, "-")?;
-        first = true;
-        for ty in self.sub_type.types {
-            if first {
-                first = false;
-            } else {
-                write!(f, "|")?;
-            }
-            write!(f, "{ty:?}")?;
-        }
-        write!(f, "\"")
-    }
-}
 #[derive(Debug, Default, Clone, PartialOrd, Encode, Decode, Eq, PartialEq)]
 pub struct SuperTypes {
     #[bitcode(with = "SuperTypesCoder")]
@@ -197,6 +162,41 @@ pub enum SearchKey {
     Power,
     Toughness,
     Loyalty,
+}
+impl Debug for Types {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\"")?;
+        let mut first = true;
+        for ty in self.super_type.types {
+            if first {
+                first = false;
+            } else {
+                write!(f, "|")?;
+            }
+            write!(f, "{ty:?}")?;
+        }
+        write!(f, "-")?;
+        first = true;
+        for ty in self.main_type.types {
+            if first {
+                first = false;
+            } else {
+                write!(f, "|")?;
+            }
+            write!(f, "{ty:?}")?;
+        }
+        write!(f, "-")?;
+        first = true;
+        for ty in self.sub_type.types {
+            if first {
+                first = false;
+            } else {
+                write!(f, "|")?;
+            }
+            write!(f, "{ty:?}")?;
+        }
+        write!(f, "\"")
+    }
 }
 impl Debug for Colors {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
