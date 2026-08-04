@@ -22,7 +22,7 @@ pub fn paste_card(keybind: Keybinds, mut commands: Commands) {
 pub fn react_paste_card(
     clipboard: On<GotClipboard>,
     client: Res<Client>,
-    runtime: TokioRuntime,
+    mut runtime: TokioRuntime,
     spatial: Spatial,
 ) {
     if !matches!(clipboard.event, ClipboardEvent::CardSpawn) {

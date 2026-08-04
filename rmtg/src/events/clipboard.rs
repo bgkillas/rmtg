@@ -70,7 +70,9 @@ pub fn get_clipboard(
                 ClipboardRead::Taken => unreachable!(),
             }
         }
-        ClipboardType::Image => {
+        ClipboardType::Image =>
+        {
+            #[cfg(not(target_family = "wasm"))]
             if let Ok(image) = clipboard.fetch_image() {
                 commands.trigger(GotClipboard {
                     data: ClipboardData::Image(image),

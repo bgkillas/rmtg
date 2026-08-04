@@ -8,8 +8,9 @@ pub struct TokioRuntime<'w, 's> {
     pub commands: Commands<'w, 's>,
 }
 impl TokioRuntime<'_, '_> {
+    #[cfg(not(target_family = "wasm"))]
     pub fn spawn<I: SystemInput + Send + 'static, M: 'static>(
-        &self,
+        &mut self,
         fun: impl IntoSystem<I, (), M> + Send + 'static,
         future: impl Future<Output = <I as SystemInput>::Inner<'static>> + Send + 'static,
     ) where
@@ -24,5 +25,20 @@ impl TokioRuntime<'_, '_> {
                     })
                     .await;
             });
+    }
+    #[cfg(target_family = "wasm")]
+    pub fn spawn<I: SystemInput + Send + 'static, M: 'static>(
+        &mut self,
+        fun: impl IntoSystem<I, (), M> + Send + 'static,
+        future: impl Future<Output = <I as SystemInput>::Inner<'static>> + 'static,
+    ) where
+        for<'a> <I as SystemInput>::Inner<'a>: Send,
+    {
+        let (sender, receiver) = std::sync::oneshot::channel();
+        wasm_bindgen_futures::spawn_local(async move {
+            sender.send(future.await).unwrap();
+        });
+        let ret = receiver.recv().unwrap();
+        self.commands.run_system_cached_with(fun, ret);
     }
 }

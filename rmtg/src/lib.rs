@@ -2,6 +2,7 @@
 #![feature(min_generic_const_args)]
 #![feature(inherent_associated_types)]
 #![feature(associated_type_defaults)]
+#![cfg_attr(target_family = "wasm", feature(oneshot_channel))]
 extern crate core;
 use bevy::color::Color;
 pub mod app;
@@ -52,5 +53,5 @@ pub const FONT: &[u8] = include_bytes!("../../assets/noto.ttf");
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
 fn wasm_hook() {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-    app::app_run();
+    let _ = app::app_run();
 }
