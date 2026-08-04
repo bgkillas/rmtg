@@ -5,11 +5,11 @@ use crate::events::move_up::MoveUp;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::pile::Pile;
 use crate::spatial::Spatial;
+use crate::tokio::TokioRuntime;
 use bevy::image::Image;
 use bevy::math::Vec3;
 use bevy::prelude::{Commands, On, Res, Transform};
-use bevy_ecs::system::{In, IntoSystem, System as _};
-use bevy_p2p::bevy_tokio_tasks::TokioTasksRuntime;
+use bevy_ecs::system::In;
 use importer::card::SubCard;
 use importer::scryfall::Quality;
 use importer::uuid::Uuid;
@@ -22,7 +22,7 @@ pub fn paste_card(keybind: Keybinds, mut commands: Commands) {
 pub fn react_paste_card(
     clipboard: On<GotClipboard>,
     client: Res<Client>,
-    runtime: Res<TokioTasksRuntime>,
+    runtime: TokioRuntime,
     spatial: Spatial,
 ) {
     if !matches!(clipboard.event, ClipboardEvent::CardSpawn) {
@@ -36,16 +36,10 @@ pub fn react_paste_card(
     };
     if let Ok(uuid) = Uuid::from_str(str) {
         let client_owned = client.client.clone();
-        runtime.spawn_background_task(move |mut tasks| async move {
-            if let Ok((card, front, back)) = SubCard::get(client_owned, uuid, Quality::Png).await {
-                tasks
-                    .run_on_main_thread(move |main| {
-                        let mut system = IntoSystem::into_system(on_paste_card);
-                        system.initialize(main.world);
-                        system.run((card, front, back, pos), main.world).unwrap();
-                    })
-                    .await;
-            }
+        runtime.spawn(on_paste_card_uuid, async move {
+            SubCard::get(client_owned, uuid, Quality::Png)
+                .await
+                .map(|(c, i, b)| (c, i, b, pos))
         });
     } else if let Some(rest) = str.strip_prefix("https://scryfall.com/card/")
         && let Some((set, after)) = rest.split_once('/')
@@ -54,34 +48,42 @@ pub fn react_paste_card(
     {
         let client_owned = client.client.clone();
         let owned = set.to_owned();
-        runtime.spawn_background_task(move |mut tasks| async move {
-            if let Ok((card, front, back)) =
-                SubCard::get_set_cn_owned(client_owned, owned, cn, Quality::Png).await
-            {
-                tasks
-                    .run_on_main_thread(move |main| {
-                        let mut system = IntoSystem::into_system(on_paste_card);
-                        system.initialize(main.world);
-                        system.run((card, front, back, pos), main.world).unwrap();
-                    })
-                    .await;
-            }
+        runtime.spawn(on_paste_card_set, async move {
+            SubCard::get_set_cn_owned(client_owned, owned, cn, Quality::Png)
+                .await
+                .map(|(c, i, b)| (c, i, b, pos))
         });
     } else if let Some(rest) = str.strip_prefix("https://scryfall.com/card/")
         && let Ok(uuid) = Uuid::from_str(rest)
     {
         let client_owned = client.client.clone();
-        runtime.spawn_background_task(move |mut tasks| async move {
-            if let Ok((card, front, back)) = SubCard::get(client_owned, uuid, Quality::Png).await {
-                tasks
-                    .run_on_main_thread(move |main| {
-                        let mut system = IntoSystem::into_system(on_paste_card);
-                        system.initialize(main.world);
-                        system.run((card, front, back, pos), main.world).unwrap();
-                    })
-                    .await;
-            }
+        runtime.spawn(on_paste_card_uuid, async move {
+            SubCard::get(client_owned, uuid, Quality::Png)
+                .await
+                .map(|(c, i, b)| (c, i, b, pos))
         });
+    }
+}
+fn on_paste_card_uuid(
+    In(is_ok): In<Result<(SubCard, Image, Option<Image>, Vec3), Uuid>>,
+    mut commands: Commands,
+) {
+    match is_ok {
+        Ok(val) => {
+            commands.run_system_cached_with(on_paste_card, val);
+        }
+        Err(_) => todo!(),
+    }
+}
+fn on_paste_card_set(
+    In(is_ok): In<Result<(SubCard, Image, Option<Image>, Vec3), (String, u16)>>,
+    mut commands: Commands,
+) {
+    match is_ok {
+        Ok(val) => {
+            commands.run_system_cached_with(on_paste_card, val);
+        }
+        Err(_) => todo!(),
     }
 }
 fn on_paste_card(
