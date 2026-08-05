@@ -2,7 +2,7 @@ use crate::MAT_HEIGHT;
 use crate::events::hover::Hovered;
 use crate::events::repaint::Repaint;
 use crate::keybinds::{Keybind, Keybinds};
-use crate::physics::GameLayer;
+use crate::physics::WorldLayer;
 use crate::pile::Pile;
 use crate::shapes::FaceNumber;
 use avian3d::prelude::{AngularVelocity, CollisionLayers, LayerMask, LinearVelocity};
@@ -49,7 +49,7 @@ pub fn on_roll(
         let t1 = faces.get(children[i1]).unwrap();
         let t2 = faces.get(children[i2]).unwrap();
         transform.rotation = t2.rotation * t1.rotation.inverse() * transform.rotation;
-        vel.y = MAT_HEIGHT * rng.random_range(0.8..=1.2);
+        vel.y = MAT_HEIGHT * rng.random_range(0.75..=1.25);
         let start = 2.0;
         let end = 4.0;
         ang.x = TAU * rng.random_range(start..=end) + ang.x.abs();
@@ -66,7 +66,7 @@ pub fn on_roll(
         }
         commands.entity(on.entity).insert((
             Rolling,
-            CollisionLayers::new(GameLayer::Default, LayerMask::NONE),
+            CollisionLayers::new(WorldLayer::Default, LayerMask::NONE),
         ));
     }
 }
@@ -79,7 +79,7 @@ pub fn update_rolling(
             commands
                 .entity(ent)
                 .remove::<Rolling>()
-                .insert(CollisionLayers::new(GameLayer::Default, LayerMask::ALL));
+                .insert(CollisionLayers::new(WorldLayer::Default, LayerMask::ALL));
         }
     }
 }

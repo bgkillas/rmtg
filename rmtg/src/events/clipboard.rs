@@ -1,3 +1,4 @@
+use crate::paste::react_paste_card;
 use bevy::clipboard::{Clipboard, ClipboardError, ClipboardRead};
 use bevy::image::Image;
 use bevy::prelude::{Commands, Event, On, ResMut, Resource};
@@ -6,11 +7,6 @@ use std::sync::{Arc, Mutex};
 #[derive(Event)]
 pub struct GetClipboard {
     pub ty: ClipboardType,
-    pub event: ClipboardEvent,
-}
-#[derive(Event)]
-pub struct GotClipboard {
-    pub data: ClipboardData,
     pub event: ClipboardEvent,
 }
 impl GetClipboard {
@@ -41,6 +37,19 @@ pub enum ClipboardData {
 pub enum ClipboardEvent {
     CardSpawn,
 }
+impl ClipboardEvent {
+    pub fn run(self, commands: &mut Commands, text: String) {
+        match self {
+            Self::CardSpawn => {
+                commands.run_system_cached_with(react_paste_card, text);
+            }
+        }
+    }
+    pub fn run_image(self, commands: &mut Commands, image: Image) {
+        _ = commands;
+        _ = image;
+    }
+}
 #[derive(Default, Resource)]
 pub struct PollClipboard {
     pub text: Vec<(
@@ -60,10 +69,7 @@ pub fn get_clipboard(
             match fetch {
                 ClipboardRead::Ready(maybe_value) => {
                     if let Ok(value) = maybe_value {
-                        commands.trigger(GotClipboard {
-                            data: ClipboardData::Text(value),
-                            event: on.event,
-                        });
+                        on.event.run(&mut commands, value);
                     }
                 }
                 ClipboardRead::Pending(poll) => polls.text.push((poll, on.event)),
@@ -74,10 +80,7 @@ pub fn get_clipboard(
         {
             #[cfg(not(target_family = "wasm"))]
             if let Ok(image) = clipboard.fetch_image() {
-                commands.trigger(GotClipboard {
-                    data: ClipboardData::Image(image),
-                    event: on.event,
-                });
+                on.event.run_image(&mut commands, image);
             }
         }
     }
@@ -86,10 +89,7 @@ pub fn poll_clipboards(mut polls: ResMut<PollClipboard>, mut commands: Commands)
     polls.text.retain_mut(|&mut (ref mut poll, event)| {
         if let Some(inner) = &mut *poll.lock().unwrap() {
             if let Ok(value) = inner {
-                commands.trigger(GotClipboard {
-                    data: ClipboardData::Text(mem::take(value)),
-                    event,
-                });
+                event.run(&mut commands, mem::take(value));
             }
             false
         } else {

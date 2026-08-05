@@ -1,7 +1,7 @@
 use crate::assets::{Asset, CardBase, TextMesh};
 use crate::camera::default_cam_pos;
 use crate::net::Peer;
-use crate::physics::GameLayer;
+use crate::physics::WorldLayer;
 use crate::shapes::coin::Coin;
 use crate::shapes::cube::Cube;
 use crate::shapes::dodecahedron::Dodecahedron;
@@ -173,7 +173,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
             ..StandardMaterial::default()
         })),
         Floor,
-        CollisionLayers::new(GameLayer::Floor, LayerMask::ALL),
+        CollisionLayers::new(WorldLayer::Floor, LayerMask::ALL),
     ));
     let wall = asset.materials.add(StandardMaterial {
         base_color: WALL_COLOR,
@@ -196,7 +196,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
             Wall,
             Mesh3d(mesh.clone()),
             MeshMaterial3d(wall.clone()),
-            CollisionLayers::new(GameLayer::Default, LayerMask::ALL),
+            CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),
         ));
     }
     commands.spawn((
@@ -210,7 +210,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
             unlit: true,
             ..StandardMaterial::default()
         })),
-        CollisionLayers::new(GameLayer::Default, LayerMask::ALL),
+        CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),
     ));
 }
 #[derive(Component, Clone)]

@@ -1,13 +1,13 @@
 use crate::app::Client;
 use crate::assets::Asset;
-use crate::events::clipboard::{ClipboardData, ClipboardEvent, GetClipboard, GotClipboard};
+use crate::events::clipboard::{ClipboardEvent, GetClipboard};
 use crate::events::move_up::MoveUp;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::pile::Pile;
 use crate::spatial::Spatial;
 use bevy::image::Image;
 use bevy::math::Vec3;
-use bevy::prelude::{Commands, On, Res, Transform};
+use bevy::prelude::{Commands, Res, Transform};
 use bevy_ecs::system::In;
 use bevy_p2p::runtime::Runtime;
 use importer::card::SubCard;
@@ -20,21 +20,15 @@ pub fn paste_card(keybind: Keybinds, mut commands: Commands) {
     }
 }
 pub fn react_paste_card(
-    clipboard: On<GotClipboard>,
+    In(str): In<String>,
     client: Res<Client>,
     runtime: Res<Runtime>,
     spatial: Spatial,
 ) {
-    if !matches!(clipboard.event, ClipboardEvent::CardSpawn) {
-        return;
-    }
-    let ClipboardData::Text(str) = &clipboard.data else {
-        return;
-    };
     let Some((_, pos)) = spatial.ray() else {
         return;
     };
-    if let Ok(uuid) = Uuid::from_str(str) {
+    if let Ok(uuid) = Uuid::from_str(&str) {
         let client_owned = client.client.clone();
         runtime.spawn_hook(on_paste_card_uuid, async move {
             SubCard::get(client_owned, uuid, Quality::Png)

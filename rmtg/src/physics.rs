@@ -11,7 +11,7 @@ pub const LIN_SLEEP: f32 = 4.0 * CARD_THICKNESS;
 pub const ANG_SLEEP: f32 = 0.25;
 pub const BOUNCE: f32 = 0.5;
 #[derive(PhysicsLayer, Default)]
-pub enum GameLayer {
+pub enum WorldLayer {
     #[default]
     Default,
     Floor,
@@ -27,7 +27,7 @@ pub fn physics_base() -> impl Bundle + use<> {
             angular: ANG_SLEEP,
         },
         GravityScale(GRAVITY),
-        CollisionLayers::new(GameLayer::Default, LayerMask::ALL),
+        CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),
     )
 }
 #[must_use]
