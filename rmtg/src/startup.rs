@@ -13,7 +13,7 @@ use crate::{
     CARD_HEIGHT, CARD_STOCK_COLOR, CARD_THICKNESS, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT, T,
     W, WALL_COLOR,
 };
-use avian3d::prelude::{Collider, CollisionLayers, RigidBody};
+use avian3d::prelude::{Collider, CollisionLayers, LayerMask, RigidBody};
 use bevy::anti_alias::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
 use bevy::asset::{AssetId, Assets};
 use bevy::camera::{
@@ -173,7 +173,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
             ..StandardMaterial::default()
         })),
         Floor,
-        CollisionLayers::new(GameLayer::Floor, [GameLayer::Default, GameLayer::Floor]),
+        CollisionLayers::new(GameLayer::Floor, LayerMask::ALL),
     ));
     let wall = asset.materials.add(StandardMaterial {
         base_color: WALL_COLOR,
@@ -196,7 +196,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
             Wall,
             Mesh3d(mesh.clone()),
             MeshMaterial3d(wall.clone()),
-            CollisionLayers::new(GameLayer::Default, [GameLayer::Default, GameLayer::Floor]),
+            CollisionLayers::new(GameLayer::Default, LayerMask::ALL),
         ));
     }
     commands.spawn((
@@ -210,7 +210,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
             unlit: true,
             ..StandardMaterial::default()
         })),
-        CollisionLayers::new(GameLayer::Default, [GameLayer::Default, GameLayer::Floor]),
+        CollisionLayers::new(GameLayer::Default, LayerMask::ALL),
     ));
 }
 #[derive(Component, Clone)]

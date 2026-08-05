@@ -2,9 +2,10 @@ use crate::MAT_HEIGHT;
 use crate::events::hover::Hovered;
 use crate::events::repaint::Repaint;
 use crate::keybinds::{Keybind, Keybinds};
+use crate::physics::GameLayer;
 use crate::pile::Pile;
 use crate::shapes::FaceNumber;
-use avian3d::prelude::{AngularVelocity, ColliderDisabled, LinearVelocity};
+use avian3d::prelude::{AngularVelocity, CollisionLayers, LayerMask, LinearVelocity};
 use bevy::prelude::{
     Children, Commands, Component, Entity, EntityEvent, On, Query, Transform, With, Without,
 };
@@ -63,9 +64,10 @@ pub fn on_roll(
         if rng.random() {
             ang.z = -ang.z;
         }
-        commands
-            .entity(on.entity)
-            .insert((Rolling, ColliderDisabled));
+        commands.entity(on.entity).insert((
+            Rolling,
+            CollisionLayers::new(GameLayer::Default, LayerMask::NONE),
+        ));
     }
 }
 pub fn update_rolling(
@@ -74,7 +76,10 @@ pub fn update_rolling(
 ) {
     for (ent, vel) in query {
         if vel.y < 0.0 {
-            commands.entity(ent).remove::<(Rolling, ColliderDisabled)>();
+            commands
+                .entity(ent)
+                .remove::<Rolling>()
+                .insert(CollisionLayers::new(GameLayer::Default, LayerMask::ALL));
         }
     }
 }

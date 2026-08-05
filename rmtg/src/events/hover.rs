@@ -94,9 +94,13 @@ pub fn update_hover(
         }
     } else if keybinds.pressed(Keybind::Select) {
         if keybinds.just_pressed(Keybind::Select)
-            && olds.iter().all(|(e, h)| e != hit.entity || h.held)
+            && olds.iter().all(|(e, h)| e != hit.entity || !h.held)
         {
-            commands.trigger(AddHover::new(hit.entity, Hovered { held: false }));
+            for (ent, _) in olds {
+                if ent != hit.entity {
+                    commands.trigger(RemoveHover::new(ent));
+                }
+            }
         }
     } else if olds.iter().all(|(e, _)| e != hit.entity) {
         for (ent, hovered) in olds {
