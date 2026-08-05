@@ -8,7 +8,7 @@ use crate::events::roll::{do_roll, update_rolling};
 use crate::focus::Menu;
 use crate::keybinds::KeybindsList;
 use crate::mat::create_mats;
-use crate::net::{Msg, Peers, connect_failed, on_connect, on_disconnect, receive_message};
+use crate::net::{Msg, Peers, receive_message};
 use crate::paste::paste_card;
 use crate::startup::{spawn_objects, startup};
 use crate::{APP_NAME, FONT, USER_AGENT};
@@ -125,9 +125,6 @@ pub fn app_run() -> AppExit {
         ),
     );
     app.add_systems(FixedUpdate, (receive_message, poll_clipboards));
-    app.add_observer(connect_failed);
-    app.add_observer(on_connect);
-    app.add_observer(on_disconnect);
     app.run()
 }
 #[derive(Resource)]

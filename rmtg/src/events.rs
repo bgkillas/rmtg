@@ -5,6 +5,7 @@ use crate::events::hover::{add_hover, remove_hover};
 use crate::events::move_up::move_up;
 use crate::events::repaint::on_repaint;
 use crate::events::roll::on_roll;
+use crate::net::{connect_failed, on_connect, on_disconnect};
 use crate::paste::react_paste_card;
 use bevy::app::App;
 pub mod clipboard;
@@ -24,5 +25,8 @@ pub fn add_events(app: &mut App) {
     app.add_observer(remove_hover);
     app.add_observer(on_clone);
     app.add_observer(on_change_gravity);
+    app.add_observer(connect_failed);
+    app.add_observer(on_connect);
+    app.add_observer(on_disconnect);
     app.init_resource::<PollClipboard>();
 }

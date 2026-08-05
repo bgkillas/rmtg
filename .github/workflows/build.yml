@@ -100,6 +100,44 @@ jobs:
       with:
         name: rmtg-macos
         path: out/*
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+    - uses: extractions/setup-just@v4
+    - name: Temporarily modify the rust toolchain version
+      run: |
+        rustup override set nightly
+        rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+    - name: Install wasm-pack
+      run: cargo install wasm-pack
+    - name: Install Binaryen (wasm-opt)
+      run: |
+        BINARYEN_VERSION=$(curl -s https://api.github.com/repos/WebAssembly/binaryen/releases/latest | jq -r .tag_name)
+        curl -L -O https://github.com/WebAssembly/binaryen/releases/download/${BINARYEN_VERSION}/binaryen-${BINARYEN_VERSION}-x86_64-linux.tar.gz
+        tar -xzf binaryen-${BINARYEN_VERSION}-x86_64-linux.tar.gz
+        echo "$(pwd)/binaryen-${BINARYEN_VERSION}/bin" >> $GITHUB_PATH
+    - name: Build WASM app
+      run: |
+        just wasm_full
+    - name: Copy site files to output
+      run: |
+        mkdir dist
+        cp -r www/* dist/
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v5
+      with:
+        path: dist/
+  deploy_wasm:
+    needs: wasm
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+    - name: Deploy to GitHub Pages
+      uses: actions/deploy-pages@v5
   deploy_to_steam:
     needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
