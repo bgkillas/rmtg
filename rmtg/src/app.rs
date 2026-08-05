@@ -15,8 +15,8 @@ use crate::{APP_NAME, FONT, USER_AGENT};
 use avian3d::PhysicsPlugins;
 use bevy::DefaultPlugins;
 use bevy::app::{
-    App, AppExit, FixedPostUpdate, FixedUpdate, PluginGroup as _, Startup, TaskPoolOptions,
-    TaskPoolPlugin, TaskPoolThreadAssignmentPolicy, Update,
+    App, AppExit, FixedUpdate, PluginGroup as _, Startup, TaskPoolOptions, TaskPoolPlugin,
+    TaskPoolThreadAssignmentPolicy, Update,
 };
 use bevy::asset::{AssetMetaCheck, AssetPlugin};
 use bevy::ecs::resource::Resource;
@@ -124,11 +124,10 @@ pub fn app_run() -> AppExit {
             paste_card,
         ),
     );
-    app.add_systems(
-        FixedUpdate,
-        (connect_failed, on_connect, receive_message, poll_clipboards),
-    );
-    app.add_systems(FixedPostUpdate, on_disconnect);
+    app.add_systems(FixedUpdate, (receive_message, poll_clipboards));
+    app.add_observer(connect_failed);
+    app.add_observer(on_connect);
+    app.add_observer(on_disconnect);
     app.run()
 }
 #[derive(Resource)]

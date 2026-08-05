@@ -212,9 +212,9 @@ checksum = "84521a3cf562bc62942e294181d9eef17eb38ceb8c68677bc49f144e4c3d4f8d"
 
 [[package]]
 name = "android_system_properties"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "819e7219dbd41043ac279b19830f2efc897156490d7fd6ea916720117ee66311"
+checksum = "ae221649c9976a6f6c56ae1facf410f3ddb33cc661c4b7b61020a912d4237fbc"
 dependencies = [
  "libc",
 ]
@@ -631,17 +631,6 @@ dependencies = [
  "thiserror 2.0.19",
  "toml",
  "web-sys",
-]
-
-[[package]]
-name = "bevy-tokio-tasks"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71ac2a45efdb36d55f972f3666cae133ab8dc98c1c3e544e3d3ea76720b0cd73"
-dependencies = [
- "bevy_app",
- "bevy_ecs",
- "tokio",
 ]
 
 [[package]]
@@ -1467,15 +1456,17 @@ checksum = "bff34eb29ff4b8a8688bc7299f14fb6b597461ca80fec03ed7d22939ab33e48f"
 [[package]]
 name = "bevy_p2p"
 version = "0.1.0"
-source = "git+https://github.com/bgkillas/bevy_p2p#7313270913eb7e0403b2a131e67558dc462f0223"
+source = "git+https://github.com/bgkillas/bevy_p2p#c41da1937423e74caec1fc6c632c09e2511f11bf"
 dependencies = [
- "bevy-tokio-tasks",
  "bevy_app",
  "bevy_ecs",
  "bevy_log",
  "bitcode",
  "iroh",
  "rustc-hash 2.1.3",
+ "tokio",
+ "tokio_with_wasm",
+ "wasm-bindgen-futures",
  "zerocopy 0.9.0-alpha.0",
 ]
 
@@ -5223,9 +5214,9 @@ dependencies = [
 
 [[package]]
 name = "lru"
-version = "0.18.1"
+version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b6180140927ee907000b0aa540091f6ea512ead4447c92b8fc35bc72788a5a6"
+checksum = "5d2f2f9b4ba7e6b24d95e7e899329d35be83bcded72c8540cdd5368932d1d90a"
 dependencies = [
  "hashbrown 0.17.1",
 ]
@@ -5488,9 +5479,9 @@ dependencies = [
 
 [[package]]
 name = "netlink-packet-core"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3463cbb78394cb0141e2c926b93fc2197e473394b761986eca3b9da2c63ae0f4"
+checksum = "b897d7bd4f0af82e68d40d0344cf37e97f9c97ddf74a098de3e4da05e96ca395"
 dependencies = [
  "paste",
 ]
@@ -6248,8 +6239,8 @@ checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
 
 [[package]]
 name = "opus-rs"
-version = "0.1.23"
-source = "git+https://github.com/restsend/opus-rs#11806b476361ccdd611b62d2a00e9c4fba05b4ec"
+version = "0.1.26"
+source = "git+https://github.com/restsend/opus-rs#340fa0277199ef3d771a9b0baebb6085b055aed0"
 
 [[package]]
 name = "orbclient"
@@ -7143,9 +7134,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.4.16"
+version = "0.4.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fcfdb36bda0c880c5931cdc7a2bcdc8ba4556847b9d912bca70bc94708711ad"
+checksum = "ad8553b9b26413251cbf30e620595c7a41b3887f03da04579c0e6b0d6a06b4b2"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -7245,7 +7236,6 @@ dependencies = [
  "rustc-hash 2.1.3",
  "ucalc_lib",
  "wasm-bindgen",
- "wasm-bindgen-futures",
  "winapi",
 ]
 

@@ -21,7 +21,6 @@ pub mod pile;
 pub mod shapes;
 pub mod spatial;
 pub mod startup;
-pub mod tokio;
 pub const APP_NAME: &str = "com.github.bgkillas.rmtg";
 pub const USER_AGENT: &str = concat!("rmtg/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = CARD_HEIGHT * IMAGE_WIDTH / IMAGE_HEIGHT;

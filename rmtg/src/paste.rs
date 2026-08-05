@@ -5,11 +5,11 @@ use crate::events::move_up::MoveUp;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::pile::Pile;
 use crate::spatial::Spatial;
-use crate::tokio::TokioRuntime;
 use bevy::image::Image;
 use bevy::math::Vec3;
 use bevy::prelude::{Commands, On, Res, Transform};
 use bevy_ecs::system::In;
+use bevy_p2p::runtime::Runtime;
 use importer::card::SubCard;
 use importer::scryfall::Quality;
 use importer::uuid::Uuid;
@@ -22,7 +22,7 @@ pub fn paste_card(keybind: Keybinds, mut commands: Commands) {
 pub fn react_paste_card(
     clipboard: On<GotClipboard>,
     client: Res<Client>,
-    mut runtime: TokioRuntime,
+    runtime: Res<Runtime>,
     spatial: Spatial,
 ) {
     if !matches!(clipboard.event, ClipboardEvent::CardSpawn) {
@@ -36,7 +36,7 @@ pub fn react_paste_card(
     };
     if let Ok(uuid) = Uuid::from_str(str) {
         let client_owned = client.client.clone();
-        runtime.spawn(on_paste_card_uuid, async move {
+        runtime.spawn_hook(on_paste_card_uuid, async move {
             SubCard::get(client_owned, uuid, Quality::Png)
                 .await
                 .map(|(c, i, b)| (c, i, b, pos))
@@ -48,7 +48,7 @@ pub fn react_paste_card(
     {
         let client_owned = client.client.clone();
         let owned = set.to_owned();
-        runtime.spawn(on_paste_card_set, async move {
+        runtime.spawn_hook(on_paste_card_set, async move {
             SubCard::get_set_cn_owned(client_owned, owned, cn, Quality::Png)
                 .await
                 .map(|(c, i, b)| (c, i, b, pos))
@@ -57,7 +57,7 @@ pub fn react_paste_card(
         && let Ok(uuid) = Uuid::from_str(rest)
     {
         let client_owned = client.client.clone();
-        runtime.spawn(on_paste_card_uuid, async move {
+        runtime.spawn_hook(on_paste_card_uuid, async move {
             SubCard::get(client_owned, uuid, Quality::Png)
                 .await
                 .map(|(c, i, b)| (c, i, b, pos))
