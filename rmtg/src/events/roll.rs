@@ -49,7 +49,7 @@ pub fn on_roll(
         let t1 = faces.get(children[i1]).unwrap();
         let t2 = faces.get(children[i2]).unwrap();
         transform.rotation = t2.rotation * t1.rotation.inverse() * transform.rotation;
-        vel.y = MAT_HEIGHT;
+        vel.y = MAT_HEIGHT * rng.random_range(0.8..=1.2);
         let start = 2.0;
         let end = 4.0;
         ang.x = TAU * rng.random_range(start..=end) + ang.x.abs();
