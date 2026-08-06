@@ -18,9 +18,6 @@ pub fn camera_translation(
     peers: Res<Peers>,
     time: Res<Time>,
 ) {
-    if focus.key_lock() {
-        return;
-    }
     let (mut cam_transform, cam, cam_global) = camera.into_inner();
     let scale = MAT_WIDTH * time.delta_secs();
     let apply = |trans: Vec3, cam: &mut Transform| {
@@ -65,9 +62,10 @@ pub fn camera_translation(
         apply(translate, &mut cam_transform);
     }
     if mouse_motion.delta.y != 0.0 && !focus.mouse_lock() {
-        let mut translate = cam_transform.forward().as_vec3() * scale * mouse_motion.delta.y * 16.0;
-        if mouse_motion.unit != MouseScrollUnit::Line {
-            translate /= 4.0;
+        let mut translate =
+            cam_transform.forward().as_vec3() * MAT_WIDTH * mouse_motion.delta.y / 1024.0;
+        if mouse_motion.unit == MouseScrollUnit::Line {
+            translate *= MouseScrollUnit::SCROLL_UNIT_CONVERSION_FACTOR;
         }
         if cam_transform.translation.y + translate.y <= 0.0 {
             let Ok(ray) = cam.viewport_to_world(cam_global, window.size() / 2.0) else {
@@ -112,11 +110,7 @@ pub fn camera_rotation(
     mouse_motion: Res<AccumulatedMouseMotion>,
     camera: Single<(&mut Transform, &Camera, &GlobalTransform), With<Camera3d>>,
     window: Single<&Window, With<PrimaryWindow>>,
-    focus: Focus,
 ) {
-    if focus.mouse_lock() {
-        return;
-    }
     let (mut cam_transform, cam, cam_global) = camera.into_inner();
     if keybinds.pressed(Keybind::Rotate) && mouse_motion.delta != Vec2::ZERO {
         let Ok(ray) = cam.viewport_to_world(cam_global, window.size() / 2.0) else {

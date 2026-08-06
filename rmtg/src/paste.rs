@@ -6,6 +6,7 @@ use crate::keybinds::{Keybind, Keybinds};
 use crate::pile::Pile;
 use crate::spatial::Spatial;
 use bevy::image::Image;
+use bevy::log::warn;
 use bevy::math::Vec3;
 use bevy::prelude::{Commands, Res, Transform};
 use bevy_ecs::system::In;
@@ -63,10 +64,8 @@ fn on_paste_card_uuid(
     mut commands: Commands,
 ) {
     match is_ok {
-        Ok(val) => {
-            commands.run_system_cached_with(on_paste_card, val);
-        }
-        Err(_) => todo!(),
+        Ok(val) => commands.run_system_cached_with(on_paste_card, val),
+        Err(e) => warn!("{e:?}"),
     }
 }
 fn on_paste_card_set(
@@ -74,10 +73,8 @@ fn on_paste_card_set(
     mut commands: Commands,
 ) {
     match is_ok {
-        Ok(val) => {
-            commands.run_system_cached_with(on_paste_card, val);
-        }
-        Err(_) => todo!(),
+        Ok(val) => commands.run_system_cached_with(on_paste_card, val),
+        Err(e) => warn!("{e:?}"),
     }
 }
 fn on_paste_card(
