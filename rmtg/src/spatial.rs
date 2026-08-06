@@ -32,4 +32,11 @@ impl Spatial<'_, '_> {
             .viewport_to_world(self.camera.1, cursor_position)
             .ok()
     }
+    #[must_use]
+    pub fn cam_center_ray(&self) -> Option<Ray3d> {
+        self.camera
+            .0
+            .viewport_to_world(self.camera.1, self.window.size() / 2.0)
+            .ok()
+    }
 }

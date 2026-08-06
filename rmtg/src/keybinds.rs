@@ -267,11 +267,13 @@ impl Bind {
         }
     }
     #[must_use]
-    pub fn new(modifiers: EnumSet<Modifier>, key: impl Into<Key>) -> Self {
+    pub fn new(modifiers: EnumSet<Modifier>, to_key: impl Into<Key>) -> Self {
+        let key = to_key.into();
+        let strict = true;
         Self {
             modifiers,
-            key: key.into(),
-            strict: true,
+            key,
+            strict,
         }
     }
     #[must_use]

@@ -1,92 +1,74 @@
 use crate::focus::Focus;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::net::{Peer, Peers};
+use crate::spatial::Spatial;
 use crate::{CARD_THICKNESS, MAT_WIDTH, START_Y, W};
-use bevy::camera::{Camera, Camera3d};
+use bevy::camera::Camera3d;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::math::{Dir3, EulerRot, Quat, Vec2, Vec3};
-use bevy::prelude::{GlobalTransform, InfinitePlane3d, Res, Single, Transform, With};
+use bevy::prelude::{InfinitePlane3d, Res, Single, Transform, With};
 use bevy::time::Time;
-use bevy::window::{PrimaryWindow, Window};
 use std::f32::consts::PI;
 pub fn camera_translation(
     keybinds: Keybinds,
     mouse_motion: Res<AccumulatedMouseScroll>,
-    camera: Single<(&mut Transform, &Camera, &GlobalTransform), With<Camera3d>>,
-    window: Single<&Window, With<PrimaryWindow>>,
+    mut camera: Single<&mut Transform, With<Camera3d>>,
     focus: Focus,
     peers: Res<Peers>,
     time: Res<Time>,
+    spatial: Spatial,
 ) {
-    let (mut cam_transform, cam, cam_global) = camera.into_inner();
-    let scale = MAT_WIDTH * time.delta_secs();
-    let apply = |trans: Vec3, cam: &mut Transform| {
-        let mut norm = trans.normalize();
-        norm.y = 0.0;
-        let abs = norm.length();
-        if abs != 0.0 {
-            cam.translation += norm * trans.length() / abs;
+    let Some(ray) = spatial.cam_center_ray() else {
+        return;
+    };
+    let Some(ray_time) = ray.intersect_plane(Vec3::default(), InfinitePlane3d { normal: Dir3::Y })
+    else {
+        return;
+    };
+    let scale = MAT_WIDTH * time.delta_secs() * ray_time / W * 2.0;
+    let fast_scale = scale * 2.0;
+    let apply = |keybind: Keybind, fun: fn(&Transform) -> Dir3, scale: f32, cam: &mut Transform| {
+        if keybinds.pressed(keybind) {
+            let trans = fun(cam).as_vec3() * scale;
+            let mut norm = trans.normalize();
+            norm.y = 0.0;
+            let abs = norm.length();
+            if abs != 0.0 {
+                cam.translation += norm * trans.length() / abs;
+            }
         }
     };
-    if keybinds.pressed(Keybind::Up) {
-        let translate = cam_transform.forward().as_vec3() * scale;
-        apply(translate, &mut cam_transform);
-    }
-    if keybinds.pressed(Keybind::Left) {
-        let translate = cam_transform.left().as_vec3() * scale;
-        apply(translate, &mut cam_transform);
-    }
-    if keybinds.pressed(Keybind::Right) {
-        let translate = cam_transform.right().as_vec3() * scale;
-        apply(translate, &mut cam_transform);
-    }
-    if keybinds.pressed(Keybind::Down) {
-        let translate = cam_transform.back().as_vec3() * scale;
-        apply(translate, &mut cam_transform);
-    }
-    let fast_scale = scale * 4.0;
-    if keybinds.pressed(Keybind::UpFast) {
-        let translate = cam_transform.forward().as_vec3() * fast_scale;
-        apply(translate, &mut cam_transform);
-    }
-    if keybinds.pressed(Keybind::LeftFast) {
-        let translate = cam_transform.left().as_vec3() * fast_scale;
-        apply(translate, &mut cam_transform);
-    }
-    if keybinds.pressed(Keybind::RightFast) {
-        let translate = cam_transform.right().as_vec3() * fast_scale;
-        apply(translate, &mut cam_transform);
-    }
-    if keybinds.pressed(Keybind::DownFast) {
-        let translate = cam_transform.back().as_vec3() * fast_scale;
-        apply(translate, &mut cam_transform);
-    }
+    apply(Keybind::Up, Transform::forward, scale, &mut camera);
+    apply(Keybind::Left, Transform::left, scale, &mut camera);
+    apply(Keybind::Right, Transform::right, scale, &mut camera);
+    apply(Keybind::Down, Transform::back, scale, &mut camera);
+    apply(Keybind::UpFast, Transform::forward, fast_scale, &mut camera);
+    apply(Keybind::LeftFast, Transform::left, fast_scale, &mut camera);
+    apply(
+        Keybind::RightFast,
+        Transform::right,
+        fast_scale,
+        &mut camera,
+    );
+    apply(Keybind::DownFast, Transform::back, fast_scale, &mut camera);
     if mouse_motion.delta.y != 0.0 && !focus.mouse_lock() {
-        let mut translate =
-            cam_transform.forward().as_vec3() * MAT_WIDTH * mouse_motion.delta.y / 1024.0;
+        let mut translate = camera.forward().as_vec3() * MAT_WIDTH * mouse_motion.delta.y / 1024.0;
         if mouse_motion.unit == MouseScrollUnit::Line {
             translate *= MouseScrollUnit::SCROLL_UNIT_CONVERSION_FACTOR;
         }
-        if cam_transform.translation.y + translate.y <= 0.0 {
-            let Ok(ray) = cam.viewport_to_world(cam_global, window.size() / 2.0) else {
-                return;
-            };
-            if let Some(time) =
-                ray.intersect_plane(Vec3::default(), InfinitePlane3d { normal: Dir3::Y })
-            {
-                cam_transform.translation += ray.direction * (time / 2.0);
-            }
+        if camera.translation.y + translate.y <= 0.0 {
+            camera.translation += ray.direction * (ray_time / 2.0);
         } else {
-            cam_transform.translation += translate;
+            camera.translation += translate;
         }
     }
     let epsilon = Vec3::splat(32.0 * CARD_THICKNESS);
-    cam_transform.translation = cam_transform.translation.clamp(
+    camera.translation = camera.translation.clamp(
         Vec3::new(-W, 0.0, -W) + epsilon,
         Vec3::new(W, 2.0 * W, W) - epsilon,
     );
     if keybinds.just_pressed(Keybind::Reset) {
-        *cam_transform = default_cam_pos(peers.my_id.unwrap_or_default());
+        **camera = default_cam_pos(peers.my_id.unwrap_or_default());
     }
 }
 #[must_use]
@@ -108,27 +90,26 @@ pub fn default_cam_pos(n: Peer) -> Transform {
 pub fn camera_rotation(
     keybinds: Keybinds,
     mouse_motion: Res<AccumulatedMouseMotion>,
-    camera: Single<(&mut Transform, &Camera, &GlobalTransform), With<Camera3d>>,
-    window: Single<&Window, With<PrimaryWindow>>,
+    mut camera: Single<&mut Transform, With<Camera3d>>,
+    spatial: Spatial,
 ) {
-    let (mut cam_transform, cam, cam_global) = camera.into_inner();
     if keybinds.pressed(Keybind::Rotate) && mouse_motion.delta != Vec2::ZERO {
-        let Ok(ray) = cam.viewport_to_world(cam_global, window.size() / 2.0) else {
+        let Some(ray) = spatial.cam_center_ray() else {
             return;
         };
         let delta_yaw = -mouse_motion.delta.x * 0.001;
         let delta_pitch = -mouse_motion.delta.y * 0.001;
-        let (yaw, pitch, roll) = cam_transform.rotation.to_euler(EulerRot::YXZ);
+        let (yaw, pitch, roll) = camera.rotation.to_euler(EulerRot::YXZ);
         let new_yaw = yaw + delta_yaw;
         let new_pitch = (pitch + delta_pitch)
             .max((-PI / 2.0).next_up())
             .min(-PI / 12.0);
-        cam_transform.rotation = Quat::from_euler(EulerRot::YXZ, new_yaw, new_pitch, roll);
+        camera.rotation = Quat::from_euler(EulerRot::YXZ, new_yaw, new_pitch, roll);
         let Some(time) = ray.intersect_plane(Vec3::default(), InfinitePlane3d { normal: Dir3::Y })
         else {
             return;
         };
-        let orig = cam_transform.translation + ray.direction * time;
-        cam_transform.translation = orig - cam_transform.rotation * Dir3::NEG_Z * time;
+        let orig = camera.translation + ray.direction * time;
+        camera.translation = orig - camera.rotation * Dir3::NEG_Z * time;
     }
 }
