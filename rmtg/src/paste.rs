@@ -1,3 +1,4 @@
+use crate::QUALITY;
 use crate::app::Client;
 use crate::assets::Asset;
 use crate::events::clipboard::{ClipboardEvent, GetClipboard};
@@ -12,7 +13,6 @@ use bevy::prelude::{Commands, Res, Transform};
 use bevy_ecs::system::In;
 use bevy_p2p::runtime::Runtime;
 use importer::card::SubCard;
-use importer::scryfall::Quality;
 use importer::uuid::Uuid;
 use std::str::FromStr as _;
 pub fn paste_card(keybind: Keybinds, mut commands: Commands) {
@@ -32,7 +32,7 @@ pub fn react_paste_card(
     if let Ok(uuid) = Uuid::from_str(&str) {
         let client_owned = client.client.clone();
         runtime.spawn_hook(on_paste_card_uuid, async move {
-            SubCard::get(client_owned, uuid, Quality::Png)
+            SubCard::get(client_owned, uuid, QUALITY)
                 .await
                 .map(|(c, i, b)| (c, i, b, pos))
         });
@@ -44,7 +44,7 @@ pub fn react_paste_card(
         let client_owned = client.client.clone();
         let owned = set.to_owned();
         runtime.spawn_hook(on_paste_card_set, async move {
-            SubCard::get_set_cn_owned(client_owned, owned, cn, Quality::Png)
+            SubCard::get_set_cn_owned(client_owned, owned, cn, QUALITY)
                 .await
                 .map(|(c, i, b)| (c, i, b, pos))
         });
@@ -53,7 +53,7 @@ pub fn react_paste_card(
     {
         let client_owned = client.client.clone();
         runtime.spawn_hook(on_paste_card_uuid, async move {
-            SubCard::get(client_owned, uuid, Quality::Png)
+            SubCard::get(client_owned, uuid, QUALITY)
                 .await
                 .map(|(c, i, b)| (c, i, b, pos))
         });

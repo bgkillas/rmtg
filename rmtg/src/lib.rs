@@ -4,6 +4,7 @@
 #![feature(associated_type_defaults)]
 extern crate core;
 use bevy::color::Color;
+use importer::scryfall::Quality;
 pub mod app;
 pub mod assets;
 pub mod camera;
@@ -39,6 +40,7 @@ pub const PLAYER: [Color; 6] = [PLAYER0, PLAYER1, PLAYER2, PLAYER3, PLAYER4, PLA
 pub const MAT_WIDTH: f32 = 8.0;
 pub const MAT_HEIGHT: f32 = MAT_WIDTH * 9.0 / 16.0;
 pub const MAT_BAR: f32 = MAT_HEIGHT / 64.0;
+pub const QUALITY: Quality = Quality::Large;
 pub const T: f32 = W / 2.0;
 pub const W: f32 = MAT_WIDTH * 2.0;
 pub const CEILING_COLOR: Color = Color::srgb_u8(103, 73, 40);

@@ -2,7 +2,7 @@ use crate::focus::Focus;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::net::{Peer, Peers};
 use crate::spatial::Spatial;
-use crate::{CARD_THICKNESS, MAT_WIDTH, START_Y, W};
+use crate::{CARD_HEIGHT, CARD_THICKNESS, MAT_WIDTH, START_Y, W};
 use bevy::camera::Camera3d;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::math::{Dir3, EulerRot, Quat, Vec2, Vec3};
@@ -25,7 +25,7 @@ pub fn camera_translation(
     else {
         return;
     };
-    let scale = MAT_WIDTH * time.delta_secs() * ray_time / W * 2.0;
+    let scale = MAT_WIDTH * time.delta_secs() * ray_time.max(CARD_HEIGHT) / W * 2.0;
     let fast_scale = scale * 2.0;
     let apply = |keybind: Keybind, fun: fn(&Transform) -> Dir3, scale: f32, cam: &mut Transform| {
         if keybinds.pressed(keybind) {
@@ -62,7 +62,7 @@ pub fn camera_translation(
             camera.translation += translate;
         }
     }
-    let epsilon = Vec3::splat(32.0 * CARD_THICKNESS);
+    let epsilon = Vec3::splat(2.0 * CARD_THICKNESS);
     camera.translation = camera.translation.clamp(
         Vec3::new(-W, 0.0, -W) + epsilon,
         Vec3::new(W, 2.0 * W, W) - epsilon,

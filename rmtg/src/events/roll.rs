@@ -1,14 +1,16 @@
-use crate::MAT_HEIGHT;
 use crate::events::hover::Hovered;
 use crate::events::repaint::Repaint;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::physics::WorldLayer;
 use crate::pile::Pile;
-use crate::shapes::FaceNumber;
-use avian3d::prelude::{AngularVelocity, CollisionLayers, LayerMask, LinearVelocity};
+use crate::shapes::{FaceNumber, Shape};
+use crate::{CARD_THICKNESS, MAT_HEIGHT};
+use avian3d::prelude::{AngularVelocity, CollisionLayers, LayerMask, LinearVelocity, Sleeping};
 use bevy::prelude::{
-    Children, Commands, Component, Entity, EntityEvent, On, Query, Transform, With, Without,
+    Children, Commands, Component, Entity, EntityEvent, GlobalTransform, On, Query, Transform,
+    With, Without,
 };
+use bevy_ecs::system::In;
 use rand::prelude::StdRng;
 use rand::{RngExt as _, make_rng};
 use std::f32::consts::TAU;
@@ -71,15 +73,44 @@ pub fn on_roll(
     }
 }
 pub fn update_rolling(
-    query: Query<(Entity, &LinearVelocity), With<Rolling>>,
+    query: Query<(Entity, &LinearVelocity, &CollisionLayers, Option<&Sleeping>), With<Rolling>>,
     mut commands: Commands,
 ) {
-    for (ent, vel) in query {
-        if vel.y < 0.0 {
-            commands
-                .entity(ent)
-                .remove::<Rolling>()
-                .insert(CollisionLayers::new(WorldLayer::Default, LayerMask::ALL));
+    for (entity, vel, collision, is_sleep) in query {
+        if vel.y <= CARD_THICKNESS {
+            if is_sleep.is_some() {
+                commands.entity(entity).remove::<Rolling>();
+                commands.run_system_cached_with(stopped_roll, entity);
+            }
+            if !collision.filters.has_all(LayerMask::ALL) {
+                commands
+                    .entity(entity)
+                    .insert(CollisionLayers::new(WorldLayer::Default, LayerMask::ALL));
+            }
+        }
+    }
+}
+#[derive(EntityEvent)]
+pub struct StoppedRoll {
+    pub entity: Entity,
+    pub val: usize,
+}
+fn stopped_roll(
+    In(entity): In<Entity>,
+    query: Query<(&Children, &Shape), Without<FaceNumber>>,
+    faces: Query<&GlobalTransform, With<FaceNumber>>,
+    mut commands: Commands,
+) {
+    let (children, shape) = query.get(entity).unwrap();
+    for (i, &face) in children[1..].iter().enumerate() {
+        let global = faces.get(face).unwrap();
+        let forward = global.forward();
+        let val = forward.x.hypot(forward.z);
+        if val < 1.0 / 256.0
+            && (matches!(shape, Shape::Tetrahedron) || forward.y.is_sign_negative())
+        {
+            commands.trigger(StoppedRoll { entity, val: i });
+            return;
         }
     }
 }
