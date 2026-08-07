@@ -7,13 +7,14 @@ use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH};
 use avian3d::prelude::Collider;
 use bevy::ecs::children;
 use bevy::math::{Dir3, Quat, Vec3};
-use bevy::mesh::{Mesh, Mesh3d};
+use bevy::mesh::{
+    CircularMeshUvMode, CircularSectorMeshBuilder, ExtrusionBuilder, Mesh, Mesh3d, MeshBuilder as _,
+};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{Bundle, Component, InheritedVisibility, Rectangle, Transform};
+use bevy::prelude::{Bundle, CircularSector, Component, InheritedVisibility, Rectangle, Transform};
 use bitcode::{Decode, Encode};
-use importer::bitcode;
 use importer::card::{Card, CardIter, CardIterMut, SubCard};
-use importer::is_reversed;
+use importer::{CARD_CORNER_RADIUS, bitcode};
 use itertools::Either;
 use rand::make_rng;
 use rand::rngs::StdRng;
@@ -23,6 +24,10 @@ use std::f32::consts::PI;
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::{iter, mem};
+#[must_use]
+pub fn is_reversed(transform: &Transform) -> bool {
+    (transform.rotation * Vec3::Y).y < 0.0
+}
 #[derive(Component, Default, Clone, Debug, Encode, Decode)]
 pub enum Pile {
     Multiple(Vec<SubCard>),
@@ -67,8 +72,9 @@ impl Pile {
     }
     #[must_use]
     pub fn sides(&self, asset: &mut Asset) -> impl Bundle + use<> {
-        let left_right = Mesh::from(Rectangle::new(self.thickness(), CARD_HEIGHT));
-        let front_back = Mesh::from(Rectangle::new(CARD_WIDTH, self.thickness()));
+        let del = CARD_WIDTH * CARD_CORNER_RADIUS;
+        let left_right = Mesh::from(Rectangle::new(self.thickness(), CARD_HEIGHT - 2.0 * del));
+        let front_back = Mesh::from(Rectangle::new(CARD_WIDTH - 2.0 * del, self.thickness()));
         let mut left = left_right.clone();
         left.rotate_by(Quat::from_rotation_arc(Vec3::NEG_Z, Vec3::X));
         left.rotate_by(Quat::from_rotation_x(PI / 2.0));
@@ -85,6 +91,30 @@ impl Pile {
         left.merge(&right).unwrap();
         left.merge(&front).unwrap();
         left.merge(&back).unwrap();
+        for corner in 0..4 {
+            let mut sector = ExtrusionBuilder::<CircularSector> {
+                base_builder: CircularSectorMeshBuilder {
+                    sector: CircularSector::new(del, PI / 4.0),
+                    resolution: 32,
+                    uv_mode: CircularMeshUvMode::default(),
+                },
+                half_depth: self.thickness() / 2.0,
+                segments: 1,
+            }
+            .build();
+            let wid = CARD_WIDTH / 2.0;
+            let hei = CARD_HEIGHT / 2.0;
+            let one = self.thickness();
+            let vec = match corner {
+                0 => Vec3::new(wid - del, one, hei - del),
+                1 => Vec3::new(del - wid, one, hei - del),
+                2 => Vec3::new(del - wid, one, del - hei),
+                3 => Vec3::new(wid - del, one, del - hei),
+                _ => unreachable!(),
+            };
+            sector.translate_by(vec);
+            left.merge(&sector).unwrap();
+        }
         (
             MeshMaterial3d(asset.card.color.clone()),
             Mesh3d(asset.meshes.add(left)),

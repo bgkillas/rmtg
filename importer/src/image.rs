@@ -1,8 +1,10 @@
+use crate::CARD_CORNER_RADIUS;
+use crate::circle::{Circumference, Octant};
 use bevy::asset::RenderAssetUsages;
 use bevy::image::Image;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use fast_image_resize::{ResizeAlg, ResizeOptions, Resizer};
-use image::{ImageBuffer, ImageReader, RgbaImage};
+use image::{ImageBuffer, ImageReader, Rgba, RgbaImage};
 use std::io::Cursor;
 #[must_use]
 pub fn parse_bytes(bytes: &[u8]) -> Option<Image> {
@@ -17,7 +19,42 @@ fn parse_no_mips(bytes: &[u8]) -> Option<RgbaImage> {
         .ok()?
         .decode()
         .ok()?;
-    let rgba = image.to_rgba8();
+    let mut rgba = image.to_rgba8();
+    let radius = (rgba.width() as f32 * CARD_CORNER_RADIUS) as u32;
+    for corner in 0..4 {
+        let (x0, y0, octants) = match corner {
+            0 => (radius, radius, [Octant::Four, Octant::Five]),
+            1 => (
+                rgba.width() - radius - 1,
+                radius,
+                [Octant::Six, Octant::Seven],
+            ),
+            2 => (
+                radius,
+                rgba.height() - radius - 1,
+                [Octant::Two, Octant::Three],
+            ),
+            3 => (
+                rgba.width() - radius - 1,
+                rgba.height() - radius - 1,
+                [Octant::Zero, Octant::One],
+            ),
+            _ => unreachable!(),
+        };
+        for (dx, dy) in Circumference::new(radius) {
+            for o in octants {
+                let (x1, y1) = o.octant((x0, y0), (dx, dy));
+                let range = if matches!(corner, 0 | 1) {
+                    0..=y1
+                } else {
+                    y1..=image.height() - 1
+                };
+                for y2 in range {
+                    rgba.put_pixel(x1, y2, Rgba([0; 4]));
+                }
+            }
+        }
+    }
     Some(rgba)
 }
 fn make_img(rgba: Vec<u8>, width: u32, height: u32, mips: u32) -> Image {

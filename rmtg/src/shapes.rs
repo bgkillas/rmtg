@@ -33,6 +33,8 @@ pub mod octahedron;
 pub mod tetrahedron;
 pub const OUTLINE_COLOR: Color = Color::BLACK;
 pub const OUTLINE_DEPTH_BIAS: f32 = 1.0 / 4096.0;
+pub const OUTLINE_SUBDIVISIONS: u32 = 5;
+pub const OUTLINE_RESOLUTION: u32 = 32;
 #[derive(Component, Clone, Copy)]
 pub enum Shape {
     Cube,
@@ -248,8 +250,6 @@ pub trait ShapeOutline: NewShape {
     }
     #[must_use]
     fn mesh(self) -> Mesh {
-        let subdivisions = 4;
-        let resolution = 16;
         let position = self.position();
         let edges_computed = self.edges();
         let mut mesh = Mesh::from(CylinderMeshBuilder {
@@ -257,12 +257,14 @@ pub trait ShapeOutline: NewShape {
                 Self::THICKNESS,
                 (edges_computed[0][0] - edges_computed[0][1]).length(),
             ),
-            resolution,
+            resolution: OUTLINE_RESOLUTION,
             ..CylinderMeshBuilder::default()
         });
         let sphere = Mesh::from(SphereMeshBuilder {
             sphere: Sphere::new(Self::THICKNESS),
-            kind: SphereKind::Ico { subdivisions },
+            kind: SphereKind::Ico {
+                subdivisions: OUTLINE_SUBDIVISIONS,
+            },
         });
         mesh.rotate_by(Quat::from_rotation_arc(
             Vec3::Y,
@@ -273,7 +275,7 @@ pub trait ShapeOutline: NewShape {
             let height = (a - b).length();
             let mut line = Mesh::from(CylinderMeshBuilder {
                 cylinder: Cylinder::new(Self::THICKNESS, height),
-                resolution,
+                resolution: OUTLINE_RESOLUTION,
                 ..CylinderMeshBuilder::default()
             });
             line.rotate_by(Quat::from_rotation_arc(Vec3::Y, (b - a).normalize()));

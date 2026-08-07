@@ -29,9 +29,7 @@ use bevy::material::AlphaMode;
 use bevy::math::Vec3;
 use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{
-    Commands, Component, Cuboid, MeshPickingCamera, Msaa, Rectangle, ResMut, Transform,
-};
+use bevy::prelude::{Commands, Component, Cuboid, Msaa, Rectangle, ResMut, Transform};
 use bevy::text::Font;
 use bevy_rich_text3d::TextAtlas;
 use importer::image::parse_bytes;
@@ -55,6 +53,7 @@ pub fn startup(
     let back_img = parse_bytes(include_bytes!("../../assets/back.png")).unwrap();
     let back = materials.add(StandardMaterial {
         base_color_texture: Some(images.add(back_img)),
+        alpha_mode: AlphaMode::Premultiplied,
         unlit: true,
         ..StandardMaterial::default()
     });
@@ -76,7 +75,6 @@ pub fn startup(
             sensitivity_iso: 100.0,
             sensor_height: 0.01866,
         }),
-        MeshPickingCamera,
         Projection::Perspective(PerspectiveProjection {
             fov: PI / 3.0,
             near: CARD_THICKNESS,

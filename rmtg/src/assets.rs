@@ -2,6 +2,7 @@
 use bevy::asset::{Assets, Handle};
 use bevy::ecs::system::SystemParam;
 use bevy::image::Image;
+use bevy::material::AlphaMode;
 use bevy::mesh::Mesh;
 use bevy::pbr::StandardMaterial;
 use bevy::prelude::{Res, ResMut, Resource};
@@ -30,6 +31,7 @@ impl Asset<'_> {
             let image = self.images.add(back_image);
             let material = self.materials.add(StandardMaterial {
                 base_color_texture: Some(image.clone()),
+                alpha_mode: AlphaMode::Premultiplied,
                 unlit: true,
                 ..StandardMaterial::default()
             });
@@ -38,6 +40,7 @@ impl Asset<'_> {
         let image = self.images.add(front);
         let material = self.materials.add(StandardMaterial {
             base_color_texture: Some(image.clone()),
+            alpha_mode: AlphaMode::Premultiplied,
             unlit: true,
             ..StandardMaterial::default()
         });

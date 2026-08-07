@@ -33,13 +33,7 @@ pub fn chat_bundle() -> impl Bundle {
                     height: Val::Px(FONT_HEIGHT * 1.5),
                     ..Node::default()
                 },
-                EditableText {
-                    /*mode: TextInputMode::SingleLine,
-                    clear_on_submit: true,
-                    unfocus_on_submit: false,
-                    ..default()*/
-                    ..EditableText::default()
-                },
+                EditableText::default(),
                 TextFont {
                     font_size: FontSize::Px(FONT_SIZE),
                     ..TextFont::default()

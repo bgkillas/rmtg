@@ -61,7 +61,10 @@ pub fn camera_translation(
     apply(Keybind::DownFast, Transform::back, fast_scale);
     vel.vec /= time.delta_secs();
     if mouse_motion.delta.y != 0.0 && !focus.mouse_lock() {
-        let mut translate = camera.forward().as_vec3() * MAT_WIDTH * mouse_motion.delta.y / 1024.0;
+        let mut translate = camera.forward().as_vec3() * MAT_WIDTH * mouse_motion.delta.y / 1024.0
+            * ray_time.max(CARD_HEIGHT)
+            / W
+            * 2.0;
         if mouse_motion.unit == MouseScrollUnit::Line {
             translate *= MouseScrollUnit::SCROLL_UNIT_CONVERSION_FACTOR;
         }
