@@ -1,15 +1,20 @@
 use bevy::log::info;
+use bevy::math::Vec3;
 use bevy::prelude::{Component, PopulatedMessageReader, Resource};
 use bevy_ecs::observer::On;
 use bevy_p2p::bitcode::{self, Decode, Encode};
 use bevy_p2p::events::{ConnectFailed, PeerConnected, PeerDisconnected};
 use bevy_p2p::iroh::EndpointId;
 use bevy_p2p::message::MessageReceived;
+use importer::coder::DataCoder;
 use rustc_hash::FxBuildHasher;
 use std::collections::HashMap;
 #[derive(Encode, Decode)]
 pub enum Msg {
-    Empty,
+    Camera(
+        #[bitcode(with = "DataCoder<Vec3>")] Vec3,
+        #[bitcode(with = "DataCoder<Vec3>")] Vec3,
+    ),
 }
 pub fn connect_failed(event: On<ConnectFailed>) {
     info!("{} failed", event.peer.fmt_short());
@@ -23,7 +28,10 @@ pub fn on_disconnect(event: On<PeerDisconnected>) {
 pub fn receive_message(mut reader: PopulatedMessageReader<MessageReceived<Msg>>) {
     for msg in reader.read() {
         match &msg.message {
-            Msg::Empty => {}
+            Msg::Camera(camera, cursor) => {
+                _ = camera;
+                _ = cursor;
+            }
         }
     }
 }

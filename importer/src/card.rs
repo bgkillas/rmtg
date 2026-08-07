@@ -1,3 +1,4 @@
+use crate::coder::DataCoder;
 use crate::id::Id;
 use bevy::asset::Handle;
 use bevy::image::Image;
@@ -84,43 +85,23 @@ pub struct Types {
 }
 #[derive(Debug, Default, Clone, PartialOrd, Encode, Decode, Eq, PartialEq)]
 pub struct SuperTypes {
-    #[bitcode(with = "SuperTypesCoder")]
+    #[bitcode(with = "DataCoder<EnumSet<SuperType>>")]
     pub types: EnumSet<SuperType>,
 }
 #[derive(Debug, Default, Clone, PartialOrd, Encode, Decode, Eq, PartialEq)]
 pub struct MainTypes {
-    #[bitcode(with = "MainTypesCoder")]
+    #[bitcode(with = "DataCoder<EnumSet<MainType>>")]
     pub types: EnumSet<MainType>,
 }
 #[derive(Debug, Default, Clone, PartialOrd, Encode, Decode, Eq, PartialEq)]
 pub struct SubTypes {
-    #[bitcode(with = "SubTypesCoder")]
+    #[bitcode(with = "DataCoder<EnumSet<SubType>>")]
     pub types: EnumSet<SubType>,
-}
-#[derive(Debug, Clone, Encode, Decode, Eq, PartialEq)]
-#[repr(transparent)]
-struct SuperTypesCoder {
-    bytes: [u8; size_of::<EnumSet<SuperType>>()],
-}
-#[derive(Debug, Clone, Encode, Decode, Eq, PartialEq)]
-#[repr(transparent)]
-struct MainTypesCoder {
-    bytes: [u8; size_of::<EnumSet<MainType>>()],
-}
-#[derive(Debug, Clone, Encode, Decode, Eq, PartialEq)]
-#[repr(transparent)]
-struct SubTypesCoder {
-    bytes: [u8; size_of::<EnumSet<SubType>>()],
 }
 #[derive(Default, Clone, Copy, PartialOrd, Encode, Decode, PartialEq)]
 pub struct Colors {
-    #[bitcode(with = "ColorsCoder")]
+    #[bitcode(with = "DataCoder<EnumSet<Color>>")]
     pub colors: EnumSet<Color>,
-}
-#[derive(Debug, Default, Clone, Copy, Encode, Decode, PartialEq)]
-#[repr(transparent)]
-struct ColorsCoder {
-    bytes: [u8; size_of::<EnumSet<Color>>()],
 }
 #[derive(Debug, Encode, Decode, EnumSetType)]
 pub enum Color {
@@ -268,46 +249,6 @@ impl From<&str> for Layout {
             "planar" | "split" => Self::Side,
             _ => Self::Normal,
         }
-    }
-}
-impl From<SuperTypesCoder> for EnumSet<SuperType> {
-    fn from(value: SuperTypesCoder) -> Self {
-        unsafe { mem::transmute(value) }
-    }
-}
-impl From<&EnumSet<SuperType>> for SuperTypesCoder {
-    fn from(value: &EnumSet<SuperType>) -> Self {
-        unsafe { mem::transmute(*value) }
-    }
-}
-impl From<MainTypesCoder> for EnumSet<MainType> {
-    fn from(value: MainTypesCoder) -> Self {
-        unsafe { mem::transmute(value) }
-    }
-}
-impl From<&EnumSet<MainType>> for MainTypesCoder {
-    fn from(value: &EnumSet<MainType>) -> Self {
-        unsafe { mem::transmute(*value) }
-    }
-}
-impl From<SubTypesCoder> for EnumSet<SubType> {
-    fn from(value: SubTypesCoder) -> Self {
-        unsafe { mem::transmute(value) }
-    }
-}
-impl From<&EnumSet<SubType>> for SubTypesCoder {
-    fn from(value: &EnumSet<SubType>) -> Self {
-        unsafe { mem::transmute(*value) }
-    }
-}
-impl From<ColorsCoder> for EnumSet<Color> {
-    fn from(value: ColorsCoder) -> Self {
-        unsafe { mem::transmute(value) }
-    }
-}
-impl From<&EnumSet<Color>> for ColorsCoder {
-    fn from(value: &EnumSet<Color>) -> Self {
-        unsafe { mem::transmute(*value) }
     }
 }
 impl CardInfo {
