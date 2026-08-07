@@ -1,5 +1,5 @@
 use crate::assets::{Asset, CardBase, TextMesh};
-use crate::camera::default_cam_pos;
+use crate::camera::{CameraVelocity, default_cam_pos};
 use crate::net::Peer;
 use crate::physics::WorldLayer;
 use crate::shapes::coin::Coin;
@@ -88,6 +88,7 @@ pub fn startup(
             sharpening_strength: 1.0,
             denoise: false,
         },
+        CameraVelocity::default(),
     ));
 }
 pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {

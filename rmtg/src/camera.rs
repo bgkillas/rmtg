@@ -8,51 +8,58 @@ use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseSc
 use bevy::math::{Dir3, EulerRot, Quat, Vec2, Vec3};
 use bevy::prelude::{InfinitePlane3d, Res, Transform};
 use bevy::time::Time;
+use bevy_ecs::component::Component;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{ParamSet, Single};
 use std::f32::consts::PI;
+#[derive(Component, Default)]
+pub struct CameraVelocity {
+    pub vec: Vec3,
+}
 pub fn camera_translation(
     keybinds: Keybinds,
     mouse_motion: Res<AccumulatedMouseScroll>,
     focus: Focus,
     peers: Res<Peers>,
     time: Res<Time>,
-    mut spatial: ParamSet<(Spatial, Single<&mut Transform, With<Camera3d>>)>,
+    mut spatial: ParamSet<(
+        Spatial,
+        Single<(&mut Transform, &mut CameraVelocity), With<Camera3d>>,
+    )>,
 ) {
     let Some(ray) = spatial.p0().cam_center_ray() else {
         return;
     };
-    let mut camera = spatial.p1();
+    let (mut camera, mut vel) = spatial.p1().into_inner();
+    vel.vec = Vec3::splat(0.0);
     let Some(ray_time) = ray.intersect_plane(Vec3::default(), InfinitePlane3d { normal: Dir3::Y })
     else {
         return;
     };
     let scale = MAT_WIDTH * time.delta_secs() * ray_time.max(CARD_HEIGHT) / W * 2.0;
     let fast_scale = scale * 2.0;
-    let apply = |keybind: Keybind, fun: fn(&Transform) -> Dir3, scale: f32, cam: &mut Transform| {
+    let mut apply = |keybind: Keybind, fun: fn(&Transform) -> Dir3, scale: f32| {
         if keybinds.pressed(keybind) {
-            let trans = fun(cam).as_vec3() * scale;
+            let trans = fun(&camera).as_vec3() * scale;
             let mut norm = trans.normalize();
             norm.y = 0.0;
             let abs = norm.length();
             if abs != 0.0 {
-                cam.translation += norm * trans.length() / abs;
+                let delta = norm * trans.length() / abs;
+                camera.translation += delta;
+                vel.vec += delta;
             }
         }
     };
-    apply(Keybind::Up, Transform::forward, scale, &mut camera);
-    apply(Keybind::Left, Transform::left, scale, &mut camera);
-    apply(Keybind::Right, Transform::right, scale, &mut camera);
-    apply(Keybind::Down, Transform::back, scale, &mut camera);
-    apply(Keybind::UpFast, Transform::forward, fast_scale, &mut camera);
-    apply(Keybind::LeftFast, Transform::left, fast_scale, &mut camera);
-    apply(
-        Keybind::RightFast,
-        Transform::right,
-        fast_scale,
-        &mut camera,
-    );
-    apply(Keybind::DownFast, Transform::back, fast_scale, &mut camera);
+    apply(Keybind::Up, Transform::forward, scale);
+    apply(Keybind::Left, Transform::left, scale);
+    apply(Keybind::Right, Transform::right, scale);
+    apply(Keybind::Down, Transform::back, scale);
+    apply(Keybind::UpFast, Transform::forward, fast_scale);
+    apply(Keybind::LeftFast, Transform::left, fast_scale);
+    apply(Keybind::RightFast, Transform::right, fast_scale);
+    apply(Keybind::DownFast, Transform::back, fast_scale);
+    vel.vec /= time.delta_secs();
     if mouse_motion.delta.y != 0.0 && !focus.mouse_lock() {
         let mut translate = camera.forward().as_vec3() * MAT_WIDTH * mouse_motion.delta.y / 1024.0;
         if mouse_motion.unit == MouseScrollUnit::Line {
@@ -70,7 +77,7 @@ pub fn camera_translation(
         Vec3::new(W, 2.0 * W, W) - epsilon,
     );
     if keybinds.just_pressed(Keybind::Reset) {
-        **camera = default_cam_pos(peers.my_id.unwrap_or_default());
+        *camera = default_cam_pos(peers.my_id.unwrap_or_default());
     }
 }
 #[must_use]
