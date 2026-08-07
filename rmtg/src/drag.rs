@@ -2,9 +2,9 @@ use crate::CARD_THICKNESS;
 use crate::events::gravity::NewGravity;
 use crate::events::hover::Hovered;
 use crate::keybinds::{Keybind, Keybinds};
-use crate::physics::GRAVITY;
+use crate::physics::{GRAVITY, LIN_DAMPING};
 use crate::spatial::Spatial;
-use avian3d::prelude::LinearVelocity;
+use avian3d::prelude::{LinearDamping, LinearVelocity};
 use bevy::ecs::entity::EntityHash;
 use bevy::math::{Dir3, Vec3};
 use bevy::prelude::{
@@ -36,7 +36,10 @@ pub fn drag(
     if hovered.is_empty() {
         for ent in last_ents.drain() {
             commands.trigger(NewGravity::new(ent, GRAVITY));
-            commands.entity(ent).remove::<TargetPosition>();
+            commands
+                .entity(ent)
+                .remove::<TargetPosition>()
+                .insert(LinearDamping(LIN_DAMPING));
         }
         return;
     }
@@ -47,7 +50,10 @@ pub fn drag(
         *last = pos;
         for ent in last_ents.drain() {
             commands.trigger(NewGravity::new(ent, GRAVITY));
-            commands.entity(ent).remove::<TargetPosition>();
+            commands
+                .entity(ent)
+                .remove::<TargetPosition>()
+                .insert(LinearDamping(LIN_DAMPING));
         }
         return;
     }
@@ -69,17 +75,23 @@ pub fn drag(
                 commands.trigger(NewGravity::new(ent, 0.0));
                 let mut pos = t.translation + delta;
                 pos.y += 4.0 * CARD_THICKNESS;
-                commands.entity(ent).insert(TargetPosition { pos });
+                commands
+                    .entity(ent)
+                    .insert(TargetPosition { pos })
+                    .insert(LinearDamping(0.0));
                 pos
             };
             let delta = target - t.translation;
-            vel.0 = delta / time.delta_secs() * 1.0 / 8.0;
+            vel.0 = delta / (time.delta_secs() * 4.0);
         }
         *last = pos;
     } else {
         for ent in last_ents.drain() {
             commands.trigger(NewGravity::new(ent, GRAVITY));
-            commands.entity(ent).remove::<TargetPosition>();
+            commands
+                .entity(ent)
+                .remove::<TargetPosition>()
+                .insert(LinearDamping(LIN_DAMPING));
         }
     }
 }

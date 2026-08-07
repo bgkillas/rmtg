@@ -25,7 +25,8 @@ use bevy::ecs::schedule::IntoScheduleConfigs as _;
 use bevy::gizmos::AppGizmoBuilder as _;
 use bevy::image::{ImageFilterMode, ImagePlugin, ImageSamplerDescriptor};
 use bevy::settings::SettingsPlugin;
-use bevy::window::{PresentMode, Window, WindowPlugin};
+use bevy::window::{Window, WindowPlugin};
+use bevy_framepace::FramepacePlugin;
 use bevy_p2p::plugin::P2PPlugin;
 use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
 #[must_use]
@@ -38,7 +39,6 @@ pub fn app_run() -> AppExit {
                     title: "rmtg".to_owned(),
                     resizable: true,
                     fit_canvas_to_parent: true,
-                    present_mode: PresentMode::Immediate,
                     ..Window::default()
                 }),
                 ..WindowPlugin::default()
@@ -88,6 +88,7 @@ pub fn app_run() -> AppExit {
     app.add_plugins(SettingsPlugin::new(APP_NAME));
     app.add_plugins(P2PPlugin::<Msg>::new());
     app.add_plugins(Text3dPlugin::default());
+    app.add_plugins(FramepacePlugin);
     #[cfg(feature = "fps")]
     app.add_plugins(bevy::dev_tools::fps_overlay::FpsOverlayPlugin::default());
     #[cfg(feature = "colliders")]
@@ -115,14 +116,17 @@ pub fn app_run() -> AppExit {
     app.add_systems(
         Update,
         (
-            (
-                update_hover,
-                ((do_roll, update_rolling).chain(), drag, update_clone),
-            )
-                .chain(),
             (camera_rotation, camera_translation).chain(),
-            paste_card,
-        ),
+            (
+                (
+                    update_hover,
+                    ((do_roll, update_rolling).chain(), drag, update_clone),
+                )
+                    .chain(),
+                paste_card,
+            ),
+        )
+            .chain(),
     );
     app.add_systems(FixedUpdate, (receive_message, poll_clipboards));
     app.run()

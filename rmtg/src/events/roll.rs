@@ -7,8 +7,7 @@ use crate::shapes::{FaceNumber, Shape};
 use crate::{CARD_THICKNESS, MAT_HEIGHT};
 use avian3d::prelude::{AngularVelocity, CollisionLayers, LayerMask, LinearVelocity, Sleeping};
 use bevy::prelude::{
-    Children, Commands, Component, Entity, EntityEvent, GlobalTransform, On, Query, Transform,
-    With, Without,
+    Children, Commands, Component, Entity, EntityEvent, On, Query, Transform, With, Without,
 };
 use bevy_ecs::system::In;
 use rand::prelude::StdRng;
@@ -97,13 +96,14 @@ pub struct StoppedRoll {
 }
 fn stopped_roll(
     In(entity): In<Entity>,
-    query: Query<(&Children, &Shape), Without<FaceNumber>>,
-    faces: Query<&GlobalTransform, With<FaceNumber>>,
+    query: Query<(&Transform, &Children, &Shape), Without<FaceNumber>>,
+    faces: Query<&Transform, With<FaceNumber>>,
     mut commands: Commands,
 ) {
-    let (children, shape) = query.get(entity).unwrap();
+    let (transform, children, shape) = query.get(entity).unwrap();
     for (i, &face) in children[1..].iter().enumerate() {
-        let global = faces.get(face).unwrap();
+        let trans = faces.get(face).unwrap();
+        let global = transform.mul_transform(*trans);
         let forward = global.forward();
         let val = forward.x.hypot(forward.z);
         if val < 1.0 / 256.0
