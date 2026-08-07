@@ -15,7 +15,7 @@ pub struct Spatial<'w, 's> {
     pub camera: Single<
         'w,
         's,
-        (&'static Camera, &'static mut Transform),
+        (&'static Camera, &'static Transform),
         (
             With<Camera3d>,
             Without<Shape>,
