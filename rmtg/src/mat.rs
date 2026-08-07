@@ -31,7 +31,7 @@ pub fn create_mats(mut assets: Asset, mut commands: Commands) {
             transform,
             right,
             PLAYER[i],
-            Peer::new(u32::try_from(i).unwrap()),
+            Peer::new(i),
         );
     }
 }

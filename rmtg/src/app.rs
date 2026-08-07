@@ -8,7 +8,7 @@ use crate::events::roll::{do_roll, update_rolling};
 use crate::focus::Menu;
 use crate::keybinds::KeybindsList;
 use crate::mat::create_mats;
-use crate::net::{Msg, Peers, receive_message};
+use crate::net::{Msg, Peers, net_update, receive_message};
 use crate::paste::paste_card;
 use crate::startup::{spawn_objects, startup};
 use crate::{APP_NAME, FONT, USER_AGENT};
@@ -128,7 +128,10 @@ pub fn app_run() -> AppExit {
         )
             .chain(),
     );
-    app.add_systems(FixedUpdate, (receive_message, poll_clipboards));
+    app.add_systems(
+        FixedUpdate,
+        ((net_update, receive_message).chain(), poll_clipboards),
+    );
     app.run()
 }
 #[derive(Resource)]

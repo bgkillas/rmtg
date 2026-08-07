@@ -21,6 +21,7 @@ pub mod pile;
 pub mod shapes;
 pub mod spatial;
 pub mod startup;
+pub mod ui;
 pub const APP_NAME: &str = "com.github.bgkillas.rmtg";
 pub const USER_AGENT: &str = concat!("rmtg/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = CARD_HEIGHT * IMAGE_WIDTH / IMAGE_HEIGHT;
@@ -49,6 +50,9 @@ pub const FLOOR_COLOR: Color = Color::srgb_u8(103, 73, 40);
 pub const CARD_STOCK_COLOR: Color = Color::srgb_u8(0, 0, 0);
 pub const WORLD_FONT_SIZE: f32 = 280.0;
 pub const FONT: &[u8] = include_bytes!("../../assets/noto.ttf");
+pub const FONT_SIZE: f32 = 32.0;
+pub const FONT_HEIGHT: f32 = FONT_SIZE;
+pub const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
 #[cfg(target_family = "wasm")]
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
 fn wasm_hook() {

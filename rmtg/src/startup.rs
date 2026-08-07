@@ -9,6 +9,8 @@ use crate::shapes::icosahedron::Icosahedron;
 use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
 use crate::shapes::{OUTLINE_COLOR, ShapeMesh as _};
+use crate::ui::chat::chat_bundle;
+use crate::ui::esc_menu::esc_menu_bundle;
 use crate::{
     CARD_HEIGHT, CARD_STOCK_COLOR, CARD_THICKNESS, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT, T,
     W, WALL_COLOR,
@@ -90,6 +92,8 @@ pub fn startup(
         },
         CameraVelocity::default(),
     ));
+    commands.spawn(chat_bundle());
+    commands.spawn(esc_menu_bundle());
 }
 pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
     for i in 0..4 {
