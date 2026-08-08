@@ -269,12 +269,12 @@ impl CardInfo {
         }
     }
     #[must_use]
-    pub fn image(&self) -> Handle<Image> {
-        self.handles.as_ref().unwrap().image()
+    pub fn image(&self) -> Option<Handle<Image>> {
+        self.handles.as_ref().map(Handles::image)
     }
     #[must_use]
-    pub fn material(&self) -> Handle<StandardMaterial> {
-        self.handles.as_ref().unwrap().material()
+    pub fn material(&self) -> Option<Handle<StandardMaterial>> {
+        self.handles.as_ref().map(Handles::material)
     }
 }
 impl Handles {
@@ -666,12 +666,12 @@ impl SubCard {
     pub fn image_node(&self) -> ImageNode {
         match self.data.layout {
             Layout::Flip if self.flipped => ImageNode {
-                image: self.data.front.image(),
+                image: self.data.front.image().unwrap(),
                 flip_x: true,
                 flip_y: true,
                 ..ImageNode::default()
             },
-            _ => ImageNode::new(self.face().image()),
+            _ => ImageNode::new(self.face().image().unwrap()),
         }
     }
 }

@@ -60,7 +60,7 @@ pub fn react_paste_card(
     }
 }
 fn on_paste_card_uuid(
-    In(is_ok): In<Result<(SubCard, Image, Option<Image>, Vec3), Uuid>>,
+    In(is_ok): In<Result<(SubCard, Option<Image>, Option<Image>, Vec3), Uuid>>,
     mut commands: Commands,
 ) {
     match is_ok {
@@ -69,7 +69,7 @@ fn on_paste_card_uuid(
     }
 }
 fn on_paste_card_set(
-    In(is_ok): In<Result<(SubCard, Image, Option<Image>, Vec3), (String, u16)>>,
+    In(is_ok): In<Result<(SubCard, Option<Image>, Option<Image>, Vec3), (String, u16)>>,
     mut commands: Commands,
 ) {
     match is_ok {
@@ -78,7 +78,7 @@ fn on_paste_card_set(
     }
 }
 fn on_paste_card(
-    In((mut card, front, back, pos)): In<(SubCard, Image, Option<Image>, Vec3)>,
+    In((mut card, front, back, pos)): In<(SubCard, Option<Image>, Option<Image>, Vec3)>,
     mut asset: Asset,
     mut commands: Commands,
 ) {

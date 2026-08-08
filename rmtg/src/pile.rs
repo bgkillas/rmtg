@@ -139,7 +139,7 @@ impl Pile {
         (
             Transform::from_xyz(0.0, self.thickness() / 2.0, 0.0)
                 .looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
-            MeshMaterial3d(self.first().face().material()),
+            MeshMaterial3d(self.first().face().material().unwrap()),
             Mesh3d(asset.card.stock.clone()),
             CardTop,
         )

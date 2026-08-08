@@ -92,7 +92,7 @@ impl SubCard {
         client: Client,
         iter: &[Uuid],
         quality: Quality,
-    ) -> JoinSet<Result<(Self, Image, Option<Image>), Uuid>> {
+    ) -> JoinSet<Result<(Self, Option<Image>, Option<Image>), Uuid>> {
         let mut set = JoinSet::new();
         for &uuid in iter {
             set.spawn(Self::get(client.clone(), uuid, quality));
@@ -103,7 +103,7 @@ impl SubCard {
         client: Client,
         oracle: Uuid,
         quality: Quality,
-    ) -> Option<JoinSet<Result<(Self, Image, Option<Image>), Uuid>>> {
+    ) -> Option<JoinSet<Result<(Self, Option<Image>, Option<Image>), Uuid>>> {
         let mut set = JoinSet::new();
         for i in 1.. {
             while SEARCH_THROTTLE.try_wait().is_err() {
@@ -136,13 +136,12 @@ impl SubCard {
         client: Client,
         json: JsonValue,
         quality: Quality,
-    ) -> Result<(Self, Image, Option<Image>), Uuid> {
+    ) -> Result<(Self, Option<Image>, Option<Image>), Uuid> {
         let uuid = Uuid::parse_str(json["id"].as_str().unwrap_or_default())
             .ok()
             .unwrap_or_default();
-        if let Some((card, has_back)) = SubCard::from_scryfall(&json, uuid)
-            && let Some(image) = get_image(&client, uuid, quality, "front").await
-        {
+        if let Some((card, has_back)) = SubCard::from_scryfall(&json, uuid) {
+            let image = get_image(&client, uuid, quality, "front").await;
             let back = if has_back {
                 Some(
                     get_image(&client, uuid, quality, "back")
@@ -161,7 +160,7 @@ impl SubCard {
         client: Client,
         uuid: Uuid,
         quality: Quality,
-    ) -> Result<(Self, Image, Option<Image>), Uuid> {
+    ) -> Result<(Self, Option<Image>, Option<Image>), Uuid> {
         async fn get_card(client: &Client, uuid: Uuid) -> Option<(SubCard, bool)> {
             while CARDS_THROTTLE.try_wait().is_err() {
                 sleep(SLEEP_TIME).await;
@@ -175,7 +174,7 @@ impl SubCard {
             let json = parse(&json_raw).ok()?;
             SubCard::from_scryfall(&json, uuid)
         }
-        if let (Some((card, has_back)), Some(image)) = tokio::join!(
+        if let (Some((card, has_back)), image) = tokio::join!(
             get_card(&client, uuid),
             get_image(&client, uuid, quality, "front")
         ) {
@@ -198,7 +197,7 @@ impl SubCard {
         set: &str,
         cn: u16,
         quality: Quality,
-    ) -> Result<(Self, Image, Option<Image>), (String, u16)> {
+    ) -> Result<(Self, Option<Image>, Option<Image>), (String, u16)> {
         async fn get_card(client: &Client, set: &str, cn: u16) -> Option<(SubCard, bool)> {
             while CARDS_THROTTLE.try_wait().is_err() {
                 sleep(SLEEP_TIME).await;
@@ -213,9 +212,8 @@ impl SubCard {
             let uuid = Uuid::parse_str(json["id"].as_str()?).ok()?;
             SubCard::from_scryfall(&json, uuid)
         }
-        if let Some((card, has_back)) = get_card(&client, set, cn).await
-            && let Some(image) = get_image(&client, card.id.id, quality, "front").await
-        {
+        if let Some((card, has_back)) = get_card(&client, set, cn).await {
+            let image = get_image(&client, card.id.id, quality, "front").await;
             let back = if has_back {
                 Some(
                     get_image(&client, card.id.id, quality, "back")

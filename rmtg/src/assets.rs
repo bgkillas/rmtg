@@ -30,8 +30,10 @@ impl Asset<'_> {
             ..StandardMaterial::default()
         })
     }
-    pub fn register(&mut self, card: &mut SubCard, front: Image, back: Option<Image>) {
-        if let Some(back_image) = back {
+    pub fn register(&mut self, card: &mut SubCard, front: Option<Image>, back: Option<Image>) {
+        if let Some(back_data) = &mut card.data.back
+            && let Some(back_image) = back
+        {
             let image = self.images.add(back_image);
             let material = self.materials.add(StandardMaterial {
                 base_color_texture: Some(image.clone()),
@@ -39,15 +41,17 @@ impl Asset<'_> {
                 unlit: true,
                 ..StandardMaterial::default()
             });
-            card.data.back.as_mut().unwrap().handles = Some(Handles { image, material });
+            back_data.handles = Some(Handles { image, material });
         }
-        let image = self.images.add(front);
-        let material = self.materials.add(StandardMaterial {
-            base_color_texture: Some(image.clone()),
-            alpha_mode: AlphaMode::Premultiplied,
-            unlit: true,
-            ..StandardMaterial::default()
-        });
-        card.data.front.handles = Some(Handles { image, material });
+        if let Some(front_image) = front {
+            let image = self.images.add(front_image);
+            let material = self.materials.add(StandardMaterial {
+                base_color_texture: Some(image.clone()),
+                alpha_mode: AlphaMode::Premultiplied,
+                unlit: true,
+                ..StandardMaterial::default()
+            });
+            card.data.front.handles = Some(Handles { image, material });
+        }
     }
 }
