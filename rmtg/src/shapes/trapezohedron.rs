@@ -1,5 +1,10 @@
+use crate::CARD_THICKNESS;
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
+use avian3d::parry::glamx::Vec3;
+use bevy::math::Dir3;
 use bevy::mesh::{Mesh, MeshBuilder};
+use bevy::prelude::Transform;
+use core::direct_const_arg;
 use std::f32::consts::GOLDEN_RATIO;
 #[derive(Clone, Copy)]
 pub struct Trapezohedron {
@@ -14,6 +19,22 @@ impl ShapeMesh for Trapezohedron {
     const SHAPE: Shape = Shape::Trapezohedron;
     fn text_size(height: f32) -> f32 {
         height / 2.0
+    }
+    fn face(old: [Vec3; direct_const_arg!(Self::FACE_VERTICES)], rev: bool) -> Transform {
+        let elems = [old[0], old[1], old[3]];
+        let pos = elems.into_iter().sum::<Vec3>() / elems.len() as f32;
+        let norm =
+            Dir3::try_from((elems[1] - elems[0]).cross(elems[2] - elems[0]).normalize()).unwrap();
+        let end = elems[0];
+        let (n, l) = pos.normalize_and_length();
+        let pos_epsilon = n * if rev {
+            l - CARD_THICKNESS / 64.0
+        } else {
+            l + CARD_THICKNESS / 64.0
+        };
+        let mut trans = Transform::from_translation(pos_epsilon).looking_to(-norm, end - pos);
+        trans.translation += trans.down() * CARD_THICKNESS * 10.0;
+        trans
     }
     fn convert_height(height: f32) -> f32 {
         height * ((25.0f32 + 11.0f32 * 5.0f32.sqrt()) / 10.0f32).sqrt()
@@ -35,6 +56,7 @@ impl ShapeMesh for Trapezohedron {
         ]
     }
     fn vertices(one: f32) -> [[f32; 3]; 12] {
+        const POLE_HEIGHT: f32 = 2.0 / 3.0;
         let vc1 = GOLDEN_RATIO * one;
         let vc2 = vc1 + one;
         let vc0 = vc1 - one;
@@ -47,8 +69,8 @@ impl ShapeMesh for Trapezohedron {
             [one, one, -one],
             [-one, -one, one],
             [-one, -one, -one],
-            [vc2, -vc1, 0.0],
-            [-vc2, vc1, 0.0],
+            [vc2 * POLE_HEIGHT, -vc1 * POLE_HEIGHT, 0.0],
+            [-vc2 * POLE_HEIGHT, vc1 * POLE_HEIGHT, 0.0],
             [vc0, vc1, 0.0],
             [-vc0, -vc1, 0.0],
         ]

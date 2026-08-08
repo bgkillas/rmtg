@@ -87,23 +87,6 @@ pub struct FaceNumber {
 fn average_normalized<const N: usize>(elems: [[f32; 3]; N]) -> Vec3 {
     elems.map(Vec3::from).into_iter().sum::<Vec3>().normalize()
 }
-fn face<const N: usize>(elems: [Vec3; N], rev: bool) -> Transform {
-    let pos = elems.into_iter().sum::<Vec3>() / N as f32;
-    let norm =
-        Dir3::try_from((elems[1] - elems[0]).cross(elems[2] - elems[0]).normalize()).unwrap();
-    let end = if N.is_multiple_of(2) {
-        (elems[0] + elems[1]) / 2.0
-    } else {
-        elems[0]
-    };
-    let (n, l) = pos.normalize_and_length();
-    let pos_epsilon = n * if rev {
-        l - CARD_THICKNESS / 64.0
-    } else {
-        l + CARD_THICKNESS / 64.0
-    };
-    Transform::from_translation(pos_epsilon).looking_to(-norm, end - pos)
-}
 pub trait NewShape: MeshBuilder + Sized + Copy {
     fn from_height(height: f32) -> Self;
 }
@@ -195,7 +178,25 @@ pub trait ShapeMesh: NewShape {
         let v = Self::oriented_vertices(Self::convert_height(height)).map(Vec3::from);
         Self::face_indices()
             .map(|l| l.map(|i| v[usize::from(i)]))
-            .map(|vec| face(vec, Self::IS_REVERSED))
+            .map(|vec| Self::face(vec, Self::IS_REVERSED))
+    }
+    #[must_use]
+    fn face(elems: [Vec3; direct_const_arg!(Self::FACE_VERTICES)], rev: bool) -> Transform {
+        let pos = elems.into_iter().sum::<Vec3>() / Self::FACE_VERTICES as f32;
+        let norm =
+            Dir3::try_from((elems[1] - elems[0]).cross(elems[2] - elems[0]).normalize()).unwrap();
+        let end = if Self::FACE_VERTICES.is_multiple_of(2) {
+            (elems[0] + elems[1]) / 2.0
+        } else {
+            elems[0]
+        };
+        let (n, l) = pos.normalize_and_length();
+        let pos_epsilon = n * if rev {
+            l - CARD_THICKNESS / 64.0
+        } else {
+            l + CARD_THICKNESS / 64.0
+        };
+        Transform::from_translation(pos_epsilon).looking_to(-norm, end - pos)
     }
     #[must_use]
     fn convert_height(height: f32) -> f32;
