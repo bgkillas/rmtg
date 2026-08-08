@@ -2,16 +2,19 @@ use crate::assets::Asset;
 use crate::events::hover::Hoverable;
 use crate::physics::physics_base;
 use crate::shapes::deck::DeckOutline;
-use crate::shapes::{NewShape as _, OUTLINE_COLOR, OUTLINE_DEPTH_BIAS};
+use crate::shapes::{NewShape as _, OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, ShapeOutline as _};
 use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH};
 use avian3d::prelude::Collider;
 use bevy::ecs::children;
 use bevy::math::{Dir3, Quat, Vec3};
 use bevy::mesh::{
-    CircularMeshUvMode, CircularSectorMeshBuilder, ExtrusionBuilder, Mesh, Mesh3d, MeshBuilder as _,
+    CircularMeshUvMode, CircularSectorMeshBuilder, ExtrusionBuilder, Mesh, Mesh3d,
+    MeshBuilder as _, RingMeshBuilder,
 };
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{Bundle, CircularSector, Component, InheritedVisibility, Rectangle, Transform};
+use bevy::prelude::{
+    Bundle, CircularSector, Component, InheritedVisibility, Rectangle, Ring, Transform,
+};
 use bitcode::{Decode, Encode};
 use importer::card::{Card, CardIter, CardIterMut, SubCard};
 use importer::{CARD_CORNER_RADIUS, bitcode};
@@ -92,11 +95,19 @@ impl Pile {
         left.merge(&front).unwrap();
         left.merge(&back).unwrap();
         for corner in 0..4 {
-            let mut sector = ExtrusionBuilder::<CircularSector> {
-                base_builder: CircularSectorMeshBuilder {
-                    sector: CircularSector::new(del, PI / 4.0),
-                    resolution: 32,
-                    uv_mode: CircularMeshUvMode::default(),
+            let resolution = 32;
+            let mut sector = ExtrusionBuilder::<Ring<CircularSector>> {
+                base_builder: RingMeshBuilder {
+                    inner_shape_builder: CircularSectorMeshBuilder {
+                        sector: CircularSector::new(del - DeckOutline::THICKNESS / 2.0, PI / 4.0),
+                        resolution,
+                        uv_mode: CircularMeshUvMode::default(),
+                    },
+                    outer_shape_builder: CircularSectorMeshBuilder {
+                        sector: CircularSector::new(del, PI / 4.0),
+                        resolution,
+                        uv_mode: CircularMeshUvMode::default(),
+                    },
                 },
                 half_depth: self.thickness() / 2.0,
                 segments: 1,
@@ -104,14 +115,16 @@ impl Pile {
             .build();
             let wid = CARD_WIDTH / 2.0;
             let hei = CARD_HEIGHT / 2.0;
-            let one = self.thickness();
             let vec = match corner {
-                0 => Vec3::new(wid - del, one, hei - del),
-                1 => Vec3::new(del - wid, one, hei - del),
-                2 => Vec3::new(del - wid, one, del - hei),
-                3 => Vec3::new(wid - del, one, del - hei),
+                0 => Vec3::new(wid - del, 0.0, hei - del),
+                1 => Vec3::new(del - wid, 0.0, hei - del),
+                2 => Vec3::new(del - wid, 0.0, del - hei),
+                3 => Vec3::new(wid - del, 0.0, del - hei),
                 _ => unreachable!(),
             };
+            let rotation = Quat::from_rotation_y(PI / 4.0 - corner as f32 * PI / 2.0)
+                * Quat::from_rotation_x(PI / 2.0);
+            sector.rotate_by(rotation);
             sector.translate_by(vec);
             left.merge(&sector).unwrap();
         }
