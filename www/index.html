@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta http-equiv="Content-Security-Policy" content="connect-src 'self' api.scryfall.com embed.scryfall.com; img-src 'self' *.scryfall.io; style-src 'self' embed.scryfall.com 'nonce-canv' 'unsafe-inline'; script-src 'self' embed.scryfall.com 'nonce-canv' 'wasm-unsafe-eval'; font-src 'self' embed.scryfall.com;">
     <link rel="modulepreload" href="pkg/rmtg_lib.js" as="script">
     <link rel="preload" href="pkg/rmtg_lib_bg.wasm" as="fetch" type="application/wasm" crossorigin>
     <meta charset="utf-8">
