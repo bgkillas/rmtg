@@ -1,6 +1,7 @@
 use crate::paste::react_paste_card;
 use bevy::clipboard::{Clipboard, ClipboardError, ClipboardRead};
 use bevy::image::Image;
+use bevy::log::warn;
 use bevy::prelude::{Commands, Event, On, ResMut, Resource};
 use std::mem;
 use std::sync::{Arc, Mutex};
@@ -67,11 +68,10 @@ pub fn get_clipboard(
         ClipboardType::Text => {
             let fetch = clipboard.fetch_text();
             match fetch {
-                ClipboardRead::Ready(maybe_value) => {
-                    if let Ok(value) = maybe_value {
-                        on.event.run(&mut commands, value);
-                    }
-                }
+                ClipboardRead::Ready(maybe_value) => match maybe_value {
+                    Ok(mut value) => on.event.run(&mut commands, mem::take(&mut value)),
+                    Err(e) => warn!("{e:?}"),
+                },
                 ClipboardRead::Pending(poll) => polls.text.push((poll, on.event)),
                 ClipboardRead::Taken => unreachable!(),
             }
@@ -88,8 +88,9 @@ pub fn get_clipboard(
 pub fn poll_clipboards(mut polls: ResMut<PollClipboard>, mut commands: Commands) {
     polls.text.retain_mut(|&mut (ref mut poll, event)| {
         if let Some(inner) = &mut *poll.lock().unwrap() {
-            if let Ok(value) = inner {
-                event.run(&mut commands, mem::take(value));
+            match inner {
+                Ok(value) => event.run(&mut commands, mem::take(value)),
+                Err(e) => warn!("{e:?}"),
             }
             false
         } else {

@@ -5,10 +5,12 @@ use crate::shapes::{FaceNumber, Shape};
 use avian3d::spatial_query::{RayHitData, SpatialQuery, SpatialQueryFilter};
 use bevy::camera::{Camera, Camera3d};
 use bevy::ecs::system::SystemParam;
-use bevy::math::{Ray3d, Vec3};
+use bevy::math::{Ray3d, Vec2, Vec3};
 use bevy::prelude::{GlobalTransform, Single, Transform, With};
 use bevy::window::{PrimaryWindow, Window};
 use bevy_ecs::query::Without;
+use bevy_ecs::resource::Resource;
+use bevy_ecs::system::{Res, ResMut};
 #[derive(SystemParam)]
 pub struct Spatial<'w, 's> {
     pub spatial: SpatialQuery<'w, 's>,
@@ -25,6 +27,16 @@ pub struct Spatial<'w, 's> {
         ),
     >,
     pub window: Single<'w, 's, &'static Window, With<PrimaryWindow>>,
+    pub cursor: Res<'w, Cursor>,
+}
+#[derive(Resource, Default)]
+pub struct Cursor {
+    pub pos: Vec2,
+}
+pub fn update_cursor(window: Single<&Window, With<PrimaryWindow>>, mut cursor: ResMut<Cursor>) {
+    if let Some(cur) = window.cursor_position() {
+        cursor.pos = cur;
+    }
 }
 impl Spatial<'_, '_> {
     #[must_use]
@@ -41,12 +53,11 @@ impl Spatial<'_, '_> {
     }
     #[must_use]
     pub fn cam_ray(&self) -> Option<Ray3d> {
-        let cursor_position = self.window.cursor_position()?;
         self.camera
             .0
             .viewport_to_world(
                 &GlobalTransform::from_isometry(self.camera.1.to_isometry()),
-                cursor_position,
+                self.cursor.pos,
             )
             .ok()
     }

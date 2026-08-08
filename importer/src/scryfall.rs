@@ -4,16 +4,20 @@ use crate::id::Id;
 use crate::image::parse_bytes;
 use bevy::image::Image;
 use jzon::{JsonValue, parse};
+use ratelimit::Ratelimiter;
 use reqwest::Client;
 use std::mem;
 use std::str::FromStr as _;
 use std::sync::LazyLock;
 use std::time::Duration;
-use stream_throttle::{ThrottlePool, ThrottleRate};
 use tokio::task::JoinSet;
+#[cfg(not(target_family = "wasm"))]
+use tokio::time::sleep;
 #[cfg(target_family = "wasm")]
 use tokio_with_wasm as tokio;
 use uuid::Uuid;
+#[cfg(target_family = "wasm")]
+use wasmtimer::tokio::sleep;
 const URL: &str = "api.scryfall.com";
 const CARD_URL: &str = "cards.scryfall.io";
 #[derive(Clone, Copy)]
@@ -57,10 +61,31 @@ async fn get_image(client: &Client, uuid: Uuid, quality: Quality, side: &str) ->
     let bytes = request.bytes().await.ok()?;
     parse_bytes(&bytes)
 }
-static CARDS_THROTTLE: LazyLock<ThrottlePool> =
-    LazyLock::new(|| ThrottlePool::new(ThrottleRate::new(9, Duration::new(1, 0))));
-static SEARCH_THROTTLE: LazyLock<ThrottlePool> =
-    LazyLock::new(|| ThrottlePool::new(ThrottleRate::new(1, Duration::new(1, 0))));
+#[cfg(not(target_family = "wasm"))]
+pub type Clock = ratelimit::StdClock;
+#[cfg(target_family = "wasm")]
+pub struct Clock {
+    instant: wasmtimer::std::Instant,
+}
+#[cfg(target_family = "wasm")]
+impl Clock {
+    pub fn new() -> Self {
+        Self {
+            instant: wasmtimer::std::Instant::now(),
+        }
+    }
+}
+#[cfg(target_family = "wasm")]
+impl ratelimit::Clock for Clock {
+    fn elapsed(&self) -> Duration {
+        self.instant.elapsed()
+    }
+}
+static CARDS_THROTTLE: LazyLock<Ratelimiter<Clock>> =
+    LazyLock::new(|| Ratelimiter::with_clock(9, Clock::new()));
+static SEARCH_THROTTLE: LazyLock<Ratelimiter<Clock>> =
+    LazyLock::new(|| Ratelimiter::with_clock(1, Clock::new()));
+const SLEEP_TIME: Duration = Duration::new(0, 1_048_576);
 impl SubCard {
     #[must_use]
     pub fn get_list(
@@ -81,16 +106,18 @@ impl SubCard {
     ) -> Option<JoinSet<Result<(Self, Image, Option<Image>), Uuid>>> {
         let mut set = JoinSet::new();
         for i in 1.. {
-            let lock = SEARCH_THROTTLE.queue_with_hold().await;
+            while SEARCH_THROTTLE.try_wait().is_err() {
+                sleep(SLEEP_TIME).await;
+            }
             let request = client
-                    .get(format!(
-                        "https://{URL}/cards/search?q=oracleid%3A{oracle}+game%3Apaper&unique=prints&page={i}"
-                    ))
-                    .send()
-                    .await
-                    .ok()?;
+                .get(format!(
+                    "https://{URL}/cards/search?q=oracleid%3D{oracle}+game%3Dpaper+unique%3Aprints"
+                ))
+                .query(&(("page", i),))
+                .send()
+                .await
+                .ok()?;
             let json_raw = request.text().await.ok()?;
-            drop(lock);
             let mut json = parse(&json_raw).ok()?;
             for card_json in json["data"].as_array_mut()? {
                 set.spawn(Self::get_json(
@@ -136,14 +163,15 @@ impl SubCard {
         quality: Quality,
     ) -> Result<(Self, Image, Option<Image>), Uuid> {
         async fn get_card(client: &Client, uuid: Uuid) -> Option<(SubCard, bool)> {
-            let lock = CARDS_THROTTLE.queue_with_hold().await;
+            while CARDS_THROTTLE.try_wait().is_err() {
+                sleep(SLEEP_TIME).await;
+            }
             let request = client
                 .get(format!("https://{URL}/cards/{uuid}"))
                 .send()
                 .await
                 .ok()?;
             let json_raw = request.text().await.ok()?;
-            drop(lock);
             let json = parse(&json_raw).ok()?;
             SubCard::from_scryfall(&json, uuid)
         }
@@ -165,14 +193,6 @@ impl SubCard {
             Err(uuid)
         }
     }
-    pub async fn get_set_cn_owned(
-        client: Client,
-        set: String,
-        cn: u16,
-        quality: Quality,
-    ) -> Result<(Self, Image, Option<Image>), (String, u16)> {
-        Self::get_set_cn(client, &set, cn, quality).await
-    }
     pub async fn get_set_cn(
         client: Client,
         set: &str,
@@ -180,14 +200,15 @@ impl SubCard {
         quality: Quality,
     ) -> Result<(Self, Image, Option<Image>), (String, u16)> {
         async fn get_card(client: &Client, set: &str, cn: u16) -> Option<(SubCard, bool)> {
-            let lock = CARDS_THROTTLE.queue_with_hold().await;
+            while CARDS_THROTTLE.try_wait().is_err() {
+                sleep(SLEEP_TIME).await;
+            }
             let request = client
                 .get(format!("https://{URL}/cards/{set}/{cn}"))
                 .send()
                 .await
                 .ok()?;
             let json_raw = request.text().await.ok()?;
-            drop(lock);
             let json = parse(&json_raw).ok()?;
             let uuid = Uuid::parse_str(json["id"].as_str()?).ok()?;
             SubCard::from_scryfall(&json, uuid)

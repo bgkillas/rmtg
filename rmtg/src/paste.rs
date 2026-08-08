@@ -44,7 +44,7 @@ pub fn react_paste_card(
         let client_owned = client.client.clone();
         let owned = set.to_owned();
         runtime.spawn_hook(on_paste_card_set, async move {
-            SubCard::get_set_cn_owned(client_owned, owned, cn, QUALITY)
+            SubCard::get_set_cn(client_owned, &owned, cn, QUALITY)
                 .await
                 .map(|(c, i, b)| (c, i, b, pos))
         });

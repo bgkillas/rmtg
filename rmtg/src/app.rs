@@ -10,13 +10,14 @@ use crate::keybinds::KeybindsList;
 use crate::mat::create_mats;
 use crate::net::{Msg, Peers, net_update, receive_message};
 use crate::paste::paste_card;
+use crate::spatial::{Cursor, update_cursor};
 use crate::startup::{spawn_objects, startup};
 use crate::{APP_NAME, FONT, USER_AGENT};
 use avian3d::PhysicsPlugins;
 use bevy::DefaultPlugins;
 use bevy::app::{
-    App, AppExit, FixedUpdate, PluginGroup as _, Startup, TaskPoolOptions, TaskPoolPlugin,
-    TaskPoolThreadAssignmentPolicy, Update,
+    App, AppExit, FixedUpdate, PluginGroup as _, PreUpdate, Startup, TaskPoolOptions,
+    TaskPoolPlugin, TaskPoolThreadAssignmentPolicy, Update,
 };
 use bevy::asset::{AssetMetaCheck, AssetPlugin};
 use bevy::ecs::resource::Resource;
@@ -111,6 +112,7 @@ pub fn app_run() -> AppExit {
     app.init_resource::<KeybindsList>();
     app.init_resource::<Peers>();
     app.init_resource::<Client>();
+    app.init_resource::<Cursor>();
     add_events(&mut app);
     app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
     app.add_systems(
@@ -128,6 +130,7 @@ pub fn app_run() -> AppExit {
         )
             .chain(),
     );
+    app.add_systems(PreUpdate, update_cursor);
     app.add_systems(
         FixedUpdate,
         ((net_update, receive_message).chain(), poll_clipboards),
