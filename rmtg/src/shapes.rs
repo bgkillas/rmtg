@@ -37,7 +37,7 @@ pub const OUTLINE_COLOR: Color = Color::BLACK;
 pub const OUTLINE_DEPTH_BIAS: f32 = 1.0 / 4096.0;
 pub const OUTLINE_SUBDIVISIONS: u32 = 5;
 pub const OUTLINE_RESOLUTION: u32 = 32;
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Debug)]
 pub enum Shape {
     Cube,
     Dodecahedron,

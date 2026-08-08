@@ -26,9 +26,9 @@ impl ShapeMesh for Cube {
             [0, 1, 2, 5],
             [0, 3, 1, 4],
             [0, 2, 3, 6],
+            [7, 5, 4, 1],
             [7, 6, 5, 2],
             [7, 4, 6, 3],
-            [7, 5, 4, 1],
         ]
     }
     fn vertices(one: f32) -> [[f32; 3]; Self::VERTICES] {
