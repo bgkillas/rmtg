@@ -1,7 +1,9 @@
 use crate::CARD_THICKNESS;
-use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
+use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline, average_normalized};
+use avian3d::parry::glamx::{Quat, Vec3};
 use avian3d::prelude::Collider;
 use bevy::mesh::{Mesh, MeshBuilder};
+use core::direct_const_arg;
 #[derive(Clone, Copy)]
 pub struct Tetrahedron {
     pub unit_length: f32,
@@ -35,6 +37,14 @@ impl ShapeMesh for Tetrahedron {
     }
     fn convert_to_triangles(face: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES] {
         [face]
+    }
+    fn oriented_vertices(one: f32) -> [[f32; 3]; direct_const_arg!(Self::VERTICES)] {
+        let vertices = Self::vertices(one);
+        let dir = Quat::from_rotation_arc(
+            average_normalized(Self::face_indices()[3].map(|i| vertices[usize::from(i)])),
+            -Vec3::Y,
+        );
+        vertices.map(|p| dir * Vec3::from(p)).map(|v| v.to_array())
     }
     fn unit_length(self) -> f32 {
         self.unit_length
