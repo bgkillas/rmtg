@@ -1,4 +1,4 @@
-use crate::assets::{Asset, CardBase, TextMesh};
+use crate::assets::{Asset, CardBase};
 use crate::camera::{CameraVelocity, default_cam_pos};
 use crate::net::Peer;
 use crate::physics::WorldLayer;
@@ -31,7 +31,6 @@ use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Commands, Component, Cuboid, Msaa, Rectangle, ResMut, Transform};
 use bevy::text::Font;
-use bevy_rich_text3d::TextAtlas;
 use importer::image::parse_bytes;
 use std::f32::consts::PI;
 pub fn startup(
@@ -43,12 +42,6 @@ pub fn startup(
     mut light: ResMut<GlobalAmbientLight>,
 ) {
     light.brightness = 100.0;
-    let mesh = materials.add(StandardMaterial {
-        base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
-        alpha_mode: AlphaMode::Blend,
-        unlit: true,
-        ..StandardMaterial::default()
-    });
     let stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
     let back_img = parse_bytes(include_bytes!("../../assets/back.png")).unwrap();
     let back = materials.add(StandardMaterial {
@@ -63,7 +56,6 @@ pub fn startup(
         ..StandardMaterial::default()
     });
     commands.insert_resource(CardBase { stock, back, color });
-    commands.insert_resource(TextMesh { mesh });
     let font = Font::from_bytes(FONT.to_vec());
     fonts.insert(AssetId::<Font>::DEFAULT_UUID, font).unwrap();
     commands.spawn((

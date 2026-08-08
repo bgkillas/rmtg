@@ -163,7 +163,7 @@ pub trait ShapeMesh: NewShape {
                     t,
                     Text3d::new(Self::face_string(i)),
                     Mesh3d::default(),
-                    MeshMaterial3d(asset.text_mesh.mesh.clone()),
+                    MeshMaterial3d(asset.text()),
                     Text3dStyling {
                         size: WORLD_FONT_SIZE,
                         anchor: TextAnchor::CENTER,

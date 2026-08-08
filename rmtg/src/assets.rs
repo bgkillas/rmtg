@@ -6,18 +6,14 @@ use bevy::material::AlphaMode;
 use bevy::mesh::Mesh;
 use bevy::pbr::StandardMaterial;
 use bevy::prelude::{Res, ResMut, Resource};
+use bevy_rich_text3d::TextAtlas;
 use importer::card::{Handles, SubCard};
 #[derive(SystemParam)]
 pub struct Asset<'w> {
     pub meshes: ResMut<'w, Assets<Mesh>>,
     pub images: ResMut<'w, Assets<Image>>,
     pub materials: ResMut<'w, Assets<StandardMaterial>>,
-    pub text_mesh: Res<'w, TextMesh>,
     pub card: Res<'w, CardBase>,
-}
-#[derive(Resource)]
-pub struct TextMesh {
-    pub mesh: Handle<StandardMaterial>,
 }
 #[derive(Resource)]
 pub struct CardBase {
@@ -26,6 +22,14 @@ pub struct CardBase {
     pub color: Handle<StandardMaterial>,
 }
 impl Asset<'_> {
+    pub fn text(&mut self) -> Handle<StandardMaterial> {
+        self.materials.add(StandardMaterial {
+            base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
+            alpha_mode: AlphaMode::Blend,
+            unlit: true,
+            ..StandardMaterial::default()
+        })
+    }
     pub fn register(&mut self, card: &mut SubCard, front: Image, back: Option<Image>) {
         if let Some(back_image) = back {
             let image = self.images.add(back_image);
