@@ -49,12 +49,12 @@ pub fn on_roll(
         let i2 = rng.random_range(1..children.len());
         let t1 = faces.get(children[i1]).unwrap();
         let t2 = faces.get(children[i2]).unwrap();
-        transform.rotation = t2.rotation * t1.rotation.inverse() * transform.rotation;
-        vel.y = MAT_HEIGHT * rng.random_range(0.75..=1.25);
+        transform.rotation *= t2.rotation * t1.rotation.inverse();
+        vel.y = MAT_HEIGHT * rng.random_range(1.0..=1.5);
         let start = 2.0;
         let end = 4.0;
         ang.x = TAU * rng.random_range(start..=end) + ang.x.abs();
-        ang.y = TAU * rng.random_range(start..=end) + ang.y.abs();
+        ang.y = TAU * rng.random_range(start..=end) / 4.0 + ang.y.abs();
         ang.z = TAU * rng.random_range(start..=end) + ang.z.abs();
         if rng.random() {
             ang.x = -ang.x;
