@@ -7,13 +7,14 @@ use crate::shapes::dodecahedron::Dodecahedron;
 use crate::shapes::icosahedron::Icosahedron;
 use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
+use crate::shapes::trapezohedron::Trapezohedron;
 use crate::{CARD_THICKNESS, CARD_WIDTH, WORLD_FONT_SIZE};
 use avian3d::parry::glamx::Quat;
 use avian3d::prelude::Collider;
 use bevy::asset::RenderAssetUsages;
 use bevy::color::{Color, Srgba};
 use bevy::ecs::children;
-use bevy::math::{Vec2, Vec3};
+use bevy::math::{Dir3, Vec2, Vec3};
 use bevy::mesh::{
     CylinderMeshBuilder, Indices, Mesh, Mesh3d, MeshBuilder, PrimitiveTopology, SphereKind,
     SphereMeshBuilder,
@@ -31,6 +32,7 @@ pub mod dodecahedron;
 pub mod icosahedron;
 pub mod octahedron;
 pub mod tetrahedron;
+pub mod trapezohedron;
 pub const OUTLINE_COLOR: Color = Color::BLACK;
 pub const OUTLINE_DEPTH_BIAS: f32 = 1.0 / 4096.0;
 pub const OUTLINE_SUBDIVISIONS: u32 = 5;
@@ -42,6 +44,7 @@ pub enum Shape {
     Icosahedron,
     Octahedron,
     Tetrahedron,
+    Trapezohedron,
     Coin,
 }
 impl Shape {
@@ -53,6 +56,7 @@ impl Shape {
             Shape::Icosahedron => 20,
             Shape::Octahedron => 8,
             Shape::Tetrahedron => 4,
+            Shape::Trapezohedron => 10,
             Shape::Coin => 2,
         }
     }
@@ -69,6 +73,9 @@ impl Shape {
             Shape::Icosahedron => Icosahedron::insert_dice(base_color, outline_color, asset, ent),
             Shape::Octahedron => Octahedron::insert_dice(base_color, outline_color, asset, ent),
             Shape::Tetrahedron => Tetrahedron::insert_dice(base_color, outline_color, asset, ent),
+            Shape::Trapezohedron => {
+                Trapezohedron::insert_dice(base_color, outline_color, asset, ent)
+            }
             Shape::Coin => Coin::insert_dice(base_color, outline_color, asset, ent),
         }
     }
@@ -82,6 +89,8 @@ fn average_normalized<const N: usize>(elems: [[f32; 3]; N]) -> Vec3 {
 }
 fn face<const N: usize>(elems: [Vec3; N], rev: bool) -> Transform {
     let pos = elems.into_iter().sum::<Vec3>() / N as f32;
+    let norm =
+        Dir3::try_from((elems[1] - elems[0]).cross(elems[2] - elems[0]).normalize()).unwrap();
     let end = if N.is_multiple_of(2) {
         (elems[0] + elems[1]) / 2.0
     } else {
@@ -93,7 +102,7 @@ fn face<const N: usize>(elems: [Vec3; N], rev: bool) -> Transform {
     } else {
         l + CARD_THICKNESS / 64.0
     };
-    Transform::from_translation(pos_epsilon).looking_to(if rev { pos } else { -pos }, end - pos)
+    Transform::from_translation(pos_epsilon).looking_to(-norm, end - pos)
 }
 pub trait NewShape: MeshBuilder + Sized + Copy {
     fn from_height(height: f32) -> Self;

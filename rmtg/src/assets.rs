@@ -31,17 +31,19 @@ impl Asset<'_> {
         })
     }
     pub fn register(&mut self, card: &mut SubCard, front: Option<Image>, back: Option<Image>) {
-        if let Some(back_data) = &mut card.data.back
-            && let Some(back_image) = back
-        {
-            let image = self.images.add(back_image);
-            let material = self.materials.add(StandardMaterial {
-                base_color_texture: Some(image.clone()),
-                alpha_mode: AlphaMode::Premultiplied,
-                unlit: true,
-                ..StandardMaterial::default()
-            });
-            back_data.handles = Some(Handles { image, material });
+        if let Some(back_data) = &mut card.data.back {
+            if let Some(back_image) = back {
+                let image = self.images.add(back_image);
+                let material = self.materials.add(StandardMaterial {
+                    base_color_texture: Some(image.clone()),
+                    alpha_mode: AlphaMode::Premultiplied,
+                    unlit: true,
+                    ..StandardMaterial::default()
+                });
+                back_data.handles = Some(Handles { image, material });
+            } else {
+                back_data.is_oracle = true;
+            }
         }
         if let Some(front_image) = front {
             let image = self.images.add(front_image);
@@ -52,6 +54,8 @@ impl Asset<'_> {
                 ..StandardMaterial::default()
             });
             card.data.front.handles = Some(Handles { image, material });
+        } else {
+            card.data.front.is_oracle = true;
         }
     }
 }

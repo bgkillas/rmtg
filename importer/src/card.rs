@@ -60,6 +60,7 @@ pub struct Cost {
 #[derive(Debug, Default, Clone, Encode, Decode)]
 pub struct CardInfo {
     pub oracle_id: Id,
+    pub is_oracle: bool,
     pub name: String,
     pub mana_cost: Cost,
     pub type_line: Types,
@@ -256,6 +257,7 @@ impl CardInfo {
     pub fn clone_no_image(&self) -> Self {
         Self {
             oracle_id: self.oracle_id,
+            is_oracle: self.is_oracle,
             name: self.name.clone(),
             mana_cost: self.mana_cost,
             type_line: self.type_line.clone(),

@@ -260,6 +260,7 @@ impl SubCard {
             let type_line = Types::from(type_line_raw);
             Some(CardInfo {
                 oracle_id: Id::from(oracle_id),
+                is_oracle: false,
                 name,
                 mana_cost,
                 type_line,

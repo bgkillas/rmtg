@@ -8,6 +8,7 @@ use crate::shapes::dodecahedron::Dodecahedron;
 use crate::shapes::icosahedron::Icosahedron;
 use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
+use crate::shapes::trapezohedron::Trapezohedron;
 use crate::shapes::{OUTLINE_COLOR, ShapeMesh as _};
 use crate::ui::chat::chat_bundle;
 use crate::ui::esc_menu::esc_menu_bundle;
@@ -114,7 +115,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
                 rev_z * 1.5,
             )),
         );
-        Octahedron::insert_dice(
+        Trapezohedron::insert_dice(
             color,
             OUTLINE_COLOR,
             &mut asset,
@@ -124,7 +125,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
                 rev_z * 2.0,
             )),
         );
-        Cube::insert_dice(
+        Octahedron::insert_dice(
             color,
             OUTLINE_COLOR,
             &mut asset,
@@ -134,7 +135,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
                 rev_z * 2.5,
             )),
         );
-        Tetrahedron::insert_dice(
+        Cube::insert_dice(
             color,
             OUTLINE_COLOR,
             &mut asset,
@@ -144,7 +145,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
                 rev_z * 3.0,
             )),
         );
-        Coin::insert_dice(
+        Tetrahedron::insert_dice(
             color,
             OUTLINE_COLOR,
             &mut asset,
@@ -152,6 +153,16 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
                 rev_x * 9.0,
                 Cube::HEIGHT / 2.0,
                 rev_z * 3.5,
+            )),
+        );
+        Coin::insert_dice(
+            color,
+            OUTLINE_COLOR,
+            &mut asset,
+            commands.spawn(Transform::from_xyz(
+                rev_x * 9.0,
+                Cube::HEIGHT / 2.0,
+                rev_z * 4.0,
             )),
         );
     }

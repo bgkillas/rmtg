@@ -1,0 +1,121 @@
+use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
+use bevy::mesh::{Mesh, MeshBuilder};
+use std::f32::consts::GOLDEN_RATIO;
+#[derive(Clone, Copy)]
+pub struct Trapezohedron {
+    pub unit_length: f32,
+}
+impl ShapeMesh for Trapezohedron {
+    type Outline = TrapezohedronOutline;
+    type const VERTICES: usize = 12;
+    type const FACES: usize = 10;
+    type const FACE_VERTICES: usize = 4;
+    type const TRIANGLES: usize = 2;
+    const SHAPE: Shape = Shape::Trapezohedron;
+    fn text_size(height: f32) -> f32 {
+        height / 2.0
+    }
+    fn convert_height(height: f32) -> f32 {
+        height * ((25.0f32 + 11.0f32 * 5.0f32.sqrt()) / 10.0f32).sqrt()
+            / 4.0
+            / (5.0f32.sqrt() - 1.0)
+    }
+    fn face_indices() -> [[u16; 4]; 10] {
+        [
+            [8, 2, 6, 11],
+            [8, 11, 7, 3],
+            [8, 3, 1, 5],
+            [8, 5, 10, 4],
+            [8, 4, 0, 2],
+            [9, 0, 4, 10],
+            [9, 10, 5, 1],
+            [9, 1, 3, 7],
+            [9, 7, 11, 6],
+            [9, 6, 2, 0],
+        ]
+    }
+    fn vertices(one: f32) -> [[f32; 3]; 12] {
+        let vc1 = GOLDEN_RATIO * one;
+        let vc2 = vc1 + one;
+        let vc0 = vc1 - one;
+        [
+            [0.0, vc0, vc1],
+            [0.0, vc0, -vc1],
+            [0.0, -vc0, vc1],
+            [0.0, -vc0, -vc1],
+            [one, one, one],
+            [one, one, -one],
+            [-one, -one, one],
+            [-one, -one, -one],
+            [vc2, -vc1, 0.0],
+            [-vc2, vc1, 0.0],
+            [vc0, vc1, 0.0],
+            [-vc0, -vc1, 0.0],
+        ]
+    }
+    fn convert_to_triangles(face: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES] {
+        [[0, 1, 3], [1, 2, 3]].map(|a| a.map(|i| face[i]))
+    }
+    fn unit_length(self) -> f32 {
+        self.unit_length
+    }
+}
+impl ShapeOutline for TrapezohedronOutline {
+    type Mesh = Trapezohedron;
+    type const EDGES: usize = 20;
+    fn edge_indices() -> [[usize; 2]; Self::EDGES] {
+        [
+            [8, 2],
+            [2, 6],
+            [6, 11],
+            [11, 8],
+            [11, 7],
+            [7, 3],
+            [3, 8],
+            [8, 5],
+            [5, 10],
+            [10, 4],
+            [4, 8],
+            [4, 0],
+            [0, 2],
+            [9, 0],
+            [10, 9],
+            [5, 1],
+            [1, 9],
+            [1, 3],
+            [7, 9],
+            [6, 9],
+        ]
+    }
+    fn unit_length(self) -> f32 {
+        self.unit_length
+    }
+}
+impl NewShape for Trapezohedron {
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: Self::convert_height(height),
+        }
+    }
+}
+impl NewShape for TrapezohedronOutline {
+    fn from_height(height: f32) -> Self {
+        Self {
+            unit_length: <Self as ShapeOutline>::Mesh::convert_height(height),
+        }
+    }
+}
+impl MeshBuilder for Trapezohedron {
+    fn build(&self) -> Mesh {
+        self.mesh()
+    }
+}
+#[derive(Clone, Copy)]
+pub struct TrapezohedronOutline {
+    pub unit_length: f32,
+}
+impl MeshBuilder for TrapezohedronOutline {
+    fn build(&self) -> Mesh {
+        self.mesh()
+    }
+}

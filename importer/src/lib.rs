@@ -13,6 +13,7 @@ pub mod circle;
 pub mod coder;
 #[cfg(test)]
 mod image_bench;
+pub mod oracle_card;
 pub mod scryfall;
 #[cfg(test)]
 mod scryfall_tests;
