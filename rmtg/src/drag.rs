@@ -4,6 +4,7 @@ use crate::events::hover::{BoxSelect, Hovered};
 use crate::keybinds::{Keybind, Keybinds};
 use crate::physics::{GRAVITY, LIN_DAMPING};
 use crate::spatial::Spatial;
+use crate::startup::wall_aabb;
 use avian3d::prelude::{LinearDamping, LinearVelocity};
 use bevy::ecs::entity::EntityHash;
 use bevy::math::{Dir3, Vec3};
@@ -86,7 +87,7 @@ pub fn drag(
                     .insert(LinearDamping(0.0));
                 pos
             };
-            let delta = target - t.translation;
+            let delta = Vec3::from(wall_aabb().closest_point(target)) - t.translation;
             vel.0 = delta / (time.delta_secs() * 4.0);
         }
         *last = pos;

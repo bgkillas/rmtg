@@ -27,7 +27,8 @@ use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::image::Image;
 use bevy::light::GlobalAmbientLight;
 use bevy::material::AlphaMode;
-use bevy::math::Vec3;
+use bevy::math::bounding::Aabb3d;
+use bevy::math::{Vec3, Vec3A};
 use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Commands, Component, Cuboid, Msaa, Rectangle, ResMut, Transform};
@@ -218,6 +219,13 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
         })),
         CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),
     ));
+}
+#[must_use]
+pub fn wall_aabb() -> Aabb3d {
+    Aabb3d {
+        min: Vec3A::new(-W, 0.0, -W),
+        max: Vec3A::new(W, W, W),
+    }
 }
 #[derive(Component, Clone)]
 pub struct Floor;
