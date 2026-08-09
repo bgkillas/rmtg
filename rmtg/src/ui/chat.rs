@@ -1,7 +1,7 @@
 use crate::{FONT_HEIGHT, FONT_SIZE};
 use bevy::color::Color;
 use bevy::prelude::{BackgroundColor, Visibility};
-use bevy::text::{EditableText, FontSize, TextFont};
+use bevy::text::{EditableText, FontSize, TextCursorStyle, TextFont};
 use bevy::ui::{AlignContent, Display, Node, Overflow, PositionType, RepeatedGridTrack, Val};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
@@ -27,14 +27,21 @@ pub fn chat_bundle() -> impl Bundle {
         BackgroundColor(Color::srgba_u8(0, 0, 0, 64)),
         children![
             (
+                BackgroundColor(Color::srgba_u8(0, 0, 0, 32)),
                 Node {
                     width: Val::Percent(100.0),
                     bottom: Val::Percent(0.0),
                     position_type: PositionType::Absolute,
-                    height: Val::Px(FONT_HEIGHT * 1.5),
+                    height: Val::Px(FONT_HEIGHT),
                     ..Node::default()
                 },
                 EditableText::default(),
+                TextCursorStyle {
+                    color: Color::WHITE,
+                    selection_color: Color::srgb_u8(53, 132, 228),
+                    unfocused_selection_color: Color::srgb_u8(176, 176, 176),
+                    selected_text_color: None,
+                },
                 TextFont {
                     font_size: FontSize::Px(FONT_SIZE),
                     ..TextFont::default()
@@ -47,7 +54,7 @@ pub fn chat_bundle() -> impl Bundle {
                     width: Val::Percent(100.0),
                     top: Val::Percent(0.0),
                     position_type: PositionType::Absolute,
-                    bottom: Val::Px(FONT_HEIGHT * 1.5),
+                    bottom: Val::Px(FONT_HEIGHT),
                     overflow: Overflow::scroll_y(),
                     display: Display::Grid,
                     grid_template_columns: vec![RepeatedGridTrack::percent(1, 100.0)],
