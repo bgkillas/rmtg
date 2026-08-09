@@ -152,7 +152,7 @@ pub fn update_box_select(
             max: caabb.max.xz(),
         };
         if !aabb.intersects(&splat) {
-            if olds.contains(ent) {
+            if olds.contains(ent) && !keybinds.pressed(Keybind::HoldSelect) {
                 commands.trigger(RemoveHover::new(ent));
             }
             continue;
