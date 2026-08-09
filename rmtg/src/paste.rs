@@ -1,27 +1,22 @@
 use crate::QUALITY;
 use crate::app::Client;
 use crate::assets::Asset;
-use crate::events::clipboard::{ClipboardEvent, GetClipboard};
 use crate::events::move_up::MoveUp;
-use crate::keybinds::{Keybind, Keybinds};
 use crate::pile::Pile;
 use crate::spatial::Spatial;
+use crate::ui::chat::TextSubmission;
 use bevy::image::Image;
 use bevy::log::warn;
 use bevy::math::Vec3;
 use bevy::prelude::{Commands, Res, Transform};
+use bevy_ecs::observer::On;
 use bevy_ecs::system::In;
 use bevy_p2p::runtime::Runtime;
 use importer::card::SubCard;
 use importer::uuid::Uuid;
 use std::str::FromStr as _;
-pub fn paste_card(keybind: Keybinds, mut commands: Commands) {
-    if keybind.just_pressed(Keybind::Paste) {
-        commands.trigger(GetClipboard::text(ClipboardEvent::CardSpawn));
-    }
-}
 pub fn react_paste_card(
-    In(str): In<String>,
+    event: On<TextSubmission>,
     client: Res<Client>,
     runtime: Res<Runtime>,
     spatial: Spatial,
@@ -29,14 +24,14 @@ pub fn react_paste_card(
     let Some((_, pos, _)) = spatial.ray() else {
         return;
     };
-    if let Ok(uuid) = Uuid::from_str(&str) {
+    if let Ok(uuid) = Uuid::from_str(&event.string) {
         let client_owned = client.client.clone();
         runtime.spawn_hook(on_paste_card_uuid, async move {
             SubCard::get(client_owned, uuid, QUALITY)
                 .await
                 .map(|(c, i, b)| (c, i, b, pos))
         });
-    } else if let Some(rest) = str.strip_prefix("https://scryfall.com/card/")
+    } else if let Some(rest) = event.string.strip_prefix("https://scryfall.com/card/")
         && let Some((set, after)) = rest.split_once('/')
         && let Some((cn_str, _)) = after.split_once('/')
         && let Ok(cn) = cn_str.parse()
@@ -48,7 +43,7 @@ pub fn react_paste_card(
                 .await
                 .map(|(c, i, b)| (c, i, b, pos))
         });
-    } else if let Some(rest) = str.strip_prefix("https://scryfall.com/card/")
+    } else if let Some(rest) = event.string.strip_prefix("https://scryfall.com/card/")
         && let Ok(uuid) = Uuid::from_str(rest)
     {
         let client_owned = client.client.clone();

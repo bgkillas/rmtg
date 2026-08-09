@@ -2,13 +2,16 @@ use crate::focus::Focus;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::{FONT_HEIGHT, FONT_SIZE};
 use bevy::color::Color;
+use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::prelude::{BackgroundColor, Event, Visibility};
 use bevy::text::{EditableText, FontSize, TextCursorStyle, TextFont};
 use bevy::ui::{AlignContent, Display, Node, Overflow, PositionType, RepeatedGridTrack, Val};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
 use bevy_ecs::component::Component;
-use bevy_ecs::system::{Commands, Query};
+use bevy_ecs::entity::Entity;
+use bevy_ecs::query::With;
+use bevy_ecs::system::{Commands, ParamSet, Query, ResMut, Single};
 #[derive(Component)]
 pub struct TextMenu;
 #[derive(Component)]
@@ -81,19 +84,25 @@ pub struct TextSubmission {
     pub source: TextSource,
 }
 pub fn text_submission(
-    focus: Focus,
+    mut focus: ParamSet<(Focus, ResMut<InputFocus>)>,
     keybinds: Keybinds,
     mut text_input: Query<(&mut EditableText, &TextSource)>,
     mut commands: Commands,
+    chat: Single<Entity, With<TextInput>>,
 ) {
-    if keybinds.just_pressed(Keybind::Chat)
-        && let Some(focused_entity) = focus.active_input.get()
-        && let Ok((mut text, &source)) = text_input.get_mut(focused_entity)
-    {
-        commands.trigger(TextSubmission {
-            string: text.value().to_string(),
-            source,
-        });
-        text.clear();
+    if keybinds.just_pressed(Keybind::Chat) {
+        if let Some(focused_entity) = focus.p0().active_input.get()
+            && let Ok((mut text, &source)) = text_input.get_mut(focused_entity)
+        {
+            commands.trigger(TextSubmission {
+                string: text.value().to_string(),
+                source,
+            });
+            text.clear();
+            let ent = *focus.p0().window;
+            focus.p1().set(ent, FocusCause::Pressed);
+        } else {
+            focus.p1().set(*chat, FocusCause::Pressed);
+        }
     }
 }

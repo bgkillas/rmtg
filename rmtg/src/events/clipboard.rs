@@ -1,4 +1,3 @@
-use crate::paste::react_paste_card;
 use bevy::clipboard::{Clipboard, ClipboardError, ClipboardRead};
 use bevy::image::Image;
 use bevy::log::warn;
@@ -35,16 +34,11 @@ pub enum ClipboardData {
     Image(Image),
 }
 #[derive(Clone, Copy)]
-pub enum ClipboardEvent {
-    CardSpawn,
-}
+pub enum ClipboardEvent {}
 impl ClipboardEvent {
     pub fn run(self, commands: &mut Commands, text: String) {
-        match self {
-            Self::CardSpawn => {
-                commands.run_system_cached_with(react_paste_card, text);
-            }
-        }
+        _ = commands;
+        _ = text;
     }
     pub fn run_image(self, commands: &mut Commands, image: Image) {
         _ = commands;

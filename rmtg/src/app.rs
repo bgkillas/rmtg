@@ -10,7 +10,6 @@ use crate::focus::{Menu, update_focus};
 use crate::keybinds::KeybindsList;
 use crate::mat::create_mats;
 use crate::net::{Msg, Peers, net_update, receive_message};
-use crate::paste::paste_card;
 use crate::spatial::{Cursor, update_cursor};
 use crate::startup::{spawn_objects, startup};
 use crate::ui::chat::text_submission;
@@ -122,19 +121,16 @@ pub fn app_run() -> AppExit {
         Update,
         (
             (camera_rotation, camera_translation).chain(),
-            (
+            ((
+                (update_box_select, update_hover).chain(),
                 (
-                    (update_box_select, update_hover).chain(),
-                    (
-                        (do_roll, update_rolling).chain(),
-                        drag,
-                        update_clone,
-                        update_scale,
-                    ),
-                )
-                    .chain(),
-                paste_card,
-            ),
+                    (do_roll, update_rolling).chain(),
+                    drag,
+                    update_clone,
+                    update_scale,
+                ),
+            )
+                .chain(),),
             text_submission,
         )
             .chain(),

@@ -7,6 +7,7 @@ use crate::events::repaint::on_repaint;
 use crate::events::roll::on_roll;
 use crate::events::scale::on_scale;
 use crate::net::{connect_failed, on_connect, on_disconnect};
+use crate::paste::react_paste_card;
 use bevy::app::App;
 pub mod clipboard;
 pub mod clone;
@@ -31,5 +32,6 @@ pub fn add_events(app: &mut App) {
     app.add_observer(spawn_box_select);
     app.add_observer(update_box_select_mesh);
     app.add_observer(on_scale);
+    app.add_observer(react_paste_card);
     app.init_resource::<PollClipboard>();
 }
