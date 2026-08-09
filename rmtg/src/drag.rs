@@ -1,6 +1,6 @@
 use crate::CARD_THICKNESS;
 use crate::events::gravity::NewGravity;
-use crate::events::hover::Hovered;
+use crate::events::hover::{BoxSelect, Hovered};
 use crate::keybinds::{Keybind, Keybinds};
 use crate::physics::{GRAVITY, LIN_DAMPING};
 use crate::spatial::Spatial;
@@ -11,12 +11,14 @@ use bevy::prelude::{
     Commands, Component, Entity, InfinitePlane3d, Local, Query, Res, Transform, With,
 };
 use bevy::time::Time;
+use bevy_ecs::system::Single;
 use std::collections::HashSet;
 #[derive(Component, Clone)]
 pub struct TargetPosition {
     pub pos: Vec3,
 }
 pub fn drag(
+    box_select: Option<Single<(), With<BoxSelect>>>,
     hovered: Query<
         (
             Entity,
@@ -33,6 +35,9 @@ pub fn drag(
     mut last_ents: Local<HashSet<Entity, EntityHash>>,
     time: Res<Time>,
 ) {
+    if box_select.is_some() {
+        return;
+    }
     if hovered.is_empty() {
         for ent in last_ents.drain() {
             commands.trigger(NewGravity::new(ent, GRAVITY));

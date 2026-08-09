@@ -3,7 +3,7 @@ use crate::drag::drag;
 use crate::events::add_events;
 use crate::events::clipboard::poll_clipboards;
 use crate::events::clone::update_clone;
-use crate::events::hover::update_hover;
+use crate::events::hover::{update_box_select, update_hover};
 use crate::events::roll::{do_roll, update_rolling};
 use crate::focus::Menu;
 use crate::keybinds::KeybindsList;
@@ -121,7 +121,7 @@ pub fn app_run() -> AppExit {
             (camera_rotation, camera_translation).chain(),
             (
                 (
-                    update_hover,
+                    (update_box_select, update_hover).chain(),
                     ((do_roll, update_rolling).chain(), drag, update_clone),
                 )
                     .chain(),
