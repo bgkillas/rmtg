@@ -4,9 +4,11 @@ use crate::keybinds::{Keybind, Keybinds};
 use crate::shapes::drag::DragOutline;
 use crate::shapes::{OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, ShapeOutline as _};
 use crate::spatial::Spatial;
-use avian3d::prelude::ColliderAabb;
-use bevy::math::bounding::{Aabb2d, IntersectsVolume as _};
-use bevy::math::{Isometry2d, Vec2, Vec3, Vec3Swizzles as _};
+use crate::startup::wall_aabb;
+use avian3d::prelude::{Collider, ColliderAabb};
+use avian3d::spatial_query::SpatialQueryFilter;
+use bevy::math::bounding::{Aabb2d, Aabb3d, BoundingVolume as _, IntersectsVolume as _};
+use bevy::math::{Isometry2d, Quat, Vec2, Vec3, Vec3A, Vec3Swizzles as _};
 use bevy::mesh::Mesh3d;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{
@@ -151,17 +153,31 @@ pub fn update_box_select(
             min: caabb.min.xz(),
             max: caabb.max.xz(),
         };
-        if !aabb.intersects(&splat) {
-            if olds.contains(ent) && !keybinds.pressed(Keybind::HoldSelect) {
-                commands.trigger(RemoveHover::new(ent));
-            }
-            continue;
+        if !aabb.intersects(&splat) && olds.contains(ent) && !keybinds.pressed(Keybind::HoldSelect)
+        {
+            commands.trigger(RemoveHover::new(ent));
         }
-        if olds.contains(ent) {
-            continue;
-        }
-        commands.trigger(AddHover::new(ent, Hovered { held: true }));
     }
+    let caabb = Aabb3d {
+        min: Vec3A::new(aabb.min.x, wall_aabb().min.y, aabb.min.y),
+        max: Vec3A::new(aabb.max.x, wall_aabb().max.y, aabb.max.y),
+    };
+    spatial.spatial.shape_intersections_callback(
+        &Collider::cuboid(
+            caabb.max.x - caabb.min.x,
+            caabb.max.y - caabb.min.y,
+            caabb.max.z - caabb.min.z,
+        ),
+        caabb.center().to_vec3(),
+        Quat::default(),
+        &SpatialQueryFilter::DEFAULT,
+        |ent| {
+            if hoverable.contains(ent) && !olds.contains(ent) {
+                commands.trigger(AddHover::new(ent, Hovered { held: true }));
+            }
+            false
+        },
+    );
 }
 pub fn update_hover(
     box_select: Option<Single<(), With<BoxSelect>>>,
