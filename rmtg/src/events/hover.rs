@@ -175,7 +175,7 @@ pub fn update_box_select(
             if hoverable.contains(ent) && !olds.contains(ent) {
                 commands.trigger(AddHover::new(ent, Hovered { held: true }));
             }
-            false
+            true
         },
     );
 }
