@@ -79,7 +79,7 @@ pub fn remove_hover(
 pub struct BoxSelect {
     pub start: Vec2,
 }
-#[derive(Event)]
+#[derive(EntityEvent)]
 pub struct UpdateBoxSelect {
     pub entity: Entity,
     pub vec: Vec2,

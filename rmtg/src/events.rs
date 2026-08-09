@@ -5,6 +5,7 @@ use crate::events::hover::{add_hover, remove_hover, spawn_box_select, update_box
 use crate::events::move_up::move_up;
 use crate::events::repaint::on_repaint;
 use crate::events::roll::on_roll;
+use crate::events::scale::on_scale;
 use crate::net::{connect_failed, on_connect, on_disconnect};
 use bevy::app::App;
 pub mod clipboard;
@@ -14,6 +15,7 @@ pub mod hover;
 pub mod move_up;
 pub mod repaint;
 pub mod roll;
+pub mod scale;
 pub fn add_events(app: &mut App) {
     app.add_observer(move_up);
     app.add_observer(get_clipboard);
@@ -28,5 +30,6 @@ pub fn add_events(app: &mut App) {
     app.add_observer(on_disconnect);
     app.add_observer(spawn_box_select);
     app.add_observer(update_box_select_mesh);
+    app.add_observer(on_scale);
     app.init_resource::<PollClipboard>();
 }

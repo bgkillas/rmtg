@@ -5,6 +5,7 @@ use crate::events::clipboard::poll_clipboards;
 use crate::events::clone::update_clone;
 use crate::events::hover::{update_box_select, update_hover};
 use crate::events::roll::{do_roll, update_rolling};
+use crate::events::scale::update_scale;
 use crate::focus::Menu;
 use crate::keybinds::KeybindsList;
 use crate::mat::create_mats;
@@ -122,7 +123,12 @@ pub fn app_run() -> AppExit {
             (
                 (
                     (update_box_select, update_hover).chain(),
-                    ((do_roll, update_rolling).chain(), drag, update_clone),
+                    (
+                        (do_roll, update_rolling).chain(),
+                        drag,
+                        update_clone,
+                        update_scale,
+                    ),
                 )
                     .chain(),
                 paste_card,
