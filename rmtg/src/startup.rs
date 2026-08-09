@@ -51,7 +51,7 @@ pub fn startup(
     let back_image = images.add(back_img);
     let back = materials.add(StandardMaterial {
         base_color_texture: Some(back_image.clone()),
-        alpha_mode: AlphaMode::Premultiplied,
+        alpha_mode: AlphaMode::AlphaToCoverage,
         unlit: true,
         ..StandardMaterial::default()
     });

@@ -44,7 +44,6 @@ fn make_mat(
     player: Peer,
 ) {
     let mat = assets.materials.add(StandardMaterial {
-        alpha_mode: AlphaMode::Opaque,
         unlit: true,
         base_color: color,
         ..StandardMaterial::default()
