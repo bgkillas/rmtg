@@ -25,7 +25,7 @@ pub fn move_up(
     let mut transform = transforms.get_mut(entity.entity).unwrap();
     let mut ent_aabb = *aabbs.get(entity.entity).unwrap();
     let mut collider = colliders.get(entity.entity).unwrap().clone();
-    collider.scale_by(Vec3::splat(63.0 / 64.0), 0);
+    collider.scale_by(Vec3::splat(63.0 / 64.0), 16);
     let mut some = true;
     while some {
         some = false;
