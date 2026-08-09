@@ -1,10 +1,8 @@
 #![allow(clippy::shadow_reuse)]
+use crate::focus::Focus;
 use bevy::ecs::system::SystemParam;
 use bevy::input::ButtonInput;
-use bevy::input_focus::InputFocus;
-use bevy::prelude::{Deref, DerefMut, KeyCode, MouseButton, Res, ResMut, Resource, Window};
-use bevy_ecs::entity::Entity;
-use bevy_ecs::prelude::{Single, With};
+use bevy::prelude::{Deref, DerefMut, KeyCode, MouseButton, Res, ResMut, Resource};
 use enum_map::{Enum, EnumMap, enum_map};
 use enumset::{EnumSet, EnumSetType, enum_set};
 use std::fmt;
@@ -14,15 +12,13 @@ pub struct Keybinds<'w, 's> {
     pub keyboard: Res<'w, ButtonInput<KeyCode>>,
     pub mouse: Res<'w, ButtonInput<MouseButton>>,
     pub keybinds: ResMut<'w, KeybindsList>,
-    pub focus: Res<'w, InputFocus>,
-    pub window: Single<'w, 's, Entity, With<Window>>,
+    pub focus: Focus<'w, 's>,
 }
 impl Keybinds<'_, '_> {
     #[must_use]
     pub fn just_pressed(&self, keybind: Keybind) -> bool {
         let key = &self.keybinds[keybind];
-        if !matches!(key.key, Key::Mouse(_)) && self.focus.get().is_some_and(|e| e != *self.window)
-        {
+        if !matches!(key.key, Key::Mouse(_)) && self.focus.key_lock() {
             return false;
         }
         key.just_pressed(&self.keyboard, &self.mouse)
@@ -30,8 +26,7 @@ impl Keybinds<'_, '_> {
     #[must_use]
     pub fn pressed(&self, keybind: Keybind) -> bool {
         let key = &self.keybinds[keybind];
-        if !matches!(key.key, Key::Mouse(_)) && self.focus.get().is_some_and(|e| e != *self.window)
-        {
+        if !matches!(key.key, Key::Mouse(_)) && self.focus.key_lock() {
             return false;
         }
         key.pressed(&self.keyboard, &self.mouse)

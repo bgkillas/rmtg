@@ -1,5 +1,4 @@
 #![allow(clippy::shadow_reuse)]
-use crate::keybinds::{Keybind, Keybinds};
 use bevy::ecs::system::SystemParam;
 use bevy::input::ButtonInput;
 use bevy::input_focus::{FocusCause, InputFocus};
@@ -9,7 +8,7 @@ use bevy::ui::Node;
 use bevy::window::Window;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::query::With;
-use bevy_ecs::system::{ParamSet, Query, ResMut, Single};
+use bevy_ecs::system::{Query, ResMut, Single};
 #[derive(Resource, Default, Debug)]
 pub enum Menu {
     #[default]
@@ -19,22 +18,18 @@ pub enum Menu {
     Side,
 }
 #[derive(SystemParam)]
-pub struct Focus<'w> {
-    active_input: Res<'w, InputFocus>,
-    hover_map: Res<'w, HoverMap>,
+pub struct Focus<'w, 's> {
+    pub active_input: Res<'w, InputFocus>,
+    pub window: Single<'w, 's, Entity, With<Window>>,
 }
-impl Focus<'_> {
+impl Focus<'_, '_> {
     #[must_use]
     pub fn key_lock(&self) -> bool {
-        self.active_input
-            .get()
-            .is_some_and(|e| e.to_bits() == u64::from(u32::MAX))
+        self.active_input.get().is_some_and(|e| e != *self.window)
     }
     #[must_use]
     pub fn mouse_lock(&self) -> bool {
-        self.hover_map
-            .values()
-            .any(|a| a.keys().any(|e| e.to_bits() == u64::from(u32::MAX)))
+        self.active_input.get().is_some_and(|e| e != *self.window)
     }
 }
 pub fn update_focus(
