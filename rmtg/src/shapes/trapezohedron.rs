@@ -55,8 +55,9 @@ impl ShapeMesh for Trapezohedron {
             [9, 10, 5, 1],
         ]
     }
-    fn vertices(one: f32) -> [[f32; 3]; 12] {
+    fn vertices(self) -> [[f32; 3]; 12] {
         const POLE_HEIGHT: f32 = 2.0 / 3.0;
+        let one = self.unit_length();
         let vc1 = GOLDEN_RATIO * one;
         let vc2 = vc1 + one;
         let vc0 = vc1 - one;
@@ -139,5 +140,19 @@ pub struct TrapezohedronOutline {
 impl MeshBuilder for TrapezohedronOutline {
     fn build(&self) -> Mesh {
         self.mesh()
+    }
+}
+impl From<TrapezohedronOutline> for Trapezohedron {
+    fn from(value: TrapezohedronOutline) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
+    }
+}
+impl From<Trapezohedron> for TrapezohedronOutline {
+    fn from(value: Trapezohedron) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
     }
 }

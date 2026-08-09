@@ -1,10 +1,13 @@
+use crate::PLAYER;
 use crate::assets::Asset;
 use crate::keybinds::{Keybind, Keybinds};
-use crate::shapes::{OUTLINE_COLOR, OUTLINE_DEPTH_BIAS};
+use crate::shapes::drag::DragOutline;
+use crate::shapes::{OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, ShapeOutline as _};
 use crate::spatial::Spatial;
-use crate::{CARD_THICKNESS, PLAYER};
-use bevy::math::bounding::Aabb2d;
-use bevy::math::{Isometry2d, Vec2, Vec3};
+use avian3d::prelude::ColliderAabb;
+use bevy::math::bounding::{Aabb2d, IntersectsVolume as _};
+use bevy::math::{Isometry2d, Vec2, Vec3, Vec3Swizzles as _};
+use bevy::mesh::Mesh3d;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{
     Children, Commands, Component, Entity, EntityEvent, On, Query, Transform, With,
@@ -77,22 +80,53 @@ pub struct BoxSelect {
     pub start: Vec2,
 }
 #[derive(Event)]
+pub struct UpdateBoxSelect {
+    pub entity: Entity,
+    pub vec: Vec2,
+}
+#[derive(Event)]
 pub struct SpawnBoxSelect {
     pub pos: Vec3,
 }
-const BOX_SELECT_RADIUS: f32 = 4.0 * CARD_THICKNESS;
-pub fn spawn_box_select(mut event: On<SpawnBoxSelect>, mut commands: Commands) {
-    let vec = Vec2::new(event.pos.x, event.pos.z);
-    event.pos.y += BOX_SELECT_RADIUS;
-    commands.spawn((
-        BoxSelect { start: vec },
-        Transform::from_translation(event.pos),
-    ));
+pub fn spawn_box_select(mut event: On<SpawnBoxSelect>, mut commands: Commands, mut asset: Asset) {
+    let vec = event.pos.xz();
+    event.pos.y += DragOutline::THICKNESS;
+    let entity = commands
+        .spawn((
+            BoxSelect { start: vec },
+            Transform::from_translation(event.pos),
+            MeshMaterial3d(asset.materials.add(StandardMaterial {
+                unlit: true,
+                base_color: PLAYER[0],
+                ..StandardMaterial::default()
+            })),
+        ))
+        .id();
+    commands.trigger(UpdateBoxSelect { entity, vec });
+}
+pub fn update_box_select_mesh(
+    event: On<UpdateBoxSelect>,
+    mut box_select: Query<(&mut Transform, &BoxSelect)>,
+    mut commands: Commands,
+    mut asset: Asset,
+) {
+    let (mut transform, select) = box_select.get_mut(event.entity).unwrap();
+    let vec = (select.start + event.vec) / 2.0;
+    transform.translation.x = vec.x;
+    transform.translation.z = vec.y;
+    let drag = DragOutline {
+        x: (event.vec.x - select.start.x).abs() / 2.0,
+        y: (event.vec.y - select.start.y).abs() / 2.0,
+    };
+    let mesh = drag.mesh();
+    commands
+        .entity(event.entity)
+        .insert(Mesh3d(asset.meshes.add(mesh)));
 }
 pub fn update_box_select(
     box_select: Option<Single<(Entity, &mut BoxSelect)>>,
     olds: Query<(), With<Hovered>>,
-    hoverable: Query<(Entity, &Transform), With<Hoverable>>,
+    hoverable: Query<(Entity, &ColliderAabb), With<Hoverable>>,
     spatial: Spatial,
     mut commands: Commands,
     keybinds: Keybinds,
@@ -104,16 +138,20 @@ pub fn update_box_select(
         commands.entity(entity).despawn();
         return;
     }
-    let Some((_, pos)) = spatial.ray() else {
+    let Some((_, _, pos)) = spatial.ray() else {
         return;
     };
-    let vec = Vec2::new(pos.x, pos.z);
+    let vec = pos.xz();
+    commands.trigger(UpdateBoxSelect { entity, vec });
     let mut aabb = Aabb2d::from_point_cloud(Isometry2d::default(), &[select.start, vec]);
-    aabb.min -= Vec2::splat(BOX_SELECT_RADIUS);
-    aabb.max += Vec2::splat(BOX_SELECT_RADIUS);
-    for (ent, trans) in hoverable {
-        let splat = Vec2::new(trans.translation.x, trans.translation.z);
-        if aabb.closest_point(splat) != splat {
+    aabb.min -= Vec2::splat(DragOutline::THICKNESS);
+    aabb.max += Vec2::splat(DragOutline::THICKNESS);
+    for (ent, caabb) in hoverable {
+        let splat = Aabb2d {
+            min: caabb.min.xz(),
+            max: caabb.max.xz(),
+        };
+        if !aabb.intersects(&splat) {
             if olds.contains(ent) {
                 commands.trigger(RemoveHover::new(ent));
             }
@@ -133,7 +171,7 @@ pub fn update_hover(
     spatial: Spatial,
     mut commands: Commands,
 ) {
-    let Some((hit, pos)) = spatial.ray() else {
+    let Some((hit, _, pos)) = spatial.ray() else {
         return;
     };
     if !hoverable.contains(hit.entity) {

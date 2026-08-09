@@ -5,8 +5,8 @@ use crate::shapes::{FaceNumber, Shape};
 use avian3d::spatial_query::{RayHitData, SpatialQuery, SpatialQueryFilter};
 use bevy::camera::{Camera, Camera3d};
 use bevy::ecs::system::SystemParam;
-use bevy::math::{Ray3d, Vec2, Vec3};
-use bevy::prelude::{GlobalTransform, Single, Transform, With};
+use bevy::math::{Dir3, Ray3d, Vec2, Vec3};
+use bevy::prelude::{GlobalTransform, InfinitePlane3d, Single, Transform, With};
 use bevy::window::{PrimaryWindow, Window};
 use bevy_ecs::query::Without;
 use bevy_ecs::resource::Resource;
@@ -40,7 +40,7 @@ pub fn update_cursor(window: Single<&Window, With<PrimaryWindow>>, mut cursor: R
 }
 impl Spatial<'_, '_> {
     #[must_use]
-    pub fn ray(&self) -> Option<(RayHitData, Vec3)> {
+    pub fn ray(&self) -> Option<(RayHitData, Vec3, Vec3)> {
         let ray = self.cam_ray()?;
         let hit = self.spatial.cast_ray(
             ray.origin,
@@ -49,7 +49,16 @@ impl Spatial<'_, '_> {
             true,
             &SpatialQueryFilter::default(),
         );
-        hit.map(|data| (data, ray.origin + ray.direction * data.distance))
+        let dist = ray
+            .intersect_plane(Vec3::splat(0.0), InfinitePlane3d::new(Dir3::Y))
+            .unwrap();
+        hit.map(|data| {
+            (
+                data,
+                ray.origin + ray.direction * data.distance,
+                ray.origin + ray.direction * dist,
+            )
+        })
     }
     #[must_use]
     pub fn cam_ray(&self) -> Option<Ray3d> {

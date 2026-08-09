@@ -47,7 +47,7 @@ pub fn update_clone(
     spatial: Spatial,
     mut objects: Local<Vec<Clone>>,
 ) {
-    let Some((_, pos)) = spatial.ray() else {
+    let Some((_, pos, _)) = spatial.ray() else {
         return;
     };
     if keybinds.just_pressed(Keybind::CopyObject) {

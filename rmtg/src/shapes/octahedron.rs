@@ -27,7 +27,8 @@ impl ShapeMesh for Octahedron {
             [3, 5, 4],
         ]
     }
-    fn vertices(one: f32) -> [[f32; 3]; 6] {
+    fn vertices(self) -> [[f32; 3]; 6] {
+        let one = self.unit_length();
         [
             [one, 0.0, 0.0],
             [0.0, one, 0.0],
@@ -93,5 +94,19 @@ pub struct OctahedronOutline {
 impl MeshBuilder for OctahedronOutline {
     fn build(&self) -> Mesh {
         self.mesh()
+    }
+}
+impl From<OctahedronOutline> for Octahedron {
+    fn from(value: OctahedronOutline) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
+    }
+}
+impl From<Octahedron> for OctahedronOutline {
+    fn from(value: Octahedron) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
     }
 }

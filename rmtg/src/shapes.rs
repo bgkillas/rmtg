@@ -29,6 +29,7 @@ pub mod coin;
 pub mod cube;
 pub mod deck;
 pub mod dodecahedron;
+pub mod drag;
 pub mod icosahedron;
 pub mod octahedron;
 pub mod tetrahedron;
@@ -90,7 +91,10 @@ fn average_normalized<const N: usize>(elems: [[f32; 3]; N]) -> Vec3 {
 pub trait NewShape: MeshBuilder + Sized + Copy {
     fn from_height(height: f32) -> Self;
 }
-pub trait ShapeMesh: NewShape {
+pub trait ShapeMesh: NewShape + From<Self::Outline>
+where
+    Self::Outline: From<Self>,
+{
     type Outline: ShapeOutline;
     type const VERTICES: usize;
     type const FACES: usize;
@@ -150,7 +154,7 @@ pub trait ShapeMesh: NewShape {
             Hoverable,
         ));
         ent.with_children(|parent| {
-            for (i, t) in Self::faces(height).into_iter().enumerate() {
+            for (i, t) in Self::from_height(height).faces().into_iter().enumerate() {
                 parent.spawn((
                     t,
                     Text3d::new(Self::face_string(i)),
@@ -174,8 +178,8 @@ pub trait ShapeMesh: NewShape {
     #[must_use]
     fn text_size(height: f32) -> f32;
     #[must_use]
-    fn faces(height: f32) -> [Transform; direct_const_arg!(Self::FACES)] {
-        let v = Self::oriented_vertices(Self::convert_height(height)).map(Vec3::from);
+    fn faces(self) -> [Transform; direct_const_arg!(Self::FACES)] {
+        let v = self.oriented_vertices().map(Vec3::from);
         Self::face_indices()
             .map(|l| l.map(|i| v[usize::from(i)]))
             .map(|vec| Self::face(vec, Self::IS_REVERSED))
@@ -204,14 +208,14 @@ pub trait ShapeMesh: NewShape {
     fn face_indices()
     -> [[u16; direct_const_arg!(Self::FACE_VERTICES)]; direct_const_arg!(Self::FACES)];
     #[must_use]
-    fn vertices(one: f32) -> [[f32; 3]; direct_const_arg!(Self::VERTICES)];
+    fn vertices(self) -> [[f32; 3]; direct_const_arg!(Self::VERTICES)];
     #[must_use]
     fn convert_to_triangles(
         face: [u16; direct_const_arg!(Self::FACE_VERTICES)],
     ) -> [[u16; 3]; direct_const_arg!(Self::TRIANGLES)];
     #[must_use]
-    fn oriented_vertices(one: f32) -> [[f32; 3]; direct_const_arg!(Self::VERTICES)] {
-        let vertices = Self::vertices(one);
+    fn oriented_vertices(self) -> [[f32; 3]; direct_const_arg!(Self::VERTICES)] {
+        let vertices = self.vertices();
         let dir = Quat::from_rotation_arc(
             average_normalized(Self::face_indices()[0].map(|i| vertices[usize::from(i)])),
             -Vec3::Y,
@@ -222,7 +226,7 @@ pub trait ShapeMesh: NewShape {
     fn unit_length(self) -> f32;
     #[must_use]
     fn mesh(self) -> Mesh {
-        let position = Self::oriented_vertices(self.unit_length()).to_vec();
+        let position = self.oriented_vertices().to_vec();
         let indices = Indices::U16(
             Self::face_indices()
                 .map(|v| Self::convert_to_triangles(v))
@@ -239,7 +243,10 @@ pub trait ShapeMesh: NewShape {
         mesh
     }
 }
-pub trait ShapeOutline: NewShape {
+pub trait ShapeOutline: NewShape + From<Self::Mesh>
+where
+    Self::Mesh: From<Self>,
+{
     type Mesh: ShapeMesh;
     type const EDGES: usize;
     const THICKNESS: f32 = CARD_THICKNESS * 7.0 / 8.0;
@@ -249,14 +256,14 @@ pub trait ShapeOutline: NewShape {
     fn unit_length(self) -> f32;
     #[must_use]
     fn edges(self) -> [[Vec3; 2]; direct_const_arg!(Self::EDGES)] {
-        let position = Self::Mesh::oriented_vertices(self.unit_length()).map(Vec3::from);
+        let position = Self::Mesh::from(self).oriented_vertices().map(Vec3::from);
         let edges = Self::edge_indices();
         edges.map(|[a, b]| [position[a], position[b]])
     }
     fn position(
         self,
     ) -> [Vec3; direct_const_arg!(<<Self as ShapeOutline>::Mesh as ShapeMesh>::VERTICES)] {
-        Self::Mesh::oriented_vertices(self.unit_length()).map(Vec3::from)
+        Self::Mesh::from(self).oriented_vertices().map(Vec3::from)
     }
     #[must_use]
     fn mesh(self) -> Mesh {

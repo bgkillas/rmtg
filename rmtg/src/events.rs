@@ -1,7 +1,7 @@
 use crate::events::clipboard::{PollClipboard, get_clipboard};
 use crate::events::clone::on_clone;
 use crate::events::gravity::on_change_gravity;
-use crate::events::hover::{add_hover, remove_hover, spawn_box_select};
+use crate::events::hover::{add_hover, remove_hover, spawn_box_select, update_box_select_mesh};
 use crate::events::move_up::move_up;
 use crate::events::repaint::on_repaint;
 use crate::events::roll::on_roll;
@@ -27,5 +27,6 @@ pub fn add_events(app: &mut App) {
     app.add_observer(on_connect);
     app.add_observer(on_disconnect);
     app.add_observer(spawn_box_select);
+    app.add_observer(update_box_select_mesh);
     app.init_resource::<PollClipboard>();
 }

@@ -27,7 +27,8 @@ impl ShapeMesh for Tetrahedron {
     fn face_indices() -> [[u16; 3]; 4] {
         [[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]]
     }
-    fn vertices(one: f32) -> [[f32; 3]; 4] {
+    fn vertices(self) -> [[f32; 3]; 4] {
+        let one = self.unit_length();
         [
             [one, one, one],
             [one, -one, -one],
@@ -38,8 +39,8 @@ impl ShapeMesh for Tetrahedron {
     fn convert_to_triangles(face: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES] {
         [face]
     }
-    fn oriented_vertices(one: f32) -> [[f32; 3]; direct_const_arg!(Self::VERTICES)] {
-        let vertices = Self::vertices(one);
+    fn oriented_vertices(self) -> [[f32; 3]; direct_const_arg!(Self::VERTICES)] {
+        let vertices = self.vertices();
         let dir = Quat::from_rotation_arc(
             average_normalized(Self::face_indices()[3].map(|i| vertices[usize::from(i)])),
             -Vec3::Y,
@@ -86,5 +87,19 @@ pub struct TetrahedronOutline {
 impl MeshBuilder for TetrahedronOutline {
     fn build(&self) -> Mesh {
         self.mesh()
+    }
+}
+impl From<TetrahedronOutline> for Tetrahedron {
+    fn from(value: TetrahedronOutline) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
+    }
+}
+impl From<Tetrahedron> for TetrahedronOutline {
+    fn from(value: Tetrahedron) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
     }
 }

@@ -31,7 +31,8 @@ impl ShapeMesh for Cube {
             [7, 4, 6, 3],
         ]
     }
-    fn vertices(one: f32) -> [[f32; 3]; Self::VERTICES] {
+    fn vertices(self) -> [[f32; 3]; Self::VERTICES] {
+        let one = self.unit_length();
         [
             [one, one, one],
             [-one, one, one],
@@ -99,5 +100,19 @@ impl NewShape for CubeOutline {
 impl MeshBuilder for CubeOutline {
     fn build(&self) -> Mesh {
         self.mesh()
+    }
+}
+impl From<CubeOutline> for Cube {
+    fn from(value: CubeOutline) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
+    }
+}
+impl From<Cube> for CubeOutline {
+    fn from(value: Cube) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
     }
 }

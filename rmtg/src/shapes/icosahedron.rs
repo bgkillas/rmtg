@@ -40,7 +40,8 @@ impl ShapeMesh for Icosahedron {
             [11, 10, 9],
         ]
     }
-    fn vertices(one: f32) -> [[f32; 3]; 12] {
+    fn vertices(self) -> [[f32; 3]; 12] {
+        let one = self.unit_length();
         let grt = GOLDEN_RATIO * one;
         [
             [one, grt, 0.0],
@@ -131,5 +132,19 @@ pub struct IcosahedronOutline {
 impl MeshBuilder for IcosahedronOutline {
     fn build(&self) -> Mesh {
         self.mesh()
+    }
+}
+impl From<IcosahedronOutline> for Icosahedron {
+    fn from(value: IcosahedronOutline) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
+    }
+}
+impl From<Icosahedron> for IcosahedronOutline {
+    fn from(value: Icosahedron) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
     }
 }

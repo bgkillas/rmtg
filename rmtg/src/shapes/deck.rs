@@ -25,7 +25,8 @@ impl ShapeMesh for Deck {
     fn face_indices() -> [[u16; Self::FACE_VERTICES]; Self::FACES] {
         unreachable!()
     }
-    fn vertices(one: f32) -> [[f32; 3]; Self::VERTICES] {
+    fn vertices(self) -> [[f32; 3]; Self::VERTICES] {
+        let one = self.unit_length();
         let wid = CARD_WIDTH / 2.0;
         let hei = CARD_HEIGHT / 2.0;
         let del = CARD_WIDTH * CARD_CORNER_RADIUS;
@@ -51,8 +52,8 @@ impl ShapeMesh for Deck {
     fn convert_to_triangles(face: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES] {
         [[0, 1, 2], [3, 2, 1]].map(|a| a.map(|i| face[i]))
     }
-    fn oriented_vertices(one: f32) -> [[f32; 3]; Self::VERTICES] {
-        Self::vertices(one)
+    fn oriented_vertices(self) -> [[f32; 3]; Self::VERTICES] {
+        self.vertices()
     }
     fn unit_length(self) -> f32 {
         self.unit_length
@@ -129,5 +130,19 @@ impl MeshBuilder for DeckOutline {
             mesh.merge(&torus).unwrap();
         }
         mesh
+    }
+}
+impl From<DeckOutline> for Deck {
+    fn from(value: DeckOutline) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
+    }
+}
+impl From<Deck> for DeckOutline {
+    fn from(value: Deck) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
     }
 }

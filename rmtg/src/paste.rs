@@ -26,7 +26,7 @@ pub fn react_paste_card(
     runtime: Res<Runtime>,
     spatial: Spatial,
 ) {
-    let Some((_, pos)) = spatial.ray() else {
+    let Some((_, pos, _)) = spatial.ray() else {
         return;
     };
     if let Ok(uuid) = Uuid::from_str(&str) {

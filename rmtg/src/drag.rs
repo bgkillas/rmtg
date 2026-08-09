@@ -49,7 +49,7 @@ pub fn drag(
         return;
     }
     if keybinds.just_pressed(Keybind::Select) {
-        let Some((_, pos)) = spatial.ray() else {
+        let Some((_, pos, _)) = spatial.ray() else {
             return;
         };
         *last = pos;

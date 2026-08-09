@@ -36,7 +36,8 @@ impl ShapeMesh for Dodecahedron {
             [18, 7, 17, 6, 12],
         ]
     }
-    fn vertices(one: f32) -> [[f32; 3]; 20] {
+    fn vertices(self) -> [[f32; 3]; 20] {
+        let one = self.unit_length();
         let grt = GOLDEN_RATIO * one;
         let rgr = GOLDEN_RATIO.recip() * one;
         [
@@ -136,5 +137,19 @@ pub struct DodecahedronOutline {
 impl MeshBuilder for DodecahedronOutline {
     fn build(&self) -> Mesh {
         self.mesh()
+    }
+}
+impl From<DodecahedronOutline> for Dodecahedron {
+    fn from(value: DodecahedronOutline) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
+    }
+}
+impl From<Dodecahedron> for DodecahedronOutline {
+    fn from(value: Dodecahedron) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
     }
 }

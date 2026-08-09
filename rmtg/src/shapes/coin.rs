@@ -19,9 +19,6 @@ impl ShapeMesh for Coin {
     fn collider(height: f32, _: &Mesh) -> Collider {
         Collider::cylinder(height / 2.0, height * HEIGHT_MULT)
     }
-    fn text_size(height: f32) -> f32 {
-        height
-    }
     fn face_string(i: usize) -> String {
         match i {
             0 => "T",
@@ -30,8 +27,11 @@ impl ShapeMesh for Coin {
         }
         .to_owned()
     }
-    fn faces(height: f32) -> [Transform; 2] {
-        let one = Self::convert_height(height) * HEIGHT_MULT + CARD_THICKNESS / 2.0;
+    fn text_size(height: f32) -> f32 {
+        height
+    }
+    fn faces(self) -> [Transform; 2] {
+        let one = self.unit_length * HEIGHT_MULT + CARD_THICKNESS / 2.0;
         [[0.0, -one, 0.0], [0.0, one, 0.0]]
             .map(Vec3::from)
             .map(|v| Transform::from_translation(v).looking_to(-v, Dir3::NEG_Z))
@@ -42,7 +42,7 @@ impl ShapeMesh for Coin {
     fn face_indices() -> [[u16; Self::FACE_VERTICES]; Self::FACES] {
         unreachable!()
     }
-    fn vertices(_: f32) -> [[f32; 3]; Self::VERTICES] {
+    fn vertices(self) -> [[f32; 3]; Self::VERTICES] {
         unreachable!()
     }
     fn convert_to_triangles(_: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES] {
@@ -112,5 +112,19 @@ impl NewShape for CoinOutline {
 impl MeshBuilder for CoinOutline {
     fn build(&self) -> Mesh {
         self.mesh()
+    }
+}
+impl From<CoinOutline> for Coin {
+    fn from(value: CoinOutline) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
+    }
+}
+impl From<Coin> for CoinOutline {
+    fn from(value: Coin) -> Self {
+        Self {
+            unit_length: value.unit_length,
+        }
     }
 }
