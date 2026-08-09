@@ -1,17 +1,24 @@
+use crate::focus::Focus;
+use crate::keybinds::{Keybind, Keybinds};
 use crate::{FONT_HEIGHT, FONT_SIZE};
 use bevy::color::Color;
-use bevy::prelude::{BackgroundColor, Visibility};
+use bevy::prelude::{BackgroundColor, Event, Visibility};
 use bevy::text::{EditableText, FontSize, TextCursorStyle, TextFont};
 use bevy::ui::{AlignContent, Display, Node, Overflow, PositionType, RepeatedGridTrack, Val};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
 use bevy_ecs::component::Component;
+use bevy_ecs::system::{Commands, Query};
 #[derive(Component)]
 pub struct TextMenu;
 #[derive(Component)]
 pub struct TextChat;
 #[derive(Component)]
 pub struct TextInput;
+#[derive(Component, Clone, Copy)]
+pub enum TextSource {
+    Chat,
+}
 #[must_use]
 pub fn chat_bundle() -> impl Bundle {
     (
@@ -48,6 +55,7 @@ pub fn chat_bundle() -> impl Bundle {
                 },
                 TextInput,
                 Visibility::Inherited,
+                TextSource::Chat
             ),
             (
                 Node {
@@ -66,4 +74,26 @@ pub fn chat_bundle() -> impl Bundle {
             ),
         ],
     )
+}
+#[derive(Event)]
+pub struct TextSubmission {
+    pub string: String,
+    pub source: TextSource,
+}
+pub fn text_submission(
+    focus: Focus,
+    keybinds: Keybinds,
+    mut text_input: Query<(&mut EditableText, &TextSource)>,
+    mut commands: Commands,
+) {
+    if keybinds.just_pressed(Keybind::Chat)
+        && let Some(focused_entity) = focus.active_input.get()
+        && let Ok((mut text, &source)) = text_input.get_mut(focused_entity)
+    {
+        commands.trigger(TextSubmission {
+            string: text.value().to_string(),
+            source,
+        });
+        text.clear();
+    }
 }

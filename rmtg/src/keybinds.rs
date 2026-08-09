@@ -1,5 +1,4 @@
 #![allow(clippy::shadow_reuse)]
-use crate::focus::Focus;
 use bevy::ecs::system::SystemParam;
 use bevy::input::ButtonInput;
 use bevy::prelude::{Deref, DerefMut, KeyCode, MouseButton, Res, ResMut, Resource};
@@ -8,27 +7,20 @@ use enumset::{EnumSet, EnumSetType, enum_set};
 use std::fmt;
 use std::fmt::{Display, Formatter};
 #[derive(SystemParam)]
-pub struct Keybinds<'w, 's> {
+pub struct Keybinds<'w> {
     pub keyboard: Res<'w, ButtonInput<KeyCode>>,
     pub mouse: Res<'w, ButtonInput<MouseButton>>,
     pub keybinds: ResMut<'w, KeybindsList>,
-    pub focus: Focus<'w, 's>,
 }
-impl Keybinds<'_, '_> {
+impl Keybinds<'_> {
     #[must_use]
     pub fn just_pressed(&self, keybind: Keybind) -> bool {
         let key = &self.keybinds[keybind];
-        if !matches!(key.key, Key::Mouse(_)) && self.focus.key_lock() {
-            return false;
-        }
         key.just_pressed(&self.keyboard, &self.mouse)
     }
     #[must_use]
     pub fn pressed(&self, keybind: Keybind) -> bool {
         let key = &self.keybinds[keybind];
-        if !matches!(key.key, Key::Mouse(_)) && self.focus.key_lock() {
-            return false;
-        }
         key.pressed(&self.keyboard, &self.mouse)
     }
     #[must_use]

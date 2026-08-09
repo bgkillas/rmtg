@@ -13,6 +13,7 @@ use crate::net::{Msg, Peers, net_update, receive_message};
 use crate::paste::paste_card;
 use crate::spatial::{Cursor, update_cursor};
 use crate::startup::{spawn_objects, startup};
+use crate::ui::chat::text_submission;
 use crate::{APP_NAME, FONT, USER_AGENT};
 use avian3d::PhysicsPlugins;
 use bevy::DefaultPlugins;
@@ -116,6 +117,7 @@ pub fn app_run() -> AppExit {
     app.init_resource::<Cursor>();
     add_events(&mut app);
     app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
+    app.add_systems(PreUpdate, (update_cursor, update_focus));
     app.add_systems(
         Update,
         (
@@ -133,10 +135,10 @@ pub fn app_run() -> AppExit {
                     .chain(),
                 paste_card,
             ),
+            text_submission,
         )
             .chain(),
     );
-    app.add_systems(PreUpdate, (update_cursor, update_focus));
     app.add_systems(
         FixedUpdate,
         ((net_update, receive_message).chain(), poll_clipboards),
