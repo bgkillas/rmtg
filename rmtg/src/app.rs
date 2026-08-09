@@ -6,7 +6,7 @@ use crate::events::clone::update_clone;
 use crate::events::hover::{update_box_select, update_hover};
 use crate::events::roll::{do_roll, update_rolling};
 use crate::events::scale::update_scale;
-use crate::focus::Menu;
+use crate::focus::{Menu, update_focus};
 use crate::keybinds::KeybindsList;
 use crate::mat::create_mats;
 use crate::net::{Msg, Peers, net_update, receive_message};
@@ -136,7 +136,7 @@ pub fn app_run() -> AppExit {
         )
             .chain(),
     );
-    app.add_systems(PreUpdate, update_cursor);
+    app.add_systems(PreUpdate, (update_cursor, update_focus));
     app.add_systems(
         FixedUpdate,
         ((net_update, receive_message).chain(), poll_clipboards),

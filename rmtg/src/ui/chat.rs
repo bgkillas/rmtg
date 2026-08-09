@@ -18,6 +18,7 @@ pub fn chat_bundle() -> impl Bundle {
         Node {
             width: Val::Percent(25.0),
             height: Val::Percent(25.0),
+            left: Val::Percent(0.0),
             top: Val::Percent(75.0),
             ..Node::default()
         },

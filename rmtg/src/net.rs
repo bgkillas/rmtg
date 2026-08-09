@@ -27,7 +27,6 @@ pub fn net_update(net: Net<Msg>, spatial: Spatial) {
 }
 pub fn receive_message(mut reader: PopulatedMessageReader<MessageReceived<Msg>>) {
     for msg in reader.read() {
-        println!("{}", msg.peer);
         match &msg.message {
             Msg::Camera { camera, cursor } => {
                 _ = camera;
