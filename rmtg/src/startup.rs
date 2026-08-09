@@ -2,6 +2,7 @@ use crate::assets::{Asset, CardBase};
 use crate::camera::{CameraVelocity, default_cam_pos};
 use crate::net::Peer;
 use crate::physics::WorldLayer;
+use crate::pile::Pile;
 use crate::shapes::coin::Coin;
 use crate::shapes::cube::Cube;
 use crate::shapes::dodecahedron::Dodecahedron;
@@ -33,6 +34,7 @@ use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Commands, Component, Cuboid, Msaa, Rectangle, ResMut, Transform};
 use bevy::text::Font;
+use importer::card::SubCard;
 use importer::image::parse_bytes;
 use std::f32::consts::PI;
 pub fn startup(
@@ -46,8 +48,9 @@ pub fn startup(
     light.brightness = 100.0;
     let stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
     let back_img = parse_bytes(include_bytes!("../../assets/back.png")).unwrap();
+    let back_image = images.add(back_img);
     let back = materials.add(StandardMaterial {
-        base_color_texture: Some(images.add(back_img)),
+        base_color_texture: Some(back_image.clone()),
         alpha_mode: AlphaMode::Premultiplied,
         unlit: true,
         ..StandardMaterial::default()
@@ -57,7 +60,12 @@ pub fn startup(
         unlit: true,
         ..StandardMaterial::default()
     });
-    commands.insert_resource(CardBase { stock, back, color });
+    commands.insert_resource(CardBase {
+        stock,
+        back,
+        back_image,
+        color,
+    });
     let font = Font::from_bytes(FONT.to_vec());
     fonts.insert(AssetId::<Font>::DEFAULT_UUID, font).unwrap();
     commands.spawn((
@@ -88,6 +96,12 @@ pub fn startup(
     commands.spawn(esc_menu_bundle());
 }
 pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
+    let mut card = SubCard::default();
+    asset.register_handles(&mut card, Some(asset.card.back_image.clone()), None);
+    commands.spawn((
+        Transform::from_xyz(0.0, CARD_THICKNESS, 0.0),
+        Pile::from(card).bundle(&mut asset),
+    ));
     for i in 0..4 {
         let (rev_x, rev_z) = match i {
             0 => (1.0, 1.0),

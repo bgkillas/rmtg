@@ -20,6 +20,7 @@ fn parse_no_mips(bytes: &[u8]) -> Option<RgbaImage> {
         .decode()
         .ok()?;
     let mut rgba = image.to_rgba8();
+    rgba.pixels_mut().for_each(|p| p.0[3] = 255);
     let radius = (rgba.width() as f32 * CARD_CORNER_RADIUS) as u32;
     for corner in 0..4 {
         let (x0, y0, octants) = match corner {
