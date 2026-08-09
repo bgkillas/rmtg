@@ -1,9 +1,11 @@
 use crate::CARD_THICKNESS;
 use crate::startup::{Ceiling, Wall};
+use avian3d::parry::shape::SharedShape;
 use avian3d::prelude::{Collider, ColliderAabb, ScalableCollider as _, SpatialQueryFilter};
 use avian3d::spatial_query::SpatialQuery;
 use bevy::math::Vec3;
 use bevy::prelude::{Entity, EntityEvent, On, Or, Query, Transform, With};
+use std::sync::Arc;
 #[derive(EntityEvent)]
 pub struct MoveUp {
     pub entity: Entity,
@@ -24,8 +26,9 @@ pub fn move_up(
 ) {
     let mut transform = transforms.get_mut(entity.entity).unwrap();
     let mut ent_aabb = *aabbs.get(entity.entity).unwrap();
-    let mut collider = colliders.get(entity.entity).unwrap().clone();
-    collider.scale_by(Vec3::splat(63.0 / 64.0), 16);
+    let mut shape = colliders.get(entity.entity).unwrap().shape_scaled().clone();
+    let mut collider = Collider::from(SharedShape(Arc::from(shape.make_mut().clone_dyn())));
+    collider.scale_by(Vec3::splat(63.0 / 64.0), 0);
     let mut some = true;
     while some {
         some = false;
