@@ -28,7 +28,7 @@ impl ShapeMesh for Coin {
         .to_owned()
     }
     fn text_size(height: f32) -> f32 {
-        height
+        height / 1.5
     }
     fn faces(self) -> [Transform; 2] {
         let one = self.unit_length * HEIGHT_MULT + CARD_THICKNESS / 2.0;
@@ -37,7 +37,7 @@ impl ShapeMesh for Coin {
             .map(|v| Transform::from_translation(v).looking_to(-v, Dir3::NEG_Z))
     }
     fn convert_height(height: f32) -> f32 {
-        height / 2.0
+        height / 3.0
     }
     fn face_indices() -> [[u16; Self::FACE_VERTICES]; Self::FACES] {
         unreachable!()

@@ -18,7 +18,7 @@ impl ShapeMesh for Trapezohedron {
     type const TRIANGLES: usize = 2;
     const SHAPE: Shape = Shape::Trapezohedron;
     fn text_size(height: f32) -> f32 {
-        height / 2.0
+        height / 4.0
     }
     fn face(old: [Vec3; direct_const_arg!(Self::FACE_VERTICES)], rev: bool) -> Transform {
         let elems = [old[0], old[1], old[3]];
@@ -33,12 +33,12 @@ impl ShapeMesh for Trapezohedron {
             l + CARD_THICKNESS / 64.0
         };
         let mut trans = Transform::from_translation(pos_epsilon).looking_to(-norm, end - pos);
-        trans.translation += trans.down() * CARD_THICKNESS * 10.0;
+        trans.translation += trans.down() * CARD_THICKNESS * 5.0;
         trans
     }
     fn convert_height(height: f32) -> f32 {
         height * ((25.0f32 + 11.0f32 * 5.0f32.sqrt()) / 10.0f32).sqrt()
-            / 4.0
+            / 8.0
             / (5.0f32.sqrt() - 1.0)
     }
     fn face_indices() -> [[u16; 4]; 10] {

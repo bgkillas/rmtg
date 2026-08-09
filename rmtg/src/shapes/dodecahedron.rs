@@ -13,11 +13,11 @@ impl ShapeMesh for Dodecahedron {
     type const TRIANGLES: usize = 3;
     const SHAPE: Shape = Shape::Dodecahedron;
     fn text_size(height: f32) -> f32 {
-        height / 2.0
+        height / 4.0
     }
     fn convert_height(height: f32) -> f32 {
         height * ((25.0f32 + 11.0f32 * 5.0f32.sqrt()) / 10.0f32).sqrt()
-            / 4.0
+            / 8.0
             / (5.0f32.sqrt() - 1.0)
     }
     fn face_indices() -> [[u16; 5]; 12] {

@@ -10,10 +10,10 @@ impl ShapeMesh for Octahedron {
     type const FACES: usize = 8;
     const SHAPE: Shape = Shape::Octahedron;
     fn text_size(height: f32) -> f32 {
-        height / 1.5
+        height / 3.0
     }
     fn convert_height(height: f32) -> f32 {
-        height / (3.0f32 / 2.0f32).sqrt()
+        height / (3.0f32 / 2.0f32).sqrt() / 2.0
     }
     fn face_indices() -> [[u16; 3]; 8] {
         [

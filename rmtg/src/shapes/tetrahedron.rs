@@ -19,10 +19,10 @@ impl ShapeMesh for Tetrahedron {
         Collider::convex_hull_from_mesh(&mesh).unwrap()
     }
     fn text_size(height: f32) -> f32 {
-        height / 1.5
+        height / 3.0
     }
     fn convert_height(height: f32) -> f32 {
-        height / (16.0f32 / 3.0f32).sqrt()
+        height / (16.0f32 / 3.0f32).sqrt() / 2.0
     }
     fn face_indices() -> [[u16; 3]; 4] {
         [[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]]

@@ -13,13 +13,14 @@ impl ShapeMesh for Cube {
     type const TRIANGLES: usize = 2;
     const SHAPE: Shape = Shape::Cube;
     fn collider(height: f32, _: &Mesh) -> Collider {
-        Collider::cuboid(height, height, height)
+        let one = 2.0 * Self::convert_height(height);
+        Collider::cuboid(one, one, one)
     }
     fn text_size(height: f32) -> f32 {
-        height
+        height / 2.0
     }
     fn convert_height(height: f32) -> f32 {
-        height / 2.0
+        height / 4.0
     }
     fn face_indices() -> [[u16; Self::FACE_VERTICES]; Self::FACES] {
         [

@@ -49,9 +49,7 @@ impl Spatial<'_, '_> {
             true,
             &SpatialQueryFilter::default(),
         );
-        let dist = ray
-            .intersect_plane(Vec3::splat(0.0), InfinitePlane3d::new(Dir3::Y))
-            .unwrap();
+        let dist = ray.intersect_plane(Vec3::splat(0.0), InfinitePlane3d::new(Dir3::Y))?;
         hit.map(|data| {
             (
                 data,
