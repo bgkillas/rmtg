@@ -1,4 +1,4 @@
-use crate::events::scroll::ScrollToBottom;
+use crate::events::scroll::Scroll;
 use crate::focus::Focus;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::{FONT_HEIGHT, FONT_SIZE};
@@ -11,6 +11,7 @@ use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
+use bevy_ecs::message::MessageWriter;
 use bevy_ecs::observer::On;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Commands, ParamSet, Query, ResMut, Single};
@@ -89,6 +90,7 @@ pub fn text_message(
     event: On<TextSubmission>,
     mut commands: Commands,
     text_chat: Single<Entity, With<TextChat>>,
+    mut msgs: MessageWriter<Scroll>,
 ) {
     commands.entity(*text_chat).with_child((
         Node {
@@ -102,7 +104,7 @@ pub fn text_message(
             ..TextFont::default()
         },
     ));
-    commands.trigger(ScrollToBottom::new(*text_chat));
+    msgs.write(Scroll::down(*text_chat));
 }
 pub fn text_submission(
     mut focus: ParamSet<(Focus, ResMut<InputFocus>)>,

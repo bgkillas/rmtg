@@ -6,6 +6,7 @@ use crate::events::clone::update_clone;
 use crate::events::hover::{update_box_select, update_hover};
 use crate::events::roll::{do_roll, update_rolling};
 use crate::events::scale::update_scale;
+use crate::events::scroll::{Scroll, scroll};
 use crate::focus::{Menu, update_focus};
 use crate::keybinds::KeybindsList;
 use crate::mat::create_mats;
@@ -27,6 +28,7 @@ use bevy::ecs::schedule::IntoScheduleConfigs as _;
 use bevy::gizmos::AppGizmoBuilder as _;
 use bevy::image::{ImageFilterMode, ImagePlugin, ImageSamplerDescriptor};
 use bevy::settings::SettingsPlugin;
+use bevy::ui::UiSystems;
 use bevy::window::{Window, WindowPlugin};
 use bevy_framepace::FramepacePlugin;
 use bevy_p2p::plugin::P2PPlugin;
@@ -114,6 +116,7 @@ pub fn app_run() -> AppExit {
     app.init_resource::<Peers>();
     app.init_resource::<Client>();
     app.init_resource::<Cursor>();
+    app.add_message::<Scroll>();
     add_events(&mut app);
     app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
     app.add_systems(PreUpdate, (update_cursor, update_focus));
@@ -121,7 +124,7 @@ pub fn app_run() -> AppExit {
         Update,
         (
             (camera_rotation, camera_translation).chain(),
-            ((
+            (
                 (update_box_select, update_hover).chain(),
                 (
                     (do_roll, update_rolling).chain(),
@@ -130,8 +133,9 @@ pub fn app_run() -> AppExit {
                     update_scale,
                 ),
             )
-                .chain(),),
+                .chain(),
             text_submission,
+            scroll.after(UiSystems::Layout),
         )
             .chain(),
     );
