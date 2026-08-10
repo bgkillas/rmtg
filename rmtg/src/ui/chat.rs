@@ -1,12 +1,12 @@
-use crate::events::scroll::Scroll;
+use crate::events::scroll::{Scroll, Scrollable};
 use crate::focus::Focus;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::{FONT_HEIGHT, FONT_SIZE};
 use bevy::color::Color;
 use bevy::input_focus::{FocusCause, InputFocus};
-use bevy::prelude::{BackgroundColor, Event, Text, Visibility};
+use bevy::prelude::{BackgroundColor, Event, FlexDirection, Text, Visibility};
 use bevy::text::{EditableText, FontSize, TextCursorStyle, TextFont};
-use bevy::ui::{AlignContent, Display, Node, Overflow, PositionType, RepeatedGridTrack, Val};
+use bevy::ui::{Display, Node, Overflow, PositionType, Val};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
 use bevy_ecs::component::Component;
@@ -70,13 +70,13 @@ pub fn chat_bundle() -> impl Bundle {
                     position_type: PositionType::Absolute,
                     bottom: Val::Px(FONT_HEIGHT),
                     overflow: Overflow::scroll_y(),
-                    display: Display::Grid,
-                    grid_template_columns: vec![RepeatedGridTrack::percent(1, 100.0)],
-                    align_content: AlignContent::Start,
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Column,
                     ..Node::default()
                 },
                 TextChat,
                 Visibility::Inherited,
+                Scrollable,
             ),
         ],
     )
@@ -86,24 +86,31 @@ pub struct TextSubmission {
     pub string: String,
     pub source: TextSource,
 }
+#[must_use]
+pub fn text_node(str: String) -> impl Bundle {
+    (
+        Node {
+            width: Val::Percent(100.0),
+            flex_shrink: 0.0,
+            ..Node::default()
+        },
+        Text(str),
+        Visibility::Inherited,
+        TextFont {
+            font_size: FontSize::Px(FONT_SIZE),
+            ..TextFont::default()
+        },
+    )
+}
 pub fn text_message(
     event: On<TextSubmission>,
     mut commands: Commands,
     text_chat: Single<Entity, With<TextChat>>,
     mut msgs: MessageWriter<Scroll>,
 ) {
-    commands.entity(*text_chat).with_child((
-        Node {
-            width: Val::Percent(100.0),
-            ..Node::default()
-        },
-        Text(event.string.clone()),
-        Visibility::Inherited,
-        TextFont {
-            font_size: FontSize::Px(FONT_SIZE),
-            ..TextFont::default()
-        },
-    ));
+    commands
+        .entity(*text_chat)
+        .with_child(text_node(event.string.clone()));
     msgs.write(Scroll::down(*text_chat));
 }
 pub fn text_submission(

@@ -6,7 +6,7 @@ use crate::events::clone::update_clone;
 use crate::events::hover::{update_box_select, update_hover};
 use crate::events::roll::{do_roll, update_rolling};
 use crate::events::scale::update_scale;
-use crate::events::scroll::{Scroll, scroll};
+use crate::events::scroll::{Scroll, scroll, send_scroll_events};
 use crate::focus::{Menu, update_focus};
 use crate::keybinds::KeybindsList;
 use crate::mat::create_mats;
@@ -18,7 +18,7 @@ use crate::{APP_NAME, FONT, USER_AGENT};
 use avian3d::PhysicsPlugins;
 use bevy::DefaultPlugins;
 use bevy::app::{
-    App, AppExit, FixedUpdate, PluginGroup as _, PreUpdate, Startup, TaskPoolOptions,
+    App, AppExit, FixedUpdate, PluginGroup as _, PostUpdate, PreUpdate, Startup, TaskPoolOptions,
     TaskPoolPlugin, TaskPoolThreadAssignmentPolicy, Update,
 };
 use bevy::asset::{AssetMetaCheck, AssetPlugin};
@@ -135,10 +135,11 @@ pub fn app_run() -> AppExit {
             )
                 .chain(),
             text_submission,
-            scroll.after(UiSystems::Layout),
+            send_scroll_events,
         )
             .chain(),
     );
+    app.add_systems(PostUpdate, scroll.after(UiSystems::Layout));
     app.add_systems(
         FixedUpdate,
         ((net_update, receive_message).chain(), poll_clipboards),
