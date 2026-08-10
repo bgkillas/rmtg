@@ -3,7 +3,6 @@ use crate::card_spot::{CardSpot, SpotType};
 use crate::net::Peer;
 use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, MAT_BAR, MAT_HEIGHT, MAT_WIDTH, PLAYER};
 use bevy::color::Color;
-use bevy::material::AlphaMode;
 use bevy::math::Vec3;
 use bevy::mesh::Mesh3d;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};

@@ -6,8 +6,10 @@ use crate::events::move_up::move_up;
 use crate::events::repaint::on_repaint;
 use crate::events::roll::on_roll;
 use crate::events::scale::on_scale;
+use crate::events::scroll::{scroll, scroll_to_bottom};
 use crate::net::{connect_failed, on_connect, on_disconnect};
 use crate::paste::react_paste_card;
+use crate::ui::chat::text_message;
 use bevy::app::App;
 pub mod clipboard;
 pub mod clone;
@@ -17,6 +19,7 @@ pub mod move_up;
 pub mod repaint;
 pub mod roll;
 pub mod scale;
+pub mod scroll;
 pub fn add_events(app: &mut App) {
     app.add_observer(move_up);
     app.add_observer(get_clipboard);
@@ -33,5 +36,8 @@ pub fn add_events(app: &mut App) {
     app.add_observer(update_box_select_mesh);
     app.add_observer(on_scale);
     app.add_observer(react_paste_card);
+    app.add_observer(text_message);
+    app.add_observer(scroll_to_bottom);
+    app.add_observer(scroll);
     app.init_resource::<PollClipboard>();
 }

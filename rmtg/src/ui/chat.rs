@@ -1,15 +1,17 @@
+use crate::events::scroll::ScrollToBottom;
 use crate::focus::Focus;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::{FONT_HEIGHT, FONT_SIZE};
 use bevy::color::Color;
 use bevy::input_focus::{FocusCause, InputFocus};
-use bevy::prelude::{BackgroundColor, Event, Visibility};
+use bevy::prelude::{BackgroundColor, Event, Text, Visibility};
 use bevy::text::{EditableText, FontSize, TextCursorStyle, TextFont};
 use bevy::ui::{AlignContent, Display, Node, Overflow, PositionType, RepeatedGridTrack, Val};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
+use bevy_ecs::observer::On;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Commands, ParamSet, Query, ResMut, Single};
 #[derive(Component)]
@@ -82,6 +84,25 @@ pub fn chat_bundle() -> impl Bundle {
 pub struct TextSubmission {
     pub string: String,
     pub source: TextSource,
+}
+pub fn text_message(
+    event: On<TextSubmission>,
+    mut commands: Commands,
+    text_chat: Single<Entity, With<TextChat>>,
+) {
+    commands.entity(*text_chat).with_child((
+        Node {
+            width: Val::Percent(100.0),
+            ..Node::default()
+        },
+        Text(event.string.clone()),
+        Visibility::Inherited,
+        TextFont {
+            font_size: FontSize::Px(FONT_SIZE),
+            ..TextFont::default()
+        },
+    ));
+    commands.trigger(ScrollToBottom::new(*text_chat));
 }
 pub fn text_submission(
     mut focus: ParamSet<(Focus, ResMut<InputFocus>)>,
