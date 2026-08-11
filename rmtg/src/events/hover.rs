@@ -16,6 +16,7 @@ use bevy::prelude::{
 };
 use bevy_ecs::event::Event;
 use bevy_ecs::system::Single;
+use bevy_query_macro::query_fn;
 #[derive(Component, Clone)]
 pub struct Hoverable;
 #[derive(Component, Clone, Copy)]
@@ -125,37 +126,41 @@ pub fn update_box_select_mesh(
         .entity(event.entity)
         .insert(Mesh3d(asset.meshes.add(mesh)));
 }
+#[query_fn]
 pub fn update_box_select(
-    box_select: Option<Single<(Entity, &mut BoxSelect)>>,
+    box_select: Single<(Entity, &mut BoxSelect)>,
     olds: Query<(), With<HoveredObject>>,
     hoverable: Query<(Entity, &ColliderAabb), With<Hoverable>>,
     spatial: Spatial,
     mut commands: Commands,
     keybinds: Keybinds,
 ) {
-    let Some((entity, select)) = box_select.map(Single::into_inner) else {
-        return;
-    };
     if !keybinds.pressed(Keybind::Select) && !keybinds.pressed(Keybind::HoldSelect) {
-        commands.entity(entity).despawn();
+        commands.entity(box_select.entity).despawn();
         return;
     }
     let Some((_, _, pos)) = spatial.ray() else {
         return;
     };
     let vec = pos.xz();
-    commands.trigger(UpdateBoxSelect { entity, vec });
-    let mut aabb = Aabb2d::from_point_cloud(Isometry2d::default(), &[select.start, vec]);
+    commands.trigger(UpdateBoxSelect {
+        entity: box_select.entity,
+        vec,
+    });
+    let mut aabb =
+        Aabb2d::from_point_cloud(Isometry2d::default(), &[box_select.box_select.start, vec]);
     aabb.min -= Vec2::splat(DragOutline::THICKNESS);
     aabb.max += Vec2::splat(DragOutline::THICKNESS);
-    for (ent, caabb) in hoverable {
+    for hover_ent in hoverable {
         let splat = Aabb2d {
-            min: caabb.min.xz(),
-            max: caabb.max.xz(),
+            min: hover_ent.collider_aabb.min.xz(),
+            max: hover_ent.collider_aabb.max.xz(),
         };
-        if !aabb.intersects(&splat) && olds.contains(ent) && !keybinds.pressed(Keybind::HoldSelect)
+        if !aabb.intersects(&splat)
+            && olds.contains(hover_ent.entity)
+            && !keybinds.pressed(Keybind::HoldSelect)
         {
-            commands.trigger(RemoveHover::new(ent));
+            commands.trigger(RemoveHover::new(hover_ent.entity));
         }
     }
     let caabb = Aabb3d {

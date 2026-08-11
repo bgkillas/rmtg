@@ -12,6 +12,7 @@ use bevy_ecs::message::{Message, MessageReader, MessageWriter, PopulatedMessageR
 use bevy_ecs::observer::On;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Commands, Query, Res, Single};
+use bevy_query_macro::query_fn;
 use std::mem;
 #[derive(Component)]
 pub struct Scrollable;
@@ -120,6 +121,7 @@ pub struct InsertScrollbar {
     pub orientation: ControlOrientation,
     pub min_thumb_length: f32,
 }
+#[query_fn]
 pub fn insert_scroll_bar(
     event: On<Add, InsertScrollbar>,
     scroll_bar: Single<(&ChildOf, &InsertScrollbar)>,
@@ -127,16 +129,15 @@ pub fn insert_scroll_bar(
     is_scrollable: Query<(), With<Scrollable>>,
     mut commands: Commands,
 ) {
-    let (parent, scroll) = scroll_bar.into_inner();
-    for &child in children.get(parent.0).unwrap() {
+    for &child in children.get(scroll_bar.child_of.0).unwrap() {
         if is_scrollable.contains(child) {
             commands
                 .entity(event.entity)
                 .remove::<InsertScrollbar>()
                 .insert(Scrollbar {
                     target: child,
-                    orientation: scroll.orientation,
-                    min_thumb_length: scroll.min_thumb_length,
+                    orientation: scroll_bar.insert_scrollbar.orientation,
+                    min_thumb_length: scroll_bar.insert_scrollbar.min_thumb_length,
                 });
             return;
         }

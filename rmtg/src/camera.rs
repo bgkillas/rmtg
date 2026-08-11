@@ -11,11 +11,13 @@ use bevy::time::Time;
 use bevy_ecs::component::Component;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{ParamSet, Single};
+use bevy_query_macro::query_fn;
 use std::f32::consts::PI;
 #[derive(Component, Default)]
 pub struct CameraVelocity {
     pub vec: Vec3,
 }
+#[query_fn]
 pub fn camera_translation(
     keybinds: Keybinds,
     mouse_motion: Res<AccumulatedMouseScroll>,
@@ -30,8 +32,8 @@ pub fn camera_translation(
     let Some(ray) = spatial.p0().cam_center_ray() else {
         return;
     };
-    let (mut camera, mut vel) = spatial.p1().into_inner();
-    vel.vec = Vec3::splat(0.0);
+    let mut camera = spatial.p1();
+    camera.camera_velocity.vec = Vec3::splat(0.0);
     let Some(ray_time) = ray.intersect_plane(Vec3::default(), InfinitePlane3d { normal: Dir3::Y })
     else {
         return;
@@ -40,14 +42,14 @@ pub fn camera_translation(
     let fast_scale = scale * 2.0;
     let mut apply = |keybind: Keybind, fun: fn(&Transform) -> Dir3, scale: f32| {
         if keybinds.pressed(keybind) {
-            let trans = fun(&camera).as_vec3() * scale;
+            let trans = fun(&camera.transform).as_vec3() * scale;
             let mut norm = trans.normalize();
             norm.y = 0.0;
             let abs = norm.length();
             if abs != 0.0 {
                 let delta = norm * trans.length() / abs;
-                camera.translation += delta;
-                vel.vec += delta;
+                camera.transform.translation += delta;
+                camera.camera_velocity.vec += delta;
             }
         }
     };
@@ -59,28 +61,29 @@ pub fn camera_translation(
     apply(Keybind::LeftFast, Transform::left, fast_scale);
     apply(Keybind::RightFast, Transform::right, fast_scale);
     apply(Keybind::DownFast, Transform::back, fast_scale);
-    vel.vec /= time.delta_secs();
+    camera.camera_velocity.vec /= time.delta_secs();
     if mouse_motion.delta.y != 0.0 && !focus.mouse_lock() {
-        let mut translate = camera.forward().as_vec3() * MAT_WIDTH * mouse_motion.delta.y / 1024.0
+        let mut translate = camera.transform.forward().as_vec3() * MAT_WIDTH * mouse_motion.delta.y
+            / 1024.0
             * ray_time.max(CARD_HEIGHT)
             / W
             * 2.0;
         if mouse_motion.unit == MouseScrollUnit::Line {
             translate *= MouseScrollUnit::SCROLL_UNIT_CONVERSION_FACTOR;
         }
-        if camera.translation.y + translate.y <= 0.0 {
-            camera.translation += ray.direction * (ray_time / 2.0);
+        if camera.transform.translation.y + translate.y <= 0.0 {
+            camera.transform.translation += ray.direction * (ray_time / 2.0);
         } else {
-            camera.translation += translate;
+            camera.transform.translation += translate;
         }
     }
     let epsilon = Vec3::splat(2.0 * CARD_THICKNESS);
-    camera.translation = camera.translation.clamp(
+    camera.transform.translation = camera.transform.translation.clamp(
         Vec3::new(-W, 0.0, -W) + epsilon,
         Vec3::new(W, 2.0 * W, W) - epsilon,
     );
     if keybinds.just_pressed(Keybind::Reset) {
-        *camera = default_cam_pos(peers.my_id.unwrap_or_default());
+        *camera.transform = default_cam_pos(peers.my_id.unwrap_or_default());
     }
 }
 #[must_use]
