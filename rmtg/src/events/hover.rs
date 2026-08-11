@@ -16,7 +16,7 @@ use bevy::prelude::{
 };
 use bevy_ecs::event::Event;
 use bevy_ecs::system::Single;
-use bevy_query_macro::query_fn;
+use bevy_query_fn_macro::query_fn;
 #[derive(Component, Clone)]
 pub struct Hoverable;
 #[derive(Component, Clone, Copy)]

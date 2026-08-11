@@ -1610,9 +1610,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b511e89f7078fd21fdea77061a0ca3e737297c7011bb10c073e0aecb17c9fea6"
 
 [[package]]
-name = "bevy_query_macro"
+name = "bevy_query_fn_macro"
 version = "0.1.0"
-source = "git+https://github.com/bgkillas/bevy_query_macro#833bb7eb55cb70ee53f8d376ea4d743c8f1c4cff"
+source = "git+https://github.com/bgkillas/bevy_query_fn_macro#17c2d99b61ed8fa4971e688e3d619b63b7a22914"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -7266,7 +7266,7 @@ dependencies = [
  "bevy_framepace",
  "bevy_microphone",
  "bevy_p2p",
- "bevy_query_macro",
+ "bevy_query_fn_macro",
  "bevy_rich_text3d",
  "console_error_panic_hook",
  "enum-map",

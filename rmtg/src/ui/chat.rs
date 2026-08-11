@@ -15,7 +15,7 @@ use bevy_ecs::message::MessageWriter;
 use bevy_ecs::observer::On;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Commands, ParamSet, Query, ResMut, Single};
-use bevy_query_macro::query_fn;
+use bevy_query_fn_macro::query_fn;
 #[derive(Component)]
 pub struct TextMenu;
 #[derive(Component)]

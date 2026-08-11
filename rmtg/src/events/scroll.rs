@@ -12,7 +12,7 @@ use bevy_ecs::message::{Message, MessageReader, MessageWriter, PopulatedMessageR
 use bevy_ecs::observer::On;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Commands, Query, Res, Single};
-use bevy_query_macro::query_fn;
+use bevy_query_fn_macro::query_fn;
 use std::mem;
 #[derive(Component)]
 pub struct Scrollable;

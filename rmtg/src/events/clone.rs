@@ -7,7 +7,7 @@ use crate::shapes::{OUTLINE_COLOR, Shape};
 use crate::spatial::Spatial;
 use bevy::color::Color;
 use bevy::prelude::{Commands, Event, Local, On, Query, Transform, With};
-use bevy_query_macro::query_fn;
+use bevy_query_fn_macro::query_fn;
 #[derive(Event, Clone)]
 pub struct Clone {
     pub clone_type: CloneType,

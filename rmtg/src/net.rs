@@ -21,7 +21,7 @@ pub enum Msg {
 }
 pub fn net_update(net: Net<Msg>, spatial: Spatial) {
     if let Some((_, cursor, _)) = spatial.ray() {
-        let camera = spatial.camera.1.translation;
+        let camera = spatial.camera.transform.translation;
         net.broadcast(Msg::Camera { camera, cursor });
     }
 }

@@ -10,7 +10,7 @@ use bevy::prelude::{
     Children, Commands, Component, Entity, EntityEvent, On, Query, Transform, With, Without,
 };
 use bevy_ecs::system::In;
-use bevy_query_macro::query_fn;
+use bevy_query_fn_macro::query_fn;
 use rand::prelude::StdRng;
 use rand::{RngExt as _, make_rng};
 use std::f32::consts::TAU;

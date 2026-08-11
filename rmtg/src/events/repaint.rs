@@ -1,7 +1,7 @@
 use crate::pile::Pile;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Children, Entity, EntityEvent, On, Query};
-use bevy_query_macro::query_fn;
+use bevy_query_fn_macro::query_fn;
 #[derive(EntityEvent)]
 pub struct Repaint {
     pub entity: Entity,

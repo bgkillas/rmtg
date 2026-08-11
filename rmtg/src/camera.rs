@@ -11,7 +11,7 @@ use bevy::time::Time;
 use bevy_ecs::component::Component;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{ParamSet, Single};
-use bevy_query_macro::query_fn;
+use bevy_query_fn_macro::query_fn;
 use std::f32::consts::PI;
 #[derive(Component, Default)]
 pub struct CameraVelocity {

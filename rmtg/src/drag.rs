@@ -13,7 +13,7 @@ use bevy::prelude::{
 };
 use bevy::time::Time;
 use bevy_ecs::system::Single;
-use bevy_query_macro::query_fn;
+use bevy_query_fn_macro::query_fn;
 use std::collections::HashSet;
 #[derive(Component, Clone)]
 pub struct TargetPosition {
