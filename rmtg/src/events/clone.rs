@@ -1,5 +1,5 @@
 use crate::assets::Asset;
-use crate::events::hover::Hovered;
+use crate::events::hover::HoveredObject;
 use crate::events::move_up::MoveUp;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::pile::Pile;
@@ -43,7 +43,7 @@ pub fn on_clone(clone: On<Clone>, mut commands: Commands, mut asset: Asset) {
 pub fn update_clone(
     keybinds: Keybinds,
     mut commands: Commands,
-    query: Query<(&Transform, Option<&Shape>, Option<&Pile>), With<Hovered>>,
+    query: Query<(&Transform, Option<&Shape>, Option<&Pile>), With<HoveredObject>>,
     spatial: Spatial,
     mut objects: Local<Vec<Clone>>,
 ) {

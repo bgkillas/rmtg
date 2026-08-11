@@ -4,11 +4,14 @@ use bevy::math::Vec2;
 use bevy::picking::hover::HoverMap;
 use bevy::prelude::{Component, KeyCode};
 use bevy::ui::{ComputedNode, Node, OverflowAxis, ScrollPosition};
+use bevy::ui_widgets::{ControlOrientation, Scrollbar};
 use bevy_ecs::entity::Entity;
-use bevy_ecs::hierarchy::ChildOf;
+use bevy_ecs::hierarchy::{ChildOf, Children};
+use bevy_ecs::lifecycle::Add;
 use bevy_ecs::message::{Message, MessageReader, MessageWriter, PopulatedMessageReader};
+use bevy_ecs::observer::On;
 use bevy_ecs::query::With;
-use bevy_ecs::system::{Query, Res};
+use bevy_ecs::system::{Commands, Query, Res, Single};
 use std::mem;
 #[derive(Component)]
 pub struct Scrollable;
@@ -111,4 +114,32 @@ pub fn send_scroll_events(
             }
         }
     }
+}
+#[derive(Component)]
+pub struct InsertScrollbar {
+    pub orientation: ControlOrientation,
+    pub min_thumb_length: f32,
+}
+pub fn insert_scroll_bar(
+    event: On<Add, InsertScrollbar>,
+    scroll_bar: Single<(&ChildOf, &InsertScrollbar)>,
+    children: Query<&Children>,
+    is_scrollable: Query<(), With<Scrollable>>,
+    mut commands: Commands,
+) {
+    let (parent, scroll) = scroll_bar.into_inner();
+    for &child in children.get(parent.0).unwrap() {
+        if is_scrollable.contains(child) {
+            commands
+                .entity(event.entity)
+                .remove::<InsertScrollbar>()
+                .insert(Scrollbar {
+                    target: child,
+                    orientation: scroll.orientation,
+                    min_thumb_length: scroll.min_thumb_length,
+                });
+            return;
+        }
+    }
+    unreachable!();
 }

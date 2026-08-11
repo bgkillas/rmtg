@@ -1,4 +1,4 @@
-use crate::events::hover::Hovered;
+use crate::events::hover::HoveredObject;
 use crate::events::repaint::Repaint;
 use crate::keybinds::{Keybind, Keybinds};
 use crate::physics::WorldLayer;
@@ -114,7 +114,11 @@ fn stopped_roll(
         }
     }
 }
-pub fn do_roll(hovered: Query<Entity, With<Hovered>>, mut commands: Commands, keybinds: Keybinds) {
+pub fn do_roll(
+    hovered: Query<Entity, With<HoveredObject>>,
+    mut commands: Commands,
+    keybinds: Keybinds,
+) {
     for ent in hovered {
         if keybinds.just_pressed(Keybind::Shuffle) {
             commands.trigger(Roll::new(ent));

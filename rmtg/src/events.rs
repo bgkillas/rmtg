@@ -6,6 +6,7 @@ use crate::events::move_up::move_up;
 use crate::events::repaint::on_repaint;
 use crate::events::roll::on_roll;
 use crate::events::scale::on_scale;
+use crate::events::scroll::insert_scroll_bar;
 use crate::net::{connect_failed, on_connect, on_disconnect};
 use crate::paste::react_paste_card;
 use crate::ui::chat::text_message;
@@ -36,5 +37,6 @@ pub fn add_events(app: &mut App) {
     app.add_observer(on_scale);
     app.add_observer(react_paste_card);
     app.add_observer(text_message);
+    app.add_observer(insert_scroll_bar);
     app.init_resource::<PollClipboard>();
 }

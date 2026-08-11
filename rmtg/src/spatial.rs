@@ -1,5 +1,5 @@
 #![allow(clippy::shadow_reuse)]
-use crate::events::hover::Hovered;
+use crate::events::hover::HoveredObject;
 use crate::pile::Pile;
 use crate::shapes::{FaceNumber, Shape};
 use avian3d::spatial_query::{RayHitData, SpatialQuery, SpatialQueryFilter};
@@ -23,7 +23,7 @@ pub struct Spatial<'w, 's> {
             Without<Shape>,
             Without<Pile>,
             Without<FaceNumber>,
-            Without<Hovered>,
+            Without<HoveredObject>,
         ),
     >,
     pub window: Single<'w, 's, &'static Window, With<PrimaryWindow>>,

@@ -19,13 +19,13 @@ use bevy_ecs::system::Single;
 #[derive(Component, Clone)]
 pub struct Hoverable;
 #[derive(Component, Clone, Copy)]
-pub struct Hovered {
+pub struct HoveredObject {
     pub held: bool,
 }
 #[derive(EntityEvent)]
 pub struct AddHover {
     pub entity: Entity,
-    pub hovered: Hovered,
+    pub hovered: HoveredObject,
 }
 #[derive(EntityEvent)]
 pub struct RemoveHover {
@@ -33,7 +33,7 @@ pub struct RemoveHover {
 }
 impl AddHover {
     #[must_use]
-    pub fn new(entity: Entity, hovered: Hovered) -> Self {
+    pub fn new(entity: Entity, hovered: HoveredObject) -> Self {
         Self { entity, hovered }
     }
 }
@@ -75,7 +75,7 @@ pub fn remove_hover(
         depth_bias: OUTLINE_DEPTH_BIAS,
         ..StandardMaterial::default()
     });
-    commands.entity(event.entity).remove::<Hovered>();
+    commands.entity(event.entity).remove::<HoveredObject>();
 }
 #[derive(Component)]
 pub struct BoxSelect {
@@ -127,7 +127,7 @@ pub fn update_box_select_mesh(
 }
 pub fn update_box_select(
     box_select: Option<Single<(Entity, &mut BoxSelect)>>,
-    olds: Query<(), With<Hovered>>,
+    olds: Query<(), With<HoveredObject>>,
     hoverable: Query<(Entity, &ColliderAabb), With<Hoverable>>,
     spatial: Spatial,
     mut commands: Commands,
@@ -173,7 +173,7 @@ pub fn update_box_select(
         &SpatialQueryFilter::DEFAULT,
         |ent| {
             if hoverable.contains(ent) && !olds.contains(ent) {
-                commands.trigger(AddHover::new(ent, Hovered { held: true }));
+                commands.trigger(AddHover::new(ent, HoveredObject { held: true }));
             }
             true
         },
@@ -181,7 +181,7 @@ pub fn update_box_select(
 }
 pub fn update_hover(
     box_select: Option<Single<(), With<BoxSelect>>>,
-    olds: Query<(Entity, &Hovered)>,
+    olds: Query<(Entity, &HoveredObject)>,
     hoverable: Query<(), With<Hoverable>>,
     keybinds: Keybinds,
     spatial: Spatial,
@@ -210,7 +210,7 @@ pub fn update_hover(
         if olds.iter().any(|(e, h)| e == hit.entity && h.held) {
             commands.trigger(RemoveHover::new(hit.entity));
         } else {
-            commands.trigger(AddHover::new(hit.entity, Hovered { held: true }));
+            commands.trigger(AddHover::new(hit.entity, HoveredObject { held: true }));
         }
     } else if keybinds.pressed(Keybind::Select) {
         if keybinds.just_pressed(Keybind::Select)
@@ -228,6 +228,6 @@ pub fn update_hover(
                 commands.trigger(RemoveHover::new(ent));
             }
         }
-        commands.trigger(AddHover::new(hit.entity, Hovered { held: false }));
+        commands.trigger(AddHover::new(hit.entity, HoveredObject { held: false }));
     }
 }

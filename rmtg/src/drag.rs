@@ -1,6 +1,6 @@
 use crate::CARD_THICKNESS;
 use crate::events::gravity::NewGravity;
-use crate::events::hover::{BoxSelect, Hovered};
+use crate::events::hover::{BoxSelect, HoveredObject};
 use crate::keybinds::{Keybind, Keybinds};
 use crate::physics::{GRAVITY, LIN_DAMPING};
 use crate::spatial::Spatial;
@@ -27,7 +27,7 @@ pub fn drag(
             &mut LinearVelocity,
             Option<&mut TargetPosition>,
         ),
-        With<Hovered>,
+        With<HoveredObject>,
     >,
     mut commands: Commands,
     keybinds: Keybinds,

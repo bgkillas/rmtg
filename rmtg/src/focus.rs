@@ -21,6 +21,7 @@ pub enum Menu {
 pub struct Focus<'w, 's> {
     pub active_input: Res<'w, InputFocus>,
     pub window: Single<'w, 's, Entity, With<Window>>,
+    pub hover_map: Res<'w, HoverMap>,
 }
 impl Focus<'_, '_> {
     #[must_use]
@@ -29,7 +30,11 @@ impl Focus<'_, '_> {
     }
     #[must_use]
     pub fn mouse_lock(&self) -> bool {
-        self.active_input.get().is_some_and(|e| e != *self.window)
+        assert_eq!(self.hover_map.len(), 1);
+        let val = self.hover_map.values().next().unwrap();
+        assert_eq!(val.len(), 1);
+        let &ent = val.keys().next().unwrap();
+        ent == *self.window
     }
 }
 pub fn update_focus(

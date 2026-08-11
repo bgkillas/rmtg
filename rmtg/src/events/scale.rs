@@ -1,4 +1,4 @@
-use crate::events::hover::Hovered;
+use crate::events::hover::HoveredObject;
 use crate::events::move_up::MoveUp;
 use crate::keybinds::{Keybind, Keybinds};
 use bevy::prelude::{EntityEvent, Transform};
@@ -20,7 +20,7 @@ pub fn on_scale(event: On<Scale>, mut transforms: Query<&mut Transform>, mut com
 pub fn update_scale(
     mut commands: Commands,
     keybinds: Keybinds,
-    query: Query<Entity, With<Hovered>>,
+    query: Query<Entity, With<HoveredObject>>,
 ) {
     let up = keybinds.just_pressed(Keybind::ScaleUp);
     let down = keybinds.just_pressed(Keybind::ScaleDown);
