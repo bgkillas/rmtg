@@ -10,6 +10,7 @@ use bevy::prelude::{
     Children, Commands, Component, Entity, EntityEvent, On, Query, Transform, With, Without,
 };
 use bevy_ecs::system::In;
+use bevy_query_macro::query_fn;
 use rand::prelude::StdRng;
 use rand::{RngExt as _, make_rng};
 use std::f32::consts::TAU;
@@ -71,19 +72,20 @@ pub fn on_roll(
         ));
     }
 }
+#[query_fn]
 pub fn update_rolling(
     query: Query<(Entity, &LinearVelocity, &CollisionLayers, Option<&Sleeping>), With<Rolling>>,
     mut commands: Commands,
 ) {
-    for (entity, vel, collision, is_sleep) in query {
-        if vel.y <= CARD_THICKNESS {
-            if is_sleep.is_some() {
-                commands.entity(entity).remove::<Rolling>();
-                commands.run_system_cached_with(stopped_roll, entity);
+    for rolling in query {
+        if rolling.linear_velocity.y <= CARD_THICKNESS {
+            if rolling.sleeping.is_some() {
+                commands.entity(rolling.entity).remove::<Rolling>();
+                commands.run_system_cached_with(stopped_roll, rolling.entity);
             }
-            if !collision.filters.has_all(LayerMask::ALL) {
+            if !rolling.collision_layers.filters.has_all(LayerMask::ALL) {
                 commands
-                    .entity(entity)
+                    .entity(rolling.entity)
                     .insert(CollisionLayers::new(WorldLayer::Default, LayerMask::ALL));
             }
         }
@@ -94,20 +96,21 @@ pub struct StoppedRoll {
     pub entity: Entity,
     pub val: usize,
 }
+#[query_fn]
 fn stopped_roll(
     In(entity): In<Entity>,
     query: Query<(&Transform, &Children, &Shape), Without<FaceNumber>>,
     faces: Query<&Transform, With<FaceNumber>>,
     mut commands: Commands,
 ) {
-    let (transform, children, shape) = query.get(entity).unwrap();
-    for (i, &face) in children[1..].iter().enumerate() {
+    let shape = query.get(entity).unwrap();
+    for (i, &face) in shape.children[1..].iter().enumerate() {
         let trans = faces.get(face).unwrap();
-        let global = transform.mul_transform(*trans);
+        let global = shape.transform.mul_transform(*trans);
         let forward = global.forward();
         let val = forward.x.hypot(forward.z);
         if val < 1.0 / 256.0
-            && (matches!(shape, Shape::Tetrahedron) || forward.y.is_sign_negative())
+            && (matches!(shape.shape, Shape::Tetrahedron) || forward.y.is_sign_negative())
         {
             commands.trigger(StoppedRoll { entity, val: i });
             return;

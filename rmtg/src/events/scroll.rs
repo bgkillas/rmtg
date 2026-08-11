@@ -55,6 +55,7 @@ impl Scroll {
         }
     }
 }
+#[query_fn]
 pub fn scroll(
     mut messages: PopulatedMessageReader<Scroll>,
     parents: Query<&ChildOf>,
@@ -65,29 +66,32 @@ pub fn scroll(
         while !query.contains(entity) {
             entity = parents.get(entity).unwrap().0;
         }
-        let (mut scroll_position, node, computed) = query.get_mut(entity).unwrap();
-        let max_offset =
-            (computed.content_size() - computed.size()) * computed.inverse_scale_factor();
-        if node.overflow.x == OverflowAxis::Scroll && msg.delta.x != 0.0 {
+        let mut scrollable = query.get_mut(entity).unwrap();
+        let max_offset = (scrollable.computed_node.content_size()
+            - scrollable.computed_node.size())
+            * scrollable.computed_node.inverse_scale_factor();
+        if scrollable.node.overflow.x == OverflowAxis::Scroll && msg.delta.x != 0.0 {
             let max = if msg.delta.x > 0.0 {
-                scroll_position.x >= max_offset.x
+                scrollable.scroll_position.x >= max_offset.x
             } else {
-                scroll_position.x <= 0.0
+                scrollable.scroll_position.x <= 0.0
             };
             if !max {
-                scroll_position.x += msg.delta.x;
-                scroll_position.x = scroll_position.x.min(max_offset.x).max(0.0);
+                scrollable.scroll_position.x += msg.delta.x;
+                scrollable.scroll_position.x =
+                    scrollable.scroll_position.x.min(max_offset.x).max(0.0);
             }
         }
-        if node.overflow.y == OverflowAxis::Scroll && msg.delta.y != 0.0 {
+        if scrollable.node.overflow.y == OverflowAxis::Scroll && msg.delta.y != 0.0 {
             let max = if msg.delta.y > 0.0 {
-                scroll_position.y >= max_offset.y
+                scrollable.scroll_position.y >= max_offset.y
             } else {
-                scroll_position.y <= 0.0
+                scrollable.scroll_position.y <= 0.0
             };
             if !max {
-                scroll_position.y += msg.delta.y;
-                scroll_position.y = scroll_position.y.min(max_offset.y).max(0.0);
+                scrollable.scroll_position.y += msg.delta.y;
+                scrollable.scroll_position.y =
+                    scrollable.scroll_position.y.min(max_offset.y).max(0.0);
             }
         }
     }

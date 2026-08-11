@@ -107,19 +107,20 @@ pub fn spawn_box_select(mut event: On<SpawnBoxSelect>, mut commands: Commands, m
         .id();
     commands.trigger(UpdateBoxSelect { entity, vec });
 }
+#[query_fn]
 pub fn update_box_select_mesh(
     event: On<UpdateBoxSelect>,
-    mut box_select: Query<(&mut Transform, &BoxSelect)>,
+    mut box_selects: Query<(&mut Transform, &BoxSelect)>,
     mut commands: Commands,
     mut asset: Asset,
 ) {
-    let (mut transform, select) = box_select.get_mut(event.entity).unwrap();
-    let vec = (select.start + event.vec) / 2.0;
-    transform.translation.x = vec.x;
-    transform.translation.z = vec.y;
+    let mut box_select = box_selects.get_mut(event.entity).unwrap();
+    let vec = (box_select.box_select.start + event.vec) / 2.0;
+    box_select.transform.translation.x = vec.x;
+    box_select.transform.translation.z = vec.y;
     let drag = DragOutline {
-        x: (event.vec.x - select.start.x).abs() / 2.0,
-        y: (event.vec.y - select.start.y).abs() / 2.0,
+        x: (event.vec.x - box_select.box_select.start.x).abs() / 2.0,
+        y: (event.vec.y - box_select.box_select.start.y).abs() / 2.0,
     };
     let mesh = drag.mesh();
     commands
@@ -184,6 +185,7 @@ pub fn update_box_select(
         },
     );
 }
+#[query_fn]
 pub fn update_hover(
     box_select: Option<Single<(), With<BoxSelect>>>,
     olds: Query<(Entity, &HoveredObject)>,
@@ -196,11 +198,11 @@ pub fn update_hover(
         return;
     };
     if !hoverable.contains(hit.entity) {
-        for (ent, hovered) in olds {
-            if (!hovered.held && !keybinds.pressed(Keybind::Select))
+        for old in olds {
+            if (!old.hovered_object.held && !keybinds.pressed(Keybind::Select))
                 || keybinds.just_pressed(Keybind::Select)
             {
-                commands.trigger(RemoveHover::new(ent));
+                commands.trigger(RemoveHover::new(old.entity));
             }
         }
         if box_select.is_none()
@@ -212,25 +214,30 @@ pub fn update_hover(
         return;
     }
     if keybinds.just_pressed(Keybind::HoldSelect) {
-        if olds.iter().any(|(e, h)| e == hit.entity && h.held) {
+        if olds
+            .iter()
+            .any(|old| old.entity == hit.entity && old.hovered_object.held)
+        {
             commands.trigger(RemoveHover::new(hit.entity));
         } else {
             commands.trigger(AddHover::new(hit.entity, HoveredObject { held: true }));
         }
     } else if keybinds.pressed(Keybind::Select) {
         if keybinds.just_pressed(Keybind::Select)
-            && olds.iter().all(|(e, h)| e != hit.entity || !h.held)
+            && olds
+                .iter()
+                .all(|old| old.entity != hit.entity || !old.hovered_object.held)
         {
-            for (ent, _) in olds {
-                if ent != hit.entity {
-                    commands.trigger(RemoveHover::new(ent));
+            for old in olds {
+                if old.entity != hit.entity {
+                    commands.trigger(RemoveHover::new(old.entity));
                 }
             }
         }
-    } else if olds.iter().all(|(e, _)| e != hit.entity) {
-        for (ent, hovered) in olds {
-            if !hovered.held {
-                commands.trigger(RemoveHover::new(ent));
+    } else if olds.iter().all(|old| old.entity != hit.entity) {
+        for old in olds {
+            if !old.hovered_object.held {
+                commands.trigger(RemoveHover::new(old.entity));
             }
         }
         commands.trigger(AddHover::new(hit.entity, HoveredObject { held: false }));

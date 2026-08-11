@@ -7,6 +7,7 @@ use crate::shapes::{OUTLINE_COLOR, Shape};
 use crate::spatial::Spatial;
 use bevy::color::Color;
 use bevy::prelude::{Commands, Event, Local, On, Query, Transform, With};
+use bevy_query_macro::query_fn;
 #[derive(Event, Clone)]
 pub struct Clone {
     pub clone_type: CloneType,
@@ -40,10 +41,11 @@ pub fn on_clone(clone: On<Clone>, mut commands: Commands, mut asset: Asset) {
     };
     commands.trigger(MoveUp::new(id));
 }
+#[query_fn]
 pub fn update_clone(
     keybinds: Keybinds,
     mut commands: Commands,
-    query: Query<(&Transform, Option<&Shape>, Option<&Pile>), With<HoveredObject>>,
+    hovered_entities: Query<(&Transform, Option<&Shape>, Option<&Pile>), With<HoveredObject>>,
     spatial: Spatial,
     mut objects: Local<Vec<Clone>>,
 ) {
@@ -52,14 +54,15 @@ pub fn update_clone(
     };
     if keybinds.just_pressed(Keybind::CopyObject) {
         objects.clear();
-        for (&(mut transform), is_shape, is_pile) in query {
-            transform.translation -= pos;
-            let ty = match (is_shape, is_pile) {
+        for hovered in hovered_entities {
+            let ty = match (hovered.shape, hovered.pile) {
                 (Some(&shape), None) => CloneType::Shape(shape),
                 (None, Some(pile)) => CloneType::Pile(pile.clone()),
                 _ => unreachable!(),
             };
-            objects.push(Clone::new(ty, transform));
+            let mut trans = *hovered.transform;
+            trans.translation -= pos;
+            objects.push(Clone::new(ty, trans));
         }
     }
     if keybinds.just_pressed(Keybind::PasteObject) {

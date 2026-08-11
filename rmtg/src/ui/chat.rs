@@ -15,6 +15,7 @@ use bevy_ecs::message::MessageWriter;
 use bevy_ecs::observer::On;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Commands, ParamSet, Query, ResMut, Single};
+use bevy_query_macro::query_fn;
 #[derive(Component)]
 pub struct TextMenu;
 #[derive(Component)]
@@ -113,6 +114,7 @@ pub fn text_message(
         .with_child(text_node(event.string.clone()));
     msgs.write(Scroll::down(*text_chat));
 }
+#[query_fn]
 pub fn text_submission(
     mut focus: ParamSet<(Focus, ResMut<InputFocus>)>,
     keybinds: Keybinds,
@@ -122,13 +124,13 @@ pub fn text_submission(
 ) {
     if keybinds.just_pressed(Keybind::Chat) {
         if let Some(focused_entity) = focus.p0().active_input.get()
-            && let Ok((mut text, &source)) = text_input.get_mut(focused_entity)
+            && let Ok(mut text) = text_input.get_mut(focused_entity)
         {
             commands.trigger(TextSubmission {
-                string: text.value().to_string(),
-                source,
+                string: text.editable_text.value().to_string(),
+                source: *text.text_source,
             });
-            text.clear();
+            text.editable_text.clear();
             let ent = *focus.p0().window;
             focus.p1().set(ent, FocusCause::Pressed);
         } else {

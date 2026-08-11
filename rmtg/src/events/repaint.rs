@@ -1,6 +1,7 @@
 use crate::pile::Pile;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Children, Entity, EntityEvent, On, Query};
+use bevy_query_macro::query_fn;
 #[derive(EntityEvent)]
 pub struct Repaint {
     pub entity: Entity,
@@ -11,12 +12,13 @@ impl Repaint {
         Self { entity }
     }
 }
+#[query_fn]
 pub fn on_repaint(
     on: On<Repaint>,
     decks: Query<(&Pile, &Children)>,
     mut top: Query<&mut MeshMaterial3d<StandardMaterial>>,
 ) {
-    let (deck, children) = decks.get(on.entity).unwrap();
-    let mut mat = top.get_mut(children[1]).unwrap();
-    mat.0 = deck.first().face().material().unwrap();
+    let pile = decks.get(on.entity).unwrap();
+    let mut mat = top.get_mut(pile.children[1]).unwrap();
+    mat.0 = pile.pile.first().face().material().unwrap();
 }
