@@ -11,6 +11,8 @@ use std::fmt::{Debug, Formatter};
 use std::mem;
 use std::slice::{Iter, IterMut};
 use tokio::task::JoinHandle;
+#[cfg(target_family = "wasm")]
+use tokio_with_wasm as tokio;
 rules::generate_types!();
 type Value = f64;
 #[derive(Debug, Default, Clone, Encode, Decode)]

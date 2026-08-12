@@ -101,8 +101,8 @@ pub struct Clock {
     instant: wasmtimer::std::Instant,
 }
 #[cfg(target_family = "wasm")]
-impl Clock {
-    pub fn new() -> Self {
+impl Default for Clock {
+    fn default() -> Self {
         Self {
             instant: wasmtimer::std::Instant::now(),
         }
@@ -115,9 +115,9 @@ impl ratelimit::Clock for Clock {
     }
 }
 static CARDS_THROTTLE: LazyLock<Ratelimiter<Clock>> =
-    LazyLock::new(|| Ratelimiter::with_clock(9, Clock::new()));
+    LazyLock::new(|| Ratelimiter::with_clock(9, Clock::default()));
 static SEARCH_THROTTLE: LazyLock<Ratelimiter<Clock>> =
-    LazyLock::new(|| Ratelimiter::with_clock(1, Clock::new()));
+    LazyLock::new(|| Ratelimiter::with_clock(1, Clock::default()));
 const SLEEP_TIME: Duration = Duration::new(0, 1_048_576);
 impl SubCard {
     #[must_use]
