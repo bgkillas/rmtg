@@ -1,11 +1,13 @@
-use crate::card::{CardData, CardInfo, Layout};
+use crate::card::{CardData, CardInfo, Layout, MaybeHandles};
 use crate::card::{Colors, Cost, SubCard, Types};
 use crate::id::Id;
 use crate::image::parse_bytes;
 use bevy::image::Image;
+use bevy::log::warn;
 use jzon::{JsonValue, parse};
 use ratelimit::Ratelimiter;
 use reqwest::Client;
+use std::fmt::{Display, Formatter};
 use std::mem;
 use std::str::FromStr as _;
 use std::sync::LazyLock;
@@ -27,6 +29,22 @@ pub enum Quality {
     Large,
     Png,
 }
+pub enum Side {
+    Front,
+    Back,
+}
+impl Display for Side {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Front => {
+                write!(f, "front")
+            }
+            Self::Back => {
+                write!(f, "back")
+            }
+        }
+    }
+}
 impl Quality {
     #[must_use]
     pub fn name(self) -> &'static str {
@@ -45,9 +63,9 @@ impl Quality {
         }
     }
 }
-async fn get_image(client: &Client, uuid: Uuid, quality: Quality, side: &str) -> Option<Image> {
+async fn get_image(client: Client, uuid: Uuid, quality: Quality, side: Side) -> Option<Image> {
     let byte = uuid.as_bytes()[0];
-    let request = client
+    match client
         .get(format!(
             "https://{CARD_URL}/{}/{side}/{:x}/{:x}/{uuid}.{}",
             quality.name(),
@@ -57,9 +75,24 @@ async fn get_image(client: &Client, uuid: Uuid, quality: Quality, side: &str) ->
         ))
         .send()
         .await
-        .ok()?;
-    let bytes = request.bytes().await.ok()?;
-    parse_bytes(&bytes)
+    {
+        Ok(request) => match request.bytes().await {
+            Ok(bytes) => parse_bytes(&bytes),
+            Err(e) => {
+                warn!("{e:?}");
+                None
+            }
+        },
+        Err(e) => {
+            warn!("{e:?}");
+            None
+        }
+    }
+}
+impl CardInfo {
+    pub fn set_image_receiver(&mut self, client: Client, uuid: Uuid, quality: Quality, side: Side) {
+        self.handles = MaybeHandles::Waiting(tokio::spawn(get_image(client, uuid, quality, side)));
+    }
 }
 #[cfg(not(target_family = "wasm"))]
 pub type Clock = ratelimit::StdClock;
@@ -92,7 +125,7 @@ impl SubCard {
         client: Client,
         iter: &[Uuid],
         quality: Quality,
-    ) -> JoinSet<Result<(Self, Option<Image>, Option<Image>), Uuid>> {
+    ) -> JoinSet<Result<Self, Uuid>> {
         let mut set = JoinSet::new();
         for &uuid in iter {
             set.spawn(Self::get(client.clone(), uuid, quality));
@@ -103,8 +136,8 @@ impl SubCard {
         client: Client,
         oracle: Uuid,
         quality: Quality,
-    ) -> Option<JoinSet<Result<(Self, Option<Image>, Option<Image>), Uuid>>> {
-        let mut set = JoinSet::new();
+    ) -> Option<Vec<Result<Self, Uuid>>> {
+        let mut set = Vec::new();
         for i in 1.. {
             while SEARCH_THROTTLE.try_wait().is_err() {
                 sleep(SLEEP_TIME).await;
@@ -120,7 +153,7 @@ impl SubCard {
             let json_raw = request.text().await.ok()?;
             let mut json = parse(&json_raw).ok()?;
             for card_json in json["data"].as_array_mut()? {
-                set.spawn(Self::get_json(
+                set.push(Self::get_json(
                     client.clone(),
                     mem::replace(card_json, JsonValue::Null),
                     quality,
@@ -132,36 +165,16 @@ impl SubCard {
         }
         Some(set)
     }
-    pub async fn get_json(
-        client: Client,
-        json: JsonValue,
-        quality: Quality,
-    ) -> Result<(Self, Option<Image>, Option<Image>), Uuid> {
-        let uuid = Uuid::parse_str(json["id"].as_str().unwrap_or_default())
-            .ok()
-            .unwrap_or_default();
-        if let Some((card, has_back)) = SubCard::from_scryfall(&json, uuid) {
-            let image = get_image(&client, uuid, quality, "front").await;
-            let back = if has_back {
-                Some(
-                    get_image(&client, uuid, quality, "back")
-                        .await
-                        .ok_or(uuid)?,
-                )
-            } else {
-                None
-            };
-            Ok((card, image, back))
+    pub fn get_json(client: Client, json: JsonValue, quality: Quality) -> Result<Self, Uuid> {
+        let uuid = Uuid::parse_str(json["id"].as_str().unwrap_or_default()).unwrap_or_default();
+        if let Some(card) = SubCard::from_scryfall(client, json, uuid, quality) {
+            Ok(card)
         } else {
             Err(uuid)
         }
     }
-    pub async fn get(
-        client: Client,
-        uuid: Uuid,
-        quality: Quality,
-    ) -> Result<(Self, Option<Image>, Option<Image>), Uuid> {
-        async fn get_card(client: &Client, uuid: Uuid) -> Option<(SubCard, bool)> {
+    pub async fn get(client: Client, uuid: Uuid, quality: Quality) -> Result<Self, Uuid> {
+        async fn get_card(client: Client, uuid: Uuid, quality: Quality) -> Option<SubCard> {
             while CARDS_THROTTLE.try_wait().is_err() {
                 sleep(SLEEP_TIME).await;
             }
@@ -172,22 +185,10 @@ impl SubCard {
                 .ok()?;
             let json_raw = request.text().await.ok()?;
             let json = parse(&json_raw).ok()?;
-            SubCard::from_scryfall(&json, uuid)
+            SubCard::from_scryfall(client, json, uuid, quality)
         }
-        if let (Some((card, has_back)), image) = tokio::join!(
-            get_card(&client, uuid),
-            get_image(&client, uuid, quality, "front")
-        ) {
-            let back = if has_back {
-                Some(
-                    get_image(&client, uuid, quality, "back")
-                        .await
-                        .ok_or(uuid)?,
-                )
-            } else {
-                None
-            };
-            Ok((card, image, back))
+        if let Some(card) = get_card(client, uuid, quality).await {
+            Ok(card)
         } else {
             Err(uuid)
         }
@@ -197,8 +198,8 @@ impl SubCard {
         set: &str,
         cn: u16,
         quality: Quality,
-    ) -> Result<(Self, Option<Image>, Option<Image>), (String, u16)> {
-        async fn get_card(client: &Client, set: &str, cn: u16) -> Option<(SubCard, bool)> {
+    ) -> Result<Self, (String, u16)> {
+        async fn get_card(client: Client, quality: Quality, set: &str, cn: u16) -> Option<SubCard> {
             while CARDS_THROTTLE.try_wait().is_err() {
                 sleep(SLEEP_TIME).await;
             }
@@ -210,26 +211,21 @@ impl SubCard {
             let json_raw = request.text().await.ok()?;
             let json = parse(&json_raw).ok()?;
             let uuid = Uuid::parse_str(json["id"].as_str()?).ok()?;
-            SubCard::from_scryfall(&json, uuid)
+            SubCard::from_scryfall(client, json, uuid, quality)
         }
-        if let Some((card, has_back)) = get_card(&client, set, cn).await {
-            let image = get_image(&client, card.id.id, quality, "front").await;
-            let back = if has_back {
-                Some(
-                    get_image(&client, card.id.id, quality, "back")
-                        .await
-                        .ok_or_else(|| (set.to_owned(), cn))?,
-                )
-            } else {
-                None
-            };
-            Ok((card, image, back))
+        if let Some(card) = get_card(client, quality, set, cn).await {
+            Ok(card)
         } else {
             Err((set.to_owned(), cn))
         }
     }
     #[must_use]
-    pub fn from_scryfall(json: &JsonValue, uuid: Uuid) -> Option<(Self, bool)> {
+    pub fn from_scryfall(
+        client: Client,
+        json: JsonValue,
+        uuid: Uuid,
+        quality: Quality,
+    ) -> Option<Self> {
         fn get_face(json: &JsonValue, face: &JsonValue) -> Option<CardInfo> {
             fn get<'a>(face: &'a JsonValue, json: &'a JsonValue, s: &str) -> &'a JsonValue {
                 if face[s].is_null() {
@@ -270,23 +266,24 @@ impl SubCard {
                 power,
                 toughness,
                 loyalty,
-                handles: None,
+                handles: MaybeHandles::None,
             })
         }
         let layout_str = json["layout"].as_str()?;
         let layout = Layout::from(layout_str);
-        let (front, back, has_back) = if json["card_faces"].is_null() {
-            let front = get_face(json, &JsonValue::Null)?;
-            (front, None, false)
+        let (front, back) = if json["card_faces"].is_null() {
+            let mut front = get_face(&json, &JsonValue::Null)?;
+            front.set_image_receiver(client.clone(), uuid, quality, Side::Front);
+            (front, None)
         } else {
             let faces = json["card_faces"].as_array()?;
-            let front = get_face(json, &faces[0])?;
-            let back = get_face(json, &faces[1])?;
-            (
-                front,
-                Some(Box::new(back)),
-                !faces[1]["image_uris"].is_null(),
-            )
+            let mut front = get_face(&json, &faces[0])?;
+            let mut back = get_face(&json, &faces[1])?;
+            front.set_image_receiver(client.clone(), uuid, quality, Side::Front);
+            if faces[1]["image_uris"].is_array() {
+                back.set_image_receiver(client, uuid, quality, Side::Back);
+            }
+            (front, Some(Box::new(back)))
         };
         let tokens = json["all_parts"]
             .as_array()
@@ -304,14 +301,12 @@ impl SubCard {
             back,
             layout,
         };
-        Some((
-            Self {
-                id: Id::from(uuid),
-                tokens,
-                data,
-                flipped: false,
-            },
-            has_back,
-        ))
+        let card = Self {
+            id: Id::from(uuid),
+            tokens,
+            data,
+            flipped: false,
+        };
+        Some(card)
     }
 }

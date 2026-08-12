@@ -14,8 +14,8 @@ use crate::shapes::{OUTLINE_COLOR, ShapeMesh as _};
 use crate::ui::chat::chat_bundle;
 use crate::ui::esc_menu::esc_menu_bundle;
 use crate::{
-    CARD_HEIGHT, CARD_STOCK_COLOR, CARD_THICKNESS, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT, T,
-    W, WALL_COLOR,
+    CARD_HEIGHT, CARD_STOCK_COLOR, CARD_THICKNESS, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT,
+    MAT_WIDTH, T, W, WALL_COLOR,
 };
 use avian3d::prelude::{Collider, CollisionLayers, LayerMask, RigidBody};
 use bevy::anti_alias::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
@@ -99,7 +99,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
     let mut card = SubCard::default();
     asset.register_handles(&mut card, Some(asset.card.back_image.clone()), None);
     commands.spawn((
-        Transform::from_xyz(0.0, CARD_THICKNESS, 0.0),
+        Transform::from_xyz(MAT_WIDTH + CARD_WIDTH, CARD_THICKNESS, 0.0),
         Pile::from(card).bundle(&mut asset),
     ));
     for i in 0..4 {

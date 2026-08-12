@@ -5,7 +5,6 @@ use crate::events::move_up::MoveUp;
 use crate::pile::Pile;
 use crate::spatial::Spatial;
 use crate::ui::chat::TextSubmission;
-use bevy::image::Image;
 use bevy::log::warn;
 use bevy::math::Vec3;
 use bevy::prelude::{Commands, Res, Transform};
@@ -29,7 +28,7 @@ pub fn react_paste_card(
         runtime.spawn_hook(on_paste_card_uuid, async move {
             SubCard::get(client_owned, uuid, QUALITY)
                 .await
-                .map(|(c, i, b)| (c, i, b, pos))
+                .map(|c| (c, pos))
         });
     } else if let Some(rest) = event.string.strip_prefix("https://scryfall.com/card/")
         && let Some((set, after)) = rest.split_once('/')
@@ -41,7 +40,7 @@ pub fn react_paste_card(
         runtime.spawn_hook(on_paste_card_set, async move {
             SubCard::get_set_cn(client_owned, &owned, cn, QUALITY)
                 .await
-                .map(|(c, i, b)| (c, i, b, pos))
+                .map(|c| (c, pos))
         });
     } else if let Some(rest) = event.string.strip_prefix("https://scryfall.com/card/")
         && let Ok(uuid) = Uuid::from_str(rest)
@@ -50,21 +49,18 @@ pub fn react_paste_card(
         runtime.spawn_hook(on_paste_card_uuid, async move {
             SubCard::get(client_owned, uuid, QUALITY)
                 .await
-                .map(|(c, i, b)| (c, i, b, pos))
+                .map(|c| (c, pos))
         });
     }
 }
-fn on_paste_card_uuid(
-    In(is_ok): In<Result<(SubCard, Option<Image>, Option<Image>, Vec3), Uuid>>,
-    mut commands: Commands,
-) {
+fn on_paste_card_uuid(In(is_ok): In<Result<(SubCard, Vec3), Uuid>>, mut commands: Commands) {
     match is_ok {
         Ok(val) => commands.run_system_cached_with(on_paste_card, val),
         Err(e) => warn!("{e:?}"),
     }
 }
 fn on_paste_card_set(
-    In(is_ok): In<Result<(SubCard, Option<Image>, Option<Image>, Vec3), (String, u16)>>,
+    In(is_ok): In<Result<(SubCard, Vec3), (String, u16)>>,
     mut commands: Commands,
 ) {
     match is_ok {
@@ -73,11 +69,11 @@ fn on_paste_card_set(
     }
 }
 fn on_paste_card(
-    In((mut card, front, back, pos)): In<(SubCard, Option<Image>, Option<Image>, Vec3)>,
+    In((mut card, pos)): In<(SubCard, Vec3)>,
     mut asset: Asset,
     mut commands: Commands,
 ) {
-    asset.register(&mut card, front, back);
+    asset.register(&mut card, None, None);
     let ent = commands
         .spawn((
             Transform::from_translation(pos),

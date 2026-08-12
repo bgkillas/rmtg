@@ -7,7 +7,7 @@ use bevy::mesh::Mesh;
 use bevy::pbr::StandardMaterial;
 use bevy::prelude::{Res, ResMut, Resource};
 use bevy_rich_text3d::TextAtlas;
-use importer::card::{Handles, SubCard};
+use importer::card::{Handles, MaybeHandles, SubCard};
 #[derive(SystemParam)]
 pub struct Asset<'w> {
     pub meshes: ResMut<'w, Assets<Mesh>>,
@@ -50,7 +50,7 @@ impl Asset<'_> {
                     unlit: true,
                     ..StandardMaterial::default()
                 });
-                back_data.handles = Some(Handles { image, material });
+                back_data.handles = MaybeHandles::Some(Handles { image, material });
             } else {
                 back_data.is_oracle = true;
             }
@@ -62,7 +62,7 @@ impl Asset<'_> {
                 unlit: true,
                 ..StandardMaterial::default()
             });
-            card.data.front.handles = Some(Handles { image, material });
+            card.data.front.handles = MaybeHandles::Some(Handles { image, material });
         } else {
             card.data.front.is_oracle = true;
         }

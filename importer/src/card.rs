@@ -10,6 +10,7 @@ use std::cmp::Ordering;
 use std::fmt::{Debug, Formatter};
 use std::mem;
 use std::slice::{Iter, IterMut};
+use tokio::task::JoinHandle;
 rules::generate_types!();
 type Value = f64;
 #[derive(Debug, Default, Clone, Encode, Decode)]
@@ -71,7 +72,14 @@ pub struct CardInfo {
     pub toughness: Option<u8>,
     pub loyalty: Option<u8>,
     #[bitcode(skip)]
-    pub handles: Option<Handles>,
+    pub handles: MaybeHandles,
+}
+#[derive(Default, Debug)]
+pub enum MaybeHandles {
+    Some(Handles),
+    Waiting(JoinHandle<Option<Image>>),
+    #[default]
+    None,
 }
 #[derive(Debug, Clone, Default)]
 pub struct Handles {
@@ -144,6 +152,15 @@ pub enum SearchKey {
     Power,
     Toughness,
     Loyalty,
+}
+impl Clone for MaybeHandles {
+    fn clone(&self) -> Self {
+        match self {
+            MaybeHandles::Waiting(_) => unreachable!(),
+            MaybeHandles::None => MaybeHandles::None,
+            MaybeHandles::Some(handles) => MaybeHandles::Some(handles.clone()),
+        }
+    }
 }
 impl Debug for Types {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -267,16 +284,24 @@ impl CardInfo {
             power: self.power,
             loyalty: self.loyalty,
             toughness: self.toughness,
-            handles: None,
+            handles: MaybeHandles::None,
         }
     }
     #[must_use]
     pub fn image(&self) -> Option<Handle<Image>> {
-        self.handles.as_ref().map(Handles::image)
+        if let MaybeHandles::Some(inner) = &self.handles {
+            Some(inner.image())
+        } else {
+            None
+        }
     }
     #[must_use]
     pub fn material(&self) -> Option<Handle<StandardMaterial>> {
-        self.handles.as_ref().map(Handles::material)
+        if let MaybeHandles::Some(inner) = &self.handles {
+            Some(inner.material())
+        } else {
+            None
+        }
     }
 }
 impl Handles {
