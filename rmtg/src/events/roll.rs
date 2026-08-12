@@ -122,8 +122,8 @@ pub fn do_roll(
     mut commands: Commands,
     keybinds: Keybinds,
 ) {
-    for ent in hovered {
-        if keybinds.just_pressed(Keybind::Shuffle) {
+    if keybinds.just_pressed(Keybind::Shuffle) {
+        for ent in hovered {
             commands.trigger(Roll::new(ent));
         }
     }

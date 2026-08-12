@@ -3,6 +3,7 @@ use crate::drag::drag;
 use crate::events::add_events;
 use crate::events::clipboard::poll_clipboards;
 use crate::events::clone::update_clone;
+use crate::events::delete::do_delete;
 use crate::events::hover::{update_box_select, update_hover};
 use crate::events::roll::{do_roll, update_rolling};
 use crate::events::scale::update_scale;
@@ -128,6 +129,7 @@ pub fn app_run() -> AppExit {
                 (update_box_select, update_hover).chain(),
                 (
                     (do_roll, update_rolling).chain(),
+                    do_delete,
                     drag,
                     update_clone,
                     update_scale,

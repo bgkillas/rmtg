@@ -1,5 +1,6 @@
 use crate::events::clipboard::{PollClipboard, get_clipboard};
 use crate::events::clone::on_clone;
+use crate::events::delete::on_delete;
 use crate::events::gravity::on_change_gravity;
 use crate::events::hover::{add_hover, remove_hover, spawn_box_select, update_box_select_mesh};
 use crate::events::move_up::move_up;
@@ -13,6 +14,7 @@ use crate::ui::chat::text_message;
 use bevy::app::App;
 pub mod clipboard;
 pub mod clone;
+pub mod delete;
 pub mod gravity;
 pub mod hover;
 pub mod move_up;
@@ -38,5 +40,6 @@ pub fn add_events(app: &mut App) {
     app.add_observer(react_paste_card);
     app.add_observer(text_message);
     app.add_observer(insert_scroll_bar);
+    app.add_observer(on_delete);
     app.init_resource::<PollClipboard>();
 }
