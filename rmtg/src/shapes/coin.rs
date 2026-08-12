@@ -17,7 +17,7 @@ impl ShapeMesh for Coin {
     type const TRIANGLES: usize = 2;
     const SHAPE: Shape = Shape::Coin;
     fn collider(height: f32, _: &Mesh) -> Collider {
-        Collider::cylinder(height / 2.0, height * HEIGHT_MULT)
+        Collider::cylinder(height / 3.0, height * HEIGHT_MULT)
     }
     fn face_string(i: usize) -> String {
         match i {

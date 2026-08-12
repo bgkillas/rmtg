@@ -131,7 +131,7 @@ pub fn text_submission(
                 source: *text.text_source,
             });
             text.editable_text.clear();
-            let ent = *focus.p0().window;
+            let ent = *focus.p0().hover.window;
             focus.p1().set(ent, FocusCause::Pressed);
         } else {
             focus.p1().set(*chat, FocusCause::Pressed);

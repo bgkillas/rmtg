@@ -1,7 +1,7 @@
+use crate::focus::Hover;
 use crate::keybinds::Keybinds;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::math::Vec2;
-use bevy::picking::hover::HoverMap;
 use bevy::prelude::{Component, KeyCode};
 use bevy::ui::{ComputedNode, Node, OverflowAxis, ScrollPosition};
 use bevy::ui_widgets::{ControlOrientation, Scrollbar};
@@ -11,7 +11,7 @@ use bevy_ecs::lifecycle::Add;
 use bevy_ecs::message::{Message, MessageReader, MessageWriter, PopulatedMessageReader};
 use bevy_ecs::observer::On;
 use bevy_ecs::query::With;
-use bevy_ecs::system::{Commands, Query, Res, Single};
+use bevy_ecs::system::{Commands, Query, Single};
 use bevy_query_fn_macro::query_fn;
 use std::mem;
 #[derive(Component)]
@@ -98,7 +98,7 @@ pub fn scroll(
 }
 pub fn send_scroll_events(
     mut mouse_wheel_reader: MessageReader<MouseWheel>,
-    hover_map: Res<HoverMap>,
+    hover: Hover,
     keybinds: Keybinds,
     mut scroll_messages: MessageWriter<Scroll>,
 ) {
@@ -113,10 +113,8 @@ pub fn send_scroll_events(
         {
             mem::swap(&mut delta.x, &mut delta.y);
         }
-        for pointer_map in hover_map.values() {
-            for entity in pointer_map.keys().copied() {
-                scroll_messages.write(Scroll { entity, delta });
-            }
+        if let Some(entity) = hover.get() {
+            scroll_messages.write(Scroll { entity, delta });
         }
     }
 }

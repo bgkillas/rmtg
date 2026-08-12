@@ -18,28 +18,40 @@ pub enum Menu {
     Side,
 }
 #[derive(SystemParam)]
-pub struct Focus<'w, 's> {
-    pub active_input: Res<'w, InputFocus>,
+pub struct Hover<'w, 's> {
     pub window: Single<'w, 's, Entity, With<Window>>,
     pub hover_map: Res<'w, HoverMap>,
 }
-impl Focus<'_, '_> {
+impl Hover<'_, '_> {
     #[must_use]
-    pub fn key_lock(&self) -> bool {
-        self.active_input.get().is_some_and(|e| e != *self.window)
-    }
-    #[must_use]
-    pub fn mouse_lock(&self) -> bool {
+    pub fn get(&self) -> Option<Entity> {
         assert_eq!(self.hover_map.len(), 1);
         let val = self.hover_map.values().next().unwrap();
         assert_eq!(val.len(), 1);
         let &ent = val.keys().next().unwrap();
-        ent == *self.window
+        if ent == *self.window { None } else { Some(ent) }
+    }
+}
+#[derive(SystemParam)]
+pub struct Focus<'w, 's> {
+    pub active_input: Res<'w, InputFocus>,
+    pub hover: Hover<'w, 's>,
+}
+impl Focus<'_, '_> {
+    #[must_use]
+    pub fn key_lock(&self) -> bool {
+        self.active_input
+            .get()
+            .is_some_and(|e| e != *self.hover.window)
+    }
+    #[must_use]
+    pub fn mouse_lock(&self) -> bool {
+        self.hover.get().is_some()
     }
 }
 pub fn update_focus(
     mut active_input: ResMut<InputFocus>,
-    hover_map: Res<HoverMap>,
+    hover: Hover,
     nodes: Query<(), With<Node>>,
     window: Single<Entity, With<Window>>,
     mouse: Res<ButtonInput<MouseButton>>,
@@ -53,11 +65,9 @@ pub fn update_focus(
     ]) {
         return;
     }
-    assert_eq!(hover_map.len(), 1);
-    let val = hover_map.values().next().unwrap();
-    assert_eq!(val.len(), 1);
-    let &ent = val.keys().next().unwrap();
-    if nodes.contains(ent) {
+    if let Some(ent) = hover.get()
+        && nodes.contains(ent)
+    {
         active_input.set(ent, FocusCause::Pressed);
     } else {
         active_input.set(*window, FocusCause::Pressed);

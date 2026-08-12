@@ -1612,7 +1612,7 @@ checksum = "b511e89f7078fd21fdea77061a0ca3e737297c7011bb10c073e0aecb17c9fea6"
 [[package]]
 name = "bevy_query_fn_macro"
 version = "0.1.0"
-source = "git+https://github.com/bgkillas/bevy_query_fn_macro#17c2d99b61ed8fa4971e688e3d619b63b7a22914"
+source = "git+https://github.com/bgkillas/bevy_query_fn_macro#22ab1752608f7a560faa48ae4ed7fad701d90c08"
 dependencies = [
  "heck",
  "proc-macro2",
