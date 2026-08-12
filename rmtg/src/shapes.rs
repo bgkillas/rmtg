@@ -13,7 +13,6 @@ use avian3d::parry::glamx::Quat;
 use avian3d::prelude::Collider;
 use bevy::asset::RenderAssetUsages;
 use bevy::color::{Color, Srgba};
-use bevy::ecs::children;
 use bevy::math::{Dir3, Vec2, Vec3};
 use bevy::mesh::{
     CylinderMeshBuilder, Indices, Mesh, Mesh3d, MeshBuilder, PrimitiveTopology, SphereKind,
@@ -110,6 +109,7 @@ where
         outline_color: Color,
         asset: &mut Asset,
     ) -> impl Bundle {
+        _ = outline_color;
         let mesh = Mesh::from(Self::from_height(height));
         (
             Self::SHAPE,
@@ -121,7 +121,8 @@ where
                 unlit: true,
                 ..StandardMaterial::default()
             })),
-            children![(
+            #[cfg(not(feature = "colliders"))]
+            bevy::ecs::children![(
                 Mesh3d(asset.meshes.add(Self::Outline::from_height(height))),
                 MeshMaterial3d(asset.materials.add(StandardMaterial {
                     base_color: outline_color,
