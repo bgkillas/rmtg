@@ -2,7 +2,7 @@ use crate::CARD_THICKNESS;
 use crate::startup::{Ceiling, Wall};
 use avian3d::parry::shape::SharedShape;
 use avian3d::prelude::{
-    Collider, ColliderAabb, ScalableCollider as _, Sleeping, SpatialQueryFilter,
+    Collider, ColliderAabb, ScalableCollider as _, Sleeping, SpatialQueryFilter, WakeBody,
 };
 use avian3d::spatial_query::SpatialQuery;
 use bevy::math::Vec3;
@@ -30,7 +30,7 @@ pub fn move_up(
     is_sleeping: Query<(), With<Sleeping>>,
 ) {
     if is_sleeping.contains(entity.entity) {
-        commands.entity(entity.entity).remove::<Sleeping>();
+        commands.queue(WakeBody(entity.entity));
     }
     let mut transform = transforms.get_mut(entity.entity).unwrap();
     let mut ent_aabb = *aabbs.get(entity.entity).unwrap();
