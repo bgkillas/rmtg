@@ -31,7 +31,7 @@ use std::{iter, mem};
 pub fn is_reversed(transform: &Transform) -> bool {
     (transform.rotation * Vec3::Y).y < 0.0
 }
-#[derive(Component, Default, Clone, Debug, Encode, Decode)]
+#[derive(Component, Default, Debug, Encode, Decode)]
 pub enum Pile {
     Multiple(Vec<SubCard>),
     Single(Box<Card>),
@@ -252,6 +252,18 @@ impl Pile {
         };
         mem::swap(s, &mut top);
         s.equiped.splice(0..0, top.flatten());
+    }
+    #[must_use]
+    pub fn try_clone(&self) -> Option<Self> {
+        Some(match self {
+            Pile::Multiple(v) => Pile::Multiple(
+                v.iter()
+                    .map(SubCard::try_clone)
+                    .collect::<Option<Vec<_>>>()?,
+            ),
+            Pile::Single(s) => Pile::Single(s.try_clone()?.into()),
+            Pile::Empty => Pile::Empty,
+        })
     }
     #[must_use]
     pub fn clone_no_image(&self) -> Self {

@@ -15,7 +15,7 @@ use tokio::task::JoinHandle;
 use tokio_with_wasm as tokio;
 rules::generate_types!();
 type Value = f64;
-#[derive(Debug, Default, Clone, Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode)]
 pub struct Card {
     pub subcard: SubCard,
     pub equiped: Vec<SubCard>,
@@ -26,14 +26,14 @@ pub struct Card {
     pub misc: Option<Value>,
     pub is_token: bool,
 }
-#[derive(Debug, Default, Clone, Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode)]
 pub struct SubCard {
     pub id: Id,
     pub tokens: Vec<Id>,
     pub data: CardData,
     pub flipped: bool,
 }
-#[derive(Debug, Default, Clone, Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode)]
 pub struct CardData {
     pub front: CardInfo,
     pub back: Option<Box<CardInfo>>,
@@ -60,7 +60,7 @@ pub struct Cost {
     pub var: u8,
     pub hybrid: u8,
 }
-#[derive(Debug, Default, Clone, Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode)]
 pub struct CardInfo {
     pub oracle_id: Id,
     pub is_oracle: bool,
@@ -155,12 +155,13 @@ pub enum SearchKey {
     Toughness,
     Loyalty,
 }
-impl Clone for MaybeHandles {
-    fn clone(&self) -> Self {
+impl MaybeHandles {
+    #[must_use]
+    pub fn try_clone(&self) -> Option<Self> {
         match self {
-            MaybeHandles::Waiting(_) => unreachable!(),
-            MaybeHandles::None => MaybeHandles::None,
-            MaybeHandles::Some(handles) => MaybeHandles::Some(handles.clone()),
+            MaybeHandles::Waiting(_) => None,
+            MaybeHandles::None => Some(MaybeHandles::None),
+            MaybeHandles::Some(handles) => Some(MaybeHandles::Some(handles.clone())),
         }
     }
 }
@@ -272,6 +273,23 @@ impl From<&str> for Layout {
     }
 }
 impl CardInfo {
+    #[must_use]
+    pub fn try_clone(&self) -> Option<Self> {
+        Some(Self {
+            oracle_id: self.oracle_id,
+            is_oracle: self.is_oracle,
+            name: self.name.clone(),
+            mana_cost: self.mana_cost,
+            type_line: self.type_line.clone(),
+            oracle_text: self.oracle_text.clone(),
+            colors: self.colors,
+            color_identity: self.color_identity,
+            power: self.power,
+            loyalty: self.loyalty,
+            toughness: self.toughness,
+            handles: self.handles.try_clone()?,
+        })
+    }
     #[must_use]
     pub fn clone_no_image(&self) -> Self {
         Self {
@@ -507,6 +525,17 @@ impl Cost {
 }
 impl CardData {
     #[must_use]
+    pub fn try_clone(&self) -> Option<Self> {
+        Some(Self {
+            front: self.front.try_clone()?,
+            back: self
+                .back
+                .as_ref()
+                .map(|c| CardInfo::try_clone(c).map(Box::new))?,
+            layout: self.layout,
+        })
+    }
+    #[must_use]
     pub fn clone_no_image(&self) -> Self {
         Self {
             front: self.front.clone_no_image(),
@@ -530,6 +559,23 @@ impl Card {
             || self.counters.is_some()
             || self.loyalty.is_some()
             || self.misc.is_some()
+    }
+    #[must_use]
+    pub fn try_clone(&self) -> Option<Self> {
+        Some(Self {
+            subcard: self.subcard.try_clone()?,
+            equiped: self
+                .equiped
+                .iter()
+                .map(SubCard::try_clone)
+                .collect::<Option<Vec<_>>>()?,
+            power: None,
+            toughness: None,
+            counters: None,
+            loyalty: None,
+            misc: None,
+            is_token: false,
+        })
     }
     #[must_use]
     pub fn clone_no_image(&self) -> Self {
@@ -662,6 +708,15 @@ impl DoubleEndedIterator for CardIterMut<'_> {
     }
 }
 impl SubCard {
+    #[must_use]
+    pub fn try_clone(&self) -> Option<Self> {
+        Some(Self {
+            id: self.id,
+            tokens: self.tokens.clone(),
+            data: self.data.try_clone()?,
+            flipped: self.flipped,
+        })
+    }
     #[must_use]
     pub fn clone_no_image(&self) -> Self {
         Self {

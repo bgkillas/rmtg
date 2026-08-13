@@ -9,11 +9,11 @@ use bevy::color::Color;
 use bevy::prelude::{Commands, Event, Local, On, Query, Transform, With};
 use bevy_query_fn_macro::query_fn;
 #[derive(Event, Clone)]
-pub struct Clone {
+pub struct CloneObj {
     pub clone_type: CloneType,
     pub transform: Transform,
 }
-impl Clone {
+impl CloneObj {
     #[must_use]
     pub fn new(clone_type: CloneType, transform: Transform) -> Self {
         Self {
@@ -22,16 +22,23 @@ impl Clone {
         }
     }
 }
-#[derive(Clone)]
 pub enum CloneType {
     Pile(Pile),
     Shape(Shape),
 }
-pub fn on_clone(clone: On<Clone>, mut commands: Commands, mut asset: Asset) {
+impl Clone for CloneType {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Pile(pile) => Self::Pile(pile.try_clone().unwrap()),
+            Self::Shape(shape) => Self::Shape(*shape),
+        }
+    }
+}
+pub fn on_clone(clone: On<CloneObj>, mut commands: Commands, mut asset: Asset) {
     let mut ent = commands.spawn(clone.transform);
     let id = match &clone.clone_type {
         CloneType::Pile(deck) => {
-            ent.insert(deck.clone().bundle(&mut asset));
+            ent.insert(deck.try_clone().unwrap().bundle(&mut asset));
             ent.id()
         }
         &CloneType::Shape(shape) => {
@@ -47,7 +54,7 @@ pub fn update_clone(
     mut commands: Commands,
     hovered_entities: Query<(&Transform, Option<&Shape>, Option<&Pile>), With<HoveredObject>>,
     spatial: Spatial,
-    mut objects: Local<Vec<Clone>>,
+    mut objects: Local<Vec<CloneObj>>,
 ) {
     let Some((_, pos, _)) = spatial.ray() else {
         return;
@@ -57,12 +64,15 @@ pub fn update_clone(
         for hovered in hovered_entities {
             let ty = match (hovered.shape, hovered.pile) {
                 (Some(&shape), None) => CloneType::Shape(shape),
-                (None, Some(pile)) => CloneType::Pile(pile.clone()),
+                (None, Some(pile)) if let Some(cloned) = pile.try_clone() => {
+                    CloneType::Pile(cloned)
+                }
+                (None, Some(_)) => continue,
                 _ => unreachable!(),
             };
             let mut trans = *hovered.transform;
             trans.translation -= pos;
-            objects.push(Clone::new(ty, trans));
+            objects.push(CloneObj::new(ty, trans));
         }
     }
     if keybinds.just_pressed(Keybind::PasteObject) {
