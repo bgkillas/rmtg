@@ -111,83 +111,57 @@ pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
         Transform::from_xyz(MAT_WIDTH + CARD_WIDTH, CARD_THICKNESS, 0.0),
         Pile::from(card).bundle(&mut asset),
     ));
+    let x_unit = MAT_WIDTH + CARD_WIDTH;
+    let z_unit = CARD_HEIGHT;
     for i in 0..4 {
         let (rev_x, rev_z) = match i {
-            0 => (1.0, 1.0),
-            1 => (-1.0, 1.0),
-            2 => (-1.0, -1.0),
-            _ => (1.0, -1.0),
+            0 => (x_unit, z_unit),
+            1 => (-x_unit, z_unit),
+            2 => (-x_unit, -z_unit),
+            _ => (x_unit, -z_unit),
         };
         let color = Color::WHITE;
         Icosahedron::insert_dice(
             color,
             OUTLINE_COLOR,
             &mut asset,
-            commands.spawn(Transform::from_xyz(
-                rev_x * 9.0,
-                Cube::HEIGHT / 2.0,
-                rev_z * 1.0,
-            )),
+            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
         );
         Dodecahedron::insert_dice(
             color,
             OUTLINE_COLOR,
             &mut asset,
-            commands.spawn(Transform::from_xyz(
-                rev_x * 9.0,
-                Cube::HEIGHT / 2.0,
-                rev_z * 1.5,
-            )),
+            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 1.5)),
         );
         Trapezohedron::insert_dice(
             color,
             OUTLINE_COLOR,
             &mut asset,
-            commands.spawn(Transform::from_xyz(
-                rev_x * 9.0,
-                Cube::HEIGHT / 2.0,
-                rev_z * 2.0,
-            )),
+            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 2.0)),
         );
         Octahedron::insert_dice(
             color,
             OUTLINE_COLOR,
             &mut asset,
-            commands.spawn(Transform::from_xyz(
-                rev_x * 9.0,
-                Cube::HEIGHT / 2.0,
-                rev_z * 2.5,
-            )),
+            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 2.5)),
         );
         Cube::insert_dice(
             color,
             OUTLINE_COLOR,
             &mut asset,
-            commands.spawn(Transform::from_xyz(
-                rev_x * 9.0,
-                Cube::HEIGHT / 2.0,
-                rev_z * 3.0,
-            )),
+            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 3.0)),
         );
         Tetrahedron::insert_dice(
             color,
             OUTLINE_COLOR,
             &mut asset,
-            commands.spawn(Transform::from_xyz(
-                rev_x * 9.0,
-                Cube::HEIGHT / 2.0,
-                rev_z * 3.5,
-            )),
+            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 3.5)),
         );
         Coin::insert_dice(
             color,
             OUTLINE_COLOR,
             &mut asset,
-            commands.spawn(Transform::from_xyz(
-                rev_x * 9.0,
-                Cube::HEIGHT / 2.0,
-                rev_z * 4.0,
-            )),
+            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 4.0)),
         );
     }
     let mesh = asset.meshes.add(Cuboid::new(2.0 * W, T, 2.0 * W));

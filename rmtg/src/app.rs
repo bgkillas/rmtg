@@ -5,6 +5,7 @@ use crate::events::clipboard::poll_clipboards;
 use crate::events::clone::update_clone;
 use crate::events::delete::do_delete;
 use crate::events::hover::{update_box_select, update_hover};
+use crate::events::pile_merge::trigger_pile_merge;
 use crate::events::roll::{do_roll, update_rolling};
 use crate::events::scale::update_scale;
 use crate::events::scroll::{Scroll, scroll, send_scroll_events};
@@ -16,7 +17,7 @@ use crate::pile::register_cards;
 use crate::spatial::{Cursor, update_cursor};
 use crate::startup::{spawn_objects, startup};
 use crate::ui::chat::text_submission;
-use crate::{APP_NAME, FONT, USER_AGENT};
+use crate::{APP_NAME, FONT, PHYSICS_SCALE, USER_AGENT};
 use avian3d::PhysicsPlugins;
 use bevy::DefaultPlugins;
 use bevy::app::{
@@ -91,7 +92,7 @@ pub fn app_run() -> AppExit {
                 },
             }),
     );
-    app.add_plugins(PhysicsPlugins::default());
+    app.add_plugins(PhysicsPlugins::default().with_length_unit(PHYSICS_SCALE));
     app.add_plugins(SettingsPlugin::new(APP_NAME));
     app.add_plugins(P2PPlugin::<Msg>::new());
     app.add_plugins(Text3dPlugin::default());
@@ -158,6 +159,7 @@ pub fn app_run() -> AppExit {
             (net_update, receive_message).chain(),
             poll_clipboards,
             register_cards,
+            trigger_pile_merge,
         ),
     );
     app.run()

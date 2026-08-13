@@ -58,6 +58,7 @@ pub const FONT: &[u8] = include_bytes!("../../assets/noto.ttf");
 pub const FONT_SIZE: f32 = 16.0;
 pub const FONT_HEIGHT: f32 = FONT_SIZE;
 pub const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
+pub const PHYSICS_SCALE: f32 = CARD_WIDTH * MAT_WIDTH / 8.0;
 #[cfg(target_family = "wasm")]
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
 fn wasm_hook() {
