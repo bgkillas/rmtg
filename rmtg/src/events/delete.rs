@@ -1,9 +1,11 @@
 use crate::events::hover::HoveredObject;
-use crate::keybinds::{Keybind, Keybinds};
+use crate::keybinds::Keybind;
+use bevy::input::ButtonInput;
 use bevy::prelude::EntityEvent;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::observer::On;
 use bevy_ecs::prelude::{Commands, Query, With};
+use bevy_ecs::system::Res;
 #[derive(EntityEvent)]
 pub struct Delete {
     pub entity: Entity,
@@ -17,7 +19,7 @@ impl Delete {
 pub fn do_delete(
     hovered: Query<Entity, With<HoveredObject>>,
     mut commands: Commands,
-    keybinds: Keybinds,
+    keybinds: Res<ButtonInput<Keybind>>,
 ) {
     if keybinds.just_pressed(Keybind::Remove) {
         for ent in hovered {

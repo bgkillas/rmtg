@@ -1,15 +1,16 @@
 use crate::events::hover::HoveredObject;
 use crate::events::repaint::Repaint;
-use crate::keybinds::{Keybind, Keybinds};
+use crate::keybinds::Keybind;
 use crate::physics::WorldLayer;
 use crate::pile::Pile;
 use crate::shapes::{FaceNumber, Shape};
 use crate::{CARD_THICKNESS, MAT_HEIGHT};
 use avian3d::prelude::{AngularVelocity, CollisionLayers, LayerMask, LinearVelocity, Sleeping};
+use bevy::input::ButtonInput;
 use bevy::prelude::{
     Children, Commands, Component, Entity, EntityEvent, On, Query, Transform, With, Without,
 };
-use bevy_ecs::system::In;
+use bevy_ecs::system::{In, Res};
 use bevy_query_fn_macro::query_fn;
 use rand::prelude::StdRng;
 use rand::{RngExt as _, make_rng};
@@ -120,7 +121,7 @@ fn stopped_roll(
 pub fn do_roll(
     hovered: Query<Entity, With<HoveredObject>>,
     mut commands: Commands,
-    keybinds: Keybinds,
+    keybinds: Res<ButtonInput<Keybind>>,
 ) {
     if keybinds.just_pressed(Keybind::Shuffle) {
         for ent in hovered {

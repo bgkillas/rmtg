@@ -1,12 +1,13 @@
 use crate::PLAYER;
 use crate::assets::Asset;
-use crate::keybinds::{Keybind, Keybinds};
-use crate::shapes::drag::DragOutline;
+use crate::keybinds::Keybind;
+use crate::shapes::drag_outline::DragOutline;
 use crate::shapes::{OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, ShapeOutline as _};
 use crate::spatial::Spatial;
 use crate::startup::wall_aabb;
 use avian3d::prelude::{Collider, ColliderAabb};
 use avian3d::spatial_query::SpatialQueryFilter;
+use bevy::input::ButtonInput;
 use bevy::math::bounding::{Aabb2d, Aabb3d, BoundingVolume as _, IntersectsVolume as _};
 use bevy::math::{Isometry2d, Quat, Vec2, Vec3, Vec3A, Vec3Swizzles as _};
 use bevy::mesh::Mesh3d;
@@ -15,7 +16,7 @@ use bevy::prelude::{
     Children, Commands, Component, Entity, EntityEvent, On, Query, Transform, With,
 };
 use bevy_ecs::event::Event;
-use bevy_ecs::system::Single;
+use bevy_ecs::system::{Res, Single};
 use bevy_query_fn_macro::query_fn;
 #[derive(Component, Clone)]
 pub struct Hoverable;
@@ -134,7 +135,7 @@ pub fn update_box_select(
     hoverable: Query<(Entity, &ColliderAabb), With<Hoverable>>,
     spatial: Spatial,
     mut commands: Commands,
-    keybinds: Keybinds,
+    keybinds: Res<ButtonInput<Keybind>>,
 ) {
     if !keybinds.pressed(Keybind::Select) && !keybinds.pressed(Keybind::HoldSelect) {
         commands.entity(box_select.entity).despawn();
@@ -190,7 +191,7 @@ pub fn update_hover(
     box_select: Option<Single<(), With<BoxSelect>>>,
     olds: Query<(Entity, &HoveredObject)>,
     hoverable: Query<(), With<Hoverable>>,
-    keybinds: Keybinds,
+    keybinds: Res<ButtonInput<Keybind>>,
     spatial: Spatial,
     mut commands: Commands,
 ) {

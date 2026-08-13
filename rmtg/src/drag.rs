@@ -1,12 +1,13 @@
 use crate::CARD_THICKNESS;
 use crate::events::gravity::NewGravity;
 use crate::events::hover::{BoxSelect, HoveredObject};
-use crate::keybinds::{Keybind, Keybinds};
+use crate::keybinds::Keybind;
 use crate::physics::{GRAVITY, LIN_DAMPING};
 use crate::spatial::Spatial;
 use crate::startup::wall_aabb;
 use avian3d::prelude::{LinearDamping, LinearVelocity};
 use bevy::ecs::entity::EntityHash;
+use bevy::input::ButtonInput;
 use bevy::math::{Dir3, Vec3};
 use bevy::prelude::{
     Commands, Component, Entity, InfinitePlane3d, Local, Query, Res, Transform, With,
@@ -32,7 +33,7 @@ pub fn drag(
         With<HoveredObject>,
     >,
     mut commands: Commands,
-    keybinds: Keybinds,
+    keybinds: Res<ButtonInput<Keybind>>,
     spatial: Spatial,
     mut last: Local<Vec3>,
     mut last_ents: Local<HashSet<Entity, EntityHash>>,

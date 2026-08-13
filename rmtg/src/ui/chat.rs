@@ -1,8 +1,9 @@
 use crate::events::scroll::{Scroll, Scrollable};
 use crate::focus::Focus;
-use crate::keybinds::{Keybind, Keybinds};
+use crate::keybinds::Keybind;
 use crate::{FONT_HEIGHT, FONT_SIZE};
 use bevy::color::Color;
+use bevy::input::ButtonInput;
 use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::prelude::{BackgroundColor, Event, FlexDirection, Text, Visibility};
 use bevy::text::{EditableText, FontSize, TextCursorStyle, TextFont};
@@ -14,7 +15,7 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::message::MessageWriter;
 use bevy_ecs::observer::On;
 use bevy_ecs::query::With;
-use bevy_ecs::system::{Commands, ParamSet, Query, ResMut, Single};
+use bevy_ecs::system::{Commands, ParamSet, Query, Res, ResMut, Single};
 use bevy_query_fn_macro::query_fn;
 #[derive(Component)]
 pub struct TextMenu;
@@ -117,7 +118,7 @@ pub fn text_message(
 #[query_fn]
 pub fn text_submission(
     mut focus: ParamSet<(Focus, ResMut<InputFocus>)>,
-    keybinds: Keybinds,
+    keybinds: Res<ButtonInput<Keybind>>,
     mut text_input: Query<(&mut EditableText, &TextSource)>,
     mut commands: Commands,
     chat: Single<Entity, With<TextInput>>,

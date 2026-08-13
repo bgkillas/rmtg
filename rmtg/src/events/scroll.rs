@@ -1,5 +1,5 @@
 use crate::focus::Hover;
-use crate::keybinds::Keybinds;
+use bevy::input::ButtonInput;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::math::Vec2;
 use bevy::prelude::{Component, KeyCode};
@@ -11,7 +11,7 @@ use bevy_ecs::lifecycle::Add;
 use bevy_ecs::message::{Message, MessageReader, MessageWriter, PopulatedMessageReader};
 use bevy_ecs::observer::On;
 use bevy_ecs::query::With;
-use bevy_ecs::system::{Commands, Query, Single};
+use bevy_ecs::system::{Commands, Query, Res, Single};
 use bevy_query_fn_macro::query_fn;
 use std::mem;
 #[derive(Component)]
@@ -99,7 +99,7 @@ pub fn scroll(
 pub fn send_scroll_events(
     mut mouse_wheel_reader: MessageReader<MouseWheel>,
     hover: Hover,
-    keybinds: Keybinds,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut scroll_messages: MessageWriter<Scroll>,
 ) {
     for mouse_wheel in mouse_wheel_reader.read() {
@@ -107,10 +107,7 @@ pub fn send_scroll_events(
         if mouse_wheel.unit == MouseScrollUnit::Line {
             delta *= MouseScrollUnit::SCROLL_UNIT_CONVERSION_FACTOR;
         }
-        if keybinds
-            .keyboard
-            .any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
-        {
+        if keyboard.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
             mem::swap(&mut delta.x, &mut delta.y);
         }
         if let Some(entity) = hover.get() {

@@ -9,7 +9,7 @@ use crate::events::roll::{do_roll, update_rolling};
 use crate::events::scale::update_scale;
 use crate::events::scroll::{Scroll, scroll, send_scroll_events};
 use crate::focus::{Menu, update_focus};
-use crate::keybinds::KeybindsList;
+use crate::keybinds::{Keybind, KeybindsList, update_keybinds};
 use crate::mat::create_mats;
 use crate::net::{Msg, Peers, net_update, receive_message};
 use crate::pile::register_cards;
@@ -29,6 +29,7 @@ use bevy::ecs::schedule::IntoScheduleConfigs as _;
 #[cfg(feature = "colliders")]
 use bevy::gizmos::AppGizmoBuilder as _;
 use bevy::image::{ImageFilterMode, ImagePlugin, ImageSamplerDescriptor};
+use bevy::input::{ButtonInput, InputSystems};
 use bevy::settings::SettingsPlugin;
 use bevy::ui::UiSystems;
 use bevy::window::{Window, WindowPlugin};
@@ -118,10 +119,18 @@ pub fn app_run() -> AppExit {
     app.init_resource::<Peers>();
     app.init_resource::<Client>();
     app.init_resource::<Cursor>();
+    app.init_resource::<ButtonInput<Keybind>>();
     app.add_message::<Scroll>();
     add_events(&mut app);
     app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
-    app.add_systems(PreUpdate, (update_cursor, update_focus));
+    app.add_systems(
+        PreUpdate,
+        (
+            update_cursor,
+            update_focus,
+            update_keybinds.after(InputSystems),
+        ),
+    );
     app.add_systems(
         Update,
         (

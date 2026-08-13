@@ -12,16 +12,26 @@ pub struct Keybinds<'w> {
     pub mouse: Res<'w, ButtonInput<MouseButton>>,
     pub keybinds: ResMut<'w, KeybindsList>,
 }
+pub fn update_keybinds(mut keybind_input: ResMut<ButtonInput<Keybind>>, keybinds: Keybinds) {
+    for keybind in EnumSet::all() {
+        match (keybinds.pressed(keybind), keybind_input.pressed(keybind)) {
+            (true, true) | (false, false) => {
+                keybind_input.clear_just_pressed(keybind);
+                keybind_input.clear_just_released(keybind);
+            }
+            (true, false) => keybind_input.press(keybind),
+            (false, true) => keybind_input.release(keybind),
+        }
+    }
+}
 impl Keybinds<'_> {
     #[must_use]
     pub fn just_pressed(&self, keybind: Keybind) -> bool {
-        let key = &self.keybinds[keybind];
-        key.just_pressed(&self.keyboard, &self.mouse)
+        self.keybinds[keybind].just_pressed(&self.keyboard, &self.mouse)
     }
     #[must_use]
     pub fn pressed(&self, keybind: Keybind) -> bool {
-        let key = &self.keybinds[keybind];
-        key.pressed(&self.keyboard, &self.mouse)
+        self.keybinds[keybind].pressed(&self.keyboard, &self.mouse)
     }
     #[must_use]
     pub fn get_numeric(&self) -> usize {
@@ -49,7 +59,7 @@ impl Keybinds<'_> {
         }
     }
 }
-#[derive(Enum, Debug)]
+#[derive(Enum, EnumSetType, Debug, Hash)]
 pub enum Keybind {
     Ping,
     SortHand,

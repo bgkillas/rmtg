@@ -1,9 +1,10 @@
 use crate::focus::Focus;
-use crate::keybinds::{Keybind, Keybinds};
+use crate::keybinds::Keybind;
 use crate::net::{Peer, Peers};
 use crate::spatial::Spatial;
 use crate::{CARD_HEIGHT, CARD_THICKNESS, MAT_WIDTH, START_Y, W};
 use bevy::camera::Camera3d;
+use bevy::input::ButtonInput;
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::math::{Dir3, EulerRot, Quat, Vec2, Vec3};
 use bevy::prelude::{InfinitePlane3d, Res, Transform};
@@ -19,7 +20,7 @@ pub struct CameraVelocity {
 }
 #[query_fn]
 pub fn camera_translation(
-    keybinds: Keybinds,
+    keybinds: Res<ButtonInput<Keybind>>,
     mouse_motion: Res<AccumulatedMouseScroll>,
     focus: Focus,
     peers: Res<Peers>,
@@ -103,7 +104,7 @@ pub fn default_cam_pos(n: Peer) -> Transform {
     Transform::from_xyz(x, START_Y, z).looking_at(Vec3::new(x, 0.0, 0.0), Vec3::Y)
 }
 pub fn camera_rotation(
-    keybinds: Keybinds,
+    keybinds: Res<ButtonInput<Keybind>>,
     mouse_motion: Res<AccumulatedMouseMotion>,
     mut spatial: ParamSet<(Spatial, Single<&mut Transform, With<Camera3d>>)>,
 ) {

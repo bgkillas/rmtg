@@ -28,7 +28,7 @@ pub mod coin;
 pub mod cube;
 pub mod deck;
 pub mod dodecahedron;
-pub mod drag;
+pub mod drag_outline;
 pub mod icosahedron;
 pub mod octahedron;
 pub mod tetrahedron;

@@ -1,12 +1,14 @@
 use crate::assets::Asset;
 use crate::events::hover::HoveredObject;
 use crate::events::move_up::MoveUp;
-use crate::keybinds::{Keybind, Keybinds};
+use crate::keybinds::Keybind;
 use crate::pile::Pile;
 use crate::shapes::{OUTLINE_COLOR, Shape};
 use crate::spatial::Spatial;
 use bevy::color::Color;
+use bevy::input::ButtonInput;
 use bevy::prelude::{Commands, Event, Local, On, Query, Transform, With};
+use bevy_ecs::system::Res;
 use bevy_query_fn_macro::query_fn;
 #[derive(Event, Clone)]
 pub struct CloneObj {
@@ -50,7 +52,7 @@ pub fn on_clone(clone: On<CloneObj>, mut commands: Commands, mut asset: Asset) {
 }
 #[query_fn]
 pub fn update_clone(
-    keybinds: Keybinds,
+    keybinds: Res<ButtonInput<Keybind>>,
     mut commands: Commands,
     hovered_entities: Query<(&Transform, Option<&Shape>, Option<&Pile>), With<HoveredObject>>,
     spatial: Spatial,

@@ -1,11 +1,12 @@
 use crate::events::hover::HoveredObject;
 use crate::events::move_up::MoveUp;
-use crate::keybinds::{Keybind, Keybinds};
+use crate::keybinds::Keybind;
+use bevy::input::ButtonInput;
 use bevy::prelude::{EntityEvent, Transform};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::observer::On;
 use bevy_ecs::query::With;
-use bevy_ecs::system::{Commands, Query};
+use bevy_ecs::system::{Commands, Query, Res};
 #[derive(EntityEvent)]
 pub struct Scale {
     pub entity: Entity,
@@ -19,7 +20,7 @@ pub fn on_scale(event: On<Scale>, mut transforms: Query<&mut Transform>, mut com
 }
 pub fn update_scale(
     mut commands: Commands,
-    keybinds: Keybinds,
+    keybinds: Res<ButtonInput<Keybind>>,
     query: Query<Entity, With<HoveredObject>>,
 ) {
     let up = keybinds.just_pressed(Keybind::ScaleUp);
