@@ -39,6 +39,8 @@ pub enum Pile {
     Empty,
 }
 #[derive(Component, Clone)]
+pub struct PendingCards;
+#[derive(Component, Clone)]
 pub struct CardSide;
 #[derive(Component, Clone)]
 pub struct CardBack;
@@ -59,6 +61,7 @@ impl Pile {
             physics_base(),
             InheritedVisibility::VISIBLE,
             Hoverable,
+            PendingCards,
         )
     }
     #[must_use]
