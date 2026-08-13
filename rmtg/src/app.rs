@@ -12,6 +12,7 @@ use crate::focus::{Menu, update_focus};
 use crate::keybinds::KeybindsList;
 use crate::mat::create_mats;
 use crate::net::{Msg, Peers, net_update, receive_message};
+use crate::pile::register_cards;
 use crate::spatial::{Cursor, update_cursor};
 use crate::startup::{spawn_objects, startup};
 use crate::ui::chat::text_submission;
@@ -144,7 +145,11 @@ pub fn app_run() -> AppExit {
     app.add_systems(PostUpdate, scroll.after(UiSystems::Layout));
     app.add_systems(
         FixedUpdate,
-        ((net_update, receive_message).chain(), poll_clipboards),
+        (
+            (net_update, receive_message).chain(),
+            poll_clipboards,
+            register_cards,
+        ),
     );
     app.run()
 }

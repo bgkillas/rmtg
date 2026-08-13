@@ -1,6 +1,7 @@
 #![allow(incomplete_features)]
 #![feature(array_try_map)]
 #![feature(min_generic_const_args)]
+#![feature(oneshot_channel)]
 #![cfg_attr(test, feature(test))]
 extern crate core;
 pub mod card;

@@ -1,5 +1,6 @@
 use crate::assets::Asset;
 use crate::events::hover::Hoverable;
+use crate::events::repaint::Repaint;
 use crate::physics::physics_base;
 use crate::shapes::deck::DeckOutline;
 use crate::shapes::{NewShape as _, OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, ShapeOutline as _};
@@ -15,8 +16,12 @@ use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{
     Bundle, CircularSector, Component, InheritedVisibility, Rectangle, Ring, Transform,
 };
+use bevy_ecs::entity::Entity;
+use bevy_ecs::query::With;
+use bevy_ecs::system::{Commands, Query};
+use bevy_query_fn_macro::query_fn;
 use bitcode::{Decode, Encode};
-use importer::card::{Card, CardIter, CardIterMut, SubCard};
+use importer::card::{Card, CardInfo, CardIter, CardIterMut, MaybeHandles, SubCard};
 use importer::{CARD_CORNER_RADIUS, bitcode};
 use itertools::Either;
 use rand::make_rng;
@@ -26,6 +31,7 @@ use std::cmp::Ordering;
 use std::f32::consts::PI;
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
+use std::sync::oneshot::TryRecvError;
 use std::{iter, mem};
 #[must_use]
 pub fn is_reversed(transform: &Transform) -> bool {
@@ -52,7 +58,7 @@ impl Pile {
         (
             children![
                 self.outline(asset),
-                self.up(asset),
+                self.up_default(asset),
                 self.down(asset),
                 self.sides(asset)
             ],
@@ -135,6 +141,16 @@ impl Pile {
             MeshMaterial3d(asset.card.color.clone()),
             Mesh3d(asset.meshes.add(left)),
             CardSide,
+        )
+    }
+    #[must_use]
+    pub fn up_default(&self, asset: &mut Asset) -> impl Bundle + use<> {
+        (
+            Transform::from_xyz(0.0, self.thickness() / 2.0, 0.0)
+                .looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
+            MeshMaterial3d(asset.card.back.clone()),
+            Mesh3d(asset.card.stock.clone()),
+            CardTop,
         )
     }
     #[must_use]
@@ -571,5 +587,53 @@ impl<'a> IntoIterator for &'a mut Pile {
 impl From<SubCard> for Pile {
     fn from(value: SubCard) -> Self {
         Self::Single(Box::new(Card::from(value)))
+    }
+}
+#[query_fn]
+pub fn register_cards(
+    query: Query<(Entity, &mut Pile), With<PendingCards>>,
+    mut commands: Commands,
+    mut asset: Asset,
+) {
+    fn register(data: &mut CardInfo, asset: &mut Asset) -> (bool, bool) {
+        let owned = mem::take(&mut data.handles);
+        match owned {
+            MaybeHandles::Waiting(poll) => match poll.try_recv() {
+                Ok(val) => {
+                    if let Some(inner) = val {
+                        let handle = asset.images.add(inner);
+                        data.handles = MaybeHandles::Some(asset.register_card(handle));
+                        (false, true)
+                    } else {
+                        data.is_oracle = true;
+                        (false, false)
+                    }
+                }
+                Err(TryRecvError::Empty(rx)) => {
+                    data.handles = MaybeHandles::Waiting(rx);
+                    (true, false)
+                }
+                _ => unreachable!(),
+            },
+            MaybeHandles::None | MaybeHandles::Some(_) => (false, false),
+        }
+    }
+    for mut pile in query {
+        let mut has_some = false;
+        for card in &mut pile.pile {
+            let (some, mut repaint) = register(&mut card.data.front, &mut asset);
+            has_some |= some;
+            if let Some(back) = &mut card.data.back {
+                let (a, b) = register(back, &mut asset);
+                has_some |= a;
+                repaint |= b;
+            }
+            if repaint {
+                commands.trigger(Repaint::new(pile.entity));
+            }
+        }
+        if !has_some {
+            commands.entity(pile.entity).remove::<PendingCards>();
+        }
     }
 }

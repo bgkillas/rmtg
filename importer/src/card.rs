@@ -10,9 +10,7 @@ use std::cmp::Ordering;
 use std::fmt::{Debug, Formatter};
 use std::mem;
 use std::slice::{Iter, IterMut};
-use tokio::task::JoinHandle;
-#[cfg(target_family = "wasm")]
-use tokio_with_wasm as tokio;
+use std::sync::oneshot::Receiver;
 rules::generate_types!();
 type Value = f64;
 #[derive(Debug, Default, Encode, Decode)]
@@ -79,7 +77,7 @@ pub struct CardInfo {
 #[derive(Default, Debug)]
 pub enum MaybeHandles {
     Some(Handles),
-    Waiting(JoinHandle<Option<Image>>),
+    Waiting(Receiver<Option<Image>>),
     #[default]
     None,
 }

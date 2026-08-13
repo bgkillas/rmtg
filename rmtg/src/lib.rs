@@ -2,6 +2,7 @@
 #![feature(min_generic_const_args)]
 #![feature(inherent_associated_types)]
 #![feature(associated_type_defaults)]
+#![feature(oneshot_channel)]
 extern crate core;
 use bevy::color::Color;
 use importer::scryfall::Quality;
@@ -22,6 +23,7 @@ pub mod shapes;
 pub mod spatial;
 pub mod startup;
 pub mod ui;
+//TODO do not regenerate meshes or materials besides images just store asset handles
 pub const APP_NAME: &str = "com.github.bgkillas.rmtg";
 pub const USER_AGENT: &str = concat!("rmtg/", env!("CARGO_PKG_VERSION"));
 pub const CARD_WIDTH: f32 = CARD_HEIGHT * IMAGE_WIDTH / IMAGE_HEIGHT;

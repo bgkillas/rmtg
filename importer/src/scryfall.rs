@@ -11,6 +11,7 @@ use std::fmt::{Display, Formatter};
 use std::mem;
 use std::str::FromStr as _;
 use std::sync::LazyLock;
+use std::sync::oneshot::{Receiver, channel};
 use std::time::Duration;
 use tokio::task::JoinSet;
 #[cfg(not(target_family = "wasm"))]
@@ -89,9 +90,22 @@ async fn get_image(client: Client, uuid: Uuid, quality: Quality, side: Side) -> 
         }
     }
 }
+fn get_image_receiver(
+    client: Client,
+    uuid: Uuid,
+    quality: Quality,
+    side: Side,
+) -> Receiver<Option<Image>> {
+    let (send, recv) = channel();
+    tokio::spawn(async move {
+        send.send(get_image(client, uuid, quality, side).await)
+            .unwrap();
+    });
+    recv
+}
 impl CardInfo {
     pub fn set_image_receiver(&mut self, client: Client, uuid: Uuid, quality: Quality, side: Side) {
-        self.handles = MaybeHandles::Waiting(tokio::spawn(get_image(client, uuid, quality, side)));
+        self.handles = MaybeHandles::Waiting(get_image_receiver(client, uuid, quality, side));
     }
 }
 #[cfg(not(target_family = "wasm"))]

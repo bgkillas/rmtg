@@ -43,27 +43,24 @@ impl Asset<'_> {
     ) {
         if let Some(back_data) = &mut card.data.back {
             if let Some(image) = back {
-                let material = self.materials.add(StandardMaterial {
-                    base_color_texture: Some(image.clone()),
-                    alpha_mode: AlphaMode::AlphaToCoverage,
-                    unlit: true,
-                    ..StandardMaterial::default()
-                });
-                back_data.handles = MaybeHandles::Some(Handles { image, material });
+                back_data.handles = MaybeHandles::Some(self.register_card(image));
             } else {
                 back_data.is_oracle = true;
             }
         }
         if let Some(image) = front {
-            let material = self.materials.add(StandardMaterial {
-                base_color_texture: Some(image.clone()),
-                alpha_mode: AlphaMode::AlphaToCoverage,
-                unlit: true,
-                ..StandardMaterial::default()
-            });
-            card.data.front.handles = MaybeHandles::Some(Handles { image, material });
+            card.data.front.handles = MaybeHandles::Some(self.register_card(image));
         } else {
             card.data.front.is_oracle = true;
         }
+    }
+    pub fn register_card(&mut self, image: Handle<Image>) -> Handles {
+        let material = self.materials.add(StandardMaterial {
+            base_color_texture: Some(image.clone()),
+            alpha_mode: AlphaMode::AlphaToCoverage,
+            unlit: true,
+            ..StandardMaterial::default()
+        });
+        Handles { image, material }
     }
 }
