@@ -30,7 +30,7 @@ async fn test_list() {
     ]; 1];
     let mut list = SubCard::get_list(client, uuids.as_flattened(), Quality::Normal);
     while let Some(Ok(opt)) = list.join_next().await {
-        let (card, _, _) = opt.unwrap();
+        let card = opt.unwrap();
         println!("{card:#?}");
     }
     println!("{}", tmr.elapsed().as_millis());
@@ -41,10 +41,9 @@ async fn test_prints() {
     let client = Client::builder().user_agent(USER_AGENT).build().unwrap();
     let forest_uuid = uuid!("b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6");
     let tmr = Instant::now();
-    let list = SubCard::get_prints(client, forest_uuid, Quality::Normal)
+    let vec = SubCard::get_prints(client, forest_uuid, Quality::Normal)
         .await
         .unwrap();
-    let vec = list.join_all().await;
     let time = tmr.elapsed().as_millis();
     for res in &vec {
         if let Err(uuid) = res {

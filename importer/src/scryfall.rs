@@ -98,8 +98,7 @@ fn get_image_receiver(
 ) -> Receiver<Option<Image>> {
     let (send, recv) = channel();
     tokio::spawn(async move {
-        send.send(get_image(client, uuid, quality, side).await)
-            .unwrap();
+        let _ = send.send(get_image(client, uuid, quality, side).await);
     });
     recv
 }
