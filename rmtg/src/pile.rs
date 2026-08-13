@@ -58,7 +58,7 @@ impl Pile {
         (
             children![
                 self.outline(asset),
-                self.up_default(asset),
+                self.up(asset),
                 self.down(asset),
                 self.sides(asset)
             ],
@@ -144,21 +144,16 @@ impl Pile {
         )
     }
     #[must_use]
-    pub fn up_default(&self, asset: &mut Asset) -> impl Bundle + use<> {
-        (
-            Transform::from_xyz(0.0, self.thickness() / 2.0, 0.0)
-                .looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
-            MeshMaterial3d(asset.card.back.clone()),
-            Mesh3d(asset.card.stock.clone()),
-            CardTop,
-        )
-    }
-    #[must_use]
     pub fn up(&self, asset: &mut Asset) -> impl Bundle + use<> {
         (
             Transform::from_xyz(0.0, self.thickness() / 2.0, 0.0)
                 .looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
-            MeshMaterial3d(self.first().face().material().unwrap()),
+            MeshMaterial3d(
+                self.first()
+                    .face()
+                    .material()
+                    .unwrap_or_else(|| asset.card.back.clone()),
+            ),
             Mesh3d(asset.card.stock.clone()),
             CardTop,
         )
@@ -605,7 +600,6 @@ pub fn register_cards(
                         data.handles = MaybeHandles::Some(asset.register_card(handle));
                         (false, true)
                     } else {
-                        data.is_oracle = true;
                         (false, false)
                     }
                 }
@@ -615,7 +609,11 @@ pub fn register_cards(
                 }
                 _ => unreachable!(),
             },
-            MaybeHandles::None | MaybeHandles::Some(_) => (false, false),
+            MaybeHandles::Some(h) => {
+                data.handles = MaybeHandles::Some(h);
+                (false, false)
+            }
+            MaybeHandles::None => (false, false),
         }
     }
     for mut pile in query {

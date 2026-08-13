@@ -20,5 +20,7 @@ pub fn on_repaint(
 ) {
     let pile = decks.get(on.entity).unwrap();
     let mut mat = top.get_mut(pile.children[1]).unwrap();
-    mat.0 = pile.pile.first().face().material().unwrap();
+    if let Some(new) = pile.pile.first().face().material() {
+        mat.0 = new;
+    }
 }

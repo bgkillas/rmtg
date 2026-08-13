@@ -35,7 +35,7 @@ use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Commands, Component, Cuboid, Msaa, Rectangle, ResMut, Transform};
 use bevy::text::Font;
 use bevy_rich_text3d::TextAtlas;
-use importer::card::SubCard;
+use importer::card::{MaybeHandles, SubCard};
 use importer::image::parse_bytes;
 use std::f32::consts::PI;
 pub fn startup(
@@ -105,7 +105,8 @@ pub fn startup(
 }
 pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
     let mut card = SubCard::default();
-    asset.register_handles(&mut card, Some(asset.card.back_image.clone()), None);
+    card.data.front.handles =
+        MaybeHandles::Some(asset.register_card(asset.card.back_image.clone()));
     commands.spawn((
         Transform::from_xyz(MAT_WIDTH + CARD_WIDTH, CARD_THICKNESS, 0.0),
         Pile::from(card).bundle(&mut asset),

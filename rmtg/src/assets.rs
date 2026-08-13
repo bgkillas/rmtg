@@ -6,7 +6,7 @@ use bevy::material::AlphaMode;
 use bevy::mesh::Mesh;
 use bevy::pbr::StandardMaterial;
 use bevy::prelude::{Res, ResMut, Resource};
-use importer::card::{Handles, MaybeHandles, SubCard};
+use importer::card::Handles;
 #[derive(SystemParam)]
 pub struct Asset<'w> {
     pub meshes: ResMut<'w, Assets<Mesh>>,
@@ -29,30 +29,6 @@ pub struct TextMesh {
 impl Asset<'_> {
     pub fn text(&mut self) -> Handle<StandardMaterial> {
         self.text_mesh.mesh.clone()
-    }
-    pub fn register(&mut self, card: &mut SubCard, front: Option<Image>, back: Option<Image>) {
-        let front_handle = front.map(|i| self.images.add(i));
-        let back_handle = back.map(|i| self.images.add(i));
-        self.register_handles(card, front_handle, back_handle);
-    }
-    pub fn register_handles(
-        &mut self,
-        card: &mut SubCard,
-        front: Option<Handle<Image>>,
-        back: Option<Handle<Image>>,
-    ) {
-        if let Some(back_data) = &mut card.data.back {
-            if let Some(image) = back {
-                back_data.handles = MaybeHandles::Some(self.register_card(image));
-            } else {
-                back_data.is_oracle = true;
-            }
-        }
-        if let Some(image) = front {
-            card.data.front.handles = MaybeHandles::Some(self.register_card(image));
-        } else {
-            card.data.front.is_oracle = true;
-        }
     }
     pub fn register_card(&mut self, image: Handle<Image>) -> Handles {
         let material = self.materials.add(StandardMaterial {

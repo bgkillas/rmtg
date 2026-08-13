@@ -68,12 +68,7 @@ fn on_paste_card_set(
         Err(e) => warn!("{e:?}"),
     }
 }
-fn on_paste_card(
-    In((mut card, pos)): In<(SubCard, Vec3)>,
-    mut asset: Asset,
-    mut commands: Commands,
-) {
-    asset.register(&mut card, None, None);
+fn on_paste_card(In((card, pos)): In<(SubCard, Vec3)>, mut asset: Asset, mut commands: Commands) {
     let ent = commands
         .spawn((
             Transform::from_translation(pos),
