@@ -11,12 +11,13 @@ crate-type = ["cdylib", "rlib"]
 name = "rmtg_lib"
 
 [features]
-default = ["mic", "fps"]
+default = ["mic", "fps", "steam"]
 mic = ["dep:bevy_microphone", "dep:rodio"]
 debug = ["bevy/debug"]
 colliders = ["avian3d/debug-plugin"]
 fps = ["bevy/bevy_dev_tools"]
 tracy = ["bevy/trace_tracy"]
+steam = ["bevy_p2p/steam"]
 
 [dependencies]
 enumset = "1.1.14"

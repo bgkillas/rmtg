@@ -27,7 +27,9 @@ pub mod ui;
 //TODO oracle card
 //TODO card merge
 pub const APP_NAME: &str = "com.github.bgkillas.rmtg";
-pub const USER_AGENT: &str = concat!("rmtg/", env!("CARGO_PKG_VERSION"));
+pub const USER_AGENT: &str = concat!("com.github.bgkillas.rmtg/", env!("CARGO_PKG_VERSION"));
+pub const ALPN: &[u8] = USER_AGENT.as_bytes();
+pub const STEAM_APP_ID: u32 = 4046880;
 pub const CARD_WIDTH: f32 = CARD_HEIGHT * IMAGE_WIDTH / IMAGE_HEIGHT;
 pub const CARD_HEIGHT: f32 = (MAT_HEIGHT - MAT_BAR) / 5.0 - MAT_BAR;
 pub const IMAGE_WIDTH: f32 = 744.0;
@@ -60,7 +62,7 @@ pub const FONT: &[u8] = include_bytes!("../../assets/noto.ttf");
 pub const FONT_SIZE: f32 = 16.0;
 pub const FONT_HEIGHT: f32 = FONT_SIZE;
 pub const FONT_WIDTH: f32 = FONT_HEIGHT * 3.0 / 5.0;
-pub const PHYSICS_SCALE: f32 = 2.0 * CARD_WIDTH * MAT_WIDTH / 8.0;
+pub const PHYSICS_SCALE: f32 = CARD_HEIGHT * MAT_WIDTH / 8.0;
 #[cfg(target_family = "wasm")]
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
 fn wasm_hook() {

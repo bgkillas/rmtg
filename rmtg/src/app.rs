@@ -94,7 +94,10 @@ pub fn app_run() -> AppExit {
     );
     app.add_plugins(PhysicsPlugins::default().with_length_unit(PHYSICS_SCALE));
     app.add_plugins(SettingsPlugin::new(APP_NAME));
-    app.add_plugins(P2PPlugin::<Msg>::new());
+    app.add_plugins(P2PPlugin::<Msg>::new(
+        #[cfg(feature = "steam")]
+        crate::STEAM_APP_ID,
+    ));
     app.add_plugins(Text3dPlugin::default());
     app.add_plugins(FramepacePlugin);
     #[cfg(feature = "fps")]

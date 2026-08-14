@@ -114,14 +114,13 @@ pub fn send_scroll_events(
             {
                 entity = ent.0;
             }
-            if scrollable.contains(entity) {
-                scroll_messages.write(Scroll { entity, delta });
-            }
             if let Ok(scroll) = scrollbars.get(entity) {
                 scroll_messages.write(Scroll {
                     entity: scroll.target,
                     delta,
                 });
+            } else if scrollable.contains(entity) {
+                scroll_messages.write(Scroll { entity, delta });
             }
         }
     }

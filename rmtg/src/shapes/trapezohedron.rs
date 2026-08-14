@@ -56,7 +56,7 @@ impl ShapeMesh for Trapezohedron {
         ]
     }
     fn vertices(self) -> [[f32; 3]; 12] {
-        const POLE_HEIGHT: f32 = 2.0 / 3.0;
+        const POLE_HEIGHT: f32 = 1.0 / 2.0;
         let one = self.unit_length();
         let vc1 = GOLDEN_RATIO * one;
         let vc2 = vc1 + one;

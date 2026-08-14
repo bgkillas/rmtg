@@ -40,7 +40,7 @@ too_many_arguments = "allow"
 type_complexity = "allow"
 missing_inline_in_public_items = "allow"
 needless_pass_by_value = "allow"
-
+unreadable_literal = "allow"
 cast_precision_loss = "allow"
 as_conversions = "allow"
 cast_possible_truncation = "allow"
