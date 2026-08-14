@@ -36,7 +36,7 @@ pub fn move_up(
     let mut ent_aabb = *aabbs.get(entity.entity).unwrap();
     let mut shape = colliders.get(entity.entity).unwrap().shape_scaled().clone();
     let mut collider = Collider::from(SharedShape(Arc::from(shape.make_mut().clone_dyn())));
-    collider.scale_by(Vec3::splat(63.0 / 64.0), 0);
+    collider.scale_by(Vec3::splat(63.0 / 64.0) * transform.scale.max_element(), 0);
     let mut some = true;
     while some {
         some = false;

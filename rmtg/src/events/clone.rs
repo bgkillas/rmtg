@@ -1,4 +1,4 @@
-use crate::assets::Asset;
+use crate::assets::AssetManager;
 use crate::events::hover::HoveredObject;
 use crate::events::move_up::MoveUp;
 use crate::keybinds::Keybind;
@@ -36,7 +36,7 @@ impl Clone for CloneType {
         }
     }
 }
-pub fn on_clone(clone: On<CloneObj>, mut commands: Commands, mut asset: Asset) {
+pub fn on_clone(clone: On<CloneObj>, mut commands: Commands, mut asset: AssetManager) {
     let mut ent = commands.spawn(clone.transform);
     let id = match &clone.clone_type {
         CloneType::Pile(deck) => {

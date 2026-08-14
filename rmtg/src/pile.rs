@@ -1,4 +1,4 @@
-use crate::assets::Asset;
+use crate::assets::AssetManager;
 use crate::events::hover::Hoverable;
 use crate::events::repaint::Repaint;
 use crate::physics::physics_base;
@@ -33,9 +33,47 @@ use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::sync::oneshot::TryRecvError;
 use std::{iter, mem};
-#[must_use]
-pub fn is_reversed(transform: &Transform) -> bool {
-    (transform.rotation * Vec3::Y).y < 0.0
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub enum FlippedState {
+    Normal,
+    Flipped,
+}
+impl FlippedState {
+    #[must_use]
+    pub fn flipped(self) -> bool {
+        matches!(self, Self::Flipped)
+    }
+}
+impl From<&Quat> for FlippedState {
+    fn from(rotation: &Quat) -> Self {
+        match (rotation * Vec3::Y).y {
+            0.0..=1.0 => Self::Normal,
+            -1.0..0.0 => Self::Flipped,
+            _ => unreachable!(),
+        }
+    }
+}
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub enum TapState {
+    Normal,
+    Tapped,
+    Reverse,
+}
+impl TapState {
+    #[must_use]
+    pub fn tapped(self) -> bool {
+        matches!(self, Self::Tapped)
+    }
+}
+impl From<&Quat> for TapState {
+    fn from(rotation: &Quat) -> Self {
+        match (rotation * Vec3::Z).z {
+            0.5..=1.0 => Self::Normal,
+            -0.5..0.5 => Self::Tapped,
+            -1.0..-0.5 => Self::Reverse,
+            _ => unreachable!(),
+        }
+    }
 }
 #[derive(Component, Default, Debug, Encode, Decode)]
 pub enum Pile {
@@ -54,7 +92,7 @@ pub struct CardBack;
 pub struct CardTop;
 impl Pile {
     #[must_use]
-    pub fn bundle(self, asset: &mut Asset) -> impl Bundle {
+    pub fn bundle(self, asset: &mut AssetManager) -> impl Bundle {
         (
             children![
                 self.outline(asset),
@@ -71,7 +109,7 @@ impl Pile {
         )
     }
     #[must_use]
-    pub fn outline(&self, asset: &mut Asset) -> impl Bundle + use<> {
+    pub fn outline(&self, asset: &mut AssetManager) -> impl Bundle + use<> {
         (
             Mesh3d(asset.meshes.add(DeckOutline::from_height(self.thickness()))),
             MeshMaterial3d(asset.materials.add(StandardMaterial {
@@ -83,7 +121,7 @@ impl Pile {
         )
     }
     #[must_use]
-    pub fn sides(&self, asset: &mut Asset) -> impl Bundle + use<> {
+    pub fn sides(&self, asset: &mut AssetManager) -> impl Bundle + use<> {
         let del = CARD_WIDTH * CARD_CORNER_RADIUS;
         let left_right = Mesh::from(Rectangle::new(self.thickness(), CARD_HEIGHT - 2.0 * del));
         let front_back = Mesh::from(Rectangle::new(CARD_WIDTH - 2.0 * del, self.thickness()));
@@ -144,7 +182,7 @@ impl Pile {
         )
     }
     #[must_use]
-    pub fn up(&self, asset: &mut Asset) -> impl Bundle + use<> {
+    pub fn up(&self, asset: &mut AssetManager) -> impl Bundle + use<> {
         (
             Transform::from_xyz(0.0, self.thickness() / 2.0, 0.0)
                 .looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
@@ -159,7 +197,7 @@ impl Pile {
         )
     }
     #[must_use]
-    pub fn down(&self, asset: &Asset) -> impl Bundle + use<> {
+    pub fn down(&self, asset: &AssetManager) -> impl Bundle + use<> {
         (
             Transform::from_xyz(0.0, -self.thickness() / 2.0, 0.0).looking_to(Dir3::Y, Dir3::NEG_Z),
             MeshMaterial3d(asset.card.back.clone()),
@@ -285,16 +323,16 @@ impl Pile {
         }
     }
     #[must_use]
-    pub fn get_card(&self, transform: &Transform) -> &SubCard {
-        if is_reversed(transform) {
+    pub fn get_card(&self, rot: &Quat) -> &SubCard {
+        if FlippedState::from(rot).flipped() {
             self.first()
         } else {
             self.last()
         }
     }
     #[must_use]
-    pub fn get_mut_card(&mut self, transform: &Transform) -> &mut SubCard {
-        if is_reversed(transform) {
+    pub fn get_mut_card(&mut self, rot: &Quat) -> &mut SubCard {
+        if FlippedState::from(rot).flipped() {
             self.first_mut()
         } else {
             self.last_mut()
@@ -322,8 +360,8 @@ impl Pile {
         }
     }
     #[must_use]
-    pub fn take_card(&mut self, transform: &Transform) -> SubCard {
-        let ret = if is_reversed(transform) {
+    pub fn take_card(&mut self, rot: &Quat) -> SubCard {
+        let ret = if FlippedState::from(rot).flipped() {
             self.remove(0)
         } else {
             self.pop()
@@ -332,8 +370,8 @@ impl Pile {
         ret
     }
     #[must_use]
-    pub fn take_n_card(&mut self, transform: &Transform, n: usize) -> Vec<SubCard> {
-        let ret = if is_reversed(transform) {
+    pub fn take_n_card(&mut self, rot: &Quat, n: usize) -> Vec<SubCard> {
+        let ret = if FlippedState::from(rot).flipped() {
             self.drain(0..n.min(self.len())).collect()
         } else {
             self.drain(self.len().saturating_sub(n)..self.len())
@@ -588,9 +626,9 @@ impl From<SubCard> for Pile {
 pub fn register_cards(
     query: Query<(Entity, &mut Pile), With<PendingCards>>,
     mut commands: Commands,
-    mut asset: Asset,
+    mut asset: AssetManager,
 ) {
-    fn register(data: &mut CardInfo, asset: &mut Asset) -> (bool, bool) {
+    fn register(data: &mut CardInfo, asset: &mut AssetManager) -> (bool, bool) {
         let owned = mem::take(&mut data.handles);
         match owned {
             MaybeHandles::Waiting(poll) => match poll.try_recv() {

@@ -8,7 +8,7 @@ use bevy::pbr::StandardMaterial;
 use bevy::prelude::{Res, ResMut, Resource};
 use importer::card::Handles;
 #[derive(SystemParam)]
-pub struct Asset<'w> {
+pub struct AssetManager<'w> {
     pub meshes: ResMut<'w, Assets<Mesh>>,
     pub images: ResMut<'w, Assets<Image>>,
     pub materials: ResMut<'w, Assets<StandardMaterial>>,
@@ -26,7 +26,7 @@ pub struct CardBase {
 pub struct TextMesh {
     pub mesh: Handle<StandardMaterial>,
 }
-impl Asset<'_> {
+impl AssetManager<'_> {
     pub fn text(&mut self) -> Handle<StandardMaterial> {
         self.text_mesh.mesh.clone()
     }

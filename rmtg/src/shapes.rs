@@ -1,4 +1,4 @@
-use crate::assets::Asset;
+use crate::assets::AssetManager;
 use crate::events::hover::Hoverable;
 use crate::physics::{bounce, physics_base};
 use crate::shapes::coin::Coin;
@@ -64,7 +64,7 @@ impl Shape {
         self,
         base_color: Color,
         outline_color: Color,
-        asset: &mut Asset,
+        asset: &mut AssetManager,
         ent: EntityCommands<'a>,
     ) -> EntityCommands<'a> {
         match self {
@@ -107,7 +107,7 @@ where
         height: f32,
         base_color: Color,
         outline_color: Color,
-        asset: &mut Asset,
+        asset: &mut AssetManager,
     ) -> impl Bundle {
         _ = outline_color;
         let mesh = Mesh::from(Self::from_height(height));
@@ -145,7 +145,7 @@ where
     fn insert_dice<'a>(
         base_color: Color,
         outline_color: Color,
-        asset: &mut Asset,
+        asset: &mut AssetManager,
         mut ent: EntityCommands<'a>,
     ) -> EntityCommands<'a> {
         let height = Self::HEIGHT;

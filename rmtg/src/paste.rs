@@ -1,6 +1,6 @@
 use crate::QUALITY;
 use crate::app::Client;
-use crate::assets::Asset;
+use crate::assets::AssetManager;
 use crate::events::move_up::MoveUp;
 use crate::pile::Pile;
 use crate::spatial::Spatial;
@@ -68,7 +68,11 @@ fn on_paste_card_set(
         Err(e) => warn!("{e:?}"),
     }
 }
-fn on_paste_card(In((card, pos)): In<(SubCard, Vec3)>, mut asset: Asset, mut commands: Commands) {
+fn on_paste_card(
+    In((card, pos)): In<(SubCard, Vec3)>,
+    mut asset: AssetManager,
+    mut commands: Commands,
+) {
     let ent = commands
         .spawn((
             Transform::from_translation(pos),

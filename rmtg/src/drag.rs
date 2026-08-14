@@ -5,7 +5,7 @@ use crate::keybinds::Keybind;
 use crate::physics::{GRAVITY, LIN_DAMPING};
 use crate::spatial::Spatial;
 use crate::startup::wall_aabb;
-use avian3d::prelude::{LinearDamping, LinearVelocity};
+use avian3d::prelude::{LinearDamping, LinearVelocity, SleepingDisabled};
 use bevy::ecs::entity::EntityHash;
 use bevy::input::ButtonInput;
 use bevy::math::{Dir3, Vec3};
@@ -87,7 +87,8 @@ pub fn drag(
                 commands
                     .entity(hovered.entity)
                     .insert(TargetPosition { pos })
-                    .insert(LinearDamping(0.0));
+                    .insert(LinearDamping(0.0))
+                    .insert(SleepingDisabled);
                 pos
             };
             let delta =
@@ -100,7 +101,7 @@ pub fn drag(
             commands.trigger(NewGravity::new(ent, GRAVITY));
             commands
                 .entity(ent)
-                .remove::<TargetPosition>()
+                .remove::<(TargetPosition, SleepingDisabled)>()
                 .insert(LinearDamping(LIN_DAMPING));
         }
     }

@@ -1,5 +1,5 @@
 use crate::PLAYER;
-use crate::assets::Asset;
+use crate::assets::AssetManager;
 use crate::keybinds::Keybind;
 use crate::shapes::drag_outline::DragOutline;
 use crate::shapes::{OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, ShapeOutline as _};
@@ -50,7 +50,7 @@ pub fn add_hover(
     mut commands: Commands,
     children: Query<&Children>,
     mut query: Query<&mut MeshMaterial3d<StandardMaterial>>,
-    mut asset: Asset,
+    mut asset: AssetManager,
 ) {
     let childs = children.get(event.entity).unwrap();
     let mut mat = query.get_mut(childs[0]).unwrap();
@@ -67,7 +67,7 @@ pub fn remove_hover(
     mut commands: Commands,
     children: Query<&Children>,
     mut query: Query<&mut MeshMaterial3d<StandardMaterial>>,
-    mut asset: Asset,
+    mut asset: AssetManager,
 ) {
     let childs = children.get(event.entity).unwrap();
     let mut mat = query.get_mut(childs[0]).unwrap();
@@ -92,7 +92,11 @@ pub struct UpdateBoxSelect {
 pub struct SpawnBoxSelect {
     pub pos: Vec3,
 }
-pub fn spawn_box_select(mut event: On<SpawnBoxSelect>, mut commands: Commands, mut asset: Asset) {
+pub fn spawn_box_select(
+    mut event: On<SpawnBoxSelect>,
+    mut commands: Commands,
+    mut asset: AssetManager,
+) {
     let vec = event.pos.xz();
     event.pos.y += DragOutline::THICKNESS;
     let entity = commands
@@ -113,7 +117,7 @@ pub fn update_box_select_mesh(
     event: On<UpdateBoxSelect>,
     mut box_selects: Query<(&mut Transform, &BoxSelect)>,
     mut commands: Commands,
-    mut asset: Asset,
+    mut asset: AssetManager,
 ) {
     let mut box_select = box_selects.get_mut(event.entity).unwrap();
     let vec = (box_select.box_select.start + event.vec) / 2.0;

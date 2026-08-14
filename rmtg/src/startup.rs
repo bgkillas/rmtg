@@ -1,4 +1,4 @@
-use crate::assets::{Asset, CardBase, TextMesh};
+use crate::assets::{AssetManager, CardBase, TextMesh};
 use crate::camera::{CameraVelocity, default_cam_pos};
 use crate::net::Peer;
 use crate::physics::WorldLayer;
@@ -103,7 +103,7 @@ pub fn startup(
     commands.spawn(chat_bundle());
     commands.spawn(esc_menu_bundle());
 }
-pub fn spawn_objects(mut commands: Commands, mut asset: Asset) {
+pub fn spawn_objects(mut commands: Commands, mut asset: AssetManager) {
     let mut card = SubCard::default();
     card.data.front.handles =
         MaybeHandles::Some(asset.register_card(asset.card.back_image.clone()));

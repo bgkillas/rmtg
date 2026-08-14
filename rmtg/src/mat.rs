@@ -1,4 +1,4 @@
-use crate::assets::Asset;
+use crate::assets::AssetManager;
 use crate::card_spot::{CardSpot, SpotType};
 use crate::net::Peer;
 use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, MAT_BAR, MAT_HEIGHT, MAT_WIDTH, PLAYER};
@@ -8,7 +8,7 @@ use bevy::mesh::Mesh3d;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Commands, InheritedVisibility, Rectangle, Transform};
 use std::f32::consts::PI;
-pub fn create_mats(mut assets: Asset, mut commands: Commands) {
+pub fn create_mats(mut assets: AssetManager, mut commands: Commands) {
     let player0 = Transform::from_xyz(MAT_WIDTH / 2.0, -CARD_THICKNESS, MAT_HEIGHT / 2.0);
     let player1 = Transform::from_xyz(-MAT_WIDTH / 2.0, -CARD_THICKNESS, MAT_HEIGHT / 2.0);
     let mut player2 = Transform::from_xyz(-MAT_WIDTH / 2.0, -CARD_THICKNESS, -MAT_HEIGHT / 2.0);
@@ -35,7 +35,7 @@ pub fn create_mats(mut assets: Asset, mut commands: Commands) {
     }
 }
 fn make_mat(
-    assets: &mut Asset,
+    assets: &mut AssetManager,
     commands: &mut Commands,
     transform: Transform,
     right: bool,
