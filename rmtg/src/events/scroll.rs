@@ -10,7 +10,7 @@ use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::lifecycle::Add;
 use bevy_ecs::message::{Message, MessageReader, MessageWriter, PopulatedMessageReader};
 use bevy_ecs::observer::On;
-use bevy_ecs::query::With;
+use bevy_ecs::query::{Or, With};
 use bevy_ecs::system::{Commands, Query, Res, Single};
 use bevy_query_fn_macro::query_fn;
 use std::mem;
@@ -96,8 +96,9 @@ pub fn send_scroll_events(
     hover: Hover,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut scroll_messages: MessageWriter<Scroll>,
-    scrollable: Query<(), With<Scrollable>>,
+    scrollable: Query<(), Or<(With<Scrollable>, With<Scrollbar>)>>,
     parents: Query<&ChildOf>,
+    scrollbars: Query<&Scrollbar>,
 ) {
     for mouse_wheel in mouse_wheel_reader.read() {
         let mut delta = -Vec2::new(mouse_wheel.x, mouse_wheel.y);
@@ -115,6 +116,12 @@ pub fn send_scroll_events(
             }
             if scrollable.contains(entity) {
                 scroll_messages.write(Scroll { entity, delta });
+            }
+            if let Ok(scroll) = scrollbars.get(entity) {
+                scroll_messages.write(Scroll {
+                    entity: scroll.target,
+                    delta,
+                });
             }
         }
     }
