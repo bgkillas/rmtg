@@ -519,7 +519,7 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 [[package]]
 name = "avian3d"
 version = "0.8.0-dev"
-source = "git+https://github.com/avianphysics/avian#af25f3f6d3442f4cf50023c366f0300c78cc5913"
+source = "git+https://github.com/avianphysics/avian#e1b63a45d7ab8fcba37606f6c71d1649db390c5e"
 dependencies = [
  "approx",
  "avian_derive",
@@ -543,7 +543,7 @@ dependencies = [
 [[package]]
 name = "avian_derive"
 version = "0.2.3"
-source = "git+https://github.com/avianphysics/avian#af25f3f6d3442f4cf50023c366f0300c78cc5913"
+source = "git+https://github.com/avianphysics/avian#e1b63a45d7ab8fcba37606f6c71d1649db390c5e"
 dependencies = [
  "proc-macro-error3",
  "proc-macro2",

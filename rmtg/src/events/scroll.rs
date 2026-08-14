@@ -58,15 +58,10 @@ impl Scroll {
 #[query_fn]
 pub fn scroll(
     mut messages: PopulatedMessageReader<Scroll>,
-    parents: Query<&ChildOf>,
     mut query: Query<(&mut ScrollPosition, &Node, &ComputedNode), With<Scrollable>>,
 ) {
     for msg in messages.read() {
-        let mut entity = msg.entity;
-        while !query.contains(entity) {
-            entity = parents.get(entity).unwrap().0;
-        }
-        let mut scrollable = query.get_mut(entity).unwrap();
+        let mut scrollable = query.get_mut(msg.entity).unwrap();
         let max_offset = (scrollable.computed_node.content_size()
             - scrollable.computed_node.size())
             * scrollable.computed_node.inverse_scale_factor();
@@ -101,6 +96,8 @@ pub fn send_scroll_events(
     hover: Hover,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut scroll_messages: MessageWriter<Scroll>,
+    scrollable: Query<(), With<Scrollable>>,
+    parents: Query<&ChildOf>,
 ) {
     for mouse_wheel in mouse_wheel_reader.read() {
         let mut delta = -Vec2::new(mouse_wheel.x, mouse_wheel.y);
@@ -110,8 +107,15 @@ pub fn send_scroll_events(
         if keyboard.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
             mem::swap(&mut delta.x, &mut delta.y);
         }
-        if let Some(entity) = hover.get() {
-            scroll_messages.write(Scroll { entity, delta });
+        if let Some(mut entity) = hover.get() {
+            while !scrollable.contains(entity)
+                && let Ok(ent) = parents.get(entity)
+            {
+                entity = ent.0;
+            }
+            if scrollable.contains(entity) {
+                scroll_messages.write(Scroll { entity, delta });
+            }
         }
     }
 }
