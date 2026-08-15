@@ -7,7 +7,7 @@ repository.workspace = true
 
 [dependencies]
 reqwest = { version = "0.13.4", features = ["rustls", "query"], default-features = false}
-uuid = "1.24.0"
+uuid = "1.24.1"
 image = {version = "0.25.10", default-features = false, features = ["jpeg", "png"]}
 jzon = "0.12.5"
 rand = { version = "0.10.2", default-features = false, features = ["std", "alloc", "simd_support", "sys_rng", "std_rng"] }

@@ -31,7 +31,6 @@ use std::cmp::Ordering;
 use std::f32::consts::PI;
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
-use std::sync::oneshot::TryRecvError;
 use std::{iter, mem};
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum FlippedState {
@@ -628,45 +627,45 @@ pub fn register_cards(
     mut commands: Commands,
     mut asset: AssetManager,
 ) {
-    fn register(data: &mut CardInfo, asset: &mut AssetManager) -> (bool, bool) {
-        let owned = mem::take(&mut data.handles);
-        match owned {
-            MaybeHandles::Waiting(poll) => match poll.try_recv() {
-                Ok(val) => {
-                    if let Some(inner) = val {
+    fn register(
+        data: &mut CardInfo,
+        asset: &mut AssetManager,
+        has_some: &mut bool,
+        repaint: &mut bool,
+    ) {
+        match &data.handles {
+            MaybeHandles::Waiting(poll) => {
+                if let Ok(val) = poll.try_recv() {
+                    data.handles = if let Some(inner) = val {
+                        *repaint = true;
                         let handle = asset.images.add(inner);
-                        data.handles = MaybeHandles::Some(asset.register_card(handle));
-                        (false, true)
+                        MaybeHandles::Some(asset.register_card(handle))
                     } else {
-                        (false, false)
-                    }
+                        MaybeHandles::None
+                    };
+                } else {
+                    *has_some = true;
                 }
-                Err(TryRecvError::Empty(rx)) => {
-                    data.handles = MaybeHandles::Waiting(rx);
-                    (true, false)
-                }
-                _ => unreachable!(),
-            },
-            MaybeHandles::Some(h) => {
-                data.handles = MaybeHandles::Some(h);
-                (false, false)
             }
-            MaybeHandles::None => (false, false),
+            MaybeHandles::Some(_) | MaybeHandles::None => {}
         }
     }
     for mut pile in query {
         let mut has_some = false;
+        let mut repaint = false;
         for card in &mut pile.pile {
-            let (some, mut repaint) = register(&mut card.data.front, &mut asset);
-            has_some |= some;
+            register(
+                &mut card.data.front,
+                &mut asset,
+                &mut has_some,
+                &mut repaint,
+            );
             if let Some(back) = &mut card.data.back {
-                let (a, b) = register(back, &mut asset);
-                has_some |= a;
-                repaint |= b;
+                register(back, &mut asset, &mut has_some, &mut repaint);
             }
-            if repaint {
-                commands.trigger(Repaint::new(pile.entity));
-            }
+        }
+        if repaint {
+            commands.trigger(Repaint::new(pile.entity));
         }
         if !has_some {
             commands.entity(pile.entity).remove::<PendingCards>();

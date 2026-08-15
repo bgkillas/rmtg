@@ -11,7 +11,7 @@ use std::fmt::{Display, Formatter};
 use std::mem;
 use std::str::FromStr as _;
 use std::sync::LazyLock;
-use std::sync::oneshot::{Receiver, channel};
+use std::sync::mpmc::{Receiver, channel};
 use std::time::Duration;
 use tokio::task::JoinSet;
 #[cfg(not(target_family = "wasm"))]

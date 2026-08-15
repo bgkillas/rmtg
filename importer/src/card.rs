@@ -10,7 +10,7 @@ use std::cmp::Ordering;
 use std::fmt::{Debug, Formatter};
 use std::mem;
 use std::slice::{Iter, IterMut};
-use std::sync::oneshot::Receiver;
+use std::sync::mpmc::Receiver;
 rules::generate_types!();
 type Value = f64;
 #[derive(Debug, Default, Encode, Decode)]
