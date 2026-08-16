@@ -1,6 +1,7 @@
 use crate::PLAYER;
 use crate::assets::AssetManager;
 use crate::keybinds::Keybind;
+use crate::pile::Pile;
 use crate::shapes::drag_outline::DragOutline;
 use crate::shapes::{OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, ShapeOutline as _};
 use crate::spatial::Spatial;
@@ -49,34 +50,60 @@ pub fn add_hover(
     event: On<AddHover>,
     mut commands: Commands,
     children: Query<&Children>,
+    is_pile: Query<(), With<Pile>>,
     mut query: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut asset: AssetManager,
 ) {
     let childs = children.get(event.entity).unwrap();
-    let mut mat = query.get_mut(childs[0]).unwrap();
-    mat.0 = asset.materials.add(StandardMaterial {
-        base_color: PLAYER[0],
-        unlit: true,
-        depth_bias: OUTLINE_DEPTH_BIAS,
-        ..StandardMaterial::default()
-    });
+    if is_pile.contains(event.entity) {
+        for &child in &childs[3..] {
+            let mut mat = query.get_mut(child).unwrap();
+            mat.0 = asset.materials.add(StandardMaterial {
+                base_color: PLAYER[0],
+                unlit: true,
+                depth_bias: OUTLINE_DEPTH_BIAS,
+                ..StandardMaterial::default()
+            });
+        }
+    } else {
+        let mut mat = query.get_mut(childs[0]).unwrap();
+        mat.0 = asset.materials.add(StandardMaterial {
+            base_color: PLAYER[0],
+            unlit: true,
+            depth_bias: OUTLINE_DEPTH_BIAS,
+            ..StandardMaterial::default()
+        });
+    }
     commands.entity(event.entity).insert(event.hovered);
 }
 pub fn remove_hover(
     event: On<RemoveHover>,
     mut commands: Commands,
     children: Query<&Children>,
+    is_pile: Query<(), With<Pile>>,
     mut query: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut asset: AssetManager,
 ) {
     let childs = children.get(event.entity).unwrap();
-    let mut mat = query.get_mut(childs[0]).unwrap();
-    mat.0 = asset.materials.add(StandardMaterial {
-        base_color: OUTLINE_COLOR,
-        unlit: true,
-        depth_bias: OUTLINE_DEPTH_BIAS,
-        ..StandardMaterial::default()
-    });
+    if is_pile.contains(event.entity) {
+        for &child in &childs[3..] {
+            let mut mat = query.get_mut(child).unwrap();
+            mat.0 = asset.materials.add(StandardMaterial {
+                base_color: OUTLINE_COLOR,
+                unlit: true,
+                depth_bias: OUTLINE_DEPTH_BIAS,
+                ..StandardMaterial::default()
+            });
+        }
+    } else {
+        let mut mat = query.get_mut(childs[0]).unwrap();
+        mat.0 = asset.materials.add(StandardMaterial {
+            base_color: OUTLINE_COLOR,
+            unlit: true,
+            depth_bias: OUTLINE_DEPTH_BIAS,
+            ..StandardMaterial::default()
+        });
+    }
     commands.entity(event.entity).remove::<HoveredObject>();
 }
 #[derive(Component)]

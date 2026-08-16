@@ -94,10 +94,10 @@ impl Pile {
     pub fn bundle(self, asset: &mut AssetManager) -> impl Bundle {
         (
             children![
-                self.outline(asset),
                 self.up(asset),
                 self.down(asset),
-                self.sides(asset)
+                self.sides(asset),
+                self.outline(asset),
             ],
             self.collider(),
             self,
@@ -123,8 +123,8 @@ impl Pile {
     #[must_use]
     pub fn sides(&self, asset: &mut AssetManager) -> impl Bundle + use<> {
         let del = CARD_WIDTH * CARD_CORNER_RADIUS;
-        let left_right = Mesh::from(Rectangle::new(self.thickness(), CARD_HEIGHT - 2.0 * del));
-        let front_back = Mesh::from(Rectangle::new(CARD_WIDTH - 2.0 * del, self.thickness()));
+        let left_right = Mesh::from(Rectangle::new(CARD_THICKNESS, CARD_HEIGHT - 2.0 * del));
+        let front_back = Mesh::from(Rectangle::new(CARD_WIDTH - 2.0 * del, CARD_THICKNESS));
         let mut left = left_right.clone();
         left.rotate_by(Quat::from_rotation_arc(Vec3::NEG_Z, Vec3::X));
         left.rotate_by(Quat::from_rotation_x(PI / 2.0));
@@ -156,7 +156,7 @@ impl Pile {
                         uv_mode: CircularMeshUvMode::default(),
                     },
                 },
-                half_depth: self.thickness() / 2.0,
+                half_depth: CARD_THICKNESS / 2.0,
                 segments: 1,
             }
             .build();
@@ -176,10 +176,20 @@ impl Pile {
             left.merge(&sector).unwrap();
         }
         (
+            Transform::from_scale(Vec3::new(1.0, self.len() as f32, 1.0)),
             MeshMaterial3d(asset.card.color.clone()),
             Mesh3d(asset.meshes.add(left)),
             CardSide,
         )
+    }
+    pub fn reposition_up(&self, transform: &mut Transform) {
+        transform.translation.y = self.thickness() / 2.0;
+    }
+    pub fn reposition_down(&self, transform: &mut Transform) {
+        transform.translation.y = -self.thickness() / 2.0;
+    }
+    pub fn reposition_side(&self, transform: &mut Transform) {
+        transform.scale.y = self.len() as f32;
     }
     #[must_use]
     pub fn up(&self, asset: &mut AssetManager) -> impl Bundle + use<> {

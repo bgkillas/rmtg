@@ -46,6 +46,7 @@ pub fn app_run() -> AppExit {
                     title: "rmtg".to_owned(),
                     resizable: true,
                     fit_canvas_to_parent: true,
+                    //present_mode: bevy::window::PresentMode::Immediate,
                     ..Window::default()
                 }),
                 ..WindowPlugin::default()

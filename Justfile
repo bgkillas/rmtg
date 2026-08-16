@@ -4,6 +4,8 @@ run_tracy:
     cargo run --release --features "tracy,debug"
 run_rel:
     cargo run --release
+run_full:
+    cargo run --profile release_lto
 build:
     cargo build --features "debug"
 build_rel:
