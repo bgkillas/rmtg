@@ -13,7 +13,7 @@ name = "rmtg_lib"
 [features]
 default = ["mic", "fps", "steam"]
 mic = ["dep:bevy_microphone", "dep:rodio"]
-debug = ["bevy/debug"]
+debug = ["bevy/debug", "bevy/track_location"]
 colliders = ["avian3d/debug-plugin"]
 fps = ["bevy/bevy_dev_tools"]
 tracy = ["bevy/trace_tracy"]
