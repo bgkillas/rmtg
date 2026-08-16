@@ -4,7 +4,7 @@ use crate::events::delete::on_delete;
 use crate::events::gravity::on_change_gravity;
 use crate::events::hover::{add_hover, remove_hover, spawn_box_select, update_box_select_mesh};
 use crate::events::move_up::move_up;
-use crate::events::pile_merge::on_pile_merge;
+use crate::events::pile_merge::{on_pile_merge, trigger_pile_merge};
 use crate::events::repaint::on_repaint;
 use crate::events::roll::on_roll;
 use crate::events::scale::on_scale;
@@ -44,5 +44,6 @@ pub fn add_events(app: &mut App) {
     app.add_observer(insert_scroll_bar);
     app.add_observer(on_delete);
     app.add_observer(on_pile_merge);
+    app.add_observer(trigger_pile_merge);
     app.init_resource::<PollClipboard>();
 }

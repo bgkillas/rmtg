@@ -1,4 +1,4 @@
-use crate::CARD_THICKNESS;
+use crate::CARD_WIDTH;
 use crate::events::gravity::NewGravity;
 use crate::events::hover::{BoxSelect, HoveredObject};
 use crate::keybinds::Keybind;
@@ -83,7 +83,7 @@ pub fn drag(
                 last_ents.insert(hovered.entity);
                 commands.trigger(NewGravity::new(hovered.entity, 0.0));
                 let mut pos = hovered.transform.translation + delta;
-                pos.y += 4.0 * CARD_THICKNESS;
+                pos.y += CARD_WIDTH;
                 commands
                     .entity(hovered.entity)
                     .insert(TargetPosition { pos })

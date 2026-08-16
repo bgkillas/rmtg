@@ -2,12 +2,13 @@ use crate::assets::AssetManager;
 use crate::events::hover::HoveredObject;
 use crate::events::move_up::MoveUp;
 use crate::keybinds::Keybind;
-use crate::pile::Pile;
+use crate::pile::{PendingCards, Pile};
 use crate::shapes::{OUTLINE_COLOR, Shape};
 use crate::spatial::Spatial;
 use bevy::color::Color;
 use bevy::input::ButtonInput;
 use bevy::prelude::{Commands, Event, Local, On, Query, Transform, With};
+use bevy_ecs::query::Without;
 use bevy_ecs::system::Res;
 use bevy_query_fn_macro::query_fn;
 #[derive(Event, Clone)]
@@ -54,7 +55,10 @@ pub fn on_clone(clone: On<CloneObj>, mut commands: Commands, mut asset: AssetMan
 pub fn update_clone(
     keybinds: Res<ButtonInput<Keybind>>,
     mut commands: Commands,
-    hovered_entities: Query<(&Transform, Option<&Shape>, Option<&Pile>), With<HoveredObject>>,
+    hovered_entities: Query<
+        (&Transform, Option<&Shape>, Option<&Pile>),
+        (With<HoveredObject>, Without<PendingCards>),
+    >,
     spatial: Spatial,
     mut objects: Local<Vec<CloneObj>>,
 ) {
@@ -66,10 +70,7 @@ pub fn update_clone(
         for hovered in hovered_entities {
             let ty = match (hovered.shape, hovered.pile) {
                 (Some(&shape), None) => CloneType::Shape(shape),
-                (None, Some(pile)) if let Some(cloned) = pile.try_clone() => {
-                    CloneType::Pile(cloned)
-                }
-                (None, Some(_)) => continue,
+                (None, Some(pile)) => CloneType::Pile(pile.try_clone().unwrap()),
                 _ => unreachable!(),
             };
             let mut trans = *hovered.transform;

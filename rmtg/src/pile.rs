@@ -5,7 +5,7 @@ use crate::physics::physics_base;
 use crate::shapes::deck::DeckOutline;
 use crate::shapes::{NewShape as _, OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, ShapeOutline as _};
 use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH};
-use avian3d::prelude::Collider;
+use avian3d::prelude::{Collider, CollisionEventsEnabled};
 use bevy::ecs::children;
 use bevy::math::{Dir3, Quat, Vec3};
 use bevy::mesh::{
@@ -43,8 +43,8 @@ impl FlippedState {
         matches!(self, Self::Flipped)
     }
 }
-impl From<&Quat> for FlippedState {
-    fn from(rotation: &Quat) -> Self {
+impl From<Quat> for FlippedState {
+    fn from(rotation: Quat) -> Self {
         match (rotation * Vec3::Y).y {
             0.0..=1.0 => Self::Normal,
             -1.0..0.0 => Self::Flipped,
@@ -64,8 +64,8 @@ impl TapState {
         matches!(self, Self::Tapped)
     }
 }
-impl From<&Quat> for TapState {
-    fn from(rotation: &Quat) -> Self {
+impl From<Quat> for TapState {
+    fn from(rotation: Quat) -> Self {
         match (rotation * Vec3::Z).z {
             0.5..=1.0 => Self::Normal,
             -0.5..0.5 => Self::Tapped,
@@ -105,6 +105,7 @@ impl Pile {
             InheritedVisibility::VISIBLE,
             Hoverable,
             PendingCards,
+            CollisionEventsEnabled,
         )
     }
     #[must_use]
@@ -202,6 +203,13 @@ impl Pile {
             MeshMaterial3d(asset.card.back.clone()),
             Mesh3d(asset.card.stock.clone()),
             CardBack,
+        )
+    }
+    #[must_use]
+    pub fn is_oracle(&self) -> bool {
+        matches!(
+            self.first().face().handles,
+            MaybeHandles::None | MaybeHandles::Waiting(_)
         )
     }
     #[must_use]
@@ -322,7 +330,7 @@ impl Pile {
         }
     }
     #[must_use]
-    pub fn get_card(&self, rot: &Quat) -> &SubCard {
+    pub fn get_card(&self, rot: Quat) -> &SubCard {
         if FlippedState::from(rot).flipped() {
             self.first()
         } else {
@@ -330,7 +338,7 @@ impl Pile {
         }
     }
     #[must_use]
-    pub fn get_mut_card(&mut self, rot: &Quat) -> &mut SubCard {
+    pub fn get_mut_card(&mut self, rot: Quat) -> &mut SubCard {
         if FlippedState::from(rot).flipped() {
             self.first_mut()
         } else {
@@ -359,7 +367,7 @@ impl Pile {
         }
     }
     #[must_use]
-    pub fn take_card(&mut self, rot: &Quat) -> SubCard {
+    pub fn take_card(&mut self, rot: Quat) -> SubCard {
         let ret = if FlippedState::from(rot).flipped() {
             self.remove(0)
         } else {
@@ -369,7 +377,7 @@ impl Pile {
         ret
     }
     #[must_use]
-    pub fn take_n_card(&mut self, rot: &Quat, n: usize) -> Vec<SubCard> {
+    pub fn take_n_card(&mut self, rot: Quat, n: usize) -> Vec<SubCard> {
         let ret = if FlippedState::from(rot).flipped() {
             self.drain(0..n.min(self.len())).collect()
         } else {
