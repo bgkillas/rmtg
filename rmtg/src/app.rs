@@ -5,6 +5,7 @@ use crate::events::clipboard::poll_clipboards;
 use crate::events::clone::update_clone;
 use crate::events::delete::do_delete;
 use crate::events::hover::{update_box_select, update_hover};
+use crate::events::pile_merge::{DelayPileMerge, delayed_pile_merge};
 use crate::events::roll::{do_roll, update_rolling};
 use crate::events::scale::update_scale;
 use crate::events::scroll::{Scroll, scroll, send_scroll_events};
@@ -125,11 +126,13 @@ pub fn app_run() -> AppExit {
     app.init_resource::<Cursor>();
     app.init_resource::<ButtonInput<Keybind>>();
     app.add_message::<Scroll>();
+    app.add_message::<DelayPileMerge>();
     add_events(&mut app);
     app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
     app.add_systems(
         PreUpdate,
         (
+            delayed_pile_merge,
             update_cursor,
             update_focus,
             update_keybinds.after(InputSystems),

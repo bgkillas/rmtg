@@ -1,6 +1,5 @@
 use crate::CARD_THICKNESS;
 use crate::assets::AssetManager;
-use crate::events::move_up::MoveUp;
 use crate::pile::Pile;
 use avian3d::prelude::Collider;
 use bevy::math::Vec3;
@@ -51,7 +50,6 @@ pub fn on_repaint(
     mut commands: Commands,
     assets: AssetManager,
 ) {
-    commands.trigger(MoveUp::new(on.entity));
     let mut pile = decks.get_mut(on.entity).unwrap();
     *pile.collider = pile.pile.collider();
     let mut mat = top.get_mut(pile.children[0]).unwrap();

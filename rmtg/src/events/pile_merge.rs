@@ -6,12 +6,13 @@ use avian3d::prelude::CollisionStart;
 use bevy::math::{Vec3, Vec3Swizzles as _};
 use bevy::prelude::{Event, Transform};
 use bevy_ecs::entity::Entity;
+use bevy_ecs::message::{Message, MessageWriter, PopulatedMessageReader};
 use bevy_ecs::observer::On;
 use bevy_ecs::query::Without;
 use bevy_ecs::system::{Commands, Query};
 use bevy_query_fn_macro::query_fn;
 use std::mem;
-#[derive(Event)]
+#[derive(Event, Clone, Copy)]
 pub struct PileMerge {
     pub from: Entity,
     pub to: Entity,
@@ -20,23 +21,31 @@ pub struct PileMerge {
 pub fn on_pile_merge(
     event: On<PileMerge>,
     mut commands: Commands,
-    mut piles: Query<(&mut Pile, &mut Transform)>,
+    mut piles: Query<(Entity, &mut Pile, &mut Transform)>,
 ) {
     let [mut pile1, mut pile2] = piles.get_many_mut([event.from, event.to]).unwrap();
     let l1 = pile1.pile.len();
-    let l2 = pile2.pile.len();
     pile2.pile.extend(mem::take(&mut pile1.pile));
     let up = pile2.transform.up();
-    //TODO
-    pile2.transform.translation += up * (l2 as f32 / 2.0 - (l2 + l1) as f32 / 2.0) * CARD_THICKNESS;
-    commands.trigger(Repaint::new(event.to));
-    commands.entity(event.from).despawn();
+    pile2.transform.translation += up * l1 as f32 * CARD_THICKNESS / 2.0;
+    commands.trigger(Repaint::new(pile2.entity));
+    commands.entity(pile1.entity).despawn();
+}
+#[derive(Message, Clone, Copy)]
+pub struct DelayPileMerge(pub PileMerge);
+pub fn delayed_pile_merge(
+    mut reader: PopulatedMessageReader<DelayPileMerge>,
+    mut commands: Commands,
+) {
+    for &DelayPileMerge(event) in reader.read() {
+        commands.trigger(event);
+    }
 }
 #[query_fn]
 pub fn trigger_pile_merge(
     collision: On<CollisionStart>,
-    mut commands: Commands,
     piles: Query<(Entity, &mut Pile, &Transform), (Without<PendingCards>, Without<TargetPosition>)>,
+    mut writer: MessageWriter<DelayPileMerge>,
 ) {
     let Ok(pile1) = piles.get(collision.collider1) else {
         return;
@@ -68,8 +77,8 @@ pub fn trigger_pile_merge(
     {
         return;
     }
-    commands.trigger(PileMerge {
+    writer.write(DelayPileMerge(PileMerge {
         from: pile2.entity,
         to: pile1.entity,
-    });
+    }));
 }
