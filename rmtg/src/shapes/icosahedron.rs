@@ -11,10 +11,10 @@ impl ShapeMesh for Icosahedron {
     type const FACES: usize = 20;
     const SHAPE: Shape = Shape::Icosahedron;
     fn text_size(height: f32) -> f32 {
-        height / 7.0
+        height * 0.23
     }
     fn convert_height(height: f32) -> f32 {
-        height / (48.0f32.sqrt() / GOLDEN_RATIO.powi(2)) / 2.0
+        height / (48.0f32.sqrt() / GOLDEN_RATIO.powi(2)) * 0.75
     }
     fn face_indices() -> [[u16; 3]; 20] {
         [
