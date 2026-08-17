@@ -52,6 +52,7 @@ pub const CEILING_COLOR: Color = Color::srgb_u8(103, 73, 40);
 pub const WALL_COLOR: Color = Color::srgb_u8(103, 73, 40);
 pub const FLOOR_COLOR: Color = Color::srgb_u8(103, 73, 40);
 pub const CARD_STOCK_COLOR: Color = Color::srgb_u8(0, 0, 0);
+pub const CARD_STOCK_INBETWEEN_COLOR: Color = Color::srgb_u8(64, 64, 64);
 pub const SCROLLBAR: Color = Color::srgb(0.486, 0.486, 0.529);
 pub const SCROLLBAR_OUTLINE: Color = Color::srgb(0.71, 0.71, 0.772);
 pub const SCROLLBAR_HOVER: Color = Color::srgb(1.0, 1.0, 1.0);

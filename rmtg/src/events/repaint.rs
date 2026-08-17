@@ -1,8 +1,14 @@
+use crate::CARD_THICKNESS;
+use crate::assets::AssetManager;
 use crate::events::move_up::MoveUp;
 use crate::pile::Pile;
 use avian3d::prelude::Collider;
+use bevy::math::Vec3;
+use bevy::mesh::Mesh3d;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Children, Entity, EntityEvent, On, Query, Transform};
+use bevy_ecs::hierarchy::ChildOf;
+use bevy_ecs::lifecycle::Add;
 use bevy_ecs::system::Commands;
 use bevy_query_fn_macro::query_fn;
 #[derive(EntityEvent)]
@@ -15,6 +21,9 @@ impl Repaint {
         Self { entity }
     }
 }
+pub fn on_pile_added(on: On<Add, Pile>, mut commands: Commands) {
+    commands.trigger(Repaint::new(on.entity));
+}
 #[query_fn]
 pub fn on_repaint(
     on: On<Repaint>,
@@ -22,6 +31,7 @@ pub fn on_repaint(
     mut transforms: Query<&mut Transform>,
     mut top: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut commands: Commands,
+    assets: AssetManager,
 ) {
     commands.trigger(MoveUp::new(on.entity));
     let mut pile = decks.get_mut(on.entity).unwrap();
@@ -44,4 +54,26 @@ pub fn on_repaint(
     pile.pile.reposition_side(&mut side);
     pile.pile.reposition_up(&mut outline_up);
     pile.pile.reposition_down(&mut outline_down);
+    if pile.children.len() - 5 != pile.pile.len() - 1 {
+        for &ent in &pile.children[5..] {
+            commands.entity(ent).despawn();
+        }
+        for i in 1..pile.pile.len() {
+            commands.spawn((
+                ChildOf(on.entity),
+                Transform::from_xyz(
+                    0.0,
+                    (i as f32 - pile.pile.len() as f32 / 2.0) * CARD_THICKNESS,
+                    0.0,
+                )
+                .with_scale(Vec3::new(
+                    1.0 + 1.0 / 4096.0,
+                    0.25,
+                    1.0 + 1.0 / 4096.0,
+                )),
+                Mesh3d(assets.card.side.clone()),
+                MeshMaterial3d(assets.card.inbetween_color.clone()),
+            ));
+        }
+    }
 }

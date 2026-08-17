@@ -1,7 +1,9 @@
 #![allow(clippy::shadow_reuse)]
 use crate::shapes::deck_outline::DeckOutline;
 use crate::shapes::{NewShape as _, OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, Shape, ShapeOutline as _};
-use crate::{CARD_HEIGHT, CARD_STOCK_COLOR, CARD_THICKNESS, CARD_WIDTH, PLAYER};
+use crate::{
+    CARD_HEIGHT, CARD_STOCK_COLOR, CARD_STOCK_INBETWEEN_COLOR, CARD_THICKNESS, CARD_WIDTH, PLAYER,
+};
 use avian3d::parry::glamx::{Quat, Vec3};
 use bevy::asset::{Assets, Handle};
 use bevy::color::Color;
@@ -45,6 +47,7 @@ pub struct CardBase {
     pub back: Handle<StandardMaterial>,
     pub back_image: Handle<Image>,
     pub color: Handle<StandardMaterial>,
+    pub inbetween_color: Handle<StandardMaterial>,
 }
 impl ShapeMeshes {
     pub fn new(meshes: &mut Assets<Mesh>, materials: &mut Assets<StandardMaterial>) -> Self {
@@ -98,6 +101,11 @@ impl CardBase {
             unlit: true,
             ..StandardMaterial::default()
         });
+        let inbetween_color = materials.add(StandardMaterial {
+            base_color: CARD_STOCK_INBETWEEN_COLOR,
+            unlit: true,
+            ..StandardMaterial::default()
+        });
         Self {
             stock,
             side: meshes.add(generate_side_mesh()),
@@ -105,6 +113,7 @@ impl CardBase {
             back,
             back_image,
             color,
+            inbetween_color,
         }
     }
 }
