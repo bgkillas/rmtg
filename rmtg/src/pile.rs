@@ -1,34 +1,28 @@
-use crate::assets::AssetManager;
+use crate::assets::{AssetManager, register_card};
 use crate::events::hover::Hoverable;
 use crate::events::repaint::Repaint;
 use crate::physics::physics_base;
-use crate::shapes::deck_outline::DeckOutline;
-use crate::shapes::{NewShape as _, OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, ShapeOutline as _};
 use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH};
 use avian3d::prelude::{Collider, CollisionEventsEnabled};
+use bevy::asset::Assets;
 use bevy::ecs::children;
+use bevy::image::Image;
 use bevy::math::{Dir3, Quat, Vec3};
-use bevy::mesh::{
-    CircularMeshUvMode, CircularSectorMeshBuilder, ExtrusionBuilder, Mesh, Mesh3d,
-    MeshBuilder as _, RingMeshBuilder,
-};
+use bevy::mesh::Mesh3d;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{
-    Bundle, CircularSector, Component, InheritedVisibility, Rectangle, Ring, Transform,
-};
+use bevy::prelude::{Bundle, Component, InheritedVisibility, Transform};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::query::With;
-use bevy_ecs::system::{Commands, Query};
+use bevy_ecs::system::{Commands, Query, ResMut};
 use bevy_query_fn_macro::query_fn;
 use bitcode::{Decode, Encode};
+use importer::bitcode;
 use importer::card::{Card, CardInfo, CardIter, CardIterMut, MaybeHandles, SubCard};
-use importer::{CARD_CORNER_RADIUS, bitcode};
 use itertools::Either;
 use rand::make_rng;
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom as _;
 use std::cmp::Ordering;
-use std::f32::consts::PI;
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::{iter, mem};
@@ -91,7 +85,7 @@ pub struct CardBack;
 pub struct CardTop;
 impl Pile {
     #[must_use]
-    pub fn bundle(self, asset: &mut AssetManager) -> impl Bundle {
+    pub fn bundle(self, asset: &AssetManager) -> impl Bundle {
         (
             children![
                 self.up(asset),
@@ -113,77 +107,19 @@ impl Pile {
         )
     }
     #[must_use]
-    pub fn outline(&self, asset: &mut AssetManager, transform: Transform) -> impl Bundle + use<> {
+    pub fn outline(&self, asset: &AssetManager, transform: Transform) -> impl Bundle + use<> {
         (
             transform,
-            Mesh3d(asset.meshes.add(DeckOutline::from_height(self.thickness()))),
-            MeshMaterial3d(asset.materials.add(StandardMaterial {
-                base_color: OUTLINE_COLOR,
-                unlit: true,
-                depth_bias: OUTLINE_DEPTH_BIAS,
-                ..StandardMaterial::default()
-            })),
+            Mesh3d(asset.card.outline.clone()),
+            MeshMaterial3d(asset.outlines.default.clone()),
         )
     }
     #[must_use]
-    pub fn sides(&self, asset: &mut AssetManager) -> impl Bundle + use<> {
-        let del = CARD_WIDTH * CARD_CORNER_RADIUS;
-        let left_right = Mesh::from(Rectangle::new(CARD_THICKNESS, CARD_HEIGHT - 2.0 * del));
-        let front_back = Mesh::from(Rectangle::new(CARD_WIDTH - 2.0 * del, CARD_THICKNESS));
-        let mut left = left_right.clone();
-        left.rotate_by(Quat::from_rotation_arc(Vec3::NEG_Z, Vec3::X));
-        left.rotate_by(Quat::from_rotation_x(PI / 2.0));
-        left.translate_by(Vec3::new(-CARD_WIDTH / 2.0, 0.0, 0.0));
-        let mut right = left_right.clone();
-        right.rotate_by(Quat::from_rotation_arc(Vec3::NEG_Z, Vec3::NEG_X));
-        right.rotate_by(Quat::from_rotation_x(PI / 2.0));
-        right.translate_by(Vec3::new(CARD_WIDTH / 2.0, 0.0, 0.0));
-        let mut front = front_back.clone();
-        front.rotate_by(Quat::from_rotation_arc(Vec3::NEG_Z, Vec3::Z));
-        front.translate_by(Vec3::new(0.0, 0.0, -CARD_HEIGHT / 2.0));
-        let mut back = front_back.clone();
-        back.translate_by(Vec3::new(0.0, 0.0, CARD_HEIGHT / 2.0));
-        left.merge(&right).unwrap();
-        left.merge(&front).unwrap();
-        left.merge(&back).unwrap();
-        for corner in 0..4 {
-            let resolution = 32;
-            let mut sector = ExtrusionBuilder::<Ring<CircularSector>> {
-                base_builder: RingMeshBuilder {
-                    inner_shape_builder: CircularSectorMeshBuilder {
-                        sector: CircularSector::new(del - DeckOutline::THICKNESS / 2.0, PI / 4.0),
-                        resolution,
-                        uv_mode: CircularMeshUvMode::default(),
-                    },
-                    outer_shape_builder: CircularSectorMeshBuilder {
-                        sector: CircularSector::new(del, PI / 4.0),
-                        resolution,
-                        uv_mode: CircularMeshUvMode::default(),
-                    },
-                },
-                half_depth: CARD_THICKNESS / 2.0,
-                segments: 1,
-            }
-            .build();
-            let wid = CARD_WIDTH / 2.0;
-            let hei = CARD_HEIGHT / 2.0;
-            let vec = match corner {
-                0 => Vec3::new(wid - del, 0.0, hei - del),
-                1 => Vec3::new(del - wid, 0.0, hei - del),
-                2 => Vec3::new(del - wid, 0.0, del - hei),
-                3 => Vec3::new(wid - del, 0.0, del - hei),
-                _ => unreachable!(),
-            };
-            let rotation = Quat::from_rotation_y(PI / 4.0 - corner as f32 * PI / 2.0)
-                * Quat::from_rotation_x(PI / 2.0);
-            sector.rotate_by(rotation);
-            sector.translate_by(vec);
-            left.merge(&sector).unwrap();
-        }
+    pub fn sides(&self, asset: &AssetManager) -> impl Bundle + use<> {
         (
             Transform::from_scale(Vec3::new(1.0, self.len() as f32, 1.0)),
             MeshMaterial3d(asset.card.color.clone()),
-            Mesh3d(asset.meshes.add(left)),
+            Mesh3d(asset.card.side.clone()),
             CardSide,
         )
     }
@@ -197,7 +133,7 @@ impl Pile {
         transform.scale.y = self.len() as f32;
     }
     #[must_use]
-    pub fn up(&self, asset: &mut AssetManager) -> impl Bundle + use<> {
+    pub fn up(&self, asset: &AssetManager) -> impl Bundle + use<> {
         (
             Transform::from_xyz(0.0, self.thickness() / 2.0, 0.0)
                 .looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
@@ -648,11 +584,13 @@ impl From<SubCard> for Pile {
 pub fn register_cards(
     query: Query<(Entity, &mut Pile), With<PendingCards>>,
     mut commands: Commands,
-    mut asset: AssetManager,
+    mut images: ResMut<Assets<Image>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     fn register(
         data: &mut CardInfo,
-        asset: &mut AssetManager,
+        images: &mut Assets<Image>,
+        materials: &mut Assets<StandardMaterial>,
         has_some: &mut bool,
         repaint: &mut bool,
     ) {
@@ -661,8 +599,8 @@ pub fn register_cards(
                 if let Ok(val) = poll.try_recv() {
                     data.handles = if let Some(inner) = val {
                         *repaint = true;
-                        let handle = asset.images.add(inner);
-                        MaybeHandles::Some(asset.register_card(handle))
+                        let handle = images.add(inner);
+                        MaybeHandles::Some(register_card(materials, handle))
                     } else {
                         MaybeHandles::None
                     };
@@ -679,12 +617,19 @@ pub fn register_cards(
         for card in &mut pile.pile {
             register(
                 &mut card.data.front,
-                &mut asset,
+                &mut images,
+                &mut materials,
                 &mut has_some,
                 &mut repaint,
             );
             if let Some(back) = &mut card.data.back {
-                register(back, &mut asset, &mut has_some, &mut repaint);
+                register(
+                    back,
+                    &mut images,
+                    &mut materials,
+                    &mut has_some,
+                    &mut repaint,
+                );
             }
         }
         if repaint {

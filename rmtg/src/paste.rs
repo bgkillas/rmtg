@@ -70,13 +70,13 @@ fn on_paste_card_set(
 }
 fn on_paste_card(
     In((card, pos)): In<(SubCard, Vec3)>,
-    mut asset: AssetManager,
+    asset: AssetManager,
     mut commands: Commands,
 ) {
     let ent = commands
         .spawn((
             Transform::from_translation(pos),
-            Pile::from(card).bundle(&mut asset),
+            Pile::from(card).bundle(&asset),
         ))
         .id();
     commands.trigger(MoveUp::new(ent));

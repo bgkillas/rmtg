@@ -119,7 +119,7 @@ pub fn camera_rotation(
         let new_yaw = yaw + delta_yaw;
         let new_pitch = (pitch + delta_pitch)
             .max((-PI / 2.0).next_up())
-            .min(-PI / 12.0);
+            .min(-PI / 8.0);
         camera.rotation = Quat::from_euler(EulerRot::YXZ, new_yaw, new_pitch, roll);
         let Some(time) = ray.intersect_plane(Vec3::default(), InfinitePlane3d { normal: Dir3::Y })
         else {

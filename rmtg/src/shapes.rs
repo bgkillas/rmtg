@@ -1,13 +1,13 @@
 use crate::assets::AssetManager;
 use crate::events::hover::Hoverable;
 use crate::physics::{bounce, physics_base};
-use crate::shapes::coin::Coin;
-use crate::shapes::cube::Cube;
-use crate::shapes::dodecahedron::Dodecahedron;
-use crate::shapes::icosahedron::Icosahedron;
-use crate::shapes::octahedron::Octahedron;
-use crate::shapes::tetrahedron::Tetrahedron;
-use crate::shapes::trapezohedron::Trapezohedron;
+use crate::shapes::coin::{Coin, CoinOutline};
+use crate::shapes::cube::{Cube, CubeOutline};
+use crate::shapes::dodecahedron::{Dodecahedron, DodecahedronOutline};
+use crate::shapes::icosahedron::{Icosahedron, IcosahedronOutline};
+use crate::shapes::octahedron::{Octahedron, OctahedronOutline};
+use crate::shapes::tetrahedron::{Tetrahedron, TetrahedronOutline};
+use crate::shapes::trapezohedron::{Trapezohedron, TrapezohedronOutline};
 use crate::{CARD_THICKNESS, CARD_WIDTH, WORLD_FONT_SIZE};
 use avian3d::parry::glamx::Quat;
 use avian3d::prelude::Collider;
@@ -18,12 +18,13 @@ use bevy::mesh::{
     CylinderMeshBuilder, Indices, Mesh, Mesh3d, MeshBuilder, PrimitiveTopology, SphereKind,
     SphereMeshBuilder,
 };
-use bevy::pbr::{MeshMaterial3d, StandardMaterial};
+use bevy::pbr::MeshMaterial3d;
 use bevy::prelude::{
     Bundle, Component, Cylinder, EntityCommands, InheritedVisibility, Sphere, Transform,
 };
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor};
 use core::direct_const_arg;
+use enum_map::Enum;
 pub mod coin;
 pub mod cube;
 pub mod deck_outline;
@@ -37,7 +38,7 @@ pub const OUTLINE_COLOR: Color = Color::BLACK;
 pub const OUTLINE_DEPTH_BIAS: f32 = 1.0 / 4096.0;
 pub const OUTLINE_SUBDIVISIONS: u32 = 5;
 pub const OUTLINE_RESOLUTION: u32 = 32;
-#[derive(Component, Clone, Copy, Debug)]
+#[derive(Enum, Component, Clone, Copy, Debug)]
 pub enum Shape {
     Cube,
     Dodecahedron,
@@ -60,23 +61,44 @@ impl Shape {
             Shape::Coin => 2,
         }
     }
+    #[must_use]
     pub fn insert_dice<'a>(
         self,
-        base_color: Color,
-        outline_color: Color,
-        asset: &mut AssetManager,
+        asset: &AssetManager,
         ent: EntityCommands<'a>,
     ) -> EntityCommands<'a> {
         match self {
-            Shape::Cube => Cube::insert_dice(base_color, outline_color, asset, ent),
-            Shape::Dodecahedron => Dodecahedron::insert_dice(base_color, outline_color, asset, ent),
-            Shape::Icosahedron => Icosahedron::insert_dice(base_color, outline_color, asset, ent),
-            Shape::Octahedron => Octahedron::insert_dice(base_color, outline_color, asset, ent),
-            Shape::Tetrahedron => Tetrahedron::insert_dice(base_color, outline_color, asset, ent),
-            Shape::Trapezohedron => {
-                Trapezohedron::insert_dice(base_color, outline_color, asset, ent)
-            }
-            Shape::Coin => Coin::insert_dice(base_color, outline_color, asset, ent),
+            Shape::Cube => Cube::insert_dice(asset, ent),
+            Shape::Dodecahedron => Dodecahedron::insert_dice(asset, ent),
+            Shape::Icosahedron => Icosahedron::insert_dice(asset, ent),
+            Shape::Octahedron => Octahedron::insert_dice(asset, ent),
+            Shape::Tetrahedron => Tetrahedron::insert_dice(asset, ent),
+            Shape::Trapezohedron => Trapezohedron::insert_dice(asset, ent),
+            Shape::Coin => Coin::insert_dice(asset, ent),
+        }
+    }
+    #[must_use]
+    pub fn mesh(self) -> Mesh {
+        match self {
+            Shape::Cube => Cube::from_height(Cube::HEIGHT).mesh(),
+            Shape::Dodecahedron => Dodecahedron::from_height(Dodecahedron::HEIGHT).mesh(),
+            Shape::Icosahedron => Icosahedron::from_height(Icosahedron::HEIGHT).mesh(),
+            Shape::Octahedron => Octahedron::from_height(Octahedron::HEIGHT).mesh(),
+            Shape::Tetrahedron => Tetrahedron::from_height(Tetrahedron::HEIGHT).mesh(),
+            Shape::Trapezohedron => Trapezohedron::from_height(Trapezohedron::HEIGHT).mesh(),
+            Shape::Coin => Coin::from_height(Coin::HEIGHT).mesh(),
+        }
+    }
+    #[must_use]
+    pub fn outline_mesh(self) -> Mesh {
+        match self {
+            Shape::Cube => CubeOutline::from_height(Cube::HEIGHT).mesh(),
+            Shape::Dodecahedron => DodecahedronOutline::from_height(Dodecahedron::HEIGHT).mesh(),
+            Shape::Icosahedron => IcosahedronOutline::from_height(Icosahedron::HEIGHT).mesh(),
+            Shape::Octahedron => OctahedronOutline::from_height(Octahedron::HEIGHT).mesh(),
+            Shape::Tetrahedron => TetrahedronOutline::from_height(Tetrahedron::HEIGHT).mesh(),
+            Shape::Trapezohedron => TrapezohedronOutline::from_height(Trapezohedron::HEIGHT).mesh(),
+            Shape::Coin => CoinOutline::from_height(Coin::HEIGHT).mesh(),
         }
     }
 }
@@ -103,33 +125,18 @@ where
     const HEIGHT: f32 = CARD_WIDTH / 2.0;
     const SHAPE: Shape;
     #[must_use]
-    fn bundle(
-        height: f32,
-        base_color: Color,
-        outline_color: Color,
-        asset: &mut AssetManager,
-    ) -> impl Bundle {
-        _ = outline_color;
+    fn bundle(height: f32, asset: &AssetManager) -> impl Bundle {
         let mesh = Mesh::from(Self::from_height(height));
         (
             Self::SHAPE,
             Self::collider(height, &mesh),
             physics_base(),
-            Mesh3d(asset.meshes.add(mesh)),
-            MeshMaterial3d(asset.materials.add(StandardMaterial {
-                base_color,
-                unlit: true,
-                ..StandardMaterial::default()
-            })),
+            Mesh3d(asset.meshes.map[Self::SHAPE].0.clone()),
+            MeshMaterial3d(asset.meshes.material.clone()),
             #[cfg(not(feature = "colliders"))]
             bevy::ecs::children![(
-                Mesh3d(asset.meshes.add(Self::Outline::from_height(height))),
-                MeshMaterial3d(asset.materials.add(StandardMaterial {
-                    base_color: outline_color,
-                    unlit: true,
-                    depth_bias: OUTLINE_DEPTH_BIAS,
-                    ..StandardMaterial::default()
-                })),
+                Mesh3d(asset.meshes.map[Self::SHAPE].1.clone()),
+                MeshMaterial3d(asset.outlines.default.clone()),
             )],
             InheritedVisibility::VISIBLE,
         )
@@ -142,25 +149,16 @@ where
     fn face_string(i: usize) -> String {
         (i + 1).to_string()
     }
-    fn insert_dice<'a>(
-        base_color: Color,
-        outline_color: Color,
-        asset: &mut AssetManager,
-        mut ent: EntityCommands<'a>,
-    ) -> EntityCommands<'a> {
+    fn insert_dice<'a>(asset: &AssetManager, mut ent: EntityCommands<'a>) -> EntityCommands<'a> {
         let height = Self::HEIGHT;
-        ent.insert((
-            Self::bundle(height, base_color, outline_color, asset),
-            bounce(),
-            Hoverable,
-        ));
+        ent.insert((Self::bundle(height, asset), bounce(), Hoverable));
         ent.with_children(|parent| {
             for (i, t) in Self::from_height(height).faces().into_iter().enumerate() {
                 parent.spawn((
                     t,
                     Text3d::new(Self::face_string(i)),
                     Mesh3d::default(),
-                    MeshMaterial3d(asset.text()),
+                    MeshMaterial3d(asset.text_mesh.mesh.clone()),
                     Text3dStyling {
                         size: WORLD_FONT_SIZE,
                         anchor: TextAnchor::CENTER,

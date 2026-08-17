@@ -23,7 +23,6 @@ pub mod shapes;
 pub mod spatial;
 pub mod startup;
 pub mod ui;
-//TODO do not regenerate meshes or materials besides images just store asset handles
 //TODO oracle card
 pub const APP_NAME: &str = "com.github.bgkillas.rmtg";
 pub const USER_AGENT: &str = concat!("com.github.bgkillas.rmtg/", env!("CARGO_PKG_VERSION"));

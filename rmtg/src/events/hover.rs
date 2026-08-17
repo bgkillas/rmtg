@@ -1,23 +1,23 @@
-use crate::PLAYER;
 use crate::assets::AssetManager;
 use crate::keybinds::Keybind;
 use crate::pile::Pile;
+use crate::shapes::ShapeOutline as _;
 use crate::shapes::drag_outline::DragOutline;
-use crate::shapes::{OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, ShapeOutline as _};
 use crate::spatial::Spatial;
 use crate::startup::wall_aabb;
 use avian3d::prelude::{Collider, ColliderAabb};
 use avian3d::spatial_query::SpatialQueryFilter;
+use bevy::asset::Assets;
 use bevy::input::ButtonInput;
 use bevy::math::bounding::{Aabb2d, Aabb3d, BoundingVolume as _, IntersectsVolume as _};
 use bevy::math::{Isometry2d, Quat, Vec2, Vec3, Vec3A, Vec3Swizzles as _};
-use bevy::mesh::Mesh3d;
+use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{
     Children, Commands, Component, Entity, EntityEvent, On, Query, Transform, With,
 };
 use bevy_ecs::event::Event;
-use bevy_ecs::system::{Res, Single};
+use bevy_ecs::system::{Res, ResMut, Single};
 use bevy_query_fn_macro::query_fn;
 #[derive(Component, Clone)]
 pub struct Hoverable;
@@ -52,27 +52,17 @@ pub fn add_hover(
     children: Query<&Children>,
     is_pile: Query<(), With<Pile>>,
     mut query: Query<&mut MeshMaterial3d<StandardMaterial>>,
-    mut asset: AssetManager,
+    asset: AssetManager,
 ) {
     let childs = children.get(event.entity).unwrap();
     if is_pile.contains(event.entity) {
         for &child in &childs[3..] {
             let mut mat = query.get_mut(child).unwrap();
-            mat.0 = asset.materials.add(StandardMaterial {
-                base_color: PLAYER[0],
-                unlit: true,
-                depth_bias: OUTLINE_DEPTH_BIAS,
-                ..StandardMaterial::default()
-            });
+            mat.0 = asset.outlines.players[0].clone();
         }
     } else {
         let mut mat = query.get_mut(childs[0]).unwrap();
-        mat.0 = asset.materials.add(StandardMaterial {
-            base_color: PLAYER[0],
-            unlit: true,
-            depth_bias: OUTLINE_DEPTH_BIAS,
-            ..StandardMaterial::default()
-        });
+        mat.0 = asset.outlines.players[0].clone();
     }
     commands.entity(event.entity).insert(event.hovered);
 }
@@ -82,27 +72,17 @@ pub fn remove_hover(
     children: Query<&Children>,
     is_pile: Query<(), With<Pile>>,
     mut query: Query<&mut MeshMaterial3d<StandardMaterial>>,
-    mut asset: AssetManager,
+    asset: AssetManager,
 ) {
     let childs = children.get(event.entity).unwrap();
     if is_pile.contains(event.entity) {
         for &child in &childs[3..] {
             let mut mat = query.get_mut(child).unwrap();
-            mat.0 = asset.materials.add(StandardMaterial {
-                base_color: OUTLINE_COLOR,
-                unlit: true,
-                depth_bias: OUTLINE_DEPTH_BIAS,
-                ..StandardMaterial::default()
-            });
+            mat.0 = asset.outlines.default.clone();
         }
     } else {
         let mut mat = query.get_mut(childs[0]).unwrap();
-        mat.0 = asset.materials.add(StandardMaterial {
-            base_color: OUTLINE_COLOR,
-            unlit: true,
-            depth_bias: OUTLINE_DEPTH_BIAS,
-            ..StandardMaterial::default()
-        });
+        mat.0 = asset.outlines.default.clone();
     }
     commands.entity(event.entity).remove::<HoveredObject>();
 }
@@ -122,7 +102,7 @@ pub struct SpawnBoxSelect {
 pub fn spawn_box_select(
     mut event: On<SpawnBoxSelect>,
     mut commands: Commands,
-    mut asset: AssetManager,
+    asset: AssetManager,
 ) {
     let vec = event.pos.xz();
     event.pos.y += DragOutline::THICKNESS;
@@ -130,11 +110,7 @@ pub fn spawn_box_select(
         .spawn((
             BoxSelect { start: vec },
             Transform::from_translation(event.pos),
-            MeshMaterial3d(asset.materials.add(StandardMaterial {
-                unlit: true,
-                base_color: PLAYER[0],
-                ..StandardMaterial::default()
-            })),
+            MeshMaterial3d(asset.outlines.players[0].clone()),
         ))
         .id();
     commands.trigger(UpdateBoxSelect { entity, vec });
@@ -144,7 +120,7 @@ pub fn update_box_select_mesh(
     event: On<UpdateBoxSelect>,
     mut box_selects: Query<(&mut Transform, &BoxSelect)>,
     mut commands: Commands,
-    mut asset: AssetManager,
+    mut meshes: ResMut<Assets<Mesh>>,
 ) {
     let mut box_select = box_selects.get_mut(event.entity).unwrap();
     let vec = (box_select.box_select.start + event.vec) / 2.0;
@@ -157,7 +133,7 @@ pub fn update_box_select_mesh(
     let mesh = drag.mesh();
     commands
         .entity(event.entity)
-        .insert(Mesh3d(asset.meshes.add(mesh)));
+        .insert(Mesh3d(meshes.add(mesh)));
 }
 #[query_fn]
 pub fn update_box_select(

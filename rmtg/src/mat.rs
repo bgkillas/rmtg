@@ -1,14 +1,19 @@
-use crate::assets::AssetManager;
 use crate::card_spot::{CardSpot, SpotType};
 use crate::net::Peer;
 use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, MAT_BAR, MAT_HEIGHT, MAT_WIDTH, PLAYER};
+use bevy::asset::Assets;
 use bevy::color::Color;
 use bevy::math::Vec3;
-use bevy::mesh::Mesh3d;
+use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Commands, InheritedVisibility, Rectangle, Transform};
+use bevy_ecs::system::ResMut;
 use std::f32::consts::PI;
-pub fn create_mats(mut assets: AssetManager, mut commands: Commands) {
+pub fn create_mats(
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut commands: Commands,
+) {
     let player0 = Transform::from_xyz(MAT_WIDTH / 2.0, -CARD_THICKNESS, MAT_HEIGHT / 2.0);
     let player1 = Transform::from_xyz(-MAT_WIDTH / 2.0, -CARD_THICKNESS, MAT_HEIGHT / 2.0);
     let mut player2 = Transform::from_xyz(-MAT_WIDTH / 2.0, -CARD_THICKNESS, -MAT_HEIGHT / 2.0);
@@ -25,7 +30,8 @@ pub fn create_mats(mut assets: AssetManager, mut commands: Commands) {
     .enumerate()
     {
         make_mat(
-            &mut assets,
+            &mut materials,
+            &mut meshes,
             &mut commands,
             transform,
             right,
@@ -35,14 +41,15 @@ pub fn create_mats(mut assets: AssetManager, mut commands: Commands) {
     }
 }
 fn make_mat(
-    assets: &mut AssetManager,
+    materials: &mut Assets<StandardMaterial>,
+    meshes: &mut Assets<Mesh>,
     commands: &mut Commands,
     transform: Transform,
     right: bool,
     color: Color,
     player: Peer,
 ) {
-    let mat = assets.materials.add(StandardMaterial {
+    let mat = materials.add(StandardMaterial {
         unlit: true,
         base_color: color,
         ..StandardMaterial::default()
@@ -54,32 +61,32 @@ fn make_mat(
         .spawn((transform, InheritedVisibility::VISIBLE))
         .with_children(|p| {
             p.spawn((
-                Mesh3d(assets.meshes.add(Rectangle::new(MAT_WIDTH, MAT_BAR))),
+                Mesh3d(meshes.add(Rectangle::new(MAT_WIDTH, MAT_BAR))),
                 MeshMaterial3d(mat.clone()),
                 trans(0.0, 0.0, MAT_HEIGHT / 2.0 - MAT_BAR / 2.0)
                     .looking_to(Vec3::NEG_Y, Vec3::NEG_Z),
             ));
             p.spawn((
-                Mesh3d(assets.meshes.add(Rectangle::new(MAT_WIDTH, MAT_BAR))),
+                Mesh3d(meshes.add(Rectangle::new(MAT_WIDTH, MAT_BAR))),
                 MeshMaterial3d(mat.clone()),
                 trans(0.0, 0.0, MAT_BAR / 2.0 - MAT_HEIGHT / 2.0)
                     .looking_to(Vec3::NEG_Y, Vec3::NEG_Z),
             ));
             p.spawn((
-                Mesh3d(assets.meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
+                Mesh3d(meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
                 MeshMaterial3d(mat.clone()),
                 trans(MAT_WIDTH / 2.0 - MAT_BAR / 2.0, 0.0, 0.0)
                     .looking_to(Vec3::NEG_Y, Vec3::NEG_Z),
             ));
             p.spawn((
-                Mesh3d(assets.meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
+                Mesh3d(meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
                 MeshMaterial3d(mat.clone()),
                 trans(MAT_BAR / 2.0 - MAT_WIDTH / 2.0, 0.0, 0.0)
                     .looking_to(Vec3::NEG_Y, Vec3::NEG_Z),
             ));
             for i in 1..5 {
                 p.spawn((
-                    Mesh3d(assets.meshes.add(Rectangle::new(CARD_WIDTH, MAT_BAR))),
+                    Mesh3d(meshes.add(Rectangle::new(CARD_WIDTH, MAT_BAR))),
                     MeshMaterial3d(mat.clone()),
                     trans(
                         MAT_WIDTH / 2.0 - CARD_WIDTH / 2.0 - MAT_BAR,
@@ -111,13 +118,13 @@ fn make_mat(
                 ));
             }
             p.spawn((
-                Mesh3d(assets.meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
+                Mesh3d(meshes.add(Rectangle::new(MAT_BAR, MAT_HEIGHT))),
                 MeshMaterial3d(mat.clone()),
                 trans(MAT_WIDTH / 2.0 - MAT_BAR * 1.5 - CARD_WIDTH, 0.0, 0.0)
                     .looking_to(Vec3::NEG_Y, Vec3::NEG_Z),
             ));
             p.spawn((
-                Mesh3d(assets.meshes.add(Rectangle::new(
+                Mesh3d(meshes.add(Rectangle::new(
                     MAT_WIDTH - CARD_WIDTH - 2.0 * MAT_BAR,
                     MAT_BAR,
                 ))),

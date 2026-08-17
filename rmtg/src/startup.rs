@@ -1,8 +1,9 @@
-use crate::assets::{AssetManager, CardBase, TextMesh};
+use crate::assets::{AssetManager, CardBase, OutlineMaterials, ShapeMeshes, TextMesh};
 use crate::camera::{CameraVelocity, default_cam_pos};
 use crate::net::Peer;
 use crate::physics::WorldLayer;
 use crate::pile::Pile;
+use crate::shapes::ShapeMesh as _;
 use crate::shapes::coin::Coin;
 use crate::shapes::cube::Cube;
 use crate::shapes::dodecahedron::Dodecahedron;
@@ -10,12 +11,11 @@ use crate::shapes::icosahedron::Icosahedron;
 use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
 use crate::shapes::trapezohedron::Trapezohedron;
-use crate::shapes::{OUTLINE_COLOR, ShapeMesh as _};
 use crate::ui::chat::chat_bundle;
 use crate::ui::esc_menu::esc_menu_bundle;
 use crate::{
-    CARD_HEIGHT, CARD_STOCK_COLOR, CARD_THICKNESS, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT,
-    MAT_WIDTH, T, W, WALL_COLOR,
+    CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT, MAT_WIDTH, T, W,
+    WALL_COLOR,
 };
 use avian3d::prelude::{Collider, CollisionLayers, LayerMask, RigidBody};
 use bevy::anti_alias::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
@@ -23,7 +23,6 @@ use bevy::asset::{AssetId, Assets};
 use bevy::camera::{
     Camera3d, Exposure, PerspectiveProjection, PhysicalCameraParameters, Projection,
 };
-use bevy::color::Color;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::image::Image;
 use bevy::light::GlobalAmbientLight;
@@ -32,11 +31,10 @@ use bevy::math::bounding::Aabb3d;
 use bevy::math::{Vec3, Vec3A};
 use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{Commands, Component, Cuboid, Msaa, Rectangle, ResMut, Transform};
+use bevy::prelude::{Commands, Component, Cuboid, Msaa, ResMut, Transform};
 use bevy::text::Font;
 use bevy_rich_text3d::TextAtlas;
-use importer::card::{MaybeHandles, SubCard};
-use importer::image::parse_bytes;
+use importer::card::{Handles, MaybeHandles, SubCard};
 use std::f32::consts::PI;
 pub fn startup(
     mut commands: Commands,
@@ -47,26 +45,9 @@ pub fn startup(
     mut light: ResMut<GlobalAmbientLight>,
 ) {
     light.brightness = 100.0;
-    let stock = meshes.add(Rectangle::new(CARD_WIDTH, CARD_HEIGHT));
-    let back_img = parse_bytes(include_bytes!("../../assets/back.png")).unwrap();
-    let back_image = images.add(back_img);
-    let back = materials.add(StandardMaterial {
-        base_color_texture: Some(back_image.clone()),
-        alpha_mode: AlphaMode::AlphaToCoverage,
-        unlit: true,
-        ..StandardMaterial::default()
-    });
-    let color = materials.add(StandardMaterial {
-        base_color: CARD_STOCK_COLOR,
-        unlit: true,
-        ..StandardMaterial::default()
-    });
-    commands.insert_resource(CardBase {
-        stock,
-        back,
-        back_image,
-        color,
-    });
+    commands.insert_resource(CardBase::new(&mut meshes, &mut materials, &mut images));
+    commands.insert_resource(ShapeMeshes::new(&mut meshes, &mut materials));
+    commands.insert_resource(OutlineMaterials::new(&mut materials));
     let mesh = materials.add(StandardMaterial {
         base_color_texture: Some(TextAtlas::DEFAULT_IMAGE),
         alpha_mode: AlphaMode::AlphaToCoverage,
@@ -103,13 +84,20 @@ pub fn startup(
     commands.spawn(chat_bundle());
     commands.spawn(esc_menu_bundle());
 }
-pub fn spawn_objects(mut commands: Commands, mut asset: AssetManager) {
+pub fn spawn_objects(
+    mut commands: Commands,
+    asset: AssetManager,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
     let mut card = SubCard::default();
-    card.data.front.handles =
-        MaybeHandles::Some(asset.register_card(asset.card.back_image.clone()));
+    card.data.front.handles = MaybeHandles::Some(Handles {
+        image: asset.card.back_image.clone(),
+        material: asset.card.back.clone(),
+    });
     commands.spawn((
         Transform::from_xyz(MAT_WIDTH + CARD_WIDTH, CARD_THICKNESS, 0.0),
-        Pile::from(card).bundle(&mut asset),
+        Pile::from(card).bundle(&asset),
     ));
     let x_unit = MAT_WIDTH + CARD_WIDTH;
     let z_unit = CARD_HEIGHT;
@@ -120,57 +108,42 @@ pub fn spawn_objects(mut commands: Commands, mut asset: AssetManager) {
             2 => (-x_unit, -z_unit),
             _ => (x_unit, -z_unit),
         };
-        let color = Color::WHITE;
         Icosahedron::insert_dice(
-            color,
-            OUTLINE_COLOR,
-            &mut asset,
+            &asset,
             commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
         );
         Dodecahedron::insert_dice(
-            color,
-            OUTLINE_COLOR,
-            &mut asset,
+            &asset,
             commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 1.5)),
         );
         Trapezohedron::insert_dice(
-            color,
-            OUTLINE_COLOR,
-            &mut asset,
+            &asset,
             commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 2.0)),
         );
         Octahedron::insert_dice(
-            color,
-            OUTLINE_COLOR,
-            &mut asset,
+            &asset,
             commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 2.5)),
         );
         Cube::insert_dice(
-            color,
-            OUTLINE_COLOR,
-            &mut asset,
+            &asset,
             commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 3.0)),
         );
         Tetrahedron::insert_dice(
-            color,
-            OUTLINE_COLOR,
-            &mut asset,
+            &asset,
             commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 3.5)),
         );
         Coin::insert_dice(
-            color,
-            OUTLINE_COLOR,
-            &mut asset,
+            &asset,
             commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 4.0)),
         );
     }
-    let mesh = asset.meshes.add(Cuboid::new(2.0 * W, T, 2.0 * W));
+    let mesh = meshes.add(Cuboid::new(2.0 * W, T, 2.0 * W));
     commands.spawn((
         Transform::from_xyz(0.0, -T / 2.0, 0.0),
         Collider::cuboid(2.0 * W + T, T, 2.0 * W + T),
         RigidBody::Static,
         Mesh3d(mesh.clone()),
-        MeshMaterial3d(asset.materials.add(StandardMaterial {
+        MeshMaterial3d(materials.add(StandardMaterial {
             base_color: FLOOR_COLOR,
             unlit: true,
             depth_bias: f32::NEG_INFINITY,
@@ -179,7 +152,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: AssetManager) {
         Floor,
         CollisionLayers::new(WorldLayer::Floor, LayerMask::ALL),
     ));
-    let wall = asset.materials.add(StandardMaterial {
+    let wall = materials.add(StandardMaterial {
         base_color: WALL_COLOR,
         unlit: true,
         ..StandardMaterial::default()
@@ -209,7 +182,7 @@ pub fn spawn_objects(mut commands: Commands, mut asset: AssetManager) {
         RigidBody::Static,
         Ceiling,
         Mesh3d(mesh),
-        MeshMaterial3d(asset.materials.add(StandardMaterial {
+        MeshMaterial3d(materials.add(StandardMaterial {
             base_color: CEILING_COLOR,
             unlit: true,
             ..StandardMaterial::default()

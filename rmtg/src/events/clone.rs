@@ -3,9 +3,8 @@ use crate::events::hover::HoveredObject;
 use crate::events::move_up::MoveUp;
 use crate::keybinds::Keybind;
 use crate::pile::{PendingCards, Pile};
-use crate::shapes::{OUTLINE_COLOR, Shape};
+use crate::shapes::Shape;
 use crate::spatial::Spatial;
-use bevy::color::Color;
 use bevy::input::ButtonInput;
 use bevy::prelude::{Commands, Event, Local, On, Query, Transform, With};
 use bevy_ecs::query::Without;
@@ -37,15 +36,15 @@ impl Clone for CloneType {
         }
     }
 }
-pub fn on_clone(clone: On<CloneObj>, mut commands: Commands, mut asset: AssetManager) {
+pub fn on_clone(clone: On<CloneObj>, mut commands: Commands, asset: AssetManager) {
     let mut ent = commands.spawn(clone.transform);
     let id = match &clone.clone_type {
         CloneType::Pile(deck) => {
-            ent.insert(deck.try_clone().unwrap().bundle(&mut asset));
+            ent.insert(deck.try_clone().unwrap().bundle(&asset));
             ent.id()
         }
         &CloneType::Shape(shape) => {
-            let shape_ent = shape.insert_dice(Color::WHITE, OUTLINE_COLOR, &mut asset, ent);
+            let shape_ent = shape.insert_dice(&asset, ent);
             shape_ent.id()
         }
     };
