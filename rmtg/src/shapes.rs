@@ -26,7 +26,7 @@ use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor};
 use core::direct_const_arg;
 pub mod coin;
 pub mod cube;
-pub mod deck;
+pub mod deck_outline;
 pub mod dodecahedron;
 pub mod drag_outline;
 pub mod icosahedron;

@@ -13,6 +13,7 @@ use bevy::prelude::{
     Commands, Component, Entity, InfinitePlane3d, Local, Query, Res, Transform, With,
 };
 use bevy::time::Time;
+use bevy_ecs::query::Without;
 use bevy_ecs::system::Single;
 use bevy_query_fn_macro::query_fn;
 use std::collections::HashSet;
@@ -23,7 +24,7 @@ pub struct TargetPosition {
 #[query_fn]
 pub fn drag(
     box_select: Option<Single<(), With<BoxSelect>>>,
-    hovered_entities: Query<
+    mut hovered_entities: Query<
         (
             Entity,
             &Transform,
@@ -32,6 +33,7 @@ pub fn drag(
         ),
         With<HoveredObject>,
     >,
+    mut velocity: Query<&mut LinearVelocity, Without<HoveredObject>>,
     mut commands: Commands,
     keybinds: Res<ButtonInput<Keybind>>,
     spatial: Spatial,
@@ -44,6 +46,8 @@ pub fn drag(
     }
     if hovered_entities.is_empty() {
         for ent in last_ents.drain() {
+            let mut query = velocity.get_mut(ent).unwrap();
+            query.y = 0.0;
             commands.trigger(NewGravity::new(ent, GRAVITY));
             commands
                 .entity(ent)
@@ -98,6 +102,12 @@ pub fn drag(
         *last = pos;
     } else {
         for ent in last_ents.drain() {
+            if let Ok(mut query) = hovered_entities.get_mut(ent) {
+                query.linear_velocity.y = 0.0;
+            }
+            if let Ok(mut query) = velocity.get_mut(ent) {
+                query.y = 0.0;
+            }
             commands.trigger(NewGravity::new(ent, GRAVITY));
             commands
                 .entity(ent)

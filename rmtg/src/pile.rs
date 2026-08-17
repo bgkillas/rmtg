@@ -2,7 +2,7 @@ use crate::assets::AssetManager;
 use crate::events::hover::Hoverable;
 use crate::events::repaint::Repaint;
 use crate::physics::physics_base;
-use crate::shapes::deck::DeckOutline;
+use crate::shapes::deck_outline::DeckOutline;
 use crate::shapes::{NewShape as _, OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, ShapeOutline as _};
 use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH};
 use avian3d::prelude::{Collider, CollisionEventsEnabled};
@@ -97,7 +97,11 @@ impl Pile {
                 self.up(asset),
                 self.down(asset),
                 self.sides(asset),
-                self.outline(asset),
+                self.outline(asset, Transform::from_xyz(0.0, self.thickness() / 2.0, 0.0)),
+                self.outline(
+                    asset,
+                    Transform::from_xyz(0.0, -self.thickness() / 2.0, 0.0)
+                ),
             ],
             self.collider(),
             self,
@@ -109,8 +113,9 @@ impl Pile {
         )
     }
     #[must_use]
-    pub fn outline(&self, asset: &mut AssetManager) -> impl Bundle + use<> {
+    pub fn outline(&self, asset: &mut AssetManager, transform: Transform) -> impl Bundle + use<> {
         (
+            transform,
             Mesh3d(asset.meshes.add(DeckOutline::from_height(self.thickness()))),
             MeshMaterial3d(asset.materials.add(StandardMaterial {
                 base_color: OUTLINE_COLOR,
