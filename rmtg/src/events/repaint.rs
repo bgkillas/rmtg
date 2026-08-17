@@ -7,7 +7,6 @@ use bevy::math::Vec3;
 use bevy::mesh::Mesh3d;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Children, Entity, EntityEvent, On, Query, Transform};
-use bevy_ecs::hierarchy::ChildOf;
 use bevy_ecs::lifecycle::Add;
 use bevy_ecs::system::Commands;
 use bevy_query_fn_macro::query_fn;
@@ -21,7 +20,26 @@ impl Repaint {
         Self { entity }
     }
 }
-pub fn on_pile_added(on: On<Add, Pile>, mut commands: Commands) {
+pub fn on_pile_added(
+    on: On<Add, Pile>,
+    piles: Query<&Pile>,
+    mut commands: Commands,
+    asset: AssetManager,
+) {
+    let pile = piles.get(on.entity).unwrap();
+    commands.entity(on.entity).with_children(|parent| {
+        parent.spawn(pile.up(&asset));
+        parent.spawn(pile.down(&asset));
+        parent.spawn(pile.sides(&asset));
+        parent.spawn(pile.outline(
+            &asset,
+            Transform::from_xyz(0.0, pile.thickness() / 2.0, 0.0),
+        ));
+        parent.spawn(pile.outline(
+            &asset,
+            Transform::from_xyz(0.0, -pile.thickness() / 2.0, 0.0),
+        ));
+    });
     commands.trigger(Repaint::new(on.entity));
 }
 #[query_fn]
@@ -58,22 +76,23 @@ pub fn on_repaint(
         for &ent in &pile.children[5..] {
             commands.entity(ent).despawn();
         }
-        for i in 1..pile.pile.len() {
-            commands.spawn((
-                ChildOf(on.entity),
-                Transform::from_xyz(
-                    0.0,
-                    (i as f32 - pile.pile.len() as f32 / 2.0) * CARD_THICKNESS,
-                    0.0,
-                )
-                .with_scale(Vec3::new(
-                    1.0 + 1.0 / 4096.0,
-                    0.25,
-                    1.0 + 1.0 / 4096.0,
-                )),
-                Mesh3d(assets.card.side.clone()),
-                MeshMaterial3d(assets.card.inbetween_color.clone()),
-            ));
-        }
+        commands.entity(on.entity).with_children(|parent| {
+            for i in 1..pile.pile.len() {
+                parent.spawn((
+                    Transform::from_xyz(
+                        0.0,
+                        (i as f32 - pile.pile.len() as f32 / 2.0) * CARD_THICKNESS,
+                        0.0,
+                    )
+                    .with_scale(Vec3::new(
+                        1.0 + 1.0 / 4096.0,
+                        1.0 / 4.0,
+                        1.0 + 1.0 / 4096.0,
+                    )),
+                    Mesh3d(assets.card.side.clone()),
+                    MeshMaterial3d(assets.card.inbetween_color.clone()),
+                ));
+            }
+        });
     }
 }

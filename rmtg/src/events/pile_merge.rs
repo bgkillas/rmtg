@@ -1,7 +1,7 @@
-use crate::CARD_WIDTH;
 use crate::drag::TargetPosition;
 use crate::events::repaint::Repaint;
 use crate::pile::{FlippedState, PendingCards, Pile, TapState};
+use crate::{CARD_THICKNESS, CARD_WIDTH};
 use avian3d::prelude::CollisionStart;
 use bevy::math::{Vec3, Vec3Swizzles as _};
 use bevy::prelude::{Event, Transform};
@@ -16,9 +16,19 @@ pub struct PileMerge {
     pub from: Entity,
     pub to: Entity,
 }
-pub fn on_pile_merge(event: On<PileMerge>, mut commands: Commands, mut piles: Query<&mut Pile>) {
+#[query_fn]
+pub fn on_pile_merge(
+    event: On<PileMerge>,
+    mut commands: Commands,
+    mut piles: Query<(&mut Pile, &mut Transform)>,
+) {
     let [mut pile1, mut pile2] = piles.get_many_mut([event.from, event.to]).unwrap();
-    pile2.extend(mem::take(&mut pile1));
+    let l1 = pile1.pile.len();
+    let l2 = pile2.pile.len();
+    pile2.pile.extend(mem::take(&mut pile1.pile));
+    let up = pile2.transform.up();
+    //TODO
+    pile2.transform.translation += up * (l2 as f32 / 2.0 - (l2 + l1) as f32 / 2.0) * CARD_THICKNESS;
     commands.trigger(Repaint::new(event.to));
     commands.entity(event.from).despawn();
 }

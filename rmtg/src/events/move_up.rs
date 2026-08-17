@@ -2,7 +2,7 @@ use crate::CARD_THICKNESS;
 use crate::startup::{Ceiling, Wall};
 use avian3d::parry::shape::SharedShape;
 use avian3d::prelude::{
-    Collider, ColliderAabb, ScalableCollider as _, SpatialQueryFilter, WakeBody,
+    Collider, ColliderAabb, ScalableCollider as _, Sleeping, SpatialQueryFilter, WakeBody,
 };
 use avian3d::spatial_query::SpatialQuery;
 use bevy::math::Vec3;
@@ -27,9 +27,12 @@ pub fn move_up(
     mut transforms: Query<&mut Transform>,
     spatial: SpatialQuery,
     mut commands: Commands,
+    is_sleeping: Query<(), With<Sleeping>>,
 ) {
     const SCALE: f32 = 63.0 / 64.0;
-    commands.queue(WakeBody(entity.entity));
+    if is_sleeping.contains(entity.entity) {
+        commands.queue(WakeBody(entity.entity));
+    }
     let mut transform = transforms.get_mut(entity.entity).unwrap();
     let mut ent_aabb = *aabbs.get(entity.entity).unwrap();
     let mut shape = colliders.get(entity.entity).unwrap().shape_scaled().clone();

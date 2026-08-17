@@ -97,7 +97,7 @@ pub fn spawn_objects(
     });
     commands.spawn((
         Transform::from_xyz(MAT_WIDTH + CARD_WIDTH, CARD_THICKNESS, 0.0),
-        Pile::from(card).bundle(&asset),
+        Pile::from(card).bundle(),
     ));
     let x_unit = MAT_WIDTH + CARD_WIDTH;
     let z_unit = CARD_HEIGHT;

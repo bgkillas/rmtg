@@ -1,6 +1,5 @@
 use crate::QUALITY;
 use crate::app::Client;
-use crate::assets::AssetManager;
 use crate::events::move_up::MoveUp;
 use crate::pile::Pile;
 use crate::spatial::Spatial;
@@ -68,16 +67,9 @@ fn on_paste_card_set(
         Err(e) => warn!("{e:?}"),
     }
 }
-fn on_paste_card(
-    In((card, pos)): In<(SubCard, Vec3)>,
-    asset: AssetManager,
-    mut commands: Commands,
-) {
+fn on_paste_card(In((card, pos)): In<(SubCard, Vec3)>, mut commands: Commands) {
     let ent = commands
-        .spawn((
-            Transform::from_translation(pos),
-            Pile::from(card).bundle(&asset),
-        ))
+        .spawn((Transform::from_translation(pos), Pile::from(card).bundle()))
         .id();
     commands.trigger(MoveUp::new(ent));
 }

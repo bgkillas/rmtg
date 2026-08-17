@@ -40,7 +40,7 @@ pub fn on_clone(clone: On<CloneObj>, mut commands: Commands, asset: AssetManager
     let mut ent = commands.spawn(clone.transform);
     let id = match &clone.clone_type {
         CloneType::Pile(deck) => {
-            ent.insert(deck.try_clone().unwrap().bundle(&asset));
+            ent.insert(deck.try_clone().unwrap().bundle());
             ent.id()
         }
         &CloneType::Shape(shape) => {

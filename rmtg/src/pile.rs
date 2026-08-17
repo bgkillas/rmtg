@@ -5,7 +5,6 @@ use crate::physics::physics_base;
 use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH};
 use avian3d::prelude::{Collider, CollisionEventsEnabled};
 use bevy::asset::Assets;
-use bevy::ecs::children;
 use bevy::image::Image;
 use bevy::math::{Dir3, Quat, Vec3};
 use bevy::mesh::Mesh3d;
@@ -85,18 +84,8 @@ pub struct CardBack;
 pub struct CardTop;
 impl Pile {
     #[must_use]
-    pub fn bundle(self, asset: &AssetManager) -> impl Bundle {
+    pub fn bundle(self) -> impl Bundle {
         (
-            children![
-                self.up(asset),
-                self.down(asset),
-                self.sides(asset),
-                self.outline(asset, Transform::from_xyz(0.0, self.thickness() / 2.0, 0.0)),
-                self.outline(
-                    asset,
-                    Transform::from_xyz(0.0, -self.thickness() / 2.0, 0.0)
-                ),
-            ],
             self.collider(),
             self,
             physics_base(),
