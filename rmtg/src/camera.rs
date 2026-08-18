@@ -1,4 +1,4 @@
-use crate::focus::Focus;
+use crate::focus::{Focus, Menu};
 use crate::keybinds::Keybind;
 use crate::net::{Peer, Peers};
 use crate::spatial::Spatial;
@@ -13,6 +13,7 @@ use bevy_ecs::component::Component;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{ParamSet, Single};
 use bevy_query_fn_macro::query_fn;
+use enumset::enum_set;
 use std::f32::consts::PI;
 #[derive(Component, Default)]
 pub struct CameraVelocity {
@@ -63,7 +64,9 @@ pub fn camera_translation(
     apply(Keybind::RightFast, Transform::right, fast_scale);
     apply(Keybind::DownFast, Transform::back, fast_scale);
     camera.camera_velocity.vec /= time.delta_secs();
-    if mouse_motion.delta.y != 0.0 && !focus.mouse_lock() {
+    if mouse_motion.delta.y != 0.0
+        && !focus.mouse_lock(enum_set!(Menu::World | Menu::Side | Menu::Counter))
+    {
         let mut translate = camera.transform.forward().as_vec3() * MAT_WIDTH * mouse_motion.delta.y
             / 1024.0
             * ray_time.max(CARD_HEIGHT)

@@ -9,7 +9,8 @@ use bevy::window::Window;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Query, ResMut, Single};
-#[derive(Resource, Default, Debug)]
+use enumset::{EnumSet, EnumSetType};
+#[derive(Resource, EnumSetType, Default, Debug)]
 pub enum Menu {
     #[default]
     World,
@@ -25,8 +26,14 @@ pub struct Hover<'w, 's> {
 impl Hover<'_, '_> {
     #[must_use]
     pub fn get(&self) -> Option<Entity> {
+        if self.hover_map.is_empty() {
+            return None;
+        }
         assert_eq!(self.hover_map.len(), 1);
         let val = self.hover_map.values().next().unwrap();
+        if val.is_empty() {
+            return None;
+        }
         assert_eq!(val.len(), 1);
         let &ent = val.keys().next().unwrap();
         if ent == *self.window { None } else { Some(ent) }
@@ -36,17 +43,20 @@ impl Hover<'_, '_> {
 pub struct Focus<'w, 's> {
     pub active_input: Res<'w, InputFocus>,
     pub hover: Hover<'w, 's>,
+    pub menu: Res<'w, Menu>,
 }
 impl Focus<'_, '_> {
     #[must_use]
-    pub fn key_lock(&self) -> bool {
-        self.active_input
-            .get()
-            .is_some_and(|e| e != *self.hover.window)
+    pub fn key_lock(&self, set: EnumSet<Menu>) -> bool {
+        !set.contains(*self.menu)
+            || self
+                .active_input
+                .get()
+                .is_some_and(|e| e != *self.hover.window)
     }
     #[must_use]
-    pub fn mouse_lock(&self) -> bool {
-        self.hover.get().is_some()
+    pub fn mouse_lock(&self, set: EnumSet<Menu>) -> bool {
+        !set.contains(*self.menu) || self.hover.get().is_some()
     }
 }
 pub fn update_focus(

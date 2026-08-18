@@ -1,4 +1,5 @@
 #![allow(clippy::shadow_reuse)]
+use crate::focus::{Focus, Menu};
 use bevy::ecs::system::SystemParam;
 use bevy::input::ButtonInput;
 use bevy::prelude::{Deref, DerefMut, KeyCode, MouseButton, Res, ResMut, Resource};
@@ -7,10 +8,11 @@ use enumset::{EnumSet, EnumSetType, enum_set};
 use std::fmt;
 use std::fmt::{Display, Formatter};
 #[derive(SystemParam)]
-pub struct Keybinds<'w> {
+pub struct Keybinds<'w, 's> {
     pub keyboard: Res<'w, ButtonInput<KeyCode>>,
     pub mouse: Res<'w, ButtonInput<MouseButton>>,
     pub keybinds: ResMut<'w, KeybindsList>,
+    pub focus: Focus<'w, 's>,
 }
 pub fn update_keybinds(mut keybind_input: ResMut<ButtonInput<Keybind>>, keybinds: Keybinds) {
     for keybind in EnumSet::all() {
@@ -24,14 +26,14 @@ pub fn update_keybinds(mut keybind_input: ResMut<ButtonInput<Keybind>>, keybinds
         }
     }
 }
-impl Keybinds<'_> {
+impl Keybinds<'_, '_> {
     #[must_use]
     pub fn just_pressed(&self, keybind: Keybind) -> bool {
         self.keybinds[keybind].just_pressed(&self.keyboard, &self.mouse)
     }
     #[must_use]
     pub fn pressed(&self, keybind: Keybind) -> bool {
-        self.keybinds[keybind].pressed(&self.keyboard, &self.mouse)
+        self.keybinds[keybind].pressed(&self.keyboard, &self.mouse, &self.focus)
     }
     #[must_use]
     pub fn get_numeric(&self) -> usize {
@@ -61,32 +63,14 @@ impl Keybinds<'_> {
 }
 #[derive(Enum, EnumSetType, Debug, Hash)]
 pub enum Keybind {
-    Ping,
-    SortHand,
     Select,
     HoldSelect,
-    Flip,
     Shuffle,
     Remove,
     CopyObject,
     PasteObject,
-    PickCard,
-    Equip,
-    RotateRight,
-    RotateLeft,
-    Spread,
-    Printings,
-    Tokens,
-    Transform,
-    Search,
-    View,
-    Sub,
-    Add,
-    Calc,
     Chat,
-    Voice,
     Menu,
-    CalcClose,
     Left,
     Right,
     Up,
@@ -97,10 +81,8 @@ pub enum Keybind {
     DownFast,
     Reset,
     Rotate,
-    Untap,
     ScaleUp,
     ScaleDown,
-    Draw,
 }
 #[derive(Resource, Deref, DerefMut)]
 pub struct KeybindsList(EnumMap<Keybind, Bind>);
@@ -108,49 +90,31 @@ impl Default for KeybindsList {
     fn default() -> Self {
         let ctrl = Modifier::Control;
         let alt = Modifier::Alt;
+        _ = alt;
         let shift = Modifier::Shift;
-        Self(enum_map! {
-            Keybind::Ping => Bind::new(enum_set!(), MouseButton::Middle),
-            Keybind::Select => Bind::new(enum_set!(), MouseButton::Left),
-            Keybind::HoldSelect => Bind::new(enum_set!(ctrl), MouseButton::Left),
-            Keybind::Add => Bind::new(enum_set!(), MouseButton::Left),
-            Keybind::Sub => Bind::new(enum_set!(), MouseButton::Right),
-            Keybind::PickCard => Bind::new(enum_set!(ctrl), MouseButton::Left),
-            Keybind::SortHand => Bind::new(enum_set!(ctrl), KeyCode::KeyS),
-            Keybind::Flip => Bind::new(enum_set!(), KeyCode::KeyF),
-            Keybind::Shuffle => Bind::new(enum_set!(), KeyCode::KeyR),
-            Keybind::Calc => Bind::new(enum_set!(ctrl), KeyCode::KeyR),
-            Keybind::Remove => Bind::new(enum_set!(), KeyCode::Delete),
-            Keybind::CopyObject => Bind::new(enum_set!(ctrl), KeyCode::KeyC),
-            Keybind::PasteObject => Bind::new(enum_set!(ctrl), KeyCode::KeyV),
-            Keybind::Equip => Bind::new(enum_set!(ctrl), KeyCode::KeyE),
-            Keybind::RotateLeft => Bind::new(enum_set!(), KeyCode::KeyQ),
-            Keybind::RotateRight => Bind::new(enum_set!(), KeyCode::KeyE),
-            Keybind::Spread => Bind::new(enum_set!(ctrl | alt | shift), KeyCode::KeyS),
-            Keybind::Printings => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyO),
-            Keybind::Tokens => Bind::new(enum_set!(ctrl | shift), KeyCode::KeyT),
-            Keybind::Transform => Bind::new(enum_set!(), KeyCode::KeyO),
-            Keybind::Search => Bind::new(enum_set!(ctrl), KeyCode::KeyZ),
-            Keybind::View => Bind::new(enum_set!(alt), Key::None),
-            Keybind::Chat => Bind::new(enum_set!(), KeyCode::Enter),
-            Keybind::Voice => Bind::new(enum_set!(), KeyCode::KeyB),
-            Keybind::Menu => Bind::new(enum_set!(), KeyCode::Escape),
-            Keybind::CalcClose => Bind::new(enum_set!(), KeyCode::Enter),
-            Keybind::Left => Bind::new(enum_set!(), KeyCode::KeyA),
-            Keybind::Up => Bind::new(enum_set!(), KeyCode::KeyW),
-            Keybind::Down => Bind::new(enum_set!(), KeyCode::KeyS),
-            Keybind::Right => Bind::new(enum_set!(), KeyCode::KeyD),
-            Keybind::LeftFast => Bind::new(enum_set!(shift), KeyCode::KeyA),
-            Keybind::UpFast => Bind::new(enum_set!(shift), KeyCode::KeyW),
-            Keybind::DownFast => Bind::new(enum_set!(shift), KeyCode::KeyS),
-            Keybind::RightFast => Bind::new(enum_set!(shift), KeyCode::KeyD),
-            Keybind::Reset => Bind::new(enum_set!(), KeyCode::Space),
-            Keybind::Rotate => Bind::new(enum_set!(), MouseButton::Right),
-            Keybind::Untap => Bind::new(enum_set!(), KeyCode::KeyU),
-            Keybind::ScaleUp => Bind::new(enum_set!(), KeyCode::Equal),
-            Keybind::ScaleDown => Bind::new(enum_set!(), KeyCode::Minus),
-            Keybind::Draw => Bind::new(enum_set!(), Key::Numeric),
-        })
+        let map = enum_map! {
+            Keybind::Select =>      Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  MouseButton::Left),
+            Keybind::HoldSelect =>  Bind::new(enum_set!(ctrl),  enum_set!(Menu::World | Menu::Side | Menu::Counter),             false, true,  MouseButton::Left),
+            Keybind::Rotate =>      Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             false, true,  MouseButton::Right),
+            Keybind::Shuffle =>     Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyR),
+            Keybind::Remove =>      Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::Delete),
+            Keybind::CopyObject =>  Bind::new(enum_set!(ctrl),  enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyC),
+            Keybind::PasteObject => Bind::new(enum_set!(ctrl),  enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyV),
+            Keybind::Chat =>        Bind::new(enum_set!(),      enum_set!(Menu::World),                                          true,  true,  KeyCode::Enter),
+            Keybind::Menu =>        Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter | Menu::Esc), true,  false, KeyCode::Escape),
+            Keybind::Left =>        Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyA),
+            Keybind::Up =>          Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyW),
+            Keybind::Down =>        Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyS),
+            Keybind::Right =>       Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyD),
+            Keybind::LeftFast =>    Bind::new(enum_set!(shift), enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyA),
+            Keybind::UpFast =>      Bind::new(enum_set!(shift), enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyW),
+            Keybind::DownFast =>    Bind::new(enum_set!(shift), enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyS),
+            Keybind::RightFast =>   Bind::new(enum_set!(shift), enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyD),
+            Keybind::Reset =>       Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::Space),
+            Keybind::ScaleUp =>     Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::Equal),
+            Keybind::ScaleDown =>   Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::Minus),
+        };
+        Self(map)
     }
 }
 impl Display for KeybindsList {
@@ -229,20 +193,13 @@ impl TryFrom<&KeyCode> for Modifier {
         })
     }
 }
+#[derive(Debug)]
 pub struct Bind {
     modifiers: EnumSet<Modifier>,
     key: Key,
     strict: bool,
-}
-impl From<KeyCode> for Bind {
-    fn from(value: KeyCode) -> Self {
-        Self::new(EnumSet::default(), value)
-    }
-}
-impl From<MouseButton> for Bind {
-    fn from(value: MouseButton) -> Self {
-        Self::new(EnumSet::default(), value)
-    }
+    lock: bool,
+    menus: EnumSet<Menu>,
 }
 impl Bind {
     #[must_use]
@@ -264,24 +221,31 @@ impl Bind {
             if mouse_pressed.next().is_some() {
                 return None;
             }
-            Some(Self::new(modifiers, key))
+            Some(Self::new(modifiers, EnumSet::all(), true, true, key))
         } else if let Some(key) = keyboard.copied() {
             if keyboard_pressed.next().is_some() {
                 return None;
             }
-            Some(Self::new(modifiers, key))
+            Some(Self::new(modifiers, EnumSet::all(), true, true, key))
         } else {
             None
         }
     }
     #[must_use]
-    pub fn new(modifiers: EnumSet<Modifier>, to_key: impl Into<Key>) -> Self {
+    pub fn new(
+        modifiers: EnumSet<Modifier>,
+        menus: EnumSet<Menu>,
+        strict: bool,
+        lock: bool,
+        to_key: impl Into<Key>,
+    ) -> Self {
         let key = to_key.into();
-        let strict = true;
         Self {
             modifiers,
             key,
             strict,
+            lock,
+            menus,
         }
     }
     #[must_use]
@@ -302,25 +266,33 @@ impl Bind {
         keyboard: &ButtonInput<KeyCode>,
         mouse: &ButtonInput<MouseButton>,
     ) -> bool {
-        (match self.key {
-            Key::KeyCode(key) => keyboard.just_pressed(key),
-            Key::Mouse(button) => mouse.just_pressed(button),
-            Key::None => self.modifiers.iter().all(|m| m.just_pressed(keyboard)),
-            Key::Numeric => DIGITS.iter().any(|n| keyboard.just_pressed(*n)),
-        }) && self.modifiers_pressed(keyboard)
+        self.modifiers_pressed(keyboard)
+            && match self.key {
+                Key::KeyCode(key) => keyboard.just_pressed(key),
+                Key::Mouse(button) => mouse.just_pressed(button),
+                Key::None => self.modifiers.iter().all(|m| m.just_pressed(keyboard)),
+                Key::Numeric => DIGITS.iter().any(|n| keyboard.just_pressed(*n)),
+            }
     }
     #[must_use]
     pub fn pressed(
         &self,
         keyboard: &ButtonInput<KeyCode>,
         mouse: &ButtonInput<MouseButton>,
+        focus: &Focus,
     ) -> bool {
-        (match self.key {
-            Key::KeyCode(key) => keyboard.pressed(key),
-            Key::Mouse(button) => mouse.pressed(button),
-            Key::None => true,
-            Key::Numeric => DIGITS.iter().any(|n| keyboard.pressed(*n)),
-        }) && self.modifiers_pressed(keyboard)
+        self.menus.contains(*focus.menu)
+            && self.modifiers_pressed(keyboard)
+            && match self.key {
+                Key::KeyCode(key) => {
+                    (!self.lock || !focus.key_lock(EnumSet::all())) && keyboard.pressed(key)
+                }
+                Key::Mouse(button) => {
+                    (!self.lock || !focus.mouse_lock(EnumSet::all())) && mouse.pressed(button)
+                }
+                Key::None => true,
+                Key::Numeric => DIGITS.iter().any(|n| keyboard.pressed(*n)),
+            }
     }
 }
 const DIGITS: [KeyCode; 20] = [
