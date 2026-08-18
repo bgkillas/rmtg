@@ -17,6 +17,7 @@ use crate::pile::register_cards;
 use crate::spatial::{Cursor, update_cursor};
 use crate::startup::{spawn_objects, startup};
 use crate::ui::chat::text_submission;
+use crate::ui::esc_menu::toggle_esc_menu;
 use crate::{APP_NAME, FONT, PHYSICS_SCALE, USER_AGENT};
 use avian3d::PhysicsPlugins;
 use bevy::DefaultPlugins;
@@ -134,7 +135,7 @@ pub fn app_run() -> AppExit {
         (
             delayed_pile_merge,
             update_cursor,
-            update_focus,
+            (update_focus, toggle_esc_menu).chain(),
             update_keybinds.after(InputSystems),
         ),
     );
