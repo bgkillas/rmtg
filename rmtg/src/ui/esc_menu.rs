@@ -63,9 +63,21 @@ pub fn esc_menu_bundle() -> impl Bundle {
 }
 #[derive(Resource, Default)]
 pub struct CopyOnSpawn;
-fn on_copy(_: On<Activate>, mut commands: Commands) {
-    commands.init_resource::<CopyOnSpawn>();
-    commands.trigger(IrohBind::new(ALPN));
+fn on_copy(
+    _: On<Activate>,
+    mut commands: Commands,
+    iroh: Option<Res<IrohResource<Msg>>>,
+    tried: Option<Res<CopyOnSpawn>>,
+    mut clipboard: ResMut<Clipboard>,
+) {
+    if let Some(inner) = iroh {
+        if let Err(e) = clipboard.set_text(inner.my_id.to_string()) {
+            warn!("{e:?}");
+        }
+    } else if tried.is_none() {
+        commands.init_resource::<CopyOnSpawn>();
+        commands.trigger(IrohBind::new(ALPN));
+    }
 }
 pub fn on_iroh_bind_copy(
     _: On<Binded>,
