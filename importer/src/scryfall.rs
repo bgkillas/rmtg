@@ -64,6 +64,7 @@ impl Quality {
         }
     }
 }
+#[cfg(not(target_family = "wasm"))]
 async fn get_image(client: Client, uuid: Uuid, quality: Quality, side: Side) -> Option<Image> {
     let byte = uuid.as_bytes()[0];
     match client
@@ -89,6 +90,10 @@ async fn get_image(client: Client, uuid: Uuid, quality: Quality, side: Side) -> 
             None
         }
     }
+}
+#[cfg(target_family = "wasm")]
+async fn get_image(_: Client, _: Uuid, _: Quality, _: Side) -> Option<Image> {
+    None
 }
 fn get_image_receiver(
     client: Client,
