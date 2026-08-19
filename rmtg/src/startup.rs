@@ -18,7 +18,6 @@ use crate::{
     WALL_COLOR,
 };
 use avian3d::prelude::{Collider, CollisionLayers, LayerMask, RigidBody};
-use bevy::anti_alias::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
 use bevy::asset::{AssetId, Assets};
 use bevy::camera::{
     Camera3d, Exposure, PerspectiveProjection, PhysicalCameraParameters, Projection,
@@ -74,7 +73,8 @@ pub fn startup(
         }),
         Tonemapping::None,
         Msaa::Sample4,
-        ContrastAdaptiveSharpening {
+        #[cfg(any(not(target_family = "wasm"), feature = "webgpu"))]
+        bevy::anti_alias::contrast_adaptive_sharpening::ContrastAdaptiveSharpening {
             enabled: true,
             sharpening_strength: 1.0,
             denoise: false,

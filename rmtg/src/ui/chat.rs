@@ -1,11 +1,10 @@
 use crate::events::scroll::{Scroll, Scrollable};
-use crate::focus::Focus;
 use crate::keybinds::Keybind;
 use crate::{FONT_HEIGHT, FONT_SIZE};
 use bevy::color::Color;
 use bevy::input::ButtonInput;
 use bevy::input_focus::{FocusCause, InputFocus};
-use bevy::prelude::{BackgroundColor, Event, FlexDirection, Text, Visibility};
+use bevy::prelude::{BackgroundColor, Event, FlexDirection, Text, Visibility, Window};
 use bevy::text::{EditableText, FontSize, TextCursorStyle, TextFont};
 use bevy::ui::{Display, Node, Overflow, PositionType, Val};
 use bevy_ecs::bundle::Bundle;
@@ -15,7 +14,7 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::message::MessageWriter;
 use bevy_ecs::observer::On;
 use bevy_ecs::query::With;
-use bevy_ecs::system::{Commands, ParamSet, Query, Res, ResMut, Single};
+use bevy_ecs::system::{Commands, Query, Res, ResMut, Single};
 use bevy_query_fn_macro::query_fn;
 #[derive(Component)]
 pub struct TextMenu;
@@ -117,14 +116,15 @@ pub fn text_message(
 }
 #[query_fn]
 pub fn text_submission(
-    mut focus: ParamSet<(Focus, ResMut<InputFocus>)>,
+    window: Single<Entity, With<Window>>,
+    mut active_input: ResMut<InputFocus>,
     keybinds: Res<ButtonInput<Keybind>>,
     mut text_input: Query<(&mut EditableText, &TextSource)>,
     mut commands: Commands,
     chat: Single<Entity, With<TextInput>>,
 ) {
     if keybinds.just_pressed(Keybind::Chat) {
-        if let Some(focused_entity) = focus.p0().active_input.get()
+        if let Some(focused_entity) = active_input.get()
             && let Ok(mut text) = text_input.get_mut(focused_entity)
         {
             commands.trigger(TextSubmission {
@@ -132,10 +132,9 @@ pub fn text_submission(
                 source: *text.text_source,
             });
             text.editable_text.clear();
-            let ent = *focus.p0().hover.window;
-            focus.p1().set(ent, FocusCause::Pressed);
+            active_input.set(*window, FocusCause::Pressed);
         } else {
-            focus.p1().set(*chat, FocusCause::Pressed);
+            active_input.set(*chat, FocusCause::Pressed);
         }
     }
 }

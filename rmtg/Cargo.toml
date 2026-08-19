@@ -18,6 +18,7 @@ colliders = ["avian3d/debug-plugin"]
 fps = ["bevy/bevy_dev_tools"]
 tracy = ["bevy/trace_tracy"]
 steam = ["bevy_p2p/steam"]
+webgpu = ["bevy/webgpu"]
 
 [dependencies]
 enumset = "1.1.14"
@@ -48,8 +49,8 @@ bevy = {version = "0.19.1", default-features = false, features = [
   "3d",
   "ui",
   "bevy_settings",
-  "webgpu",
   "system_clipboard",
+  #"webgpu",
 ]}
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
