@@ -1,7 +1,10 @@
+use crate::ALPN;
 use bevy::clipboard::{Clipboard, ClipboardError, ClipboardRead};
 use bevy::image::Image;
 use bevy::log::warn;
 use bevy::prelude::{Commands, Event, On, ResMut, Resource};
+use bevy_ecs::system::In;
+use bevy_p2p::iroh_res::IrohConnect;
 use std::mem;
 use std::sync::{Arc, Mutex};
 #[derive(Event)]
@@ -34,15 +37,25 @@ pub enum ClipboardData {
     Image(Image),
 }
 #[derive(Clone, Copy)]
-pub enum ClipboardEvent {}
+pub enum ClipboardEvent {
+    ConnectToEndpoint,
+}
 impl ClipboardEvent {
     pub fn run(self, commands: &mut Commands, text: String) {
-        _ = commands;
-        _ = text;
+        match self {
+            Self::ConnectToEndpoint => {
+                commands.run_system_cached_with(connect_clipboard, text);
+            }
+        }
     }
     pub fn run_image(self, commands: &mut Commands, image: Image) {
         _ = commands;
         _ = image;
+    }
+}
+fn connect_clipboard(In(endpoint): In<String>, mut commands: Commands) {
+    if let Ok(peer) = endpoint.parse() {
+        commands.trigger(IrohConnect::new(peer, ALPN));
     }
 }
 #[derive(Default, Resource)]
