@@ -53,8 +53,8 @@ pub fn on_repaint(
     let mut pile = decks.get_mut(on.entity).unwrap();
     *pile.collider = pile.pile.collider();
     let mut mat = top.get_mut(pile.children[0]).unwrap();
-    if let Some(new) = pile.pile.first().face().material() {
-        mat.0 = new;
+    if let Some(new) = pile.pile.first().face_handles() {
+        mat.0 = new.material;
     }
     let [mut up, mut down, mut side, mut outline_up, mut outline_down] = transforms
         .get_many_mut([

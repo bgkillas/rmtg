@@ -16,7 +16,7 @@ use bevy_ecs::system::{Commands, Query, ResMut};
 use bevy_query_fn_macro::query_fn;
 use bitcode::{Decode, Encode};
 use importer::bitcode;
-use importer::card::{Card, CardInfo, CardIter, CardIterMut, MaybeHandles, SubCard};
+use importer::card::{Card, CardIter, CardIterMut, MaybeHandles, SubCard};
 use itertools::Either;
 use rand::make_rng;
 use rand::rngs::StdRng;
@@ -128,9 +128,8 @@ impl Pile {
                 .looking_to(Dir3::NEG_Y, Dir3::NEG_Z),
             MeshMaterial3d(
                 self.first()
-                    .face()
-                    .material()
-                    .unwrap_or_else(|| asset.card.back.clone()),
+                    .face_handles()
+                    .map_or_else(|| asset.card.back.clone(), |h| h.material),
             ),
             Mesh3d(asset.card.stock.clone()),
             CardTop,
@@ -148,7 +147,7 @@ impl Pile {
     #[must_use]
     pub fn is_oracle(&self) -> bool {
         matches!(
-            self.first().face().handles,
+            self.first().face_maybe_handles(),
             MaybeHandles::None | MaybeHandles::Waiting(_)
         )
     }
@@ -577,16 +576,16 @@ pub fn register_cards(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     fn register(
-        data: &mut CardInfo,
+        data: &mut MaybeHandles,
         images: &mut Assets<Image>,
         materials: &mut Assets<StandardMaterial>,
         has_some: &mut bool,
         repaint: &mut bool,
     ) {
-        match &data.handles {
+        match &data {
             MaybeHandles::Waiting(poll) => {
                 if let Ok(val) = poll.try_recv() {
-                    data.handles = if let Some(inner) = val {
+                    *data = if let Some(inner) = val {
                         *repaint = true;
                         let handle = images.add(inner);
                         MaybeHandles::Some(register_card(materials, handle))
@@ -605,13 +604,13 @@ pub fn register_cards(
         let mut repaint = false;
         for card in &mut pile.pile {
             register(
-                &mut card.data.front,
+                &mut card.face_handles,
                 &mut images,
                 &mut materials,
                 &mut has_some,
                 &mut repaint,
             );
-            if let Some(back) = &mut card.data.back {
+            if let Some(back) = &mut card.back_handles {
                 register(
                     back,
                     &mut images,

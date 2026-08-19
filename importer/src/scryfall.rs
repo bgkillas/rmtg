@@ -107,11 +107,6 @@ fn get_image_receiver(
     });
     recv
 }
-impl CardInfo {
-    pub fn set_image_receiver(&mut self, client: Client, uuid: Uuid, quality: Quality, side: Side) {
-        self.handles = MaybeHandles::Waiting(get_image_receiver(client, uuid, quality, side));
-    }
-}
 #[cfg(not(target_family = "wasm"))]
 pub type Clock = ratelimit::StdClock;
 #[cfg(target_family = "wasm")]
@@ -274,31 +269,40 @@ impl SubCard {
             let type_line = Types::from(type_line_raw);
             Some(CardInfo {
                 oracle_id: Id::from(oracle_id),
-                name,
+                name: name.into(),
                 mana_cost,
                 type_line,
-                oracle_text,
+                oracle_text: oracle_text.into(),
                 colors,
                 color_identity,
                 power,
                 toughness,
                 loyalty,
-                handles: MaybeHandles::None,
             })
         }
         let layout_str = json["layout"].as_str()?;
         let layout = Layout::from(layout_str);
+        let face_handles = MaybeHandles::Waiting(get_image_receiver(
+            client.clone(),
+            uuid,
+            quality,
+            Side::Front,
+        ));
+        let mut back_handles = None;
         let (front, back) = if json["card_faces"].is_null() {
-            let mut front = get_face(&json, &JsonValue::Null)?;
-            front.set_image_receiver(client.clone(), uuid, quality, Side::Front);
+            let front = get_face(&json, &JsonValue::Null)?;
             (front, None)
         } else {
             let faces = json["card_faces"].as_array()?;
-            let mut front = get_face(&json, &faces[0])?;
-            let mut back = get_face(&json, &faces[1])?;
-            front.set_image_receiver(client.clone(), uuid, quality, Side::Front);
+            let front = get_face(&json, &faces[0])?;
+            let back = get_face(&json, &faces[1])?;
             if faces[1]["image_uris"].is_array() {
-                back.set_image_receiver(client, uuid, quality, Side::Back);
+                back_handles = Some(MaybeHandles::Waiting(get_image_receiver(
+                    client,
+                    uuid,
+                    quality,
+                    Side::Back,
+                )));
             }
             (front, Some(Box::new(back)))
         };
@@ -314,14 +318,16 @@ impl SubCard {
             })
             .unwrap_or_default();
         let data = CardData {
+            id: Id::from(uuid),
+            tokens: tokens.into(),
             front,
             back,
             layout,
         };
         let card = Self {
-            id: Id::from(uuid),
-            tokens,
             data,
+            face_handles,
+            back_handles,
             flipped: false,
         };
         Some(card)

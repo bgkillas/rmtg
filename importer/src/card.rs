@@ -26,13 +26,17 @@ pub struct Card {
 }
 #[derive(Debug, Default, Encode, Decode)]
 pub struct SubCard {
-    pub id: Id,
-    pub tokens: Vec<Id>,
     pub data: CardData,
+    #[bitcode(skip)]
+    pub face_handles: MaybeHandles,
+    #[bitcode(skip)]
+    pub back_handles: Option<MaybeHandles>,
     pub flipped: bool,
 }
-#[derive(Debug, Default, Encode, Decode)]
+#[derive(Debug, Clone, Default, Encode, Decode)]
 pub struct CardData {
+    pub id: Id,
+    pub tokens: Box<[Id]>,
     pub front: CardInfo,
     pub back: Option<Box<CardInfo>>,
     pub layout: Layout,
@@ -58,20 +62,18 @@ pub struct Cost {
     pub var: u8,
     pub hybrid: u8,
 }
-#[derive(Debug, Default, Encode, Decode)]
+#[derive(Debug, Clone, Default, Encode, Decode)]
 pub struct CardInfo {
     pub oracle_id: Id,
-    pub name: String,
+    pub name: Box<str>,
     pub mana_cost: Cost,
     pub type_line: Types,
-    pub oracle_text: String,
+    pub oracle_text: Box<str>,
     pub colors: Colors,
     pub color_identity: Colors,
     pub power: Option<u8>,
     pub toughness: Option<u8>,
     pub loyalty: Option<u8>,
-    #[bitcode(skip)]
-    pub handles: MaybeHandles,
 }
 #[derive(Default, Debug)]
 pub enum MaybeHandles {
@@ -159,6 +161,13 @@ impl MaybeHandles {
             MaybeHandles::Waiting(_) => None,
             MaybeHandles::None => Some(MaybeHandles::None),
             MaybeHandles::Some(handles) => Some(MaybeHandles::Some(handles.clone())),
+        }
+    }
+    #[must_use]
+    pub fn handles(&self) -> Option<Handles> {
+        match self {
+            MaybeHandles::Waiting(_) | MaybeHandles::None => None,
+            MaybeHandles::Some(handles) => Some(handles.clone()),
         }
     }
 }
@@ -283,7 +292,6 @@ impl CardInfo {
             power: self.power,
             loyalty: self.loyalty,
             toughness: self.toughness,
-            handles: self.handles.try_clone()?,
         })
     }
     #[must_use]
@@ -299,34 +307,7 @@ impl CardInfo {
             power: self.power,
             loyalty: self.loyalty,
             toughness: self.toughness,
-            handles: MaybeHandles::None,
         }
-    }
-    #[must_use]
-    pub fn image(&self) -> Option<Handle<Image>> {
-        if let MaybeHandles::Some(inner) = &self.handles {
-            Some(inner.image())
-        } else {
-            None
-        }
-    }
-    #[must_use]
-    pub fn material(&self) -> Option<Handle<StandardMaterial>> {
-        if let MaybeHandles::Some(inner) = &self.handles {
-            Some(inner.material())
-        } else {
-            None
-        }
-    }
-}
-impl Handles {
-    #[must_use]
-    pub fn image(&self) -> Handle<Image> {
-        self.image.clone()
-    }
-    #[must_use]
-    pub fn material(&self) -> Handle<StandardMaterial> {
-        self.material.clone()
     }
 }
 impl MainType {
@@ -522,6 +503,8 @@ impl CardData {
     #[must_use]
     pub fn try_clone(&self) -> Option<Self> {
         Some(Self {
+            id: self.id,
+            tokens: self.tokens.clone(),
             front: self.front.try_clone()?,
             back: if let Some(inner) = self
                 .back
@@ -538,6 +521,8 @@ impl CardData {
     #[must_use]
     pub fn clone_no_image(&self) -> Self {
         Self {
+            id: self.id,
+            tokens: self.tokens.clone(),
             front: self.front.clone_no_image(),
             back: self
                 .back
@@ -711,18 +696,24 @@ impl SubCard {
     #[must_use]
     pub fn try_clone(&self) -> Option<Self> {
         Some(Self {
-            id: self.id,
-            tokens: self.tokens.clone(),
-            data: self.data.try_clone()?,
+            data: self.data.clone(),
+            face_handles: self.face_handles.try_clone()?,
+            back_handles: if let Some(inner) =
+                self.back_handles.as_ref().map(MaybeHandles::try_clone)
+            {
+                Some(inner?)
+            } else {
+                None
+            },
             flipped: self.flipped,
         })
     }
     #[must_use]
     pub fn clone_no_image(&self) -> Self {
         Self {
-            id: self.id,
-            tokens: self.tokens.clone(),
             data: self.data.clone_no_image(),
+            face_handles: MaybeHandles::None,
+            back_handles: self.back_handles.is_some().then(|| MaybeHandles::None),
             flipped: self.flipped,
         }
     }
@@ -750,12 +741,36 @@ impl SubCard {
     pub fn image_node(&self) -> ImageNode {
         match self.data.layout {
             Layout::Flip if self.flipped => ImageNode {
-                image: self.data.front.image().unwrap(),
+                image: self.face_handles.handles().unwrap().image,
                 flip_x: true,
                 flip_y: true,
                 ..ImageNode::default()
             },
-            _ => ImageNode::new(self.face().image().unwrap()),
+            _ => ImageNode::new(self.face_handles().unwrap().image),
+        }
+    }
+    #[must_use]
+    pub fn face_handles(&self) -> Option<Handles> {
+        self.face_maybe_handles().handles()
+    }
+    #[must_use]
+    pub fn back_handles(&self) -> Option<Handles> {
+        self.back_maybe_handles().handles()
+    }
+    #[must_use]
+    pub fn face_maybe_handles(&self) -> &MaybeHandles {
+        if self.flipped {
+            self.back_handles.as_ref().unwrap()
+        } else {
+            &self.face_handles
+        }
+    }
+    #[must_use]
+    pub fn back_maybe_handles(&self) -> &MaybeHandles {
+        if self.flipped {
+            &self.face_handles
+        } else {
+            self.back_handles.as_ref().unwrap()
         }
     }
 }

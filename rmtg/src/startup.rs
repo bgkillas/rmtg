@@ -91,7 +91,7 @@ pub fn spawn_objects(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let mut card = SubCard::default();
-    card.data.front.handles = MaybeHandles::Some(Handles {
+    card.face_handles = MaybeHandles::Some(Handles {
         image: asset.card.back_image.clone(),
         material: asset.card.back.clone(),
     });
