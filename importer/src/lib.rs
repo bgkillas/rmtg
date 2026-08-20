@@ -24,5 +24,5 @@ mod scryfall_tests;
 pub const CARD_CORNER_RADIUS: f32 = 1.0 / 20.0;
 #[eii(app_name)]
 pub fn app_name() -> &'static str {
-    ""
+    "com.github.bgkillas.importer"
 }

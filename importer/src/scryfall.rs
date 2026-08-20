@@ -1,5 +1,6 @@
 use crate::card::{CardData, CardInfo, Layout, MaybeHandles};
 use crate::card::{Colors, Cost, SubCard, Types};
+use crate::card_cache::CardCache;
 use crate::id::Id;
 use crate::image::parse_bytes;
 use bevy::image::Image;
@@ -13,6 +14,7 @@ use std::str::FromStr as _;
 use std::sync::LazyLock;
 use std::sync::mpmc::{Receiver, channel};
 use std::time::Duration;
+use tokio::sync::Mutex;
 use tokio::task::JoinSet;
 #[cfg(not(target_family = "wasm"))]
 use tokio::time::sleep;
@@ -21,6 +23,7 @@ use tokio_with_wasm as tokio;
 use uuid::Uuid;
 #[cfg(target_family = "wasm")]
 use wasmtimer::tokio::sleep;
+pub static CACHE: LazyLock<Mutex<CardCache>> = LazyLock::new(|| Mutex::new(CardCache::default()));
 const URL: &str = "api.scryfall.com";
 const CARD_URL: &str = "cards.scryfall.io";
 #[derive(Clone, Copy)]

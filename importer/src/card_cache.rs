@@ -1,7 +1,7 @@
 use crate::app_name;
 use crate::card::CardData;
 use bevy::platform::dirs::preferences_dir;
-use bitcode::Buffer;
+use bitcode::{Buffer, decode, encode};
 use rustc_hash::FxBuildHasher;
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -15,6 +15,8 @@ pub const BACK: &str = "back.png";
 pub struct CardCache {
     pub cards: HashMap<Uuid, CardInCache, FxBuildHasher>,
     pub in_storage: HashSet<Uuid, FxBuildHasher>,
+    pub in_process: HashSet<Uuid, FxBuildHasher>,
+    pub set_cn: HashMap<(Box<str>, u16), Uuid, FxBuildHasher>,
     pub buffer: Buffer,
 }
 pub struct CardInCache {
@@ -39,9 +41,8 @@ pub struct CachedCard {
 fn folder() -> Option<PathBuf> {
     preferences_dir().map(|p| p.join(app_name()).join(CACHE_FOLDER))
 }
-impl CardCache {
-    #[expect(clippy::new_without_default)]
-    pub fn new() -> Self {
+impl Default for CardCache {
+    fn default() -> Self {
         let mut in_storage = HashSet::with_hasher(FxBuildHasher);
         #[cfg(not(target_family = "wasm"))]
         if let Some(folder_name) = folder() {
@@ -62,46 +63,67 @@ impl CardCache {
         Self {
             cards: HashMap::with_capacity_and_hasher(512, FxBuildHasher),
             in_storage,
+            in_process: HashSet::with_capacity_and_hasher(512, FxBuildHasher),
+            set_cn: HashMap::with_capacity_and_hasher(512, FxBuildHasher),
             buffer: Buffer::new(),
         }
     }
+}
+pub enum CacheResult {
+    Some(CachedCard),
+    Cached,
+    Wait,
+    None,
+}
+impl CardCache {
     pub fn clean(&mut self) {
         self.cards.retain(|_, card| !Arc::is_unique(&card.weak));
     }
-    pub fn get_card(&mut self, uuid: Uuid) -> Option<CachedCard> {
+    pub fn get(&mut self, uuid: Uuid) -> CacheResult {
         if let Some(val) = self.cards.get(&uuid) {
-            Some(val.downgrade())
+            CacheResult::Some(val.downgrade())
         } else if self.in_storage.contains(&uuid) {
-            let folder_name = folder()?.join(uuid.to_string());
-            let card_data = fs::read(folder_name.join(DATA)).ok()?;
-            let mut card = CardInCache {
-                weak: Arc::new(self.buffer.decode(&card_data).ok()?),
-                front_image: None,
-                back_image: None,
-            };
-            if let Ok(data) = fs::read(folder_name.join(FRONT)) {
-                card.front_image = Some(data.into_boxed_slice());
-            }
-            if let Ok(data) = fs::read(folder_name.join(BACK)) {
-                card.back_image = Some(data.into_boxed_slice());
-            }
-            self.cards.insert(uuid, card);
-            Some(self.cards.get(&uuid)?.downgrade())
+            self.in_process.insert(uuid);
+            CacheResult::Cached
+        } else if self.in_process.contains(&uuid) {
+            CacheResult::Wait
         } else {
-            None
+            self.in_process.insert(uuid);
+            CacheResult::None
         }
     }
-    pub fn insert_card(&mut self, uuid: Uuid, card: CardInCache) {
+    pub fn set(&mut self, uuid: Uuid) -> bool {
+        self.in_process.insert(uuid)
+    }
+    pub fn insert(&mut self, uuid: Uuid, card: CardInCache) {
         self.cards.insert(uuid, card);
+        self.in_process.remove(&uuid);
+    }
+    pub fn read_files(uuid: Uuid) -> Option<CardInCache> {
+        let folder_name = folder()?.join(uuid.to_string());
+        let card_data = fs::read(folder_name.join(DATA)).ok()?;
+        let mut card = CardInCache {
+            weak: Arc::new(decode(&card_data).ok()?),
+            front_image: None,
+            back_image: None,
+        };
+        if let Ok(data) = fs::read(folder_name.join(FRONT)) {
+            card.front_image = Some(data.into_boxed_slice());
+        }
+        if let Ok(data) = fs::read(folder_name.join(BACK)) {
+            card.back_image = Some(data.into_boxed_slice());
+        }
+        Some(card)
+    }
+    pub fn write_files(uuid: Uuid, card: &CardInCache) {
         #[cfg(not(target_family = "wasm"))]
         if let Some(folder_name) = folder().map(|f| f.join(uuid.to_string())) {
-            let card_ref = self.cards.get(&uuid).unwrap();
-            let data = self.buffer.encode::<CardData>(&card_ref.weak);
+            let data = encode::<CardData>(&card.weak);
             let _ = fs::write(folder_name.join(DATA), data);
-            if let Some(val) = &card_ref.front_image {
+            if let Some(val) = &card.front_image {
                 _ = fs::write(folder_name.join(FRONT), val);
             }
-            if let Some(val) = &card_ref.back_image {
+            if let Some(val) = &card.back_image {
                 _ = fs::write(folder_name.join(BACK), val);
             }
         }

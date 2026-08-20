@@ -38,8 +38,10 @@ use bevy::window::{Window, WindowPlugin};
 use bevy_framepace::FramepacePlugin;
 use bevy_p2p::plugin::P2PPlugin;
 use bevy_rich_text3d::{LoadFonts, Text3dPlugin};
+use importer::scryfall::CACHE;
 #[must_use]
 pub fn app_run() -> AppExit {
+    _ = *CACHE;
     let mut app = App::new();
     app.add_plugins(
         DefaultPlugins
