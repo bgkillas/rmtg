@@ -39,36 +39,44 @@ pub struct CachedCard {
 fn folder() -> Option<PathBuf> {
     preferences_dir().map(|p| p.join(crate::app_name()).join(CACHE_FOLDER))
 }
+impl CardData {
+    pub fn folder_path(&self) -> String {
+        format!("{}/{}", self.set_cn, self.id)
+    }
+}
 impl Default for CardCache {
     fn default() -> Self {
         let mut in_storage = HashSet::with_hasher(FxBuildHasher);
-        #[cfg(not(target_family = "wasm"))]
+        let mut set_cn = HashMap::with_hasher(FxBuildHasher);
         if let Some(folder_name) = folder() {
             if fs::exists(&folder_name).is_ok_and(|b| b)
                 && let Ok(dir) = fs::read_dir(&folder_name)
             {
                 for entry in dir.filter_map(Result::ok) {
                     if let Some(str) = entry.file_name().to_str()
-                        && let Ok(uuid) = str.parse()
+                        && let Some((set_cn_str, uuid_str)) = str.rsplit_once('/')
+                        && let Ok(uuid) = uuid_str.parse()
                     {
                         in_storage.insert(uuid);
+                        set_cn.insert(set_cn_str.into(), uuid);
                     }
                 }
             } else {
                 let _ = fs::create_dir_all(folder_name);
             }
         }
+        set_cn.reserve(512);
         Self {
             cards: HashMap::with_capacity_and_hasher(512, FxBuildHasher),
             in_storage,
             in_process: HashSet::with_capacity_and_hasher(512, FxBuildHasher),
-            set_cn: HashMap::with_capacity_and_hasher(512, FxBuildHasher),
+            set_cn,
         }
     }
 }
 pub enum CacheResult {
     Some(CachedCard),
-    Cached,
+    Cached(Uuid),
     Wait,
     None,
 }
@@ -81,7 +89,7 @@ impl CardCache {
             CacheResult::Some(val.downgrade())
         } else if self.in_storage.contains(&uuid) {
             self.in_process.insert(uuid);
-            CacheResult::Cached
+            CacheResult::Cached(uuid)
         } else if self.in_process.contains(&uuid) {
             CacheResult::Wait
         } else {
@@ -122,9 +130,8 @@ impl CardCache {
         }
         Some(card)
     }
-    pub fn write_files(uuid: Uuid, card: &CardInCache) {
-        #[cfg(not(target_family = "wasm"))]
-        if let Some(folder_name) = folder().map(|f| f.join(uuid.to_string())) {
+    pub fn write_files(card: &CardInCache) {
+        if let Some(folder_name) = folder().map(|f| f.join(card.strong.folder_path())) {
             let data = encode::<CardData>(&card.strong);
             let _ = fs::write(folder_name.join(DATA), data);
             if let Some(val) = &card.front_image {
