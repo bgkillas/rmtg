@@ -1,5 +1,4 @@
-use crate::coder::DataCoder;
-use crate::id::Id;
+use crate::coder::{DataCoder, DataCoderBoxUuid};
 use bevy::asset::Handle;
 use bevy::image::Image;
 use bevy::pbr::StandardMaterial;
@@ -11,6 +10,7 @@ use std::fmt::{Debug, Formatter};
 use std::mem;
 use std::slice::{Iter, IterMut};
 use std::sync::mpmc::Receiver;
+use uuid::Uuid;
 rules::generate_types!();
 type Value = f64;
 #[derive(Debug, Default, Encode, Decode)]
@@ -35,8 +35,11 @@ pub struct SubCard {
 }
 #[derive(Debug, Clone, Default, Encode, Decode)]
 pub struct CardData {
-    pub id: Id,
-    pub tokens: Box<[Id]>,
+    #[bitcode(with = "DataCoder<Uuid>")]
+    pub id: Uuid,
+    pub set_cn: Box<str>,
+    #[bitcode(with = "DataCoderBoxUuid")]
+    pub tokens: Box<[Uuid]>,
     pub front: CardInfo,
     pub back: Option<Box<CardInfo>>,
     pub layout: Layout,
@@ -64,7 +67,8 @@ pub struct Cost {
 }
 #[derive(Debug, Clone, Default, Encode, Decode)]
 pub struct CardInfo {
-    pub oracle_id: Id,
+    #[bitcode(with = "DataCoder<Uuid>")]
+    pub oracle_id: Uuid,
     pub name: Box<str>,
     pub mana_cost: Cost,
     pub type_line: Types,
@@ -504,6 +508,7 @@ impl CardData {
     pub fn try_clone(&self) -> Option<Self> {
         Some(Self {
             id: self.id,
+            set_cn: self.set_cn.clone(),
             tokens: self.tokens.clone(),
             front: self.front.try_clone()?,
             back: if let Some(inner) = self
@@ -522,6 +527,7 @@ impl CardData {
     pub fn clone_no_image(&self) -> Self {
         Self {
             id: self.id,
+            set_cn: self.set_cn.clone(),
             tokens: self.tokens.clone(),
             front: self.front.clone_no_image(),
             back: self

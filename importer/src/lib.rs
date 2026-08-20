@@ -7,7 +7,6 @@
 #![cfg_attr(test, feature(test))]
 extern crate core;
 pub mod card;
-pub mod id;
 pub mod image;
 pub use bitcode;
 pub use reqwest;

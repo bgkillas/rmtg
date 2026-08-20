@@ -1,7 +1,6 @@
 use crate::card::{CardData, CardInfo, Layout, MaybeHandles};
 use crate::card::{Colors, Cost, SubCard, Types};
 use crate::card_cache::CardCache;
-use crate::id::Id;
 use crate::image::parse_bytes;
 use bevy::image::Image;
 use bevy::log::warn;
@@ -211,16 +210,15 @@ impl SubCard {
     }
     pub async fn get_set_cn(
         client: Client,
-        set: &str,
-        cn: u16,
+        set_cn: &str,
         quality: Quality,
-    ) -> Result<Self, (String, u16)> {
-        async fn get_card(client: Client, quality: Quality, set: &str, cn: u16) -> Option<SubCard> {
+    ) -> Result<Self, Box<str>> {
+        async fn get_card(client: Client, quality: Quality, set_cn: &str) -> Option<SubCard> {
             while CARDS_THROTTLE.try_wait().is_err() {
                 sleep(SLEEP_TIME).await;
             }
             let request = client
-                .get(format!("https://{URL}/cards/{set}/{cn}"))
+                .get(format!("https://{URL}/cards/{set_cn}"))
                 .send()
                 .await
                 .ok()?;
@@ -229,10 +227,10 @@ impl SubCard {
             let uuid = Uuid::parse_str(json["id"].as_str()?).ok()?;
             SubCard::from_scryfall(client, json, uuid, quality)
         }
-        if let Some(card) = get_card(client, quality, set, cn).await {
+        if let Some(card) = get_card(client, quality, set_cn).await {
             Ok(card)
         } else {
-            Err((set.to_owned(), cn))
+            Err(set_cn.into())
         }
     }
     #[must_use]
@@ -271,7 +269,7 @@ impl SubCard {
             let mana_cost = Cost::from(mana_cost_raw);
             let type_line = Types::from(type_line_raw);
             Some(CardInfo {
-                oracle_id: Id::from(oracle_id),
+                oracle_id,
                 name: name.into(),
                 mana_cost,
                 type_line,
@@ -316,12 +314,14 @@ impl SubCard {
                     .filter(|p| p["component"].as_str() == Some("token"))
                     .filter_map(|p| p["id"].as_str())
                     .filter_map(|s| Uuid::from_str(s).ok())
-                    .map(Id::from)
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
+        let set = json["set"].as_str().unwrap();
+        let cn = json["collector_number"].as_str().unwrap();
         let data = CardData {
-            id: Id::from(uuid),
+            id: uuid,
+            set_cn: format!("{set}/{cn}").into_boxed_str(),
             tokens: tokens.into(),
             front,
             back,

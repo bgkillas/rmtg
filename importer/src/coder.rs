@@ -4,6 +4,7 @@ use bitcode::{Decode, Encode};
 use core::direct_const_arg;
 use enumset::EnumSet;
 use std::mem;
+use uuid::Uuid;
 pub trait FixedSize: Sized + Copy {
     type const SIZE: usize;
 }
@@ -34,3 +35,21 @@ coder!(EnumSet<MainType>);
 coder!(EnumSet<SubType>);
 coder!(EnumSet<Color>);
 coder!(Vec3);
+coder!(Uuid);
+#[derive(Encode, Decode)]
+#[repr(transparent)]
+pub struct DataCoderBoxUuid {
+    pub data: Box<[u128]>,
+}
+impl From<&Box<[Uuid]>> for DataCoderBoxUuid {
+    fn from(value: &Box<[Uuid]>) -> Self {
+        Self {
+            data: value.iter().map(Uuid::as_u128).collect(),
+        }
+    }
+}
+impl From<DataCoderBoxUuid> for Box<[Uuid]> {
+    fn from(value: DataCoderBoxUuid) -> Self {
+        value.data.into_iter().map(Uuid::from_u128).collect()
+    }
+}

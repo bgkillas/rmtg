@@ -1,7 +1,6 @@
-use crate::app_name;
 use crate::card::CardData;
 use bevy::platform::dirs::preferences_dir;
-use bitcode::{Buffer, decode, encode};
+use bitcode::{decode, encode};
 use rustc_hash::FxBuildHasher;
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -16,18 +15,17 @@ pub struct CardCache {
     pub cards: HashMap<Uuid, CardInCache, FxBuildHasher>,
     pub in_storage: HashSet<Uuid, FxBuildHasher>,
     pub in_process: HashSet<Uuid, FxBuildHasher>,
-    pub set_cn: HashMap<(Box<str>, u16), Uuid, FxBuildHasher>,
-    pub buffer: Buffer,
+    pub set_cn: HashMap<Box<str>, Uuid, FxBuildHasher>,
 }
 pub struct CardInCache {
-    pub weak: Arc<CardData>,
+    pub strong: Arc<CardData>,
     pub front_image: Option<Box<[u8]>>,
     pub back_image: Option<Box<[u8]>>,
 }
 impl CardInCache {
     pub fn downgrade(&self) -> CachedCard {
         CachedCard {
-            weak: Some(Arc::downgrade(&self.weak)),
+            weak: Some(Arc::downgrade(&self.strong)),
             front_image: self.front_image.clone(),
             back_image: self.back_image.clone(),
         }
@@ -39,7 +37,7 @@ pub struct CachedCard {
     pub back_image: Option<Box<[u8]>>,
 }
 fn folder() -> Option<PathBuf> {
-    preferences_dir().map(|p| p.join(app_name()).join(CACHE_FOLDER))
+    preferences_dir().map(|p| p.join(crate::app_name()).join(CACHE_FOLDER))
 }
 impl Default for CardCache {
     fn default() -> Self {
@@ -65,7 +63,6 @@ impl Default for CardCache {
             in_storage,
             in_process: HashSet::with_capacity_and_hasher(512, FxBuildHasher),
             set_cn: HashMap::with_capacity_and_hasher(512, FxBuildHasher),
-            buffer: Buffer::new(),
         }
     }
 }
@@ -77,7 +74,7 @@ pub enum CacheResult {
 }
 impl CardCache {
     pub fn clean(&mut self) {
-        self.cards.retain(|_, card| !Arc::is_unique(&card.weak));
+        self.cards.retain(|_, card| !Arc::is_unique(&card.strong));
     }
     pub fn get(&mut self, uuid: Uuid) -> CacheResult {
         if let Some(val) = self.cards.get(&uuid) {
@@ -92,10 +89,20 @@ impl CardCache {
             CacheResult::None
         }
     }
+    pub fn get_set_cn(&mut self, set_cn: &str) -> CacheResult {
+        if let Some(&uuid) = self.set_cn.get(set_cn) {
+            self.get(uuid)
+        } else {
+            CacheResult::None
+        }
+    }
     pub fn set(&mut self, uuid: Uuid) -> bool {
         self.in_process.insert(uuid)
     }
-    pub fn insert(&mut self, uuid: Uuid, card: CardInCache) {
+    pub fn insert(&mut self, card: CardInCache) {
+        let uuid = card.strong.id;
+        let set_cn = card.strong.set_cn.clone();
+        self.set_cn.insert(set_cn, uuid);
         self.cards.insert(uuid, card);
         self.in_process.remove(&uuid);
     }
@@ -103,7 +110,7 @@ impl CardCache {
         let folder_name = folder()?.join(uuid.to_string());
         let card_data = fs::read(folder_name.join(DATA)).ok()?;
         let mut card = CardInCache {
-            weak: Arc::new(decode(&card_data).ok()?),
+            strong: Arc::new(decode(&card_data).ok()?),
             front_image: None,
             back_image: None,
         };
@@ -118,7 +125,7 @@ impl CardCache {
     pub fn write_files(uuid: Uuid, card: &CardInCache) {
         #[cfg(not(target_family = "wasm"))]
         if let Some(folder_name) = folder().map(|f| f.join(uuid.to_string())) {
-            let data = encode::<CardData>(&card.weak);
+            let data = encode::<CardData>(&card.strong);
             let _ = fs::write(folder_name.join(DATA), data);
             if let Some(val) = &card.front_image {
                 _ = fs::write(folder_name.join(FRONT), val);

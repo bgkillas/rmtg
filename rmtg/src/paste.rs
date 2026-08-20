@@ -31,13 +31,12 @@ pub fn react_paste_card(
         });
     } else if let Some(rest) = event.string.strip_prefix("https://scryfall.com/card/")
         && let Some((set, after)) = rest.split_once('/')
-        && let Some((cn_str, _)) = after.split_once('/')
-        && let Ok(cn) = cn_str.parse()
+        && let Some((cn, _)) = after.split_once('/')
     {
         let client_owned = client.client.clone();
-        let owned = set.to_owned();
+        let set_cn = format!("{set}/{cn}");
         runtime.spawn_hook(on_paste_card_set, async move {
-            SubCard::get_set_cn(client_owned, &owned, cn, QUALITY)
+            SubCard::get_set_cn(client_owned, &set_cn, QUALITY)
                 .await
                 .map(|c| (c, pos))
         });
@@ -58,10 +57,7 @@ fn on_paste_card_uuid(In(is_ok): In<Result<(SubCard, Vec3), Uuid>>, mut commands
         Err(e) => warn!("{e:?}"),
     }
 }
-fn on_paste_card_set(
-    In(is_ok): In<Result<(SubCard, Vec3), (String, u16)>>,
-    mut commands: Commands,
-) {
+fn on_paste_card_set(In(is_ok): In<Result<(SubCard, Vec3), Box<str>>>, mut commands: Commands) {
     match is_ok {
         Ok(val) => commands.run_system_cached_with(on_paste_card, val),
         Err(e) => warn!("{e:?}"),
