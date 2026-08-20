@@ -1,4 +1,4 @@
-#![allow(clippy::shadow_reuse)]
+#![expect(clippy::shadow_reuse)]
 use crate::focus::{Focus, Menu};
 use bevy::ecs::system::SystemParam;
 use bevy::input::ButtonInput;

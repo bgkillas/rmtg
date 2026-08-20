@@ -1,4 +1,4 @@
-#![allow(clippy::shadow_reuse)]
+#![expect(clippy::shadow_reuse)]
 use crate::shapes::deck_outline::DeckOutline;
 use crate::shapes::{NewShape as _, OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, Shape, ShapeOutline as _};
 use crate::{

@@ -1,4 +1,4 @@
-#![allow(incomplete_features)]
+#![expect(incomplete_features)]
 #![feature(min_generic_const_args)]
 #![feature(inherent_associated_types)]
 #![feature(associated_type_defaults)]
@@ -70,4 +70,8 @@ pub const PHYSICS_SCALE: f32 = CARD_HEIGHT * MAT_WIDTH / 8.0;
 fn wasm_hook() {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
     let _ = app::app_run();
+}
+#[importer::app_name]
+pub fn app_name() -> &'static str {
+    APP_NAME
 }

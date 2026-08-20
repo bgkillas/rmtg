@@ -1,4 +1,4 @@
-#![allow(clippy::shadow_reuse)]
+#![expect(clippy::shadow_reuse)]
 use crate::events::hover::HoveredObject;
 use crate::pile::Pile;
 use crate::shapes::{FaceNumber, Shape};

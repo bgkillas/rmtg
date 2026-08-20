@@ -175,7 +175,6 @@ impl Pile {
             Self::Multiple(v)
         }
     }
-    #[allow(clippy::must_use_candidate)]
     pub fn equip(&mut self) -> bool {
         match self {
             s @ Pile::Multiple(_) => {

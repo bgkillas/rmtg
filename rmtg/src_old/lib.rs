@@ -303,9 +303,9 @@ pub struct Turn(usize);
 pub struct Peers {
     map: Arc<Mutex<HashMap<PeerId, usize>>>,
     me: Option<usize>,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     names: HashMap<PeerId, String>,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     name: Option<String>,
 }
 impl Peers {
@@ -330,7 +330,7 @@ pub enum Pile {
     Empty,
 }
 impl Pile {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn sort_by<F>(&mut self, sort: F)
     where
         F: FnMut(&SubCard, &SubCard) -> Ordering,
@@ -436,7 +436,7 @@ impl Pile {
             self.last_mut()
         }
     }
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn get(&self, idx: usize) -> Option<&SubCard> {
         match self {
             Pile::Multiple(v) => v.get(idx),
@@ -620,7 +620,7 @@ impl Pile {
             Pile::Empty => unreachable!(),
         }
     }
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn insert(&mut self, n: usize, card: SubCard) {
         match self {
             Pile::Multiple(v) => v.insert(n, card),
@@ -705,7 +705,7 @@ pub enum DeckType {
 #[derive(Resource, Debug, Default, Clone, Deref, DerefMut)]
 pub struct GetDeck(Arc<Mutex<Vec<(Pile, DeckType)>>>);
 #[derive(Debug, Default, Clone, Encode, Decode)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub struct CardInfo {
     name: String,
     mana_cost: Cost,
@@ -754,12 +754,12 @@ impl CardInfo {
     }
 }
 impl Type {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn is_permanent(&self) -> bool {
         !matches!(self, Self::Instant | Self::Sorcery)
     }
 }
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Debug, Default, Clone, Encode, Decode, Eq, PartialEq)]
 pub struct Types {
     super_type: SuperTypes,
@@ -849,7 +849,7 @@ impl PartialOrd for SubTypes {
     }
 }
 impl Types {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn is_permanent(&self) -> bool {
         self.main_type
             .first()
@@ -1157,7 +1157,7 @@ pub struct Card {
     counters: Option<Value>,
     loyalty: Option<Value>,
     misc: Option<Value>,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     is_token: bool,
 }
 impl Card {
@@ -1183,7 +1183,7 @@ impl Card {
             is_token: false,
         }
     }
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn filter(&self, text: &str) -> bool {
         self.subcard.filter(text)
     }
@@ -1208,7 +1208,7 @@ impl Card {
             started: false,
         }
     }
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn get(&self, idx: usize) -> Option<&SubCard> {
         if idx == 0 {
             Some(&self.subcard)
@@ -1709,7 +1709,7 @@ impl Keybinds<'_> {
             _ => unreachable!(),
         }
     }
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn set(&mut self, keybind: Keybind) -> bool {
         if let Some(new) = Bind::new_from(&self.keyboard, &self.mouse) {
             self.keybinds[keybind] = new;
@@ -1895,7 +1895,7 @@ impl Modifier {
             Modifier::Super => [KeyCode::SuperLeft, KeyCode::SuperRight],
         })
     }
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn just_pressed(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
         keyboard.any_just_pressed(match self {
             Modifier::Alt => [KeyCode::AltLeft, KeyCode::AltRight],
@@ -1938,7 +1938,7 @@ impl From<MouseButton> for Bind {
     }
 }
 impl Bind {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn new_from(
         keyboard: &ButtonInput<KeyCode>,
         mouse: &ButtonInput<MouseButton>,

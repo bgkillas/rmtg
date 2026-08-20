@@ -46,7 +46,7 @@ pub fn get_sync(
     spatial: SpatialQuery,
     keybinds: Keybinds,
 ) {
-    #[allow(unused_variables)]
+    #[expect(unused_variables)]
     if let Err(e) = client.update() {
         #[cfg(feature = "steam")]
         warn!("{e}")
@@ -894,7 +894,7 @@ pub fn apply_sync(
                     run(&mut pile, children, &transform, entity, true)
                 }
             }
-            #[allow(unused_variables)]
+            #[expect(unused_variables)]
             Packet::Move(from, to, count, from_top, to_top) => {
                 //TODO
             }
@@ -1189,7 +1189,7 @@ pub fn apply_sync(
                     run(pile, children, transform, entity, true);
                 }
             }
-            #[allow(unused_variables)]
+            #[expect(unused_variables)]
             Packet::Repaint(id, to, tokens, flipped) => {
                 todo!()
             }

@@ -4609,6 +4609,7 @@ dependencies = [
  "ratelimit",
  "reqwest",
  "rules",
+ "rustc-hash 2.1.3",
  "tokio",
  "tokio_with_wasm",
  "uuid",
