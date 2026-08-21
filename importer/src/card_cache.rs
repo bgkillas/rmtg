@@ -131,7 +131,7 @@ impl CacheRead {
         let card_data = fs::read(folder_name.join(DATA)).ok()?;
         let mut card = Self {
             strong: Arc::new(decode(&card_data).ok()?),
-            front_image: CacheReadImage::None,
+            front_image: CacheReadImage::Missing,
             back_image: CacheReadImage::None,
         };
         if let Ok(data) = fs::read(folder_name.join(FRONT)) {

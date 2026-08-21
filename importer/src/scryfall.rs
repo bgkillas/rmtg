@@ -68,7 +68,7 @@ impl Quality {
     }
 }
 #[cfg(not(target_family = "wasm"))]
-async fn get_image(client: Client, uuid: Uuid, quality: Quality, side: Side) -> Option<Image> {
+async fn get_image(client: &Client, uuid: Uuid, quality: Quality, side: Side) -> Option<Image> {
     let byte = uuid.as_bytes()[0];
     match client
         .get(format!(
@@ -95,8 +95,18 @@ async fn get_image(client: Client, uuid: Uuid, quality: Quality, side: Side) -> 
     }
 }
 impl CacheReadImage {
-    pub async fn get_image(self, client: &Client, quality: Quality) -> Option<Image> {
-        None
+    pub async fn get_image(
+        self,
+        client: &Client,
+        uuid: Uuid,
+        quality: Quality,
+        side: Side,
+    ) -> Option<Image> {
+        match self {
+            CacheReadImage::Some(bytes) => parse_bytes(&bytes),
+            CacheReadImage::Missing => get_image(client, uuid, quality, side).await,
+            CacheReadImage::None => None,
+        }
     }
 }
 #[cfg(target_family = "wasm")]
@@ -111,7 +121,7 @@ fn get_image_receiver(
 ) -> Receiver<Option<Image>> {
     let (send, recv) = channel();
     tokio::spawn(async move {
-        let _ = send.send(get_image(client, uuid, quality, side).await);
+        let _ = send.send(get_image(&client, uuid, quality, side).await);
     });
     recv
 }
@@ -227,16 +237,16 @@ impl SubCard {
             CacheResult::Some(card) => Self::get_cached_card(client, card, quality).await,
             CacheResult::Cached(uuid) => {
                 if let Some(read) = CacheRead::read_files(uuid) {
-                    let data = read.strong.clone();
                     async fn read_cards(
                         client: Client,
+                        uuid: Uuid,
                         quality: Quality,
                         front_image: CacheReadImage,
                         back_image: CacheReadImage,
                     ) {
                         match join!(
-                            front_image.get_image(&client, quality),
-                            back_image.get_image(&client, quality)
+                            front_image.get_image(&client, uuid, quality, Side::Front),
+                            back_image.get_image(&client, uuid, quality, Side::Back)
                         ) {
                             (Some(first), Some(back)) => todo!(),
                             (Some(first), None) => todo!(),
@@ -244,8 +254,10 @@ impl SubCard {
                             (None, None) => todo!(),
                         }
                     }
+                    let data = read.strong.clone();
                     tokio::spawn(read_cards(
                         client,
+                        uuid,
                         quality,
                         read.front_image,
                         read.back_image,
