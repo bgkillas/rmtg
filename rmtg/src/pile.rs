@@ -12,16 +12,20 @@ use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Bundle, Component, InheritedVisibility, Transform};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::query::With;
-use bevy_ecs::system::{Commands, Query, ResMut};
+use bevy_ecs::system::{Commands, Query, Res, ResMut};
+use bevy_p2p::runtime::Runtime;
 use bevy_query_fn_macro::query_fn;
 use bitcode::{Decode, Encode};
 use importer::bitcode;
 use importer::card::{Card, CardIter, CardIterMut, MaybeHandles, SubCard};
+use importer::scryfall::{CACHE, IMAGES_TO_PROCESS};
 use itertools::Either;
 use rand::make_rng;
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom as _;
+use rustc_hash::FxBuildHasher;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::ops::{Bound, RangeBounds};
 use std::slice::{Iter, IterMut};
 use std::{iter, mem};
@@ -67,7 +71,7 @@ impl From<Quat> for TapState {
         }
     }
 }
-#[derive(Component, Default, Debug, Encode, Decode)]
+#[derive(Component, Default, Debug, Encode, Decode, Clone)]
 pub enum Pile {
     Multiple(Vec<SubCard>),
     Single(Box<Card>),
@@ -148,7 +152,7 @@ impl Pile {
     pub fn is_oracle(&self) -> bool {
         matches!(
             self.first().face_maybe_handles(),
-            MaybeHandles::None | MaybeHandles::Waiting(_)
+            MaybeHandles::None | MaybeHandles::Waiting
         )
     }
     #[must_use]
@@ -246,26 +250,6 @@ impl Pile {
         };
         mem::swap(s, &mut top);
         s.equiped.splice(0..0, top.flatten());
-    }
-    #[must_use]
-    pub fn try_clone(&self) -> Option<Self> {
-        Some(match self {
-            Pile::Multiple(v) => Pile::Multiple(
-                v.iter()
-                    .map(SubCard::try_clone)
-                    .collect::<Option<Vec<_>>>()?,
-            ),
-            Pile::Single(s) => Pile::Single(s.try_clone()?.into()),
-            Pile::Empty => Pile::Empty,
-        })
-    }
-    #[must_use]
-    pub fn clone_no_image(&self) -> Self {
-        match self {
-            Pile::Multiple(v) => Pile::Multiple(v.iter().map(SubCard::clone_no_image).collect()),
-            Pile::Single(s) => Pile::Single(s.clone_no_image().into()),
-            Pile::Empty => Pile::Empty,
-        }
     }
     #[must_use]
     pub fn get_card(&self, rot: Quat) -> &SubCard {
@@ -573,8 +557,9 @@ pub fn register_cards(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    runtime: Res<Runtime>,
 ) {
-    fn register(
+    /*fn register(
         data: &mut MaybeHandles,
         images: &mut Assets<Image>,
         materials: &mut Assets<StandardMaterial>,
@@ -597,26 +582,50 @@ pub fn register_cards(
             }
             MaybeHandles::Some(_) | MaybeHandles::None => {}
         }
+    }*/
+    let mut new_images = IMAGES_TO_PROCESS.lock().unwrap();
+    if new_images.is_empty() {
+        drop(new_images);
+    } else {
+        let map = new_images
+            .drain()
+            .map(|(uuid, (front, back))| {
+                (
+                    uuid,
+                    (
+                        front.map(|inner| register_card(&mut materials, images.add(inner))),
+                        back.map(|inner| register_card(&mut materials, images.add(inner))),
+                    ),
+                )
+            })
+            .collect::<HashMap<_, _, FxBuildHasher>>();
+        drop(new_images);
+        runtime.block_on(async {
+            let mut cache = CACHE.lock().await;
+            for (uuid, (front, back)) in map {
+                let card = cache.cards.get_mut(&uuid).unwrap();
+                card.front_image = front.map_or(MaybeHandles::None, MaybeHandles::Some);
+                card.back_image = back.map_or(MaybeHandles::None, MaybeHandles::Some);
+            }
+        });
     }
     for mut pile in query {
         let mut has_some = false;
         let mut repaint = false;
         for card in &mut pile.pile {
-            register(
-                &mut card.face_handles,
-                &mut images,
-                &mut materials,
-                &mut has_some,
-                &mut repaint,
-            );
-            if let Some(back) = &mut card.back_handles {
-                register(
-                    back,
-                    &mut images,
-                    &mut materials,
-                    &mut has_some,
-                    &mut repaint,
-                );
+            if matches!(card.face_handles, MaybeHandles::Waiting)
+                || matches!(card.back_handles, MaybeHandles::Waiting)
+            {
+                has_some = true;
+                runtime.block_on(async {
+                    let cache = CACHE.lock().await;
+                    let card_cache = cache.cards.get(&card.data.id).unwrap();
+                    if !matches!(card_cache.front_image, MaybeHandles::Waiting) {
+                        repaint = true;
+                        card.face_handles = card_cache.front_image.clone();
+                        card.back_handles = card_cache.back_image.clone();
+                    }
+                });
             }
         }
         if repaint {

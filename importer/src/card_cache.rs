@@ -1,4 +1,4 @@
-use crate::card::CardData;
+use crate::card::{CardData, MaybeHandles};
 use bevy::asset::Handle;
 use bevy::image::Image;
 use bevy::platform::dirs::preferences_dir;
@@ -28,8 +28,8 @@ pub enum CacheImage {
 #[derive(Clone)]
 pub struct CardInCache {
     pub strong: Arc<CardData>,
-    pub front_image: CacheImage,
-    pub back_image: CacheImage,
+    pub front_image: MaybeHandles,
+    pub back_image: MaybeHandles,
 }
 pub enum CacheReadImage {
     Some(Box<[u8]>),

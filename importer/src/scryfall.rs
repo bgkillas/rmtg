@@ -7,10 +7,11 @@ use bevy::log::warn;
 use jzon::{JsonValue, parse};
 use ratelimit::Ratelimiter;
 use reqwest::Client;
+use rustc_hash::FxBuildHasher;
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::mem;
 use std::str::FromStr as _;
-use std::sync::mpmc::{Receiver, channel};
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 use tokio::join;
@@ -113,18 +114,6 @@ impl CacheReadImage {
 async fn get_image(_: Client, _: Uuid, _: Quality, _: Side) -> Option<Image> {
     None
 }
-fn get_image_receiver(
-    client: Client,
-    uuid: Uuid,
-    quality: Quality,
-    side: Side,
-) -> Receiver<Option<Image>> {
-    let (send, recv) = channel();
-    tokio::spawn(async move {
-        let _ = send.send(get_image(&client, uuid, quality, side).await);
-    });
-    recv
-}
 #[cfg(not(target_family = "wasm"))]
 pub type Clock = ratelimit::StdClock;
 #[cfg(target_family = "wasm")]
@@ -163,6 +152,9 @@ async fn get_uuid(client: Client, uuid: Uuid, quality: Quality) -> Option<SubCar
     let json = parse(&json_raw).ok()?;
     SubCard::from_scryfall(client, json, uuid, quality)
 }
+pub static IMAGES_TO_PROCESS: LazyLock<
+    std::sync::Mutex<HashMap<Uuid, (Option<Image>, Option<Image>), FxBuildHasher>>,
+> = LazyLock::new(|| std::sync::Mutex::new(HashMap::with_capacity_and_hasher(512, FxBuildHasher)));
 impl SubCard {
     #[must_use]
     pub fn get_list(
@@ -221,8 +213,13 @@ impl SubCard {
         client: Client,
         cached_card: CardInCache,
         quality: Quality,
-    ) -> Option<Self> {
-        todo!()
+    ) -> Self {
+        Self {
+            data: cached_card.strong,
+            face_handles: cached_card.front_image,
+            back_handles: cached_card.back_image,
+            flipped: false,
+        }
     }
     pub async fn get_cache_result<F>(
         client: Client,
@@ -234,7 +231,7 @@ impl SubCard {
         F: Future<Output = Option<Self>>,
     {
         match cache_result {
-            CacheResult::Some(card) => Self::get_cached_card(client, card, quality).await,
+            CacheResult::Some(card) => Some(Self::get_cached_card(client, card, quality).await),
             CacheResult::Cached(uuid) => {
                 if let Some(read) = CacheRead::read_files(uuid) {
                     async fn read_cards(
@@ -244,15 +241,14 @@ impl SubCard {
                         front_image: CacheReadImage,
                         back_image: CacheReadImage,
                     ) {
-                        match join!(
+                        let (front, back) = join!(
                             front_image.get_image(&client, uuid, quality, Side::Front),
                             back_image.get_image(&client, uuid, quality, Side::Back)
-                        ) {
-                            (Some(first), Some(back)) => todo!(),
-                            (Some(first), None) => todo!(),
-                            (None, Some(back)) => todo!(),
-                            (None, None) => todo!(),
-                        }
+                        );
+                        IMAGES_TO_PROCESS
+                            .lock()
+                            .unwrap()
+                            .insert(uuid, (front, back));
                     }
                     let data = read.strong.clone();
                     tokio::spawn(read_cards(
@@ -265,7 +261,7 @@ impl SubCard {
                     let card = Self {
                         data,
                         face_handles: MaybeHandles::None,
-                        back_handles: None,
+                        back_handles: MaybeHandles::None,
                         flipped: false,
                     };
                     Some(card)
@@ -282,7 +278,7 @@ impl SubCard {
                 }
                 let card = cache.cards.get(&uuid)?.clone();
                 drop(cache);
-                return Self::get_cached_card(client, card, quality).await;
+                return Some(Self::get_cached_card(client, card, quality).await);
             },
             CacheResult::None => on_none(client, quality).await,
         }
@@ -376,13 +372,9 @@ impl SubCard {
         }
         let layout_str = json["layout"].as_str()?;
         let layout = Layout::from(layout_str);
-        let face_handles = MaybeHandles::Waiting(get_image_receiver(
-            client.clone(),
-            uuid,
-            quality,
-            Side::Front,
-        ));
-        let mut back_handles = None;
+        //TODO
+        let face_handles = MaybeHandles::Waiting;
+        let mut back_handles = MaybeHandles::None;
         let (front, back) = if json["card_faces"].is_null() {
             let front = get_face(&json, &JsonValue::Null)?;
             (front, None)
@@ -391,12 +383,8 @@ impl SubCard {
             let front = get_face(&json, &faces[0])?;
             let back = get_face(&json, &faces[1])?;
             if faces[1]["image_uris"].is_array() {
-                back_handles = Some(MaybeHandles::Waiting(get_image_receiver(
-                    client,
-                    uuid,
-                    quality,
-                    Side::Back,
-                )));
+                //TODO
+                back_handles = MaybeHandles::Waiting;
             }
             (front, Some(Box::new(back)))
         };

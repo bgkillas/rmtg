@@ -10,11 +10,10 @@ use std::fmt::{Debug, Formatter};
 use std::mem;
 use std::slice::{Iter, IterMut};
 use std::sync::Arc;
-use std::sync::mpmc::Receiver;
 use uuid::Uuid;
 rules::generate_types!();
 type Value = f64;
-#[derive(Debug, Default, Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct Card {
     pub subcard: SubCard,
     pub equiped: Vec<SubCard>,
@@ -25,13 +24,13 @@ pub struct Card {
     pub misc: Option<Value>,
     pub is_token: bool,
 }
-#[derive(Debug, Default, Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct SubCard {
     pub data: Arc<CardData>,
     #[bitcode(skip)]
     pub face_handles: MaybeHandles,
     #[bitcode(skip)]
-    pub back_handles: Option<MaybeHandles>,
+    pub back_handles: MaybeHandles,
     pub flipped: bool,
 }
 #[derive(Debug, Clone, Default, Encode, Decode)]
@@ -81,10 +80,10 @@ pub struct CardInfo {
     pub loyalty: Option<u8>,
     pub has_unique_face: bool,
 }
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub enum MaybeHandles {
     Some(Handles),
-    Waiting(Receiver<Option<Image>>),
+    Waiting,
     #[default]
     None,
 }
@@ -162,17 +161,9 @@ pub enum SearchKey {
 }
 impl MaybeHandles {
     #[must_use]
-    pub fn try_clone(&self) -> Option<Self> {
-        match self {
-            MaybeHandles::Waiting(_) => None,
-            MaybeHandles::None => Some(MaybeHandles::None),
-            MaybeHandles::Some(handles) => Some(MaybeHandles::Some(handles.clone())),
-        }
-    }
-    #[must_use]
     pub fn handles(&self) -> Option<Handles> {
         match self {
-            MaybeHandles::Waiting(_) | MaybeHandles::None => None,
+            MaybeHandles::Waiting | MaybeHandles::None => None,
             MaybeHandles::Some(handles) => Some(handles.clone()),
         }
     }
@@ -487,36 +478,6 @@ impl Card {
             || self.misc.is_some()
     }
     #[must_use]
-    pub fn try_clone(&self) -> Option<Self> {
-        Some(Self {
-            subcard: self.subcard.try_clone()?,
-            equiped: self
-                .equiped
-                .iter()
-                .map(SubCard::try_clone)
-                .collect::<Option<Vec<_>>>()?,
-            power: None,
-            toughness: None,
-            counters: None,
-            loyalty: None,
-            misc: None,
-            is_token: false,
-        })
-    }
-    #[must_use]
-    pub fn clone_no_image(&self) -> Self {
-        Self {
-            subcard: self.subcard.clone_no_image(),
-            equiped: self.equiped.iter().map(SubCard::clone_no_image).collect(),
-            power: None,
-            toughness: None,
-            counters: None,
-            loyalty: None,
-            misc: None,
-            is_token: false,
-        }
-    }
-    #[must_use]
     pub fn filter(&self, text: &str) -> bool {
         self.subcard.filter(text)
     }
@@ -635,30 +596,6 @@ impl DoubleEndedIterator for CardIterMut<'_> {
 }
 impl SubCard {
     #[must_use]
-    pub fn try_clone(&self) -> Option<Self> {
-        Some(Self {
-            data: self.data.clone(),
-            face_handles: self.face_handles.try_clone()?,
-            back_handles: if let Some(inner) =
-                self.back_handles.as_ref().map(MaybeHandles::try_clone)
-            {
-                Some(inner?)
-            } else {
-                None
-            },
-            flipped: self.flipped,
-        })
-    }
-    #[must_use]
-    pub fn clone_no_image(&self) -> Self {
-        Self {
-            data: self.data.clone(),
-            face_handles: MaybeHandles::None,
-            back_handles: self.back_handles.is_some().then(|| MaybeHandles::None),
-            flipped: self.flipped,
-        }
-    }
-    #[must_use]
     pub fn filter(&self, text: &str) -> bool {
         self.data.front.filter(text) || self.data.back.as_ref().is_some_and(|c| c.filter(text))
     }
@@ -701,7 +638,7 @@ impl SubCard {
     #[must_use]
     pub fn face_maybe_handles(&self) -> &MaybeHandles {
         if self.flipped {
-            self.back_handles.as_ref().unwrap()
+            &self.back_handles
         } else {
             &self.face_handles
         }
@@ -711,7 +648,7 @@ impl SubCard {
         if self.flipped {
             &self.face_handles
         } else {
-            self.back_handles.as_ref().unwrap()
+            &self.back_handles
         }
     }
 }

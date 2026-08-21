@@ -1475,11 +1475,12 @@ checksum = "bff34eb29ff4b8a8688bc7299f14fb6b597461ca80fec03ed7d22939ab33e48f"
 [[package]]
 name = "bevy_p2p"
 version = "0.1.0"
-source = "git+https://github.com/bgkillas/bevy_p2p#2ff80e8db3dabcbccfd3bb228210c7a387f13d90"
+source = "git+https://github.com/bgkillas/bevy_p2p#097cb42fd68f8436713a7694f9ddd6bf42718d23"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
  "bevy_log",
+ "bevy_platform",
  "bimap",
  "bitcode",
  "iroh",
@@ -4486,9 +4487,9 @@ checksum = "e590f038c1464a96894fd6d10127e90a8be4509f56ff7ecef851b15cee0b7caa"
 
 [[package]]
 name = "icu_provider"
-version = "2.3.0"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92a7ed671a6aad807a8651a2e1782a6598fda9ce5185dd8158549e95a91c6428"
+checksum = "d27bbb9d3abbefac45d55f647c9de1d44aafcd1186eb91879afef17c396c3e73"
 dependencies = [
  "displaydoc",
  "icu_locale_core",
@@ -6279,8 +6280,8 @@ checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
 
 [[package]]
 name = "opus-rs"
-version = "0.1.29"
-source = "git+https://github.com/restsend/opus-rs#95f8b76430beb8c1bed067354d519c918ceade21"
+version = "0.1.30"
+source = "git+https://github.com/restsend/opus-rs#524ba0b1cb919b23598c16dc530f9360a1b2109e"
 
 [[package]]
 name = "orbclient"
@@ -10199,9 +10200,9 @@ dependencies = [
 
 [[package]]
 name = "zerovec-derive"
-version = "0.11.5"
+version = "0.11.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f212a141d820099d57ffafb9569be9617a6f27d3dc881fbee8fb56642f917a9"
+checksum = "34df6fc39dbd26ddc9c10e6a2984476e13acce22e64e4487636ef494369225da"
 dependencies = [
  "proc-macro2",
  "quote",

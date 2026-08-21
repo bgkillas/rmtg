@@ -1,7 +1,6 @@
 #![expect(incomplete_features)]
 #![feature(array_try_map)]
 #![feature(min_generic_const_args)]
-#![feature(mpmc_channel)]
 #![feature(extern_item_impls)]
 #![feature(arc_is_unique)]
 #![cfg_attr(test, feature(test))]

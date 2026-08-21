@@ -31,7 +31,7 @@ pub enum CloneType {
 impl Clone for CloneType {
     fn clone(&self) -> Self {
         match self {
-            Self::Pile(pile) => Self::Pile(pile.try_clone().unwrap()),
+            Self::Pile(pile) => Self::Pile(pile.clone()),
             Self::Shape(shape) => Self::Shape(*shape),
         }
     }
@@ -40,7 +40,7 @@ pub fn on_clone(clone: On<CloneObj>, mut commands: Commands, asset: AssetManager
     let mut ent = commands.spawn(clone.transform);
     let id = match &clone.clone_type {
         CloneType::Pile(deck) => {
-            ent.insert(deck.try_clone().unwrap().bundle());
+            ent.insert(deck.clone().bundle());
             ent.id()
         }
         &CloneType::Shape(shape) => {
@@ -69,7 +69,7 @@ pub fn update_clone(
         for hovered in hovered_entities {
             let ty = match (hovered.shape, hovered.pile) {
                 (Some(&shape), None) => CloneType::Shape(shape),
-                (None, Some(pile)) => CloneType::Pile(pile.try_clone().unwrap()),
+                (None, Some(pile)) => CloneType::Pile(pile.clone()),
                 _ => unreachable!(),
             };
             let mut trans = *hovered.transform;
