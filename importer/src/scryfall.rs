@@ -3,7 +3,6 @@ use crate::card::{Colors, Cost, SubCard, Types};
 use crate::card_cache::{CacheRead, CacheReadImage, CacheResult, CardCache, CardInCache};
 use crate::image::parse_bytes;
 use bevy::image::Image;
-use bevy::log::warn;
 use jzon::{JsonValue, parse};
 use ratelimit::Ratelimiter;
 use reqwest::Client;
@@ -70,6 +69,7 @@ impl Quality {
 }
 #[cfg(not(target_family = "wasm"))]
 async fn get_image(client: &Client, uuid: Uuid, quality: Quality, side: Side) -> Option<Image> {
+    use bevy::log::warn;
     let byte = uuid.as_bytes()[0];
     match client
         .get(format!(
@@ -95,6 +95,10 @@ async fn get_image(client: &Client, uuid: Uuid, quality: Quality, side: Side) ->
         }
     }
 }
+#[cfg(target_family = "wasm")]
+async fn get_image(_: &Client, _: Uuid, _: Quality, _: Side) -> Option<Image> {
+    None
+}
 impl CacheReadImage {
     pub async fn get_image(
         self,
@@ -109,10 +113,6 @@ impl CacheReadImage {
             CacheReadImage::None => None,
         }
     }
-}
-#[cfg(target_family = "wasm")]
-async fn get_image(_: Client, _: Uuid, _: Quality, _: Side) -> Option<Image> {
-    None
 }
 #[cfg(not(target_family = "wasm"))]
 pub type Clock = ratelimit::StdClock;
