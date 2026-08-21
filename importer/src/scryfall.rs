@@ -1,7 +1,7 @@
 use crate::card::{CardData, CardInfo, Layout, MaybeHandles};
 use crate::card::{Colors, Cost, SubCard, Types};
 use crate::card_cache::{
-    CacheRead, CacheReadImage, CacheResult, CardCache, CardInCache, write_image,
+    CacheRead, CacheReadImage, CacheResult, CardCache, CardInCache, get_images, write_image,
 };
 use crate::image::parse_bytes;
 use bevy::image::Image;
@@ -120,7 +120,13 @@ impl CacheReadImage {
         side: Side,
     ) -> Option<Image> {
         match self {
-            CacheReadImage::Some(bytes) => parse_bytes(&bytes),
+            CacheReadImage::Some(bytes) => {
+                if let Some(image) = parse_bytes(&bytes) {
+                    Some(image)
+                } else {
+                    get_image(client, set_cn, uuid, quality, side).await
+                }
+            }
             CacheReadImage::Missing => get_image(client, set_cn, uuid, quality, side).await,
             CacheReadImage::None => None,
         }
@@ -142,6 +148,20 @@ async fn read_cards(
         .lock()
         .unwrap()
         .insert(uuid, (front, back));
+}
+async fn read_cards_check(
+    client: Client,
+    set_cn: Box<str>,
+    uuid: Uuid,
+    quality: Quality,
+    mut front_image: CacheReadImage,
+    mut back_image: CacheReadImage,
+) {
+    if let Some((front, back)) = get_images(uuid, matches!(back_image, CacheReadImage::Missing)) {
+        front_image = front;
+        back_image = back;
+    }
+    read_cards(client, set_cn, uuid, quality, front_image, back_image).await;
 }
 impl From<&MaybeHandles> for CacheReadImage {
     fn from(value: &MaybeHandles) -> Self {
@@ -378,7 +398,7 @@ impl SubCard {
             let oracle_text = oracle_text_raw.to_owned();
             let mana_cost = Cost::from(mana_cost_raw);
             let type_line = Types::from(type_line_raw);
-            let has_unique_face = face["card_faces"].is_array();
+            let has_unique_face = face["image_uris"].is_array();
             Some(CardInfo {
                 oracle_id,
                 name: name.into_boxed_str(),
@@ -404,7 +424,7 @@ impl SubCard {
             let faces = json["card_faces"].as_array()?;
             let front = get_face(&json, &faces[0])?;
             let back = get_face(&json, &faces[1])?;
-            if faces[1]["image_uris"].is_array() {
+            if back.has_unique_face {
                 back_handles = MaybeHandles::Waiting;
             }
             (front, Some(Box::new(back)))
@@ -412,7 +432,7 @@ impl SubCard {
         let set = json["set"].as_str().unwrap();
         let cn = json["collector_number"].as_str().unwrap();
         let set_cn = format!("{set}/{cn}").into_boxed_str();
-        tokio::spawn(read_cards(
+        tokio::spawn(read_cards_check(
             client,
             set_cn.clone(),
             uuid,

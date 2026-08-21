@@ -131,21 +131,30 @@ impl CacheRead {
     pub fn read_files(uuid: Uuid) -> Option<Self> {
         let folder_name = folder()?.join(uuid.to_string());
         let card_data = fs::read(folder_name.join(DATA)).ok()?;
-        let mut card = Self {
-            strong: Arc::new(decode(&card_data).ok()?),
-            front_image: CacheReadImage::Missing,
-            back_image: CacheReadImage::None,
+        let data = decode::<CardData>(&card_data).ok()?;
+        let (front_image, back_image) =
+            get_images(uuid, data.back.as_ref().is_some_and(|c| c.has_unique_face))?;
+        let card = Self {
+            strong: Arc::new(data),
+            front_image,
+            back_image,
         };
-        if let Ok(data) = fs::read(folder_name.join(FRONT)) {
-            card.front_image = CacheReadImage::Some(data.into_boxed_slice());
-        }
-        if let Ok(data) = fs::read(folder_name.join(BACK)) {
-            card.back_image = CacheReadImage::Some(data.into_boxed_slice());
-        } else if card.strong.back.as_ref().is_some_and(|c| c.has_unique_face) {
-            card.back_image = CacheReadImage::Missing;
-        }
         Some(card)
     }
+}
+pub fn get_images(uuid: Uuid, has_unique_face: bool) -> Option<(CacheReadImage, CacheReadImage)> {
+    let folder_name = folder()?.join(uuid.to_string());
+    let mut front_image = CacheReadImage::Missing;
+    let mut back_image = CacheReadImage::None;
+    if let Ok(data) = fs::read(folder_name.join(FRONT)) {
+        front_image = CacheReadImage::Some(data.into_boxed_slice());
+    }
+    if let Ok(data) = fs::read(folder_name.join(BACK)) {
+        back_image = CacheReadImage::Some(data.into_boxed_slice());
+    } else if has_unique_face {
+        back_image = CacheReadImage::Missing;
+    }
+    Some((front_image, back_image))
 }
 pub fn write_image(bytes: &[u8], set_cn: &str, uuid: Uuid, side: Side) {
     if let Some(folder_name) = folder().map(|f| f.join(format!("{set_cn}/{uuid}"))) {
