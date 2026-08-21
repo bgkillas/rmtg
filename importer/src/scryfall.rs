@@ -316,8 +316,11 @@ impl SubCard {
                         back_handles,
                     });
                     Some(card)
+                } else if let Some(card) = on_none(client, quality).await {
+                    Some(card)
                 } else {
-                    on_none(client, quality).await
+                    CACHE.lock().await.in_progress.remove(&uuid);
+                    None
                 }
             }
             CacheResult::Wait(uuid) => loop {
@@ -336,7 +339,13 @@ impl SubCard {
                     flipped: false,
                 });
             },
-            CacheResult::None => on_none(client, quality).await,
+            CacheResult::None(_) if let Some(card) = on_none(client, quality).await => Some(card),
+            CacheResult::None(Some(uuid)) => {
+                CACHE.lock().await.in_progress.remove(&uuid);
+                None
+            }
+            //TODO
+            CacheResult::None(None) => None,
         }
     }
     pub async fn get(client: Client, uuid: Uuid, quality: Quality) -> Result<Self, Uuid> {

@@ -84,7 +84,7 @@ pub enum CacheResult {
     Some(CardInCache),
     Cached(Uuid),
     Wait(Uuid),
-    None,
+    None(Option<Uuid>),
 }
 impl CardCache {
     pub fn clean(&mut self) {
@@ -100,14 +100,14 @@ impl CardCache {
             CacheResult::Wait(uuid)
         } else {
             self.in_progress.insert(uuid);
-            CacheResult::None
+            CacheResult::None(Some(uuid))
         }
     }
     pub fn get_set_cn(&mut self, set_cn: &str) -> CacheResult {
         if let Some(&uuid) = self.set_cn.get(set_cn) {
             self.get(uuid)
         } else {
-            CacheResult::None
+            CacheResult::None(None)
         }
     }
     pub fn insert(&mut self, card: CardInCache) {
