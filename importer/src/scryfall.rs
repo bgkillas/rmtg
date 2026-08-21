@@ -1,7 +1,8 @@
 use crate::card::{CardData, CardInfo, Layout, MaybeHandles};
 use crate::card::{Colors, Cost, SubCard, Types};
 use crate::card_cache::{
-    CacheRead, CacheReadImage, CacheResult, CardCache, CardInCache, get_images, write_image,
+    CacheRead, CacheReadImage, CacheResult, CardCache, CardInCache, Identifier, get_images,
+    write_image,
 };
 use crate::image::parse_bytes;
 use bevy::image::Image;
@@ -274,7 +275,7 @@ impl SubCard {
     }
     pub async fn get_cache_result<F>(
         client: Client,
-        cache_result: CacheResult,
+        cache_result: CacheResult<'_>,
         quality: Quality,
         on_none: impl FnOnce(Client, Quality) -> F,
     ) -> Option<Self>
@@ -323,7 +324,7 @@ impl SubCard {
                     None
                 }
             }
-            CacheResult::Wait(uuid) => loop {
+            CacheResult::Wait(Identifier::Uuid(uuid)) => loop {
                 sleep(SLEEP_TIME).await;
                 let cache = CACHE.lock().await;
                 if cache.in_progress.contains(&uuid) {
@@ -339,13 +340,32 @@ impl SubCard {
                     flipped: false,
                 });
             },
+            CacheResult::Wait(Identifier::SetCn(str)) => loop {
+                sleep(SLEEP_TIME).await;
+                let cache = CACHE.lock().await;
+                if cache.in_progress_set_cn.contains(str) {
+                    drop(cache);
+                    continue;
+                }
+                let &uuid = cache.set_cn.get(str)?;
+                let card = cache.cards.get(&uuid)?.clone();
+                drop(cache);
+                return Some(Self {
+                    data: card.strong,
+                    face_handles: card.face_handles,
+                    back_handles: card.back_handles,
+                    flipped: false,
+                });
+            },
             CacheResult::None(_) if let Some(card) = on_none(client, quality).await => Some(card),
-            CacheResult::None(Some(uuid)) => {
+            CacheResult::None(Identifier::Uuid(uuid)) => {
                 CACHE.lock().await.in_progress.remove(&uuid);
                 None
             }
-            //TODO
-            CacheResult::None(None) => None,
+            CacheResult::None(Identifier::SetCn(str)) => {
+                CACHE.lock().await.in_progress_set_cn.remove(str);
+                None
+            }
         }
     }
     pub async fn get(client: Client, uuid: Uuid, quality: Quality) -> Result<Self, Uuid> {

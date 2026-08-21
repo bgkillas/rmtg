@@ -18,6 +18,7 @@ pub struct CardCache {
     pub cards: HashMap<Uuid, CardInCache, FxBuildHasher>,
     pub in_storage: HashSet<Uuid, FxBuildHasher>,
     pub in_progress: HashSet<Uuid, FxBuildHasher>,
+    pub in_progress_set_cn: HashSet<Box<str>, FxBuildHasher>,
     pub set_cn: HashMap<Box<str>, Uuid, FxBuildHasher>,
 }
 #[derive(Clone)]
@@ -76,43 +77,50 @@ impl Default for CardCache {
             cards: HashMap::with_capacity_and_hasher(512, FxBuildHasher),
             in_storage,
             in_progress: HashSet::with_capacity_and_hasher(512, FxBuildHasher),
+            in_progress_set_cn: HashSet::with_capacity_and_hasher(512, FxBuildHasher),
             set_cn,
         }
     }
 }
-pub enum CacheResult {
+pub enum Identifier<'a> {
+    Uuid(Uuid),
+    SetCn(&'a str),
+}
+pub enum CacheResult<'a> {
     Some(CardInCache),
     Cached(Uuid),
-    Wait(Uuid),
-    None(Option<Uuid>),
+    Wait(Identifier<'a>),
+    None(Identifier<'a>),
 }
 impl CardCache {
     pub fn clean(&mut self) {
         self.cards.retain(|_, card| !Arc::is_unique(&card.strong));
     }
-    pub fn get(&mut self, uuid: Uuid) -> CacheResult {
+    pub fn get<'b>(&mut self, uuid: Uuid) -> CacheResult<'b> {
         if let Some(val) = self.cards.get(&uuid) {
             CacheResult::Some(val.clone())
         } else if self.in_storage.contains(&uuid) {
             self.in_progress.insert(uuid);
             CacheResult::Cached(uuid)
         } else if self.in_progress.contains(&uuid) {
-            CacheResult::Wait(uuid)
+            CacheResult::Wait(Identifier::Uuid(uuid))
         } else {
             self.in_progress.insert(uuid);
-            CacheResult::None(Some(uuid))
+            CacheResult::None(Identifier::Uuid(uuid))
         }
     }
-    pub fn get_set_cn(&mut self, set_cn: &str) -> CacheResult {
+    pub fn get_set_cn<'a>(&mut self, set_cn: &'a str) -> CacheResult<'a> {
         if let Some(&uuid) = self.set_cn.get(set_cn) {
             self.get(uuid)
         } else {
-            CacheResult::None(None)
+            //TODO
+            CacheResult::None(Identifier::SetCn(set_cn))
         }
     }
     pub fn insert(&mut self, card: CardInCache) {
         let uuid = card.strong.id;
         let set_cn = card.strong.set_cn.clone();
+        self.in_progress_set_cn.remove(&set_cn);
         self.set_cn.insert(set_cn, uuid);
         self.cards.insert(uuid, card);
         self.in_progress.remove(&uuid);
