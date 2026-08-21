@@ -28,8 +28,8 @@ pub enum CacheImage {
 #[derive(Clone)]
 pub struct CardInCache {
     pub strong: Arc<CardData>,
-    pub front_image: MaybeHandles,
-    pub back_image: MaybeHandles,
+    pub face_handles: MaybeHandles,
+    pub back_handles: MaybeHandles,
 }
 pub enum CacheReadImage {
     Some(Box<[u8]>),

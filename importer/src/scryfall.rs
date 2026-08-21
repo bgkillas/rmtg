@@ -83,7 +83,7 @@ async fn get_image(client: &Client, uuid: Uuid, quality: Quality, side: Side) ->
         .await
     {
         Ok(request) => match request.bytes().await {
-            Ok(bytes) => parse_bytes(&bytes),
+            Ok(bytes) => parse_bytes(&bytes), //TODO write
             Err(e) => {
                 warn!("{e:?}");
                 None
@@ -113,6 +113,22 @@ impl CacheReadImage {
             CacheReadImage::None => None,
         }
     }
+}
+async fn read_cards(
+    client: Client,
+    uuid: Uuid,
+    quality: Quality,
+    front_image: CacheReadImage,
+    back_image: CacheReadImage,
+) {
+    let (front, back) = join!(
+        front_image.get_image(&client, uuid, quality, Side::Front),
+        back_image.get_image(&client, uuid, quality, Side::Back)
+    );
+    IMAGES_TO_PROCESS
+        .lock()
+        .unwrap()
+        .insert(uuid, (front, back));
 }
 #[cfg(not(target_family = "wasm"))]
 pub type Clock = ratelimit::StdClock;
@@ -150,7 +166,7 @@ async fn get_uuid(client: Client, uuid: Uuid, quality: Quality) -> Option<SubCar
         .ok()?;
     let json_raw = request.text().await.ok()?;
     let json = parse(&json_raw).ok()?;
-    SubCard::from_scryfall(client, json, uuid, quality)
+    SubCard::from_scryfall(client, json, uuid, quality).await
 }
 pub static IMAGES_TO_PROCESS: LazyLock<
     std::sync::Mutex<HashMap<Uuid, (Option<Image>, Option<Image>), FxBuildHasher>>,
@@ -189,11 +205,14 @@ impl SubCard {
             let json_raw = request.text().await.ok()?;
             let mut json = parse(&json_raw).ok()?;
             for card_json in json["data"].as_array_mut()? {
-                set.push(Self::get_json(
-                    client.clone(),
-                    mem::replace(card_json, JsonValue::Null),
-                    quality,
-                ));
+                set.push(
+                    Self::get_json(
+                        client.clone(),
+                        mem::replace(card_json, JsonValue::Null),
+                        quality,
+                    )
+                    .await,
+                );
             }
             if !json["has_more"].as_bool()? {
                 break;
@@ -201,24 +220,12 @@ impl SubCard {
         }
         Some(set)
     }
-    pub fn get_json(client: Client, json: JsonValue, quality: Quality) -> Result<Self, Uuid> {
+    pub async fn get_json(client: Client, json: JsonValue, quality: Quality) -> Result<Self, Uuid> {
         let uuid = Uuid::parse_str(json["id"].as_str().unwrap_or_default()).unwrap_or_default();
-        if let Some(card) = SubCard::from_scryfall(client, json, uuid, quality) {
+        if let Some(card) = SubCard::from_scryfall(client, json, uuid, quality).await {
             Ok(card)
         } else {
             Err(uuid)
-        }
-    }
-    pub async fn get_cached_card(
-        client: Client,
-        cached_card: CardInCache,
-        quality: Quality,
-    ) -> Self {
-        Self {
-            data: cached_card.strong,
-            face_handles: cached_card.front_image,
-            back_handles: cached_card.back_image,
-            flipped: false,
         }
     }
     pub async fn get_cache_result<F>(
@@ -231,25 +238,14 @@ impl SubCard {
         F: Future<Output = Option<Self>>,
     {
         match cache_result {
-            CacheResult::Some(card) => Some(Self::get_cached_card(client, card, quality).await),
+            CacheResult::Some(card) => Some(Self {
+                data: card.strong,
+                face_handles: card.face_handles,
+                back_handles: card.back_handles,
+                flipped: false,
+            }),
             CacheResult::Cached(uuid) => {
                 if let Some(read) = CacheRead::read_files(uuid) {
-                    async fn read_cards(
-                        client: Client,
-                        uuid: Uuid,
-                        quality: Quality,
-                        front_image: CacheReadImage,
-                        back_image: CacheReadImage,
-                    ) {
-                        let (front, back) = join!(
-                            front_image.get_image(&client, uuid, quality, Side::Front),
-                            back_image.get_image(&client, uuid, quality, Side::Back)
-                        );
-                        IMAGES_TO_PROCESS
-                            .lock()
-                            .unwrap()
-                            .insert(uuid, (front, back));
-                    }
                     let data = read.strong.clone();
                     tokio::spawn(read_cards(
                         client,
@@ -278,7 +274,12 @@ impl SubCard {
                 }
                 let card = cache.cards.get(&uuid)?.clone();
                 drop(cache);
-                return Some(Self::get_cached_card(client, card, quality).await);
+                return Some(Self {
+                    data: card.strong,
+                    face_handles: card.face_handles,
+                    back_handles: card.back_handles,
+                    flipped: false,
+                });
             },
             CacheResult::None => on_none(client, quality).await,
         }
@@ -314,14 +315,14 @@ impl SubCard {
                 let json_raw = request.text().await.ok()?;
                 let json = parse(&json_raw).ok()?;
                 let uuid = Uuid::parse_str(json["id"].as_str()?).ok()?;
-                SubCard::from_scryfall(client, json, uuid, quality)
+                SubCard::from_scryfall(client, json, uuid, quality).await
             },
         )
         .await
         .ok_or_else(|| set_cn.into())
     }
     #[must_use]
-    pub fn from_scryfall(
+    pub async fn from_scryfall(
         client: Client,
         json: JsonValue,
         uuid: Uuid,
@@ -408,12 +409,19 @@ impl SubCard {
             back,
             layout,
         };
-        let card = Self {
-            data: Arc::new(data),
+        let cache = CardInCache {
+            strong: Arc::new(data),
             face_handles,
             back_handles,
+        };
+        let card = Self {
+            data: cache.strong.clone(),
+            face_handles: cache.face_handles.clone(),
+            back_handles: cache.back_handles.clone(),
             flipped: false,
         };
+        cache.write_files();
+        CACHE.lock().await.insert(cache);
         Some(card)
     }
 }

@@ -604,8 +604,8 @@ pub fn register_cards(
             let mut cache = CACHE.lock().await;
             for (uuid, (front, back)) in map {
                 let card = cache.cards.get_mut(&uuid).unwrap();
-                card.front_image = front.map_or(MaybeHandles::None, MaybeHandles::Some);
-                card.back_image = back.map_or(MaybeHandles::None, MaybeHandles::Some);
+                card.face_handles = front.map_or(MaybeHandles::None, MaybeHandles::Some);
+                card.back_handles = back.map_or(MaybeHandles::None, MaybeHandles::Some);
             }
         });
     }
@@ -620,10 +620,10 @@ pub fn register_cards(
                 runtime.block_on(async {
                     let cache = CACHE.lock().await;
                     let card_cache = cache.cards.get(&card.data.id).unwrap();
-                    if !matches!(card_cache.front_image, MaybeHandles::Waiting) {
+                    if !matches!(card_cache.face_handles, MaybeHandles::Waiting) {
                         repaint = true;
-                        card.face_handles = card_cache.front_image.clone();
-                        card.back_handles = card_cache.back_image.clone();
+                        card.face_handles = card_cache.face_handles.clone();
+                        card.back_handles = card_cache.back_handles.clone();
                     }
                 });
             }
