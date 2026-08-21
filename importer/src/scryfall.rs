@@ -1,6 +1,6 @@
 use crate::card::{CardData, CardInfo, Layout, MaybeHandles};
 use crate::card::{Colors, Cost, SubCard, Types};
-use crate::card_cache::CardCache;
+use crate::card_cache::{CacheRead, CacheReadImage, CacheResult, CardCache, CardInCache};
 use crate::image::parse_bytes;
 use bevy::image::Image;
 use bevy::log::warn;
@@ -10,9 +10,10 @@ use reqwest::Client;
 use std::fmt::{Display, Formatter};
 use std::mem;
 use std::str::FromStr as _;
-use std::sync::LazyLock;
 use std::sync::mpmc::{Receiver, channel};
+use std::sync::{Arc, LazyLock};
 use std::time::Duration;
+use tokio::join;
 use tokio::sync::Mutex;
 use tokio::task::JoinSet;
 #[cfg(not(target_family = "wasm"))]
@@ -93,6 +94,11 @@ async fn get_image(client: Client, uuid: Uuid, quality: Quality, side: Side) -> 
         }
     }
 }
+impl CacheReadImage {
+    pub async fn get_image(self, client: &Client, quality: Quality) -> Option<Image> {
+        None
+    }
+}
 #[cfg(target_family = "wasm")]
 async fn get_image(_: Client, _: Uuid, _: Quality, _: Side) -> Option<Image> {
     None
@@ -134,6 +140,19 @@ static CARDS_THROTTLE: LazyLock<Ratelimiter<Clock>> =
 static SEARCH_THROTTLE: LazyLock<Ratelimiter<Clock>> =
     LazyLock::new(|| Ratelimiter::with_clock(1, Clock::default()));
 const SLEEP_TIME: Duration = Duration::new(0, 1_048_576);
+async fn get_uuid(client: Client, uuid: Uuid, quality: Quality) -> Option<SubCard> {
+    while CARDS_THROTTLE.try_wait().is_err() {
+        sleep(SLEEP_TIME).await;
+    }
+    let request = client
+        .get(format!("https://{URL}/cards/{uuid}"))
+        .send()
+        .await
+        .ok()?;
+    let json_raw = request.text().await.ok()?;
+    let json = parse(&json_raw).ok()?;
+    SubCard::from_scryfall(client, json, uuid, quality)
+}
 impl SubCard {
     #[must_use]
     pub fn get_list(
@@ -188,50 +207,110 @@ impl SubCard {
             Err(uuid)
         }
     }
-    pub async fn get(client: Client, uuid: Uuid, quality: Quality) -> Result<Self, Uuid> {
-        async fn get_card(client: Client, uuid: Uuid, quality: Quality) -> Option<SubCard> {
-            while CARDS_THROTTLE.try_wait().is_err() {
-                sleep(SLEEP_TIME).await;
+    pub async fn get_cached_card(
+        client: Client,
+        cached_card: CardInCache,
+        quality: Quality,
+    ) -> Option<Self> {
+        todo!()
+    }
+    pub async fn get_cache_result<F>(
+        client: Client,
+        cache_result: CacheResult,
+        quality: Quality,
+        on_none: impl FnOnce(Client, Quality) -> F,
+    ) -> Option<Self>
+    where
+        F: Future<Output = Option<Self>>,
+    {
+        match cache_result {
+            CacheResult::Some(card) => Self::get_cached_card(client, card, quality).await,
+            CacheResult::Cached(uuid) => {
+                if let Some(read) = CacheRead::read_files(uuid) {
+                    let data = read.strong.clone();
+                    async fn read_cards(
+                        client: Client,
+                        quality: Quality,
+                        front_image: CacheReadImage,
+                        back_image: CacheReadImage,
+                    ) {
+                        match join!(
+                            front_image.get_image(&client, quality),
+                            back_image.get_image(&client, quality)
+                        ) {
+                            (Some(first), Some(back)) => todo!(),
+                            (Some(first), None) => todo!(),
+                            (None, Some(back)) => todo!(),
+                            (None, None) => todo!(),
+                        }
+                    }
+                    tokio::spawn(read_cards(
+                        client,
+                        quality,
+                        read.front_image,
+                        read.back_image,
+                    ));
+                    let card = Self {
+                        data,
+                        face_handles: MaybeHandles::None,
+                        back_handles: None,
+                        flipped: false,
+                    };
+                    Some(card)
+                } else {
+                    get_uuid(client, uuid, quality).await
+                }
             }
-            let request = client
-                .get(format!("https://{URL}/cards/{uuid}"))
-                .send()
-                .await
-                .ok()?;
-            let json_raw = request.text().await.ok()?;
-            let json = parse(&json_raw).ok()?;
-            SubCard::from_scryfall(client, json, uuid, quality)
+            CacheResult::Wait(uuid) => loop {
+                sleep(SLEEP_TIME).await;
+                let cache = CACHE.lock().await;
+                if cache.in_progress.contains(&uuid) {
+                    drop(cache);
+                    continue;
+                }
+                let card = cache.cards.get(&uuid)?.clone();
+                drop(cache);
+                return Self::get_cached_card(client, card, quality).await;
+            },
+            CacheResult::None => on_none(client, quality).await,
         }
-        if let Some(card) = get_card(client, uuid, quality).await {
-            Ok(card)
-        } else {
-            Err(uuid)
-        }
+    }
+    pub async fn get(client: Client, uuid: Uuid, quality: Quality) -> Result<Self, Uuid> {
+        Self::get_cache_result(
+            client,
+            CACHE.lock().await.get(uuid),
+            quality,
+            async |client, quality| get_uuid(client, uuid, quality).await,
+        )
+        .await
+        .ok_or(uuid)
     }
     pub async fn get_set_cn(
         client: Client,
         set_cn: &str,
         quality: Quality,
     ) -> Result<Self, Box<str>> {
-        async fn get_card(client: Client, quality: Quality, set_cn: &str) -> Option<SubCard> {
-            while CARDS_THROTTLE.try_wait().is_err() {
-                sleep(SLEEP_TIME).await;
-            }
-            let request = client
-                .get(format!("https://{URL}/cards/{set_cn}"))
-                .send()
-                .await
-                .ok()?;
-            let json_raw = request.text().await.ok()?;
-            let json = parse(&json_raw).ok()?;
-            let uuid = Uuid::parse_str(json["id"].as_str()?).ok()?;
-            SubCard::from_scryfall(client, json, uuid, quality)
-        }
-        if let Some(card) = get_card(client, quality, set_cn).await {
-            Ok(card)
-        } else {
-            Err(set_cn.into())
-        }
+        Self::get_cache_result(
+            client,
+            CACHE.lock().await.get_set_cn(set_cn),
+            quality,
+            async |client, quality| {
+                while CARDS_THROTTLE.try_wait().is_err() {
+                    sleep(SLEEP_TIME).await;
+                }
+                let request = client
+                    .get(format!("https://{URL}/cards/{set_cn}"))
+                    .send()
+                    .await
+                    .ok()?;
+                let json_raw = request.text().await.ok()?;
+                let json = parse(&json_raw).ok()?;
+                let uuid = Uuid::parse_str(json["id"].as_str()?).ok()?;
+                SubCard::from_scryfall(client, json, uuid, quality)
+            },
+        )
+        .await
+        .ok_or_else(|| set_cn.into())
     }
     #[must_use]
     pub fn from_scryfall(
@@ -268,17 +347,19 @@ impl SubCard {
             let oracle_text = oracle_text_raw.to_owned();
             let mana_cost = Cost::from(mana_cost_raw);
             let type_line = Types::from(type_line_raw);
+            let has_unique_face = face["card_faces"].is_array();
             Some(CardInfo {
                 oracle_id,
-                name: name.into(),
+                name: name.into_boxed_str(),
                 mana_cost,
                 type_line,
-                oracle_text: oracle_text.into(),
+                oracle_text: oracle_text.into_boxed_str(),
                 colors,
                 color_identity,
                 power,
                 toughness,
                 loyalty,
+                has_unique_face,
             })
         }
         let layout_str = json["layout"].as_str()?;
@@ -328,7 +409,7 @@ impl SubCard {
             layout,
         };
         let card = Self {
-            data,
+            data: Arc::new(data),
             face_handles,
             back_handles,
             flipped: false,

@@ -9,6 +9,7 @@ use std::cmp::Ordering;
 use std::fmt::{Debug, Formatter};
 use std::mem;
 use std::slice::{Iter, IterMut};
+use std::sync::Arc;
 use std::sync::mpmc::Receiver;
 use uuid::Uuid;
 rules::generate_types!();
@@ -26,7 +27,7 @@ pub struct Card {
 }
 #[derive(Debug, Default, Encode, Decode)]
 pub struct SubCard {
-    pub data: CardData,
+    pub data: Arc<CardData>,
     #[bitcode(skip)]
     pub face_handles: MaybeHandles,
     #[bitcode(skip)]
@@ -78,6 +79,7 @@ pub struct CardInfo {
     pub power: Option<u8>,
     pub toughness: Option<u8>,
     pub loyalty: Option<u8>,
+    pub has_unique_face: bool,
 }
 #[derive(Default, Debug)]
 pub enum MaybeHandles {
@@ -282,38 +284,6 @@ impl From<&str> for Layout {
         }
     }
 }
-impl CardInfo {
-    #[must_use]
-    pub fn try_clone(&self) -> Option<Self> {
-        Some(Self {
-            oracle_id: self.oracle_id,
-            name: self.name.clone(),
-            mana_cost: self.mana_cost,
-            type_line: self.type_line.clone(),
-            oracle_text: self.oracle_text.clone(),
-            colors: self.colors,
-            color_identity: self.color_identity,
-            power: self.power,
-            loyalty: self.loyalty,
-            toughness: self.toughness,
-        })
-    }
-    #[must_use]
-    pub fn clone_no_image(&self) -> Self {
-        Self {
-            oracle_id: self.oracle_id,
-            name: self.name.clone(),
-            mana_cost: self.mana_cost,
-            type_line: self.type_line.clone(),
-            oracle_text: self.oracle_text.clone(),
-            colors: self.colors,
-            color_identity: self.color_identity,
-            power: self.power,
-            loyalty: self.loyalty,
-            toughness: self.toughness,
-        }
-    }
-}
 impl MainType {
     #[must_use]
     pub fn is_permanent(self) -> bool {
@@ -503,41 +473,6 @@ impl Cost {
             - self.hybrid
     }
 }
-impl CardData {
-    #[must_use]
-    pub fn try_clone(&self) -> Option<Self> {
-        Some(Self {
-            id: self.id,
-            set_cn: self.set_cn.clone(),
-            tokens: self.tokens.clone(),
-            front: self.front.try_clone()?,
-            back: if let Some(inner) = self
-                .back
-                .as_ref()
-                .map(|c| CardInfo::try_clone(c).map(Box::new))
-            {
-                Some(inner?)
-            } else {
-                None
-            },
-            layout: self.layout,
-        })
-    }
-    #[must_use]
-    pub fn clone_no_image(&self) -> Self {
-        Self {
-            id: self.id,
-            set_cn: self.set_cn.clone(),
-            tokens: self.tokens.clone(),
-            front: self.front.clone_no_image(),
-            back: self
-                .back
-                .as_ref()
-                .map(|c| CardInfo::clone_no_image(c).into()),
-            layout: self.layout,
-        }
-    }
-}
 impl Card {
     #[must_use]
     pub fn is_modified(&self) -> bool {
@@ -717,7 +652,7 @@ impl SubCard {
     #[must_use]
     pub fn clone_no_image(&self) -> Self {
         Self {
-            data: self.data.clone_no_image(),
+            data: self.data.clone(),
             face_handles: MaybeHandles::None,
             back_handles: self.back_handles.is_some().then(|| MaybeHandles::None),
             flipped: self.flipped,
