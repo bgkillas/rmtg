@@ -1,4 +1,5 @@
 use crate::card::{CardData, MaybeHandles};
+use crate::scryfall::Side;
 use bevy::asset::Handle;
 use bevy::image::Image;
 use bevy::platform::dirs::preferences_dir;
@@ -120,6 +121,7 @@ impl CardCache {
 impl CardInCache {
     pub fn write_files(&self) {
         if let Some(folder_name) = folder().map(|f| f.join(self.strong.folder_path())) {
+            let _ = fs::create_dir_all(&folder_name);
             let data = encode::<CardData>(&self.strong);
             let _ = fs::write(folder_name.join(DATA), data);
         }
@@ -143,5 +145,17 @@ impl CacheRead {
             card.back_image = CacheReadImage::Missing;
         }
         Some(card)
+    }
+}
+pub fn write_image(bytes: &[u8], set_cn: &str, uuid: Uuid, side: Side) {
+    if let Some(folder_name) = folder().map(|f| f.join(format!("{set_cn}/{uuid}"))) {
+        let _ = fs::create_dir_all(&folder_name);
+        let _ = fs::write(
+            folder_name.join(match side {
+                Side::Front => FRONT,
+                Side::Back => BACK,
+            }),
+            bytes,
+        );
     }
 }

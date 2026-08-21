@@ -1,6 +1,8 @@
 use crate::card::{CardData, CardInfo, Layout, MaybeHandles};
 use crate::card::{Colors, Cost, SubCard, Types};
-use crate::card_cache::{CacheRead, CacheReadImage, CacheResult, CardCache, CardInCache};
+use crate::card_cache::{
+    CacheRead, CacheReadImage, CacheResult, CardCache, CardInCache, write_image,
+};
 use crate::image::parse_bytes;
 use bevy::image::Image;
 use jzon::{JsonValue, parse};
@@ -68,7 +70,13 @@ impl Quality {
     }
 }
 #[cfg(not(target_family = "wasm"))]
-async fn get_image(client: &Client, uuid: Uuid, quality: Quality, side: Side) -> Option<Image> {
+async fn get_image(
+    client: &Client,
+    set_cn: &str,
+    uuid: Uuid,
+    quality: Quality,
+    side: Side,
+) -> Option<Image> {
     use bevy::log::warn;
     let byte = uuid.as_bytes()[0];
     match client
@@ -83,7 +91,10 @@ async fn get_image(client: &Client, uuid: Uuid, quality: Quality, side: Side) ->
         .await
     {
         Ok(request) => match request.bytes().await {
-            Ok(bytes) => parse_bytes(&bytes), //TODO write
+            Ok(bytes) => {
+                write_image(&bytes, set_cn, uuid, side);
+                parse_bytes(&bytes)
+            }
             Err(e) => {
                 warn!("{e:?}");
                 None
@@ -96,39 +107,49 @@ async fn get_image(client: &Client, uuid: Uuid, quality: Quality, side: Side) ->
     }
 }
 #[cfg(target_family = "wasm")]
-async fn get_image(_: &Client, _: Uuid, _: Quality, _: Side) -> Option<Image> {
+async fn get_image(_: &Client, _: &str, _: Uuid, _: Quality, _: Side) -> Option<Image> {
     None
 }
 impl CacheReadImage {
     pub async fn get_image(
         self,
         client: &Client,
+        set_cn: &str,
         uuid: Uuid,
         quality: Quality,
         side: Side,
     ) -> Option<Image> {
         match self {
             CacheReadImage::Some(bytes) => parse_bytes(&bytes),
-            CacheReadImage::Missing => get_image(client, uuid, quality, side).await,
+            CacheReadImage::Missing => get_image(client, set_cn, uuid, quality, side).await,
             CacheReadImage::None => None,
         }
     }
 }
 async fn read_cards(
     client: Client,
+    set_cn: Box<str>,
     uuid: Uuid,
     quality: Quality,
     front_image: CacheReadImage,
     back_image: CacheReadImage,
 ) {
     let (front, back) = join!(
-        front_image.get_image(&client, uuid, quality, Side::Front),
-        back_image.get_image(&client, uuid, quality, Side::Back)
+        front_image.get_image(&client, &set_cn, uuid, quality, Side::Front),
+        back_image.get_image(&client, &set_cn, uuid, quality, Side::Back)
     );
     IMAGES_TO_PROCESS
         .lock()
         .unwrap()
         .insert(uuid, (front, back));
+}
+impl From<&MaybeHandles> for CacheReadImage {
+    fn from(value: &MaybeHandles) -> Self {
+        match value {
+            MaybeHandles::Waiting => Self::Missing,
+            MaybeHandles::Some(_) | MaybeHandles::None => Self::None,
+        }
+    }
 }
 #[cfg(not(target_family = "wasm"))]
 pub type Clock = ratelimit::StdClock;
@@ -249,6 +270,7 @@ impl SubCard {
                     let data = read.strong.clone();
                     tokio::spawn(read_cards(
                         client,
+                        data.set_cn.clone(),
                         uuid,
                         quality,
                         read.front_image,
@@ -373,7 +395,6 @@ impl SubCard {
         }
         let layout_str = json["layout"].as_str()?;
         let layout = Layout::from(layout_str);
-        //TODO
         let face_handles = MaybeHandles::Waiting;
         let mut back_handles = MaybeHandles::None;
         let (front, back) = if json["card_faces"].is_null() {
@@ -384,11 +405,21 @@ impl SubCard {
             let front = get_face(&json, &faces[0])?;
             let back = get_face(&json, &faces[1])?;
             if faces[1]["image_uris"].is_array() {
-                //TODO
                 back_handles = MaybeHandles::Waiting;
             }
             (front, Some(Box::new(back)))
         };
+        let set = json["set"].as_str().unwrap();
+        let cn = json["collector_number"].as_str().unwrap();
+        let set_cn = format!("{set}/{cn}").into_boxed_str();
+        tokio::spawn(read_cards(
+            client,
+            set_cn.clone(),
+            uuid,
+            quality,
+            (&face_handles).into(),
+            (&back_handles).into(),
+        ));
         let tokens = json["all_parts"]
             .as_array()
             .map(|v| {
@@ -399,11 +430,9 @@ impl SubCard {
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
-        let set = json["set"].as_str().unwrap();
-        let cn = json["collector_number"].as_str().unwrap();
         let data = CardData {
             id: uuid,
-            set_cn: format!("{set}/{cn}").into_boxed_str(),
+            set_cn,
             tokens: tokens.into(),
             front,
             back,
