@@ -291,6 +291,11 @@ impl SubCard {
             CacheResult::Cached(uuid) => {
                 if let Some(read) = CacheRead::read_files(uuid) {
                     let data = read.strong.clone();
+                    let back_handles = if matches!(read.back_image, CacheReadImage::None) {
+                        MaybeHandles::None
+                    } else {
+                        MaybeHandles::Waiting
+                    };
                     tokio::spawn(read_cards(
                         client,
                         data.set_cn.clone(),
@@ -300,11 +305,16 @@ impl SubCard {
                         read.back_image,
                     ));
                     let card = Self {
-                        data,
-                        face_handles: MaybeHandles::None,
-                        back_handles: MaybeHandles::None,
+                        data: data.clone(),
+                        face_handles: MaybeHandles::Waiting,
+                        back_handles: back_handles.clone(),
                         flipped: false,
                     };
+                    CACHE.lock().await.insert(CardInCache {
+                        strong: data,
+                        face_handles: MaybeHandles::Waiting,
+                        back_handles,
+                    });
                     Some(card)
                 } else {
                     on_none(client, quality).await
