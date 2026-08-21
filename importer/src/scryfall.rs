@@ -263,11 +263,14 @@ impl SubCard {
     }
     pub async fn get_json(client: Client, json: JsonValue, quality: Quality) -> Result<Self, Uuid> {
         let uuid = Uuid::parse_str(json["id"].as_str().unwrap_or_default()).unwrap_or_default();
-        if let Some(card) = SubCard::from_scryfall(client, json, uuid, quality).await {
-            Ok(card)
-        } else {
-            Err(uuid)
-        }
+        SubCard::get_cache_result(
+            client,
+            CACHE.lock().await.get(uuid),
+            quality,
+            async |client, quality| SubCard::from_scryfall(client, json, uuid, quality).await,
+        )
+        .await
+        .ok_or(uuid)
     }
     pub async fn get_cache_result<F>(
         client: Client,
@@ -304,7 +307,7 @@ impl SubCard {
                     };
                     Some(card)
                 } else {
-                    get_uuid(client, uuid, quality).await
+                    on_none(client, quality).await
                 }
             }
             CacheResult::Wait(uuid) => loop {
