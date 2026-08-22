@@ -12,8 +12,7 @@ use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Bundle, Component, InheritedVisibility, Transform};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::query::With;
-use bevy_ecs::system::{Commands, Query, Res, ResMut};
-use bevy_p2p::runtime::Runtime;
+use bevy_ecs::system::{Commands, Query, ResMut};
 use bevy_query_fn_macro::query_fn;
 use bitcode::{Decode, Encode};
 use importer::bitcode;
@@ -557,32 +556,7 @@ pub fn register_cards(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    runtime: Res<Runtime>,
 ) {
-    /*fn register(
-        data: &mut MaybeHandles,
-        images: &mut Assets<Image>,
-        materials: &mut Assets<StandardMaterial>,
-        has_some: &mut bool,
-        repaint: &mut bool,
-    ) {
-        match &data {
-            MaybeHandles::Waiting(poll) => {
-                if let Ok(val) = poll.try_recv() {
-                    *data = if let Some(inner) = val {
-                        *repaint = true;
-                        let handle = images.add(inner);
-                        MaybeHandles::Some(register_card(materials, handle))
-                    } else {
-                        MaybeHandles::None
-                    };
-                } else {
-                    *has_some = true;
-                }
-            }
-            MaybeHandles::Some(_) | MaybeHandles::None => {}
-        }
-    }*/
     let mut new_images = IMAGES_TO_PROCESS.lock().unwrap();
     if new_images.is_empty() {
         drop(new_images);
@@ -600,14 +574,12 @@ pub fn register_cards(
             })
             .collect::<HashMap<_, _, FxBuildHasher>>();
         drop(new_images);
-        runtime.block_on(async {
-            let mut cache = CACHE.lock().await;
-            for (uuid, (front, back)) in map {
-                let card = cache.cards.get_mut(&uuid).unwrap();
-                card.face_handles = front.map_or(MaybeHandles::None, MaybeHandles::Some);
-                card.back_handles = back.map_or(MaybeHandles::None, MaybeHandles::Some);
-            }
-        });
+        let mut cache = CACHE.lock().unwrap();
+        for (uuid, (front, back)) in map {
+            let card = cache.cards.get_mut(&uuid).unwrap();
+            card.face_handles = front.map_or(MaybeHandles::None, MaybeHandles::Some);
+            card.back_handles = back.map_or(MaybeHandles::None, MaybeHandles::Some);
+        }
     }
     for mut pile in query {
         let mut has_some = false;
@@ -617,15 +589,15 @@ pub fn register_cards(
                 || matches!(card.back_handles, MaybeHandles::Waiting)
             {
                 has_some = true;
-                runtime.block_on(async {
-                    let cache = CACHE.lock().await;
-                    let card_cache = cache.cards.get(&card.data.id).unwrap();
-                    if !matches!(card_cache.face_handles, MaybeHandles::Waiting) {
-                        repaint = true;
-                        card.face_handles = card_cache.face_handles.clone();
-                        card.back_handles = card_cache.back_handles.clone();
-                    }
-                });
+                let card_cache = {
+                    let cache = CACHE.lock().unwrap();
+                    cache.cards.get(&card.data.id).unwrap().clone()
+                };
+                if !matches!(card_cache.face_handles, MaybeHandles::Waiting) {
+                    repaint = true;
+                    card.face_handles = card_cache.face_handles;
+                    card.back_handles = card_cache.back_handles;
+                }
             }
         }
         if repaint {

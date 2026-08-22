@@ -14,10 +14,10 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::mem;
 use std::str::FromStr as _;
+use std::sync::Mutex;
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 use tokio::join;
-use tokio::sync::Mutex;
 use tokio::task::JoinSet;
 #[cfg(not(target_family = "wasm"))]
 use tokio::time::sleep;
@@ -208,11 +208,11 @@ async fn get_uuid(client: Client, uuid: Uuid, quality: Quality) -> Option<SubCar
         .ok()?;
     let json_raw = request.text().await.ok()?;
     let json = parse(&json_raw).ok()?;
-    SubCard::from_scryfall(client, json, uuid, quality).await
+    SubCard::from_scryfall(client, json, uuid, quality)
 }
 pub static IMAGES_TO_PROCESS: LazyLock<
-    std::sync::Mutex<HashMap<Uuid, (Option<Image>, Option<Image>), FxBuildHasher>>,
-> = LazyLock::new(|| std::sync::Mutex::new(HashMap::with_capacity_and_hasher(512, FxBuildHasher)));
+    Mutex<HashMap<Uuid, (Option<Image>, Option<Image>), FxBuildHasher>>,
+> = LazyLock::new(|| Mutex::new(HashMap::with_capacity_and_hasher(512, FxBuildHasher)));
 impl SubCard {
     #[must_use]
     pub fn get_list(
@@ -264,11 +264,12 @@ impl SubCard {
     }
     pub async fn get_json(client: Client, json: JsonValue, quality: Quality) -> Result<Self, Uuid> {
         let uuid = Uuid::parse_str(json["id"].as_str().unwrap_or_default()).unwrap_or_default();
-        let mut cache = CACHE.lock().await;
-        let res = cache.get(uuid);
-        drop(cache);
+        let res = {
+            let mut cache = CACHE.lock().unwrap();
+            cache.get(uuid)
+        };
         SubCard::get_cache_result(client, res, quality, async |client, quality| {
-            SubCard::from_scryfall(client, json, uuid, quality).await
+            SubCard::from_scryfall(client, json, uuid, quality)
         })
         .await
         .ok_or(uuid)
@@ -311,7 +312,7 @@ impl SubCard {
                         back_handles: back_handles.clone(),
                         flipped: false,
                     };
-                    CACHE.lock().await.insert(CardInCache {
+                    CACHE.lock().unwrap().insert(CardInCache {
                         strong: data,
                         face_handles: MaybeHandles::Waiting,
                         back_handles,
@@ -320,19 +321,19 @@ impl SubCard {
                 } else if let Some(card) = on_none(client, quality).await {
                     Some(card)
                 } else {
-                    CACHE.lock().await.in_progress.remove(&uuid);
+                    CACHE.lock().unwrap().in_progress.remove(&uuid);
                     None
                 }
             }
             CacheResult::Wait(Identifier::Uuid(uuid)) => loop {
                 sleep(SLEEP_TIME).await;
-                let cache = CACHE.lock().await;
-                if cache.in_progress.contains(&uuid) {
-                    drop(cache);
-                    continue;
-                }
-                let card = cache.cards.get(&uuid)?.clone();
-                drop(cache);
+                let card = {
+                    let cache = CACHE.lock().unwrap();
+                    if cache.in_progress.contains(&uuid) {
+                        continue;
+                    }
+                    cache.cards.get(&uuid)?.clone()
+                };
                 return Some(Self {
                     data: card.strong,
                     face_handles: card.face_handles,
@@ -342,14 +343,14 @@ impl SubCard {
             },
             CacheResult::Wait(Identifier::SetCn(str)) => loop {
                 sleep(SLEEP_TIME).await;
-                let cache = CACHE.lock().await;
-                if cache.in_progress_set_cn.contains(str) {
-                    drop(cache);
-                    continue;
-                }
-                let &uuid = cache.set_cn.get(str)?;
-                let card = cache.cards.get(&uuid)?.clone();
-                drop(cache);
+                let card = {
+                    let cache = CACHE.lock().unwrap();
+                    if cache.in_progress_set_cn.contains(str) {
+                        continue;
+                    }
+                    let &uuid = cache.set_cn.get(str)?;
+                    cache.cards.get(&uuid)?.clone()
+                };
                 return Some(Self {
                     data: card.strong,
                     face_handles: card.face_handles,
@@ -359,19 +360,20 @@ impl SubCard {
             },
             CacheResult::None(_) if let Some(card) = on_none(client, quality).await => Some(card),
             CacheResult::None(Identifier::Uuid(uuid)) => {
-                CACHE.lock().await.in_progress.remove(&uuid);
+                CACHE.lock().unwrap().in_progress.remove(&uuid);
                 None
             }
             CacheResult::None(Identifier::SetCn(str)) => {
-                CACHE.lock().await.in_progress_set_cn.remove(str);
+                CACHE.lock().unwrap().in_progress_set_cn.remove(str);
                 None
             }
         }
     }
     pub async fn get(client: Client, uuid: Uuid, quality: Quality) -> Result<Self, Uuid> {
-        let mut cache = CACHE.lock().await;
-        let res = cache.get(uuid);
-        drop(cache);
+        let res = {
+            let mut cache = CACHE.lock().unwrap();
+            cache.get(uuid)
+        };
         Self::get_cache_result(client, res, quality, async |client, quality| {
             get_uuid(client, uuid, quality).await
         })
@@ -383,9 +385,10 @@ impl SubCard {
         set_cn: &str,
         quality: Quality,
     ) -> Result<Self, Box<str>> {
-        let mut cache = CACHE.lock().await;
-        let res = cache.get_set_cn(set_cn);
-        drop(cache);
+        let res = {
+            let mut cache = CACHE.lock().unwrap();
+            cache.get_set_cn(set_cn)
+        };
         Self::get_cache_result(client, res, quality, async |client, quality| {
             while CARDS_THROTTLE.try_wait().is_err() {
                 sleep(SLEEP_TIME).await;
@@ -398,13 +401,13 @@ impl SubCard {
             let json_raw = request.text().await.ok()?;
             let json = parse(&json_raw).ok()?;
             let uuid = Uuid::parse_str(json["id"].as_str()?).ok()?;
-            SubCard::from_scryfall(client, json, uuid, quality).await
+            SubCard::from_scryfall(client, json, uuid, quality)
         })
         .await
         .ok_or_else(|| set_cn.into())
     }
     #[must_use]
-    pub async fn from_scryfall(
+    pub fn from_scryfall(
         client: Client,
         json: JsonValue,
         uuid: Uuid,
@@ -510,7 +513,7 @@ impl SubCard {
             flipped: false,
         };
         cache.write_files();
-        CACHE.lock().await.insert(cache);
+        CACHE.lock().unwrap().insert(cache);
         Some(card)
     }
 }
