@@ -34,11 +34,13 @@ pub struct CardInCache {
     pub face_handles: MaybeHandles,
     pub back_handles: MaybeHandles,
 }
+#[derive(Debug)]
 pub enum CacheReadImage {
     Some(Box<[u8]>),
     Missing,
     None,
 }
+#[derive(Debug)]
 pub struct CacheRead {
     pub strong: Arc<CardData>,
     pub front_image: CacheReadImage,
@@ -153,8 +155,11 @@ impl CacheRead {
         let folder_name = folder()?.join(folder_path(set_cn, uuid));
         let card_data = fs::read(folder_name.join(DATA)).ok()?;
         let data = decode::<CardData>(&card_data).ok()?;
-        let (front_image, back_image) =
-            get_images(uuid, data.back.as_ref().is_some_and(|c| c.has_unique_face))?;
+        let (front_image, back_image) = get_images(
+            set_cn,
+            uuid,
+            data.back.as_ref().is_some_and(|c| c.has_unique_face),
+        )?;
         let card = Self {
             strong: Arc::new(data),
             front_image,
@@ -163,8 +168,12 @@ impl CacheRead {
         Some(card)
     }
 }
-pub fn get_images(uuid: Uuid, has_unique_face: bool) -> Option<(CacheReadImage, CacheReadImage)> {
-    let folder_name = folder()?.join(uuid.to_string());
+pub fn get_images(
+    set_cn: &str,
+    uuid: Uuid,
+    has_unique_face: bool,
+) -> Option<(CacheReadImage, CacheReadImage)> {
+    let folder_name = folder()?.join(folder_path(set_cn, uuid));
     let mut front_image = CacheReadImage::Missing;
     let mut back_image = CacheReadImage::None;
     if let Ok(data) = fs::read(folder_name.join(FRONT)) {

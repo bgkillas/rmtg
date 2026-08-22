@@ -158,7 +158,9 @@ async fn read_cards_check(
     mut front_image: CacheReadImage,
     mut back_image: CacheReadImage,
 ) {
-    if let Some((front, back)) = get_images(uuid, matches!(back_image, CacheReadImage::Missing)) {
+    if let Some((front, back)) =
+        get_images(&set_cn, uuid, matches!(back_image, CacheReadImage::Missing))
+    {
         front_image = front;
         back_image = back;
     }
