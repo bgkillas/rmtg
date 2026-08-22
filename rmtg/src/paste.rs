@@ -29,7 +29,7 @@ pub fn react_paste_card(
                 .await
                 .map(|c| (c, pos))
         });
-    } else if let Some(rest) = event.string.strip_prefix("https://scryfall.com/card/")
+    } else if let Some((_, rest)) = event.string.split_once("scryfall.com/card/")
         && let Some((set, after)) = rest.split_once('/')
         && let Some((cn, _)) = after.split_once('/')
     {
@@ -40,7 +40,7 @@ pub fn react_paste_card(
                 .await
                 .map(|c| (c, pos))
         });
-    } else if let Some(rest) = event.string.strip_prefix("https://scryfall.com/card/")
+    } else if let Some((_, rest)) = event.string.split_once("scryfall.com/card/")
         && let Ok(uuid) = Uuid::from_str(rest)
     {
         let client_owned = client.client.clone();

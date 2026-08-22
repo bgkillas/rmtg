@@ -4598,6 +4598,7 @@ name = "importer"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bimap",
  "bitcode",
  "enumset",
  "fast_image_resize",

@@ -3,6 +3,7 @@ use crate::scryfall::Side;
 use bevy::asset::Handle;
 use bevy::image::Image;
 use bevy::platform::dirs::preferences_dir;
+use bimap::BiHashMap;
 use bitcode::{decode, encode};
 use rustc_hash::FxBuildHasher;
 use std::collections::{HashMap, HashSet};
@@ -19,7 +20,7 @@ pub struct CardCache {
     pub in_storage: HashSet<Uuid, FxBuildHasher>,
     pub in_progress: HashSet<Uuid, FxBuildHasher>,
     pub in_progress_set_cn: HashSet<Box<str>, FxBuildHasher>,
-    pub set_cn: HashMap<Box<str>, Uuid, FxBuildHasher>,
+    pub set_cn: BiHashMap<Box<str>, Uuid, FxBuildHasher, FxBuildHasher>,
 }
 #[derive(Clone)]
 pub enum CacheImage {
@@ -52,23 +53,27 @@ impl CardData {
     }
 }
 fn folder_path(set_cn: &str, id: Uuid) -> String {
-    format!("{}_{id}", set_cn.replace('/', "_"))
+    format!("{set_cn}_{id}")
 }
 impl Default for CardCache {
     fn default() -> Self {
         let mut in_storage = HashSet::with_hasher(FxBuildHasher);
-        let mut set_cn = HashMap::with_hasher(FxBuildHasher);
+        let mut set_cn = BiHashMap::with_hashers(FxBuildHasher, FxBuildHasher);
         if let Some(folder_name) = folder() {
-            if fs::exists(&folder_name).is_ok_and(|b| b)
-                && let Ok(dir) = fs::read_dir(&folder_name)
-            {
-                for entry in dir.filter_map(Result::ok) {
-                    if let Some(str) = entry.file_name().to_str()
-                        && let Some((set_cn_str, uuid_str)) = str.rsplit_once('/')
-                        && let Ok(uuid) = uuid_str.parse()
+            if let Ok(dir) = fs::read_dir(&folder_name) {
+                for set_path in dir.filter_map(Result::ok) {
+                    if let Some(set) = set_path.file_name().to_str()
+                        && let Ok(set_folder) = fs::read_dir(set_path.path())
                     {
-                        in_storage.insert(uuid);
-                        set_cn.insert(set_cn_str.into(), uuid);
+                        for entry in set_folder.filter_map(Result::ok) {
+                            if let Some(set_uuid) = entry.file_name().to_str()
+                                && let Some((cn, uuid_str)) = set_uuid.rsplit_once('_')
+                                && let Ok(uuid) = uuid_str.parse()
+                            {
+                                in_storage.insert(uuid);
+                                set_cn.insert(format!("{set}/{cn}").into_boxed_str(), uuid);
+                            }
+                        }
                     }
                 }
             } else {
@@ -93,7 +98,7 @@ pub enum Identifier<'a> {
 #[derive(Debug)]
 pub enum CacheResult<'a> {
     Some(CardInCache),
-    Cached(Uuid),
+    Cached(Box<str>, Uuid),
     Wait(Identifier<'a>),
     None(Identifier<'a>),
 }
@@ -106,7 +111,8 @@ impl CardCache {
             CacheResult::Some(val.clone())
         } else if self.in_storage.contains(&uuid) {
             self.in_progress.insert(uuid);
-            CacheResult::Cached(uuid)
+            let set_cn = self.set_cn.get_by_right(&uuid).unwrap();
+            CacheResult::Cached(set_cn.clone(), uuid)
         } else if self.in_progress.contains(&uuid) {
             CacheResult::Wait(Identifier::Uuid(uuid))
         } else {
@@ -115,11 +121,12 @@ impl CardCache {
         }
     }
     pub fn get_set_cn<'a>(&mut self, set_cn: &'a str) -> CacheResult<'a> {
-        if let Some(&uuid) = self.set_cn.get(set_cn) {
+        if let Some(&uuid) = self.set_cn.get_by_left(set_cn) {
             self.get(uuid)
         } else if self.in_progress_set_cn.contains(set_cn) {
             CacheResult::Wait(Identifier::SetCn(set_cn))
         } else {
+            self.in_progress_set_cn.insert(set_cn.into());
             CacheResult::None(Identifier::SetCn(set_cn))
         }
     }
@@ -142,8 +149,8 @@ impl CardInCache {
     }
 }
 impl CacheRead {
-    pub fn read_files(uuid: Uuid) -> Option<Self> {
-        let folder_name = folder()?.join(uuid.to_string());
+    pub fn read_files(set_cn: &str, uuid: Uuid) -> Option<Self> {
+        let folder_name = folder()?.join(folder_path(set_cn, uuid));
         let card_data = fs::read(folder_name.join(DATA)).ok()?;
         let data = decode::<CardData>(&card_data).ok()?;
         let (front_image, back_image) =

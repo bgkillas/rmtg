@@ -268,8 +268,8 @@ impl SubCard {
             let mut cache = CACHE.lock().unwrap();
             cache.get(uuid)
         };
-        SubCard::get_cache_result(client, res, quality, async |client, quality| {
-            SubCard::from_scryfall(client, json, uuid, quality)
+        Self::get_cache_result(client, res, quality, async |client, quality| {
+            Self::from_scryfall(client, json, uuid, quality)
         })
         .await
         .ok_or(uuid)
@@ -290,8 +290,8 @@ impl SubCard {
                 back_handles: card.back_handles,
                 flipped: false,
             }),
-            CacheResult::Cached(uuid) => {
-                if let Some(read) = CacheRead::read_files(uuid) {
+            CacheResult::Cached(set_cn, uuid) => {
+                if let Some(read) = CacheRead::read_files(&set_cn, uuid) {
                     let data = read.strong.clone();
                     let back_handles = if matches!(read.back_image, CacheReadImage::None) {
                         MaybeHandles::None
@@ -348,7 +348,7 @@ impl SubCard {
                     if cache.in_progress_set_cn.contains(str) {
                         continue;
                     }
-                    let &uuid = cache.set_cn.get(str)?;
+                    let &uuid = cache.set_cn.get_by_left(str)?;
                     cache.cards.get(&uuid)?.clone()
                 };
                 return Some(Self {
@@ -401,7 +401,7 @@ impl SubCard {
             let json_raw = request.text().await.ok()?;
             let json = parse(&json_raw).ok()?;
             let uuid = Uuid::parse_str(json["id"].as_str()?).ok()?;
-            SubCard::from_scryfall(client, json, uuid, quality)
+            Self::from_scryfall(client, json, uuid, quality)
         })
         .await
         .ok_or_else(|| set_cn.into())
