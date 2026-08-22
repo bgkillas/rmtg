@@ -7,9 +7,9 @@ use bimap::BiHashMap;
 use bitcode::{decode, encode};
 use rustc_hash::FxBuildHasher;
 use std::collections::{HashMap, HashSet};
-use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
+use tokio::fs;
 use uuid::Uuid;
 pub const CACHE_FOLDER: &str = "cache";
 pub const DATA: &str = "card.data";
@@ -62,10 +62,10 @@ impl Default for CardCache {
         let mut in_storage = HashSet::with_hasher(FxBuildHasher);
         let mut set_cn = BiHashMap::with_hashers(FxBuildHasher, FxBuildHasher);
         if let Some(folder_name) = folder() {
-            if let Ok(dir) = fs::read_dir(&folder_name) {
+            if let Ok(dir) = std::fs::read_dir(&folder_name) {
                 for set_path in dir.filter_map(Result::ok) {
                     if let Some(set) = set_path.file_name().to_str()
-                        && let Ok(set_folder) = fs::read_dir(set_path.path())
+                        && let Ok(set_folder) = std::fs::read_dir(set_path.path())
                     {
                         for entry in set_folder.filter_map(Result::ok) {
                             if let Some(set_uuid) = entry.file_name().to_str()
@@ -79,7 +79,7 @@ impl Default for CardCache {
                     }
                 }
             } else {
-                let _ = fs::create_dir_all(folder_name);
+                let _ = std::fs::create_dir_all(folder_name);
             }
         }
         set_cn.reserve(512);
@@ -142,24 +142,25 @@ impl CardCache {
     }
 }
 impl CardInCache {
-    pub fn write_files(&self) {
+    pub async fn write_files(&self) {
         if let Some(folder_name) = folder().map(|f| f.join(self.strong.folder_path())) {
-            let _ = fs::create_dir_all(&folder_name);
+            let _ = fs::create_dir_all(&folder_name).await;
             let data = encode::<CardData>(&self.strong);
-            let _ = fs::write(folder_name.join(DATA), data);
+            let _ = fs::write(folder_name.join(DATA), data).await;
         }
     }
 }
 impl CacheRead {
-    pub fn read_files(set_cn: &str, uuid: Uuid) -> Option<Self> {
+    pub async fn read_files(set_cn: &str, uuid: Uuid) -> Option<Self> {
         let folder_name = folder()?.join(folder_path(set_cn, uuid));
-        let card_data = fs::read(folder_name.join(DATA)).ok()?;
+        let card_data = fs::read(folder_name.join(DATA)).await.ok()?;
         let data = decode::<CardData>(&card_data).ok()?;
         let (front_image, back_image) = get_images(
             set_cn,
             uuid,
             data.back.as_ref().is_some_and(|c| c.has_unique_face),
-        )?;
+        )
+        .await?;
         let card = Self {
             strong: Arc::new(data),
             front_image,
@@ -168,7 +169,7 @@ impl CacheRead {
         Some(card)
     }
 }
-pub fn get_images(
+pub async fn get_images(
     set_cn: &str,
     uuid: Uuid,
     has_unique_face: bool,
@@ -176,25 +177,26 @@ pub fn get_images(
     let folder_name = folder()?.join(folder_path(set_cn, uuid));
     let mut front_image = CacheReadImage::Missing;
     let mut back_image = CacheReadImage::None;
-    if let Ok(data) = fs::read(folder_name.join(FRONT)) {
+    if let Ok(data) = fs::read(folder_name.join(FRONT)).await {
         front_image = CacheReadImage::Some(data.into_boxed_slice());
     }
-    if let Ok(data) = fs::read(folder_name.join(BACK)) {
+    if let Ok(data) = fs::read(folder_name.join(BACK)).await {
         back_image = CacheReadImage::Some(data.into_boxed_slice());
     } else if has_unique_face {
         back_image = CacheReadImage::Missing;
     }
     Some((front_image, back_image))
 }
-pub fn write_image(bytes: &[u8], set_cn: &str, uuid: Uuid, side: Side) {
+pub async fn write_image(bytes: &[u8], set_cn: &str, uuid: Uuid, side: Side) {
     if let Some(folder_name) = folder().map(|f| f.join(folder_path(set_cn, uuid))) {
-        let _ = fs::create_dir_all(&folder_name);
+        let _ = fs::create_dir_all(&folder_name).await;
         let _ = fs::write(
             folder_name.join(match side {
                 Side::Front => FRONT,
                 Side::Back => BACK,
             }),
             bytes,
-        );
+        )
+        .await;
     }
 }

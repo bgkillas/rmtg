@@ -5,6 +5,8 @@ use fdlimit::raise_fd_limit;
 use reqwest::Client;
 use std::time::Instant;
 use tokio::time::sleep;
+#[cfg(target_family = "wasm")]
+use tokio_with_wasm as tokio;
 use uuid::uuid;
 #[tokio::test(flavor = "multi_thread")]
 async fn test_list() {
@@ -40,16 +42,16 @@ async fn test_list() {
     }
     println!("{} {i} {}", list.len(), time);
     let tmr = Instant::now();
-    while IMAGES_IN_PROGRESS.lock().unwrap().len() > 0 {
+    while IMAGES_IN_PROGRESS.lock().await.len() > 0 {
         sleep(SLEEP_TIME).await;
     }
     println!(
         "{} {}",
         tmr.elapsed().as_millis(),
-        IMAGES_TO_PROCESS.lock().unwrap().len()
+        IMAGES_TO_PROCESS.lock().await.len()
     );
-    IMAGES_TO_PROCESS.lock().unwrap().clear();
-    IMAGES_IN_PROGRESS.lock().unwrap().clear();
+    IMAGES_TO_PROCESS.lock().await.clear();
+    IMAGES_IN_PROGRESS.lock().await.clear();
 }
 #[tokio::test(flavor = "multi_thread")]
 async fn test_prints() {
@@ -70,14 +72,14 @@ async fn test_prints() {
     }
     println!("{} {i} {}", vec.len(), time);
     let tmr = Instant::now();
-    while IMAGES_IN_PROGRESS.lock().unwrap().len() > 0 {
+    while IMAGES_IN_PROGRESS.lock().await.len() > 0 {
         sleep(SLEEP_TIME).await;
     }
     println!(
         "{} {}",
         tmr.elapsed().as_millis(),
-        IMAGES_TO_PROCESS.lock().unwrap().len()
+        IMAGES_TO_PROCESS.lock().await.len()
     );
-    IMAGES_TO_PROCESS.lock().unwrap().clear();
-    IMAGES_IN_PROGRESS.lock().unwrap().clear();
+    IMAGES_TO_PROCESS.lock().await.clear();
+    IMAGES_IN_PROGRESS.lock().await.clear();
 }

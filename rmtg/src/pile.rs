@@ -557,7 +557,7 @@ pub fn register_cards(
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let mut new_images = IMAGES_TO_PROCESS.lock().unwrap();
+    let mut new_images = IMAGES_TO_PROCESS.blocking_lock();
     if new_images.is_empty() {
         drop(new_images);
     } else {
@@ -574,7 +574,7 @@ pub fn register_cards(
             })
             .collect::<HashMap<_, _, FxBuildHasher>>();
         drop(new_images);
-        let mut cache = CACHE.lock().unwrap();
+        let mut cache = CACHE.blocking_lock();
         for (uuid, (front, back)) in map {
             let card = cache.cards.get_mut(&uuid).unwrap();
             card.face_handles = front.map_or(MaybeHandles::None, MaybeHandles::Some);
@@ -590,7 +590,7 @@ pub fn register_cards(
             {
                 has_some = true;
                 let card_cache = {
-                    let cache = CACHE.lock().unwrap();
+                    let cache = CACHE.blocking_lock();
                     cache.cards.get(&card.data.id).unwrap().clone()
                 };
                 if !matches!(card_cache.face_handles, MaybeHandles::Waiting) {
