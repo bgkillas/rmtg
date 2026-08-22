@@ -11,7 +11,7 @@ use jzon::{JsonValue, parse};
 use ratelimit::Ratelimiter;
 use reqwest::Client;
 use rustc_hash::FxBuildHasher;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::mem;
 use std::str::FromStr as _;
@@ -141,14 +141,17 @@ async fn read_cards(
     front_image: CacheReadImage,
     back_image: CacheReadImage,
 ) {
-    let (front, back) = join!(
-        front_image.get_image(&client, &set_cn, uuid, quality, Side::Front),
-        back_image.get_image(&client, &set_cn, uuid, quality, Side::Back)
-    );
-    IMAGES_TO_PROCESS
-        .lock()
-        .unwrap()
-        .insert(uuid, (front, back));
+    if IMAGES_IN_PROGRESS.lock().unwrap().insert(uuid) {
+        let (front, back) = join!(
+            front_image.get_image(&client, &set_cn, uuid, quality, Side::Front),
+            back_image.get_image(&client, &set_cn, uuid, quality, Side::Back)
+        );
+        IMAGES_TO_PROCESS
+            .lock()
+            .unwrap()
+            .insert(uuid, (front, back));
+        IMAGES_IN_PROGRESS.lock().unwrap().remove(&uuid);
+    }
 }
 async fn read_cards_check(
     client: Client,
@@ -198,7 +201,7 @@ static CARDS_THROTTLE: LazyLock<Ratelimiter<Clock>> =
     LazyLock::new(|| Ratelimiter::with_clock(9, Clock::default()));
 static SEARCH_THROTTLE: LazyLock<Ratelimiter<Clock>> =
     LazyLock::new(|| Ratelimiter::with_clock(1, Clock::default()));
-const SLEEP_TIME: Duration = Duration::new(0, 1_048_576);
+pub const SLEEP_TIME: Duration = Duration::new(0, 1_048_576);
 async fn get_uuid(client: Client, uuid: Uuid, quality: Quality) -> Option<SubCard> {
     while CARDS_THROTTLE.try_wait().is_err() {
         sleep(SLEEP_TIME).await;
@@ -215,6 +218,8 @@ async fn get_uuid(client: Client, uuid: Uuid, quality: Quality) -> Option<SubCar
 pub static IMAGES_TO_PROCESS: LazyLock<
     Mutex<HashMap<Uuid, (Option<Image>, Option<Image>), FxBuildHasher>>,
 > = LazyLock::new(|| Mutex::new(HashMap::with_capacity_and_hasher(512, FxBuildHasher)));
+pub static IMAGES_IN_PROGRESS: LazyLock<Mutex<HashSet<Uuid, FxBuildHasher>>> =
+    LazyLock::new(|| Mutex::new(HashSet::with_capacity_and_hasher(512, FxBuildHasher)));
 impl SubCard {
     #[must_use]
     pub async fn get_list(

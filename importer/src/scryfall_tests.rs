@@ -1,9 +1,10 @@
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 use crate::card::SubCard;
-use crate::scryfall::Quality;
+use crate::scryfall::{IMAGES_IN_PROGRESS, IMAGES_TO_PROCESS, Quality, SLEEP_TIME};
 use fdlimit::raise_fd_limit;
 use reqwest::Client;
 use std::time::Instant;
+use tokio::time::sleep;
 use uuid::uuid;
 #[tokio::test(flavor = "multi_thread")]
 async fn test_list() {
@@ -27,13 +28,28 @@ async fn test_list() {
         aclazotz_uuid,
         bruce_uuid,
         gisela_uuid,
-    ]; 1];
+    ]; 128];
     let list = SubCard::get_list(client, uuids.as_flattened(), Quality::Normal).await;
-    println!("{}", tmr.elapsed().as_millis());
-    for opt in list {
-        let card = opt.unwrap();
-        println!("{card:#?}");
+    let time = tmr.elapsed().as_millis();
+    let mut i = 0;
+    for res in &list {
+        if let Err(uuid) = res {
+            i += 1;
+            println!("{uuid}");
+        }
     }
+    println!("{} {i} {}", list.len(), time);
+    let tmr = Instant::now();
+    while IMAGES_IN_PROGRESS.lock().unwrap().len() > 0 {
+        sleep(SLEEP_TIME).await;
+    }
+    println!(
+        "{} {}",
+        tmr.elapsed().as_millis(),
+        IMAGES_TO_PROCESS.lock().unwrap().len()
+    );
+    IMAGES_TO_PROCESS.lock().unwrap().clear();
+    IMAGES_IN_PROGRESS.lock().unwrap().clear();
 }
 #[tokio::test(flavor = "multi_thread")]
 async fn test_prints() {
@@ -45,10 +61,23 @@ async fn test_prints() {
         .await
         .unwrap();
     let time = tmr.elapsed().as_millis();
+    let mut i = 0;
     for res in &vec {
         if let Err(uuid) = res {
+            i += 1;
             println!("{uuid}");
         }
     }
-    println!("{} {}", vec.len(), time);
+    println!("{} {i} {}", vec.len(), time);
+    let tmr = Instant::now();
+    while IMAGES_IN_PROGRESS.lock().unwrap().len() > 0 {
+        sleep(SLEEP_TIME).await;
+    }
+    println!(
+        "{} {}",
+        tmr.elapsed().as_millis(),
+        IMAGES_TO_PROCESS.lock().unwrap().len()
+    );
+    IMAGES_TO_PROCESS.lock().unwrap().clear();
+    IMAGES_IN_PROGRESS.lock().unwrap().clear();
 }
