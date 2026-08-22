@@ -261,16 +261,15 @@ impl SubCard {
                 .ok()?;
             let json_raw = request.text().await.ok()?;
             let mut json = parse(&json_raw).ok()?;
-            for card_json in json["data"].as_array_mut()? {
-                set.push(
-                    Self::get_json(
-                        client.clone(),
-                        mem::replace(card_json, JsonValue::Null),
-                        quality,
-                    )
-                    .await,
-                );
-            }
+            let mut list = join_all(json["data"].as_array_mut()?.iter_mut().map(|card_json| {
+                Self::get_json(
+                    client.clone(),
+                    mem::replace(card_json, JsonValue::Null),
+                    quality,
+                )
+            }))
+            .await;
+            set.append(&mut list);
             if !json["has_more"].as_bool()? {
                 break;
             }
