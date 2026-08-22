@@ -264,12 +264,12 @@ impl SubCard {
     }
     pub async fn get_json(client: Client, json: JsonValue, quality: Quality) -> Result<Self, Uuid> {
         let uuid = Uuid::parse_str(json["id"].as_str().unwrap_or_default()).unwrap_or_default();
-        SubCard::get_cache_result(
-            client,
-            CACHE.lock().await.get(uuid),
-            quality,
-            async |client, quality| SubCard::from_scryfall(client, json, uuid, quality).await,
-        )
+        let mut cache = CACHE.lock().await;
+        let res = cache.get(uuid);
+        drop(cache);
+        SubCard::get_cache_result(client, res, quality, async |client, quality| {
+            SubCard::from_scryfall(client, json, uuid, quality).await
+        })
         .await
         .ok_or(uuid)
     }
@@ -369,12 +369,12 @@ impl SubCard {
         }
     }
     pub async fn get(client: Client, uuid: Uuid, quality: Quality) -> Result<Self, Uuid> {
-        Self::get_cache_result(
-            client,
-            CACHE.lock().await.get(uuid),
-            quality,
-            async |client, quality| get_uuid(client, uuid, quality).await,
-        )
+        let mut cache = CACHE.lock().await;
+        let res = cache.get(uuid);
+        drop(cache);
+        Self::get_cache_result(client, res, quality, async |client, quality| {
+            get_uuid(client, uuid, quality).await
+        })
         .await
         .ok_or(uuid)
     }
@@ -383,25 +383,23 @@ impl SubCard {
         set_cn: &str,
         quality: Quality,
     ) -> Result<Self, Box<str>> {
-        Self::get_cache_result(
-            client,
-            CACHE.lock().await.get_set_cn(set_cn),
-            quality,
-            async |client, quality| {
-                while CARDS_THROTTLE.try_wait().is_err() {
-                    sleep(SLEEP_TIME).await;
-                }
-                let request = client
-                    .get(format!("https://{URL}/cards/{set_cn}"))
-                    .send()
-                    .await
-                    .ok()?;
-                let json_raw = request.text().await.ok()?;
-                let json = parse(&json_raw).ok()?;
-                let uuid = Uuid::parse_str(json["id"].as_str()?).ok()?;
-                SubCard::from_scryfall(client, json, uuid, quality).await
-            },
-        )
+        let mut cache = CACHE.lock().await;
+        let res = cache.get_set_cn(set_cn);
+        drop(cache);
+        Self::get_cache_result(client, res, quality, async |client, quality| {
+            while CARDS_THROTTLE.try_wait().is_err() {
+                sleep(SLEEP_TIME).await;
+            }
+            let request = client
+                .get(format!("https://{URL}/cards/{set_cn}"))
+                .send()
+                .await
+                .ok()?;
+            let json_raw = request.text().await.ok()?;
+            let json = parse(&json_raw).ok()?;
+            let uuid = Uuid::parse_str(json["id"].as_str()?).ok()?;
+            SubCard::from_scryfall(client, json, uuid, quality).await
+        })
         .await
         .ok_or_else(|| set_cn.into())
     }

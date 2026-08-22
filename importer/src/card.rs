@@ -33,7 +33,7 @@ pub struct SubCard {
     pub back_handles: MaybeHandles,
     pub flipped: bool,
 }
-#[derive(Debug, Clone, Default, Encode, Decode)]
+#[derive(PartialEq, Debug, Clone, Default, Encode, Decode)]
 pub struct CardData {
     #[bitcode(with = "DataCoder<Uuid>")]
     pub id: Uuid,
@@ -44,14 +44,14 @@ pub struct CardData {
     pub back: Option<Box<CardInfo>>,
     pub layout: Layout,
 }
-#[derive(Debug, Default, Clone, Copy, Encode, Decode)]
+#[derive(PartialEq, Debug, Default, Clone, Copy, Encode, Decode)]
 pub enum Layout {
     #[default]
     Normal,
     Flip,
     Side,
 }
-#[derive(Default, Clone, Copy, Encode, Decode)]
+#[derive(PartialEq, Default, Clone, Copy, Encode, Decode)]
 pub struct Cost {
     pub has_cost: bool,
     pub white: u8,
@@ -65,7 +65,7 @@ pub struct Cost {
     pub var: u8,
     pub hybrid: u8,
 }
-#[derive(Debug, Clone, Default, Encode, Decode)]
+#[derive(PartialEq, Debug, Clone, Default, Encode, Decode)]
 pub struct CardInfo {
     #[bitcode(with = "DataCoder<Uuid>")]
     pub oracle_id: Uuid,

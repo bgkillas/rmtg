@@ -27,7 +27,7 @@ pub enum CacheImage {
     Waiting,
     None,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CardInCache {
     pub strong: Arc<CardData>,
     pub face_handles: MaybeHandles,
@@ -48,8 +48,11 @@ fn folder() -> Option<PathBuf> {
 }
 impl CardData {
     pub fn folder_path(&self) -> String {
-        format!("{}/{}", self.set_cn, self.id)
+        folder_path(&self.set_cn, self.id)
     }
+}
+fn folder_path(set_cn: &str, id: Uuid) -> String {
+    format!("{}_{id}", set_cn.replace('/', "_"))
 }
 impl Default for CardCache {
     fn default() -> Self {
@@ -82,10 +85,12 @@ impl Default for CardCache {
         }
     }
 }
+#[derive(Debug)]
 pub enum Identifier<'a> {
     Uuid(Uuid),
     SetCn(&'a str),
 }
+#[derive(Debug)]
 pub enum CacheResult<'a> {
     Some(CardInCache),
     Cached(Uuid),
@@ -112,8 +117,9 @@ impl CardCache {
     pub fn get_set_cn<'a>(&mut self, set_cn: &'a str) -> CacheResult<'a> {
         if let Some(&uuid) = self.set_cn.get(set_cn) {
             self.get(uuid)
+        } else if self.in_progress_set_cn.contains(set_cn) {
+            CacheResult::Wait(Identifier::SetCn(set_cn))
         } else {
-            //TODO
             CacheResult::None(Identifier::SetCn(set_cn))
         }
     }
@@ -165,7 +171,7 @@ pub fn get_images(uuid: Uuid, has_unique_face: bool) -> Option<(CacheReadImage, 
     Some((front_image, back_image))
 }
 pub fn write_image(bytes: &[u8], set_cn: &str, uuid: Uuid, side: Side) {
-    if let Some(folder_name) = folder().map(|f| f.join(format!("{set_cn}/{uuid}"))) {
+    if let Some(folder_name) = folder().map(|f| f.join(folder_path(set_cn, uuid))) {
         let _ = fs::create_dir_all(&folder_name);
         let _ = fs::write(
             folder_name.join(match side {
