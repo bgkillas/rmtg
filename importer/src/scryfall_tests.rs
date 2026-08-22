@@ -28,12 +28,12 @@ async fn test_list() {
         bruce_uuid,
         gisela_uuid,
     ]; 1];
-    let mut list = SubCard::get_list(client, uuids.as_flattened(), Quality::Normal);
-    while let Some(Ok(opt)) = list.join_next().await {
+    let list = SubCard::get_list(client, uuids.as_flattened(), Quality::Normal).await;
+    println!("{}", tmr.elapsed().as_millis());
+    for opt in list {
         let card = opt.unwrap();
         println!("{card:#?}");
     }
-    println!("{}", tmr.elapsed().as_millis());
 }
 #[tokio::test(flavor = "multi_thread")]
 async fn test_prints() {

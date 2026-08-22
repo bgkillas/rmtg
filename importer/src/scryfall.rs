@@ -6,6 +6,7 @@ use crate::card_cache::{
 };
 use crate::image::parse_bytes;
 use bevy::image::Image;
+use futures::future::join_all;
 use jzon::{JsonValue, parse};
 use ratelimit::Ratelimiter;
 use reqwest::Client;
@@ -18,7 +19,6 @@ use std::sync::Mutex;
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 use tokio::join;
-use tokio::task::JoinSet;
 #[cfg(not(target_family = "wasm"))]
 use tokio::time::sleep;
 #[cfg(target_family = "wasm")]
@@ -217,16 +217,29 @@ pub static IMAGES_TO_PROCESS: LazyLock<
 > = LazyLock::new(|| Mutex::new(HashMap::with_capacity_and_hasher(512, FxBuildHasher)));
 impl SubCard {
     #[must_use]
-    pub fn get_list(
+    pub async fn get_list(
         client: Client,
         iter: &[Uuid],
         quality: Quality,
-    ) -> JoinSet<Result<Self, Uuid>> {
-        let mut set = JoinSet::new();
-        for &uuid in iter {
-            set.spawn(Self::get(client.clone(), uuid, quality));
-        }
-        set
+    ) -> Vec<Result<Self, Uuid>> {
+        join_all(
+            iter.iter()
+                .copied()
+                .map(|uuid| Self::get(client.clone(), uuid, quality)),
+        )
+        .await
+    }
+    #[must_use]
+    pub async fn get_list_set_cn(
+        client: Client,
+        iter: &[&str],
+        quality: Quality,
+    ) -> Vec<Result<Self, Box<str>>> {
+        join_all(
+            iter.iter()
+                .map(|set_cn| Self::get_set_cn(client.clone(), set_cn, quality)),
+        )
+        .await
     }
     pub async fn get_prints(
         client: Client,

@@ -4603,6 +4603,7 @@ dependencies = [
  "enumset",
  "fast_image_resize",
  "fdlimit",
+ "futures",
  "getrandom 0.4.3",
  "image",
  "jzon",
