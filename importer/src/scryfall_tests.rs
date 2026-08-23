@@ -1,4 +1,4 @@
-const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 use crate::card::SubCard;
 use crate::scryfall::{IMAGES_IN_PROGRESS, IMAGES_TO_PROCESS, Quality, SLEEP_TIME};
 use fdlimit::raise_fd_limit;
@@ -8,7 +8,7 @@ use tokio::time::sleep;
 #[cfg(target_family = "wasm")]
 use tokio_with_wasm as tokio;
 use uuid::uuid;
-async fn clear_images() {
+pub async fn clear_images() {
     let mut progress = IMAGES_IN_PROGRESS.lock().await;
     for (uuid, _) in IMAGES_TO_PROCESS.lock().await.drain() {
         assert!(progress.remove(&uuid));
@@ -37,7 +37,12 @@ async fn test_list() {
         bruce_uuid,
         gisela_uuid,
     ]; 128];
-    let list = SubCard::get_list(&client, uuids.as_flattened(), Quality::Normal).await;
+    let list = SubCard::get_list(
+        &client,
+        uuids.as_flattened().iter().copied(),
+        Quality::Normal,
+    )
+    .await;
     let time = tmr.elapsed().as_millis();
     let mut i = 0;
     for res in &list {

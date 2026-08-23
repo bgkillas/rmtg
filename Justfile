@@ -15,9 +15,9 @@ build_full:
 miri:
     cargo miri test -- --nocapture --test-threads=1
 test:
-    cargo test -- --nocapture --test-threads=1
+    cd importer && cargo test -- --nocapture --test-threads=1
 test_rel:
-    cargo test --release -- --nocapture --test-threads=1
+    cd importer && cargo test --release -- --nocapture --test-threads=1
 bench:
     cargo bench --lib --quiet -- --color always --test-threads=1 --nocapture
 clippy:

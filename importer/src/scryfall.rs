@@ -4,15 +4,16 @@ use crate::card_cache::{
     CacheReadImage, CacheResult, CardCache, Identifier, get_images, write_image,
 };
 use crate::image::parse_bytes;
+use crate::warn_if;
 use bevy::image::Image;
-use bevy::log::warn;
+use bytes::Bytes;
 use futures::future::join_all;
 use jzon::{JsonValue, parse};
 use ratelimit::Ratelimiter;
 use reqwest::Client;
 use rustc_hash::FxBuildHasher;
 use std::collections::{HashMap, HashSet};
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Display, Formatter};
 use std::str::FromStr as _;
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
@@ -35,18 +36,10 @@ pub enum Quality {
     Large,
     Png,
 }
+#[derive(Clone, Copy)]
 pub enum Side {
     Front,
     Back,
-}
-fn warn_if<T, E: Debug>(val: Result<T, E>) -> Option<T> {
-    match val {
-        Ok(v) => Some(v),
-        Err(e) => {
-            warn!("{e:?}");
-            None
-        }
-    }
 }
 impl Display for Side {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -96,9 +89,14 @@ async fn get_image(
     quality: Quality,
     side: Side,
 ) -> Option<Image> {
-    let byte = uuid.as_bytes()[0];
-    let request = warn_if(
-        client
+    async fn get_bytes(
+        client: &Client,
+        uuid: Uuid,
+        quality: Quality,
+        side: Side,
+    ) -> Result<Bytes, reqwest::Error> {
+        let byte = uuid.as_bytes()[0];
+        let request = client
             .get(format!(
                 "https://{CARD_URL}/{}/{side}/{:x}/{:x}/{uuid}.{}",
                 quality.name(),
@@ -107,9 +105,10 @@ async fn get_image(
                 quality.extension(),
             ))
             .send()
-            .await,
-    )?;
-    let bytes = warn_if(request.bytes().await)?;
+            .await?;
+        request.bytes().await
+    }
+    let bytes = warn_if(get_bytes(client, uuid, quality, side).await)?;
     write_image(&bytes, set_cn, uuid, side).await;
     throttled_parse_bytes(&bytes).await
 }
@@ -225,27 +224,18 @@ impl SubCard {
     #[must_use]
     pub async fn get_list(
         client: &Client,
-        iter: &[Uuid],
+        iter: impl Iterator<Item = Uuid>,
         quality: Quality,
     ) -> Vec<Result<Self, Uuid>> {
-        join_all(
-            iter.iter()
-                .copied()
-                .map(|uuid| Self::get_id(client, uuid, quality)),
-        )
-        .await
+        join_all(iter.map(|uuid| Self::get_id(client, uuid, quality))).await
     }
     #[must_use]
     pub async fn get_list_set_cn(
         client: &Client,
-        iter: &[&str],
+        iter: impl Iterator<Item = &str>,
         quality: Quality,
     ) -> Vec<Result<Self, Box<str>>> {
-        join_all(
-            iter.iter()
-                .map(|set_cn| Self::get_set_cn(client, set_cn, quality)),
-        )
-        .await
+        join_all(iter.map(|set_cn| Self::get_set_cn(client, set_cn, quality))).await
     }
     pub async fn get_prints_id(
         client: &Client,
@@ -346,10 +336,9 @@ impl SubCard {
                         face_handles: MaybeHandles::Waiting,
                         back_handles,
                     });
-                    CACHE.lock().await.insert(card.inner.clone());
                     Some(card)
                 } else if let Some(card) = on_none(client).await {
-                    CACHE.lock().await.in_progress.remove(&uuid);
+                    card.write_files().await;
                     Some(card)
                 } else {
                     CACHE.lock().await.in_progress.remove(&uuid);
@@ -379,15 +368,8 @@ impl SubCard {
                 };
                 return Some(Self::from(card));
             },
-            CacheResult::None(ident) if let Some(card) = on_none(client).await => {
-                match ident {
-                    Identifier::Uuid(uuid) => {
-                        CACHE.lock().await.in_progress.remove(&uuid);
-                    }
-                    Identifier::SetCn(set_cn) => {
-                        CACHE.lock().await.in_progress_set_cn.remove(set_cn);
-                    }
-                }
+            CacheResult::None(_) if let Some(card) = on_none(client).await => {
+                card.write_files().await;
                 Some(card)
             }
             CacheResult::None(Identifier::Uuid(uuid)) => {

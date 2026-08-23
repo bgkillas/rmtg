@@ -29,7 +29,9 @@ impl Hover<'_, '_> {
         if self.hover_map.is_empty() {
             return None;
         }
-        assert_eq!(self.hover_map.len(), 1);
+        if self.hover_map.len() != 1 {
+            return None;
+        }
         let val = self.hover_map.values().next().unwrap();
         if val.is_empty() {
             return None;
