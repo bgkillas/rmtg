@@ -34,7 +34,7 @@ pub fn react_paste_card(
                 let client_owned = client.client.clone();
                 runtime.spawn_hook(on_paste_card_prints_uuid, async move {
                     (
-                        SubCard::get_prints_id(client_owned, uuid, QUALITY).await,
+                        SubCard::get_prints_id(&client_owned, uuid, QUALITY).await,
                         pos,
                     )
                 });
@@ -43,7 +43,7 @@ pub fn react_paste_card(
                 let client_owned = client.client.clone();
                 runtime.spawn_hook(on_paste_card_prints_set, async move {
                     (
-                        SubCard::get_prints_set_cn(client_owned, &set_cn, QUALITY).await,
+                        SubCard::get_prints_set_cn(&client_owned, &set_cn, QUALITY).await,
                         pos,
                     )
                 });
@@ -55,14 +55,14 @@ pub fn react_paste_card(
             Identifier::Uuid(uuid) => {
                 let client_owned = client.client.clone();
                 runtime.spawn_hook(on_paste_card_uuid, async move {
-                    (SubCard::get(client_owned, uuid, QUALITY).await, pos)
+                    (SubCard::get(&client_owned, uuid, QUALITY).await, pos)
                 });
             }
             Identifier::SetCn(set_cn) => {
                 let client_owned = client.client.clone();
                 runtime.spawn_hook(on_paste_card_set, async move {
                     (
-                        SubCard::get_set_cn(client_owned, &set_cn, QUALITY).await,
+                        SubCard::get_set_cn(&client_owned, &set_cn, QUALITY).await,
                         pos,
                     )
                 });
