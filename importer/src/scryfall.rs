@@ -147,14 +147,11 @@ async fn read_cards(
     front_image: CacheReadImage,
     back_image: CacheReadImage,
 ) {
-    if IMAGES_IN_PROGRESS.lock().await.insert(uuid) {
-        let (front, back) = join!(
-            front_image.get_image(client, &set_cn, uuid, quality, Side::Front),
-            back_image.get_image(client, &set_cn, uuid, quality, Side::Back)
-        );
-        IMAGES_TO_PROCESS.lock().await.insert(uuid, (front, back));
-        IMAGES_IN_PROGRESS.lock().await.remove(&uuid);
-    }
+    let (front, back) = join!(
+        front_image.get_image(client, &set_cn, uuid, quality, Side::Front),
+        back_image.get_image(client, &set_cn, uuid, quality, Side::Back)
+    );
+    IMAGES_TO_PROCESS.lock().await.insert(uuid, (front, back));
 }
 async fn read_cards_check(
     client: &Client,
@@ -217,7 +214,7 @@ async fn get_uuid(client: &Client, uuid: Uuid) -> Option<SubCard> {
     )?;
     let json_raw = warn_if(request.text().await)?;
     let json = warn_if(parse(&json_raw))?;
-    SubCard::from_scryfall(json).await
+    SubCard::from_scryfall(json)
 }
 pub static IMAGES_TO_PROCESS: LazyLock<
     Mutex<HashMap<Uuid, (Option<Image>, Option<Image>), FxBuildHasher>>,
@@ -325,11 +322,9 @@ impl SubCard {
             let mut cache = CACHE.lock().await;
             cache.get(uuid)
         };
-        Self::get_cache_result(client, res, quality, async |_| {
-            Self::from_scryfall(json).await
-        })
-        .await
-        .ok_or(uuid)
+        Self::get_cache_result(client, res, quality, async |_| Self::from_scryfall(json))
+            .await
+            .ok_or(uuid)
     }
     pub async fn get_cache_result(
         client: &Client,
@@ -404,7 +399,8 @@ impl SubCard {
                 None
             }
         } {
-            card.spawn_image_getters(client, quality);
+            card.spawn_image_getters(client, quality).await;
+            CACHE.lock().await.insert(card.inner.clone());
             Some(card)
         } else {
             None
@@ -442,13 +438,13 @@ impl SubCard {
             )?;
             let json_raw = warn_if(request.text().await)?;
             let json = warn_if(parse(&json_raw))?;
-            Self::from_scryfall(json).await
+            Self::from_scryfall(json)
         })
         .await
         .ok_or_else(|| set_cn.into())
     }
     #[must_use]
-    pub async fn from_scryfall(json: JsonValue) -> Option<Self> {
+    pub fn from_scryfall(json: JsonValue) -> Option<Self> {
         fn get_face(json: &JsonValue, face: &JsonValue) -> Option<CardInfo> {
             fn get<'a>(face: &'a JsonValue, json: &'a JsonValue, s: &str) -> &'a JsonValue {
                 if face[s].is_null() {
@@ -535,15 +531,16 @@ impl SubCard {
             face_handles,
             back_handles,
         });
-        CACHE.lock().await.insert(card.inner.clone());
         Some(card)
     }
-    pub fn spawn_image_getters(&self, client: &Client, quality: Quality) {
+    pub async fn spawn_image_getters(&self, client: &Client, quality: Quality) {
         let face = (&self.face_handles).into();
         let back = (&self.back_handles).into();
-        if matches!(face, CacheReadImage::Missing) || matches!(back, CacheReadImage::Missing) {
+        let id = self.data.id;
+        if (matches!(face, CacheReadImage::Missing) || matches!(back, CacheReadImage::Missing))
+            && IMAGES_IN_PROGRESS.lock().await.insert(id)
+        {
             let set_cn = self.data.set_cn.clone();
-            let id = self.data.id;
             let cloned = client.clone();
             tokio::spawn(async move {
                 read_cards_check(&cloned, set_cn, id, quality, face, back).await;

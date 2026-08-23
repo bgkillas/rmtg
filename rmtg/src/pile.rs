@@ -17,7 +17,7 @@ use bevy_query_fn_macro::query_fn;
 use bitcode::{Decode, Encode};
 use importer::bitcode;
 use importer::card::{Card, CardIter, CardIterMut, MaybeHandles, SubCard};
-use importer::scryfall::{CACHE, IMAGES_TO_PROCESS};
+use importer::scryfall::{CACHE, IMAGES_IN_PROGRESS, IMAGES_TO_PROCESS};
 use itertools::Either;
 use rand::make_rng;
 use rand::rngs::StdRng;
@@ -558,12 +558,15 @@ pub fn register_cards(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let mut new_images = IMAGES_TO_PROCESS.blocking_lock();
+    let mut in_progress_images = IMAGES_IN_PROGRESS.blocking_lock();
     if new_images.is_empty() {
         drop(new_images);
+        drop(in_progress_images);
     } else {
         let map = new_images
             .drain()
             .map(|(uuid, (front, back))| {
+                in_progress_images.remove(&uuid);
                 (
                     uuid,
                     (
@@ -580,6 +583,7 @@ pub fn register_cards(
             card.face_handles = front.map_or(MaybeHandles::None, MaybeHandles::Some);
             card.back_handles = back.map_or(MaybeHandles::None, MaybeHandles::Some);
         }
+        drop(in_progress_images);
     }
     for mut pile in query {
         let mut has_some = false;

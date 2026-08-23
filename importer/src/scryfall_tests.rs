@@ -8,6 +8,12 @@ use tokio::time::sleep;
 #[cfg(target_family = "wasm")]
 use tokio_with_wasm as tokio;
 use uuid::uuid;
+async fn clear_images() {
+    let mut progress = IMAGES_IN_PROGRESS.lock().await;
+    for (uuid, _) in IMAGES_TO_PROCESS.lock().await.drain() {
+        assert!(progress.remove(&uuid));
+    }
+}
 #[tokio::test(flavor = "multi_thread")]
 async fn test_list() {
     raise_fd_limit().unwrap();
@@ -40,18 +46,19 @@ async fn test_list() {
             println!("{uuid}");
         }
     }
-    println!("{} {i} {}", list.len(), time);
+    println!(
+        "{} {i} {} {}",
+        list.len(),
+        IMAGES_IN_PROGRESS.lock().await.len(),
+        time,
+    );
     let tmr = Instant::now();
+    clear_images().await;
     while IMAGES_IN_PROGRESS.lock().await.len() > 0 {
         sleep(SLEEP_TIME).await;
+        clear_images().await;
     }
-    println!(
-        "{} {}",
-        tmr.elapsed().as_millis(),
-        IMAGES_TO_PROCESS.lock().await.len()
-    );
-    IMAGES_TO_PROCESS.lock().await.clear();
-    IMAGES_IN_PROGRESS.lock().await.clear();
+    println!("{}", tmr.elapsed().as_millis(),);
 }
 #[tokio::test(flavor = "multi_thread")]
 async fn test_prints() {
@@ -70,16 +77,17 @@ async fn test_prints() {
             println!("{uuid}");
         }
     }
-    println!("{} {i} {}", vec.len(), time);
+    println!(
+        "{} {i} {} {}",
+        vec.len(),
+        IMAGES_IN_PROGRESS.lock().await.len(),
+        time,
+    );
     let tmr = Instant::now();
+    clear_images().await;
     while IMAGES_IN_PROGRESS.lock().await.len() > 0 {
         sleep(SLEEP_TIME).await;
+        clear_images().await;
     }
-    println!(
-        "{} {}",
-        tmr.elapsed().as_millis(),
-        IMAGES_TO_PROCESS.lock().await.len()
-    );
-    IMAGES_TO_PROCESS.lock().await.clear();
-    IMAGES_IN_PROGRESS.lock().await.clear();
+    println!("{}", tmr.elapsed().as_millis(),);
 }
