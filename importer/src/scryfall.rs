@@ -217,7 +217,7 @@ async fn get_uuid(client: &Client, uuid: Uuid) -> Option<SubCard> {
     )?;
     let json_raw = warn_if(request.text().await)?;
     let json = warn_if(parse(&json_raw))?;
-    SubCard::from_scryfall(json)
+    SubCard::from_scryfall(json).await
 }
 pub static IMAGES_TO_PROCESS: LazyLock<
     Mutex<HashMap<Uuid, (Option<Image>, Option<Image>), FxBuildHasher>>,
@@ -325,9 +325,11 @@ impl SubCard {
             let mut cache = CACHE.lock().await;
             cache.get(uuid)
         };
-        Self::get_cache_result(client, res, quality, async |_| Self::from_scryfall(json))
-            .await
-            .ok_or(uuid)
+        Self::get_cache_result(client, res, quality, async |_| {
+            Self::from_scryfall(json).await
+        })
+        .await
+        .ok_or(uuid)
     }
     pub async fn get_cache_result(
         client: &Client,
@@ -352,6 +354,7 @@ impl SubCard {
                     CACHE.lock().await.insert(card.inner.clone());
                     Some(card)
                 } else if let Some(card) = on_none(client).await {
+                    CACHE.lock().await.in_progress.remove(&uuid);
                     Some(card)
                 } else {
                     CACHE.lock().await.in_progress.remove(&uuid);
@@ -381,7 +384,17 @@ impl SubCard {
                 };
                 return Some(Self::from(card));
             },
-            CacheResult::None(_) if let Some(card) = on_none(client).await => Some(card),
+            CacheResult::None(ident) if let Some(card) = on_none(client).await => {
+                match ident {
+                    Identifier::Uuid(uuid) => {
+                        CACHE.lock().await.in_progress.remove(&uuid);
+                    }
+                    Identifier::SetCn(set_cn) => {
+                        CACHE.lock().await.in_progress_set_cn.remove(set_cn);
+                    }
+                }
+                Some(card)
+            }
             CacheResult::None(Identifier::Uuid(uuid)) => {
                 CACHE.lock().await.in_progress.remove(&uuid);
                 None
@@ -429,13 +442,13 @@ impl SubCard {
             )?;
             let json_raw = warn_if(request.text().await)?;
             let json = warn_if(parse(&json_raw))?;
-            Self::from_scryfall(json)
+            Self::from_scryfall(json).await
         })
         .await
         .ok_or_else(|| set_cn.into())
     }
     #[must_use]
-    pub fn from_scryfall(json: JsonValue) -> Option<Self> {
+    pub async fn from_scryfall(json: JsonValue) -> Option<Self> {
         fn get_face(json: &JsonValue, face: &JsonValue) -> Option<CardInfo> {
             fn get<'a>(face: &'a JsonValue, json: &'a JsonValue, s: &str) -> &'a JsonValue {
                 if face[s].is_null() {
@@ -522,6 +535,7 @@ impl SubCard {
             face_handles,
             back_handles,
         });
+        CACHE.lock().await.insert(card.inner.clone());
         Some(card)
     }
     pub fn spawn_image_getters(&self, client: &Client, quality: Quality) {
