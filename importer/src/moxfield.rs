@@ -3,6 +3,7 @@ use crate::scryfall::Quality;
 use crate::warn_if;
 use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use base64::{DecodeSliceError, Engine as _};
+use bevy::prelude::Event;
 use jzon::{JsonValue, parse};
 use reqwest::Client;
 use std::fmt::{Debug, Display, Formatter};
@@ -37,13 +38,39 @@ impl Debug for DeckId {
         write!(f, "{self}")
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, Event)]
+pub struct Boards {
+    pub commanders: Option<Vec<SubCard>>,
+    pub mainboard: Option<Vec<SubCard>>,
+}
+#[derive(Debug, Clone)]
+pub enum MaybeBoards {
+    None,
+    Waiting,
+    Full(Boards),
+}
+#[derive(Debug, Clone)]
 pub struct MoxfieldDeck {
     pub id: DeckId,
     pub colors: Colors,
     pub name: Box<str>,
-    pub mainboard: Option<Vec<SubCard>>,
-    pub commanders: Option<Vec<SubCard>>,
+    pub boards: MaybeBoards,
+}
+impl MaybeBoards {
+    pub fn is_some(&self) -> bool {
+        !matches!(self, Self::None | Self::Waiting)
+    }
+    pub fn is_waiting(&self) -> bool {
+        !matches!(self, Self::Waiting)
+    }
+    pub fn unwrap(self) -> Boards {
+        match self {
+            MaybeBoards::Full(board) => board,
+            MaybeBoards::None | MaybeBoards::Waiting => {
+                panic!()
+            }
+        }
+    }
 }
 impl MoxfieldDeck {
     pub async fn get_deck(&mut self, client: &Client, quality: Quality) -> Result<(), DeckId> {
@@ -107,8 +134,7 @@ impl MoxfieldDeck {
                     .map(|j| j.as_str().unwrap_or_default()),
             ),
             name: json["name"].as_str()?.into(),
-            mainboard: None,
-            commanders: None,
+            boards: MaybeBoards::None,
         })
     }
     pub async fn parse_json(
@@ -137,8 +163,10 @@ impl MoxfieldDeck {
                 .collect()
         }
         let boards = &json["boards"];
-        self.commanders = get_board(client, &boards["commanders"], quality).await;
-        self.mainboard = get_board(client, &boards["mainboard"], quality).await;
+        self.boards = MaybeBoards::Full(Boards {
+            commanders: get_board(client, &boards["commanders"], quality).await,
+            mainboard: get_board(client, &boards["boards"], quality).await,
+        });
         Some(())
     }
 }

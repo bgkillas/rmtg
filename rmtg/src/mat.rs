@@ -6,9 +6,13 @@ use bevy::color::Color;
 use bevy::math::Vec3;
 use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{Commands, InheritedVisibility, Rectangle, Transform};
+use bevy::prelude::{Commands, Component, InheritedVisibility, Rectangle, Transform};
 use bevy_ecs::system::ResMut;
 use std::f32::consts::PI;
+#[derive(Component)]
+pub struct PlayMat {
+    pub player: Peer,
+}
 pub fn create_mats(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -58,7 +62,7 @@ fn make_mat(
         Transform::from_xyz(if right { x } else { -x }, y, z)
     };
     commands
-        .spawn((transform, InheritedVisibility::VISIBLE))
+        .spawn((transform, PlayMat { player }, InheritedVisibility::VISIBLE))
         .with_children(|p| {
             p.spawn((
                 Mesh3d(meshes.add(Rectangle::new(MAT_WIDTH, MAT_BAR))),

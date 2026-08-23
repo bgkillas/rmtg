@@ -1,5 +1,5 @@
-use crate::events::scroll::Scrollable;
-use crate::ui::text_box::TextSource;
+use crate::events::scroll::{Scroll, Scrollable};
+use crate::ui::text_box::{TextSource, TextSubmission};
 use crate::{FONT_HEIGHT, FONT_SIZE};
 use bevy::color::Color;
 use bevy::prelude::{BackgroundColor, FlexDirection, Text, Visibility};
@@ -8,6 +8,10 @@ use bevy::ui::{Display, Node, Overflow, PositionType, Val};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
 use bevy_ecs::component::Component;
+use bevy_ecs::entity::Entity;
+use bevy_ecs::message::MessageWriter;
+use bevy_ecs::observer::On;
+use bevy_ecs::prelude::{Commands, Single, With};
 #[derive(Component)]
 pub struct TextMenu;
 #[derive(Component)]
@@ -73,4 +77,18 @@ pub fn text_node(str: String) -> impl Bundle {
             ..TextFont::default()
         },
     )
+}
+pub fn text_message(
+    event: On<TextSubmission>,
+    mut commands: Commands,
+    text_chat: Single<Entity, With<TextChat>>,
+    mut msgs: MessageWriter<Scroll>,
+) {
+    if !matches!(event.source, TextSource::Chat) {
+        return;
+    }
+    commands
+        .entity(*text_chat)
+        .with_child(text_node(event.string.clone()));
+    msgs.write(Scroll::down(*text_chat));
 }

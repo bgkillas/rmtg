@@ -1,7 +1,5 @@
 use crate::FONT_SIZE;
-use crate::events::scroll::Scroll;
 use crate::keybinds::Keybind;
-use crate::ui::chat::{TextChat, text_node};
 use bevy::color::Color;
 use bevy::input::ButtonInput;
 use bevy::input_focus::{FocusCause, InputFocus};
@@ -10,8 +8,6 @@ use bevy::text::{EditableText, TextCursorStyle};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::change_detection::{Res, ResMut};
 use bevy_ecs::entity::Entity;
-use bevy_ecs::message::MessageWriter;
-use bevy_ecs::observer::On;
 use bevy_ecs::prelude::{Commands, Query, Single, With};
 use bevy_query_fn_macro::query_fn;
 #[derive(Component, Clone, Copy)]
@@ -41,20 +37,6 @@ impl TextSource {
 pub struct TextSubmission {
     pub string: String,
     pub source: TextSource,
-}
-pub fn text_message(
-    event: On<TextSubmission>,
-    mut commands: Commands,
-    text_chat: Single<Entity, With<TextChat>>,
-    mut msgs: MessageWriter<Scroll>,
-) {
-    if !matches!(event.source, TextSource::Chat) {
-        return;
-    }
-    commands
-        .entity(*text_chat)
-        .with_child(text_node(event.string.clone()));
-    msgs.write(Scroll::down(*text_chat));
 }
 #[query_fn]
 pub fn text_submission(

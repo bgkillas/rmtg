@@ -107,7 +107,7 @@ pub fn button(str: &str) -> impl Bundle {
         Node {
             width: Val::Percent(100.0),
             min_width: Val::Percent(100.0),
-            height: Val::Px(FONT_SIZE + 4.0),
+            height: Val::Px(FONT_SIZE * 1.5),
             ..Node::default()
         },
         BorderColor::all(BUTTON_BORDER),

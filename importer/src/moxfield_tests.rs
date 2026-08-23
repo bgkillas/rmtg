@@ -19,8 +19,8 @@ async fn get_decks() {
             let cache = CACHE.lock().await;
             println!(
                 "{} {} {time} {} {:?} {:?}",
-                deck.mainboard.unwrap().len(),
-                deck.commanders.unwrap().len(),
+                deck.boards.clone().unwrap().mainboard.unwrap().len(),
+                deck.boards.unwrap().commanders.unwrap().len(),
                 IMAGES_IN_PROGRESS.lock().await.len(),
                 cache.in_progress,
                 cache.in_progress_set_cn,

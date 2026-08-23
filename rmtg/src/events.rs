@@ -11,9 +11,10 @@ use crate::events::scale::on_scale;
 use crate::events::scroll::insert_scroll_bar;
 use crate::net::{connect_failed, on_connect, on_disconnect};
 use crate::paste::react_paste_card;
+use crate::ui::chat::text_message;
 use crate::ui::esc_menu::on_iroh_bind_copy;
 use crate::ui::menu::on_set_menu;
-use crate::ui::text_box::text_message;
+use crate::ui::moxfield::{spawn_boards, submit_moxfield};
 use bevy::app::App;
 pub mod clipboard;
 pub mod clone;
@@ -50,5 +51,7 @@ pub fn add_events(app: &mut App) {
     app.add_observer(trigger_pile_merge);
     app.add_observer(on_iroh_bind_copy);
     app.add_observer(on_set_menu);
+    app.add_observer(submit_moxfield);
+    app.add_observer(spawn_boards);
     app.init_resource::<PollClipboard>();
 }
