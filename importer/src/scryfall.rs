@@ -1,8 +1,7 @@
-use crate::card::{CardData, CardInfo, Layout, MaybeHandles};
-use crate::card::{Colors, Cost, SubCard, Types};
+use crate::card::{CardData, CardInfo, Layout, MaybeHandles, SubCard, SubCardInner};
+use crate::card::{Colors, Cost, Types};
 use crate::card_cache::{
-    CacheRead, CacheReadImage, CacheResult, CardCache, CardInCache, Identifier, get_images,
-    write_image,
+    CacheReadImage, CacheResult, CardCache, Identifier, get_images, write_image,
 };
 use crate::image::parse_bytes;
 use bevy::image::Image;
@@ -235,7 +234,7 @@ impl SubCard {
         join_all(
             iter.iter()
                 .copied()
-                .map(|uuid| Self::get(client, uuid, quality)),
+                .map(|uuid| Self::get_id(client, uuid, quality)),
         )
         .await
     }
@@ -256,7 +255,7 @@ impl SubCard {
         id: Uuid,
         quality: Quality,
     ) -> Result<Vec<Result<Self, Uuid>>, Uuid> {
-        let card = Self::get(client, id, quality).await?;
+        let card = Self::get_id(client, id, quality).await?;
         Self::get_prints(client, card.data.front.oracle_id, quality)
             .await
             .map_err(|_| id)
@@ -337,31 +336,20 @@ impl SubCard {
         on_none: impl AsyncFnOnce(&Client) -> Option<Self>,
     ) -> Option<Self> {
         if let Some(card) = match cache_result {
-            CacheResult::Some(card) => Some(Self {
-                data: card.strong,
-                face_handles: card.face_handles,
-                back_handles: card.back_handles,
-                flipped: false,
-            }),
+            CacheResult::Some(card) => Some(Self::from(card)),
             CacheResult::Cached(set_cn, uuid) => {
-                if let Some(read) = CacheRead::read_files(&set_cn, uuid).await {
-                    let data = read.strong.clone();
-                    let back_handles = if matches!(read.back_image, CacheReadImage::None) {
-                        MaybeHandles::None
-                    } else {
+                if let Some(data) = CardData::read_files(&set_cn, uuid).await {
+                    let back_handles = if data.back.as_ref().is_some_and(|c| c.has_unique_face) {
                         MaybeHandles::Waiting
+                    } else {
+                        MaybeHandles::None
                     };
-                    let card = Self {
-                        data: data.clone(),
-                        face_handles: MaybeHandles::Waiting,
-                        back_handles: back_handles.clone(),
-                        flipped: false,
-                    };
-                    CACHE.lock().await.insert(CardInCache {
-                        strong: data,
+                    let card = Self::from(SubCardInner {
+                        data: Arc::new(data),
                         face_handles: MaybeHandles::Waiting,
                         back_handles,
                     });
+                    CACHE.lock().await.insert(card.inner.clone());
                     Some(card)
                 } else if let Some(card) = on_none(client).await {
                     Some(card)
@@ -379,12 +367,7 @@ impl SubCard {
                     }
                     cache.cards.get(&uuid)?.clone()
                 };
-                return Some(Self {
-                    data: card.strong,
-                    face_handles: card.face_handles,
-                    back_handles: card.back_handles,
-                    flipped: false,
-                });
+                return Some(Self::from(card));
             },
             CacheResult::Wait(Identifier::SetCn(str)) => loop {
                 sleep(SLEEP_TIME).await;
@@ -396,12 +379,7 @@ impl SubCard {
                     let &uuid = cache.set_cn.get_by_left(str)?;
                     cache.cards.get(&uuid)?.clone()
                 };
-                return Some(Self {
-                    data: card.strong,
-                    face_handles: card.face_handles,
-                    back_handles: card.back_handles,
-                    flipped: false,
-                });
+                return Some(Self::from(card));
             },
             CacheResult::None(_) if let Some(card) = on_none(client).await => Some(card),
             CacheResult::None(Identifier::Uuid(uuid)) => {
@@ -419,7 +397,7 @@ impl SubCard {
             None
         }
     }
-    pub async fn get(client: &Client, uuid: Uuid, quality: Quality) -> Result<Self, Uuid> {
+    pub async fn get_id(client: &Client, uuid: Uuid, quality: Quality) -> Result<Self, Uuid> {
         let res = {
             let mut cache = CACHE.lock().await;
             cache.get(uuid)
@@ -539,18 +517,11 @@ impl SubCard {
             back,
             layout,
         };
-        let cache = CardInCache {
-            strong: Arc::new(data),
+        let card = Self::from(SubCardInner {
+            data: Arc::new(data),
             face_handles,
             back_handles,
-        };
-        let card = Self {
-            data: cache.strong.clone(),
-            face_handles: cache.face_handles.clone(),
-            back_handles: cache.back_handles.clone(),
-            flipped: false,
-        };
-        CACHE.blocking_lock().insert(cache);
+        });
         Some(card)
     }
     pub fn spawn_image_getters(&self, client: &Client, quality: Quality) {

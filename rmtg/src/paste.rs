@@ -55,7 +55,7 @@ pub fn react_paste_card(
             Identifier::Uuid(uuid) => {
                 let client_owned = client.client.clone();
                 runtime.spawn_hook(on_paste_card_uuid, async move {
-                    (SubCard::get(&client_owned, uuid, QUALITY).await, pos)
+                    (SubCard::get_id(&client_owned, uuid, QUALITY).await, pos)
                 });
             }
             Identifier::SetCn(set_cn) => {

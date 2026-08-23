@@ -1,4 +1,4 @@
-use crate::card::{CardData, MaybeHandles};
+use crate::card::{CardData, SubCardInner};
 use crate::scryfall::Side;
 use bevy::asset::Handle;
 use bevy::image::Image;
@@ -16,7 +16,7 @@ pub const DATA: &str = "card.data";
 pub const FRONT: &str = "front.png";
 pub const BACK: &str = "back.png";
 pub struct CardCache {
-    pub cards: HashMap<Uuid, CardInCache, FxBuildHasher>,
+    pub cards: HashMap<Uuid, SubCardInner, FxBuildHasher>,
     pub in_storage: HashSet<Uuid, FxBuildHasher>,
     pub in_progress: HashSet<Uuid, FxBuildHasher>,
     pub in_progress_set_cn: HashSet<Box<str>, FxBuildHasher>,
@@ -28,23 +28,11 @@ pub enum CacheImage {
     Waiting,
     None,
 }
-#[derive(Clone, Debug)]
-pub struct CardInCache {
-    pub strong: Arc<CardData>,
-    pub face_handles: MaybeHandles,
-    pub back_handles: MaybeHandles,
-}
 #[derive(Debug)]
 pub enum CacheReadImage {
     Some(Box<[u8]>),
     Missing,
     None,
-}
-#[derive(Debug)]
-pub struct CacheRead {
-    pub strong: Arc<CardData>,
-    pub front_image: CacheReadImage,
-    pub back_image: CacheReadImage,
 }
 fn folder() -> Option<PathBuf> {
     preferences_dir().map(|p| p.join(crate::app_name()).join(CACHE_FOLDER))
@@ -99,14 +87,14 @@ pub enum Identifier<'a> {
 }
 #[derive(Debug)]
 pub enum CacheResult<'a> {
-    Some(CardInCache),
+    Some(SubCardInner),
     Cached(Box<str>, Uuid),
     Wait(Identifier<'a>),
     None(Identifier<'a>),
 }
 impl CardCache {
     pub fn clean(&mut self) {
-        self.cards.retain(|_, card| !Arc::is_unique(&card.strong));
+        self.cards.retain(|_, card| !Arc::is_unique(&card.data));
     }
     pub fn get<'b>(&mut self, uuid: Uuid) -> CacheResult<'b> {
         if let Some(val) = self.cards.get(&uuid) {
@@ -132,41 +120,30 @@ impl CardCache {
             CacheResult::None(Identifier::SetCn(set_cn))
         }
     }
-    pub fn insert(&mut self, card: CardInCache) {
-        let uuid = card.strong.id;
-        let set_cn = card.strong.set_cn.clone();
+    pub fn insert(&mut self, card: SubCardInner) {
+        let uuid = card.data.id;
+        let set_cn = card.data.set_cn.clone();
         self.in_progress_set_cn.remove(&set_cn);
         self.set_cn.insert(set_cn, uuid);
         self.cards.insert(uuid, card);
         self.in_progress.remove(&uuid);
     }
 }
-impl CardInCache {
+impl SubCardInner {
     pub async fn write_files(&self) {
-        if let Some(folder_name) = folder().map(|f| f.join(self.strong.folder_path())) {
+        if let Some(folder_name) = folder().map(|f| f.join(self.data.folder_path())) {
             let _ = fs::create_dir_all(&folder_name).await;
-            let data = encode::<CardData>(&self.strong);
+            let data = encode::<CardData>(&self.data);
             let _ = fs::write(folder_name.join(DATA), data).await;
         }
     }
 }
-impl CacheRead {
+impl CardData {
     pub async fn read_files(set_cn: &str, uuid: Uuid) -> Option<Self> {
         let folder_name = folder()?.join(folder_path(set_cn, uuid));
         let card_data = fs::read(folder_name.join(DATA)).await.ok()?;
         let data = decode::<CardData>(&card_data).ok()?;
-        let (front_image, back_image) = get_images(
-            set_cn,
-            uuid,
-            data.back.as_ref().is_some_and(|c| c.has_unique_face),
-        )
-        .await?;
-        let card = Self {
-            strong: Arc::new(data),
-            front_image,
-            back_image,
-        };
-        Some(card)
+        Some(data)
     }
 }
 pub async fn get_images(

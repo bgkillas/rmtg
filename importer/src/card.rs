@@ -8,6 +8,7 @@ use enumset::{EnumSet, EnumSetType};
 use std::cmp::Ordering;
 use std::fmt::{Debug, Formatter};
 use std::mem;
+use std::ops::{Deref, DerefMut};
 use std::slice::{Iter, IterMut};
 use std::sync::Arc;
 use uuid::Uuid;
@@ -26,12 +27,16 @@ pub struct Card {
 }
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct SubCard {
+    pub inner: SubCardInner,
+    pub flipped: bool,
+}
+#[derive(Debug, Default, Encode, Decode, Clone)]
+pub struct SubCardInner {
     pub data: Arc<CardData>,
     #[bitcode(skip)]
     pub face_handles: MaybeHandles,
     #[bitcode(skip)]
     pub back_handles: MaybeHandles,
-    pub flipped: bool,
 }
 #[derive(PartialEq, Debug, Clone, Default, Encode, Decode)]
 pub struct CardData {
@@ -893,7 +898,26 @@ impl From<SubCard> for Card {
     fn from(subcard: SubCard) -> Self {
         Self {
             subcard,
-            ..Card::default()
+            ..Self::default()
         }
+    }
+}
+impl From<SubCardInner> for SubCard {
+    fn from(inner: SubCardInner) -> Self {
+        Self {
+            inner,
+            ..Self::default()
+        }
+    }
+}
+impl Deref for SubCard {
+    type Target = SubCardInner;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+impl DerefMut for SubCard {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }
