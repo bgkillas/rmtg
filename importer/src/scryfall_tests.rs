@@ -1,6 +1,6 @@
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 use crate::card::SubCard;
-use crate::scryfall::{IMAGES_IN_PROGRESS, IMAGES_TO_PROCESS, Quality, SLEEP_TIME};
+use crate::scryfall::{CACHE, IMAGES_IN_PROGRESS, IMAGES_TO_PROCESS, Quality, SLEEP_TIME};
 use fdlimit::raise_fd_limit;
 use reqwest::Client;
 use std::time::Instant;
@@ -51,12 +51,16 @@ async fn test_list() {
             println!("{uuid}");
         }
     }
+    let cache = CACHE.lock().await;
     println!(
-        "{} {i} {} {}",
+        "{} {i} {} {} {:?} {:?}",
         list.len(),
         IMAGES_IN_PROGRESS.lock().await.len(),
         time,
+        cache.in_progress,
+        cache.in_progress_set_cn,
     );
+    drop(cache);
     let tmr = Instant::now();
     clear_images().await;
     while IMAGES_IN_PROGRESS.lock().await.len() > 0 {
@@ -82,12 +86,16 @@ async fn test_prints() {
             println!("{uuid}");
         }
     }
+    let cache = CACHE.lock().await;
     println!(
-        "{} {i} {} {}",
+        "{} {i} {} {} {:?} {:?}",
         vec.len(),
         IMAGES_IN_PROGRESS.lock().await.len(),
         time,
+        cache.in_progress,
+        cache.in_progress_set_cn,
     );
+    drop(cache);
     let tmr = Instant::now();
     clear_images().await;
     while IMAGES_IN_PROGRESS.lock().await.len() > 0 {

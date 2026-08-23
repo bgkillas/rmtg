@@ -1,5 +1,6 @@
 #![expect(clippy::shadow_reuse)]
-use crate::focus::{Focus, Menu};
+use crate::focus::Focus;
+use crate::ui::menu::Menu;
 use bevy::ecs::system::SystemParam;
 use bevy::input::ButtonInput;
 use bevy::prelude::{Deref, DerefMut, KeyCode, MouseButton, Res, ResMut, Resource};
@@ -93,26 +94,26 @@ impl Default for KeybindsList {
         _ = alt;
         let shift = Modifier::Shift;
         let map = enum_map! {
-            Keybind::Select =>      Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  MouseButton::Left),
-            Keybind::HoldSelect =>  Bind::new(enum_set!(ctrl),  enum_set!(Menu::World | Menu::Side | Menu::Counter),             false, true,  MouseButton::Left),
-            Keybind::Rotate =>      Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             false, true,  MouseButton::Right),
-            Keybind::Shuffle =>     Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyR),
-            Keybind::Remove =>      Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::Delete),
-            Keybind::CopyObject =>  Bind::new(enum_set!(ctrl),  enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyC),
-            Keybind::PasteObject => Bind::new(enum_set!(ctrl),  enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyV),
-            Keybind::Chat =>        Bind::new(enum_set!(),      enum_set!(Menu::World),                                          true,  false, KeyCode::Enter),
-            Keybind::Menu =>        Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter | Menu::Esc), true,  false, KeyCode::Escape),
-            Keybind::Left =>        Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyA),
-            Keybind::Up =>          Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyW),
-            Keybind::Down =>        Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyS),
-            Keybind::Right =>       Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyD),
-            Keybind::LeftFast =>    Bind::new(enum_set!(shift), enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyA),
-            Keybind::UpFast =>      Bind::new(enum_set!(shift), enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyW),
-            Keybind::DownFast =>    Bind::new(enum_set!(shift), enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyS),
-            Keybind::RightFast =>   Bind::new(enum_set!(shift), enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::KeyD),
-            Keybind::Reset =>       Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::Space),
-            Keybind::ScaleUp =>     Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::Equal),
-            Keybind::ScaleDown =>   Bind::new(enum_set!(),      enum_set!(Menu::World | Menu::Side | Menu::Counter),             true,  true,  KeyCode::Minus),
+            Keybind::Select =>      Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  MouseButton::Left),
+            Keybind::HoldSelect =>  Bind::new(enum_set!(ctrl),  Menu::view_world(),         false, true,  MouseButton::Left),
+            Keybind::Rotate =>      Bind::new(enum_set!(),      Menu::view_world(),         false, true,  MouseButton::Right),
+            Keybind::Shuffle =>     Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::KeyR),
+            Keybind::Remove =>      Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::Delete),
+            Keybind::CopyObject =>  Bind::new(enum_set!(ctrl),  Menu::view_world(),         true,  true,  KeyCode::KeyC),
+            Keybind::PasteObject => Bind::new(enum_set!(ctrl),  Menu::view_world(),         true,  true,  KeyCode::KeyV),
+            Keybind::Chat =>        Bind::new(enum_set!(),      enum_set!(Menu::World),     true,  false, KeyCode::Enter),
+            Keybind::Menu =>        Bind::new(enum_set!(),      EnumSet::all(),             true,  false, KeyCode::Escape),
+            Keybind::Left =>        Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::KeyA),
+            Keybind::Up =>          Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::KeyW),
+            Keybind::Down =>        Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::KeyS),
+            Keybind::Right =>       Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::KeyD),
+            Keybind::LeftFast =>    Bind::new(enum_set!(shift), Menu::view_world(),         true,  true,  KeyCode::KeyA),
+            Keybind::UpFast =>      Bind::new(enum_set!(shift), Menu::view_world(),         true,  true,  KeyCode::KeyW),
+            Keybind::DownFast =>    Bind::new(enum_set!(shift), Menu::view_world(),         true,  true,  KeyCode::KeyS),
+            Keybind::RightFast =>   Bind::new(enum_set!(shift), Menu::view_world(),         true,  true,  KeyCode::KeyD),
+            Keybind::Reset =>       Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::Space),
+            Keybind::ScaleUp =>     Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::Equal),
+            Keybind::ScaleDown =>   Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::Minus),
         };
         Self(map)
     }

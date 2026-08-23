@@ -1,23 +1,16 @@
 #![expect(clippy::shadow_reuse)]
+use crate::ui::menu::Menu;
 use bevy::ecs::system::SystemParam;
 use bevy::input::ButtonInput;
 use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::picking::hover::HoverMap;
-use bevy::prelude::{MouseButton, Res, Resource};
+use bevy::prelude::{MouseButton, Res};
 use bevy::ui::Node;
 use bevy::window::Window;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Query, ResMut, Single};
-use enumset::{EnumSet, EnumSetType};
-#[derive(Resource, EnumSetType, Default, Debug)]
-pub enum Menu {
-    #[default]
-    World,
-    Counter,
-    Esc,
-    Side,
-}
+use enumset::EnumSet;
 #[derive(SystemParam)]
 pub struct Hover<'w, 's> {
     pub window: Single<'w, 's, Entity, With<Window>>,

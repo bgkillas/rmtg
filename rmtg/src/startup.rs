@@ -11,8 +11,11 @@ use crate::shapes::icosahedron::Icosahedron;
 use crate::shapes::octahedron::Octahedron;
 use crate::shapes::tetrahedron::Tetrahedron;
 use crate::shapes::trapezohedron::Trapezohedron;
-use crate::ui::chat::chat_bundle;
-use crate::ui::esc_menu::esc_menu_bundle;
+use crate::ui::calc::CalcMenu;
+use crate::ui::chat::TextMenu;
+use crate::ui::esc_menu::EscMenu;
+use crate::ui::moxfield::MoxfieldMenu;
+use crate::ui::side::SideMenu;
 use crate::{
     CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT, MAT_WIDTH, T, W,
     WALL_COLOR,
@@ -81,8 +84,11 @@ pub fn startup(
         },
         CameraVelocity::default(),
     ));
-    commands.spawn(chat_bundle());
-    commands.spawn(esc_menu_bundle());
+    commands.spawn(TextMenu::bundle());
+    commands.spawn(EscMenu::bundle());
+    commands.spawn(SideMenu::bundle());
+    commands.spawn(MoxfieldMenu::bundle());
+    commands.spawn(CalcMenu::bundle());
 }
 pub fn spawn_objects(
     mut commands: Commands,

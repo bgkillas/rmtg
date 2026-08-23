@@ -1,27 +1,23 @@
 use crate::events::clipboard::{ClipboardEvent, GetClipboard};
-use crate::focus::Menu;
 use crate::keybinds::Keybind;
 use crate::net::Msg;
+use crate::ui::menu::{Menu, SetMenu};
 use crate::{ALPN, BUTTON_BACKGROUND, BUTTON_BORDER, BUTTON_HOVER, FONT_SIZE};
 use bevy::app::AppExit;
 use bevy::clipboard::Clipboard;
 use bevy::color::Color;
 use bevy::input::ButtonInput;
-use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::log::warn;
-use bevy::prelude::{
-    BackgroundColor, Component, FlexDirection, Resource, Text, Visibility, Window,
-};
+use bevy::prelude::{BackgroundColor, Component, FlexDirection, Resource, Text, Visibility};
 use bevy::text::{FontSize, TextFont};
 use bevy::ui::{BorderColor, Interaction, Node, PositionType, Val};
 use bevy::ui_widgets::{Activate, Button, observe};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
-use bevy_ecs::entity::Entity;
 use bevy_ecs::message::MessageWriter;
 use bevy_ecs::observer::On;
-use bevy_ecs::query::{Changed, With};
-use bevy_ecs::system::{Commands, If, Query, Res, ResMut, Single};
+use bevy_ecs::query::Changed;
+use bevy_ecs::system::{Commands, If, Query, Res, ResMut};
 use bevy_p2p::events::Binded;
 use bevy_p2p::iroh_res::{IrohBind, IrohResource, IrohUnbind};
 use bevy_query_fn_macro::query_fn;
@@ -29,37 +25,40 @@ use bevy_query_fn_macro::query_fn;
 pub struct EscMenu;
 #[derive(Component)]
 pub struct Exit;
-#[must_use]
-pub fn esc_menu_bundle() -> impl Bundle {
-    (
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            ..Node::default()
-        },
-        EscMenu,
-        Visibility::Hidden,
-        BackgroundColor(Color::srgba_u8(0, 0, 0, 128)),
-        children![(
+impl EscMenu {
+    #[must_use]
+    pub fn bundle() -> impl Bundle {
+        (
             Node {
-                flex_direction: FlexDirection::Column,
-                flex_shrink: 0.0,
-                width: Val::Percent(12.5),
-                height: Val::Percent(50.0),
-                left: Val::Percent(43.75),
-                top: Val::Percent(25.0),
-                position_type: PositionType::Absolute,
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
                 ..Node::default()
             },
-            Visibility::Inherited,
-            children![
-                (button("Copy Endpoint"), observe(on_copy)),
-                (button("Connect To Clipboard"), observe(on_connect)),
-                (button("Disconnect"), observe(on_disconnect)),
-                (button("Exit"), observe(on_exit)),
-            ]
-        )],
-    )
+            Self,
+            Visibility::Hidden,
+            BackgroundColor(Color::srgba_u8(0, 0, 0, 128)),
+            children![(
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    flex_shrink: 0.0,
+                    width: Val::Percent(12.5),
+                    height: Val::Percent(50.0),
+                    left: Val::Percent(43.75),
+                    top: Val::Percent(25.0),
+                    position_type: PositionType::Absolute,
+                    ..Node::default()
+                },
+                Visibility::Inherited,
+                children![
+                    (button("Copy Endpoint"), observe(on_copy)),
+                    (button("Connect To Clipboard"), observe(on_connect)),
+                    (button("Disconnect"), observe(on_disconnect)),
+                    (button("Moxfield Deck List"), observe(on_moxfield_deck_list)),
+                    (button("Exit"), observe(on_exit)),
+                ]
+            )],
+        )
+    }
 }
 #[derive(Resource, Default)]
 pub struct CopyOnSpawn;
@@ -78,6 +77,9 @@ fn on_copy(
         commands.init_resource::<CopyOnSpawn>();
         commands.trigger(IrohBind::new(ALPN));
     }
+}
+fn on_moxfield_deck_list(_: On<Activate>, mut commands: Commands) {
+    commands.trigger(SetMenu::new(Menu::Moxfield));
 }
 pub fn on_iroh_bind_copy(
     _: On<Binded>,
@@ -139,24 +141,14 @@ pub fn button_system(
 }
 #[query_fn]
 pub fn toggle_esc_menu(
-    mut esc: Single<(Entity, &mut Visibility), With<EscMenu>>,
     keybinds: Res<ButtonInput<Keybind>>,
-    mut menu: ResMut<Menu>,
-    mut active_input: ResMut<InputFocus>,
-    window: Single<Entity, With<Window>>,
+    menu: Res<Menu>,
+    mut commands: Commands,
 ) {
     if keybinds.just_pressed(Keybind::Menu) {
-        match *menu {
-            Menu::World | Menu::Side | Menu::Counter => {
-                *esc.visibility = Visibility::Visible;
-                *menu = Menu::Esc;
-                active_input.set(esc.entity, FocusCause::Pressed);
-            }
-            Menu::Esc => {
-                *esc.visibility = Visibility::Hidden;
-                *menu = Menu::World;
-                active_input.set(*window, FocusCause::Pressed);
-            }
-        }
+        commands.trigger(SetMenu::new(match *menu {
+            Menu::World => Menu::Esc,
+            Menu::Side | Menu::Counter | Menu::Moxfield | Menu::Esc => Menu::World,
+        }));
     }
 }

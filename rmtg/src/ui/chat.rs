@@ -26,61 +26,63 @@ pub struct TextInput;
 pub enum TextSource {
     Chat,
 }
-#[must_use]
-pub fn chat_bundle() -> impl Bundle {
-    (
-        Node {
-            width: Val::Percent(25.0),
-            height: Val::Percent(25.0),
-            left: Val::Percent(0.0),
-            top: Val::Percent(75.0),
-            ..Node::default()
-        },
-        TextMenu,
-        Visibility::Visible,
-        BackgroundColor(Color::srgba_u8(0, 0, 0, 64)),
-        children![
-            (
-                BackgroundColor(Color::srgba_u8(0, 0, 0, 32)),
-                Node {
-                    width: Val::Percent(100.0),
-                    bottom: Val::Percent(0.0),
-                    position_type: PositionType::Absolute,
-                    height: Val::Px(FONT_HEIGHT),
-                    ..Node::default()
-                },
-                EditableText::default(),
-                TextCursorStyle {
-                    color: Color::WHITE,
-                    selection_color: Color::srgb_u8(53, 132, 228),
-                    unfocused_selection_color: Color::srgb_u8(176, 176, 176),
-                    selected_text_color: None,
-                },
-                TextFont {
-                    font_size: FontSize::Px(FONT_SIZE),
-                    ..TextFont::default()
-                },
-                TextInput,
-                Visibility::Inherited,
-                TextSource::Chat
-            ),
-            (
-                Node {
-                    width: Val::Percent(100.0),
-                    top: Val::Percent(0.0),
-                    position_type: PositionType::Absolute,
-                    bottom: Val::Px(FONT_HEIGHT),
-                    overflow: Overflow::scroll_y(),
-                    display: Display::Flex,
-                    flex_direction: FlexDirection::Column,
-                    ..Node::default()
-                },
-                TextChat,
-                Visibility::Inherited,
-                Scrollable,
-            ),
-        ],
-    )
+impl TextMenu {
+    #[must_use]
+    pub fn bundle() -> impl Bundle {
+        (
+            Node {
+                width: Val::Percent(25.0),
+                height: Val::Percent(25.0),
+                left: Val::Percent(0.0),
+                top: Val::Percent(75.0),
+                ..Node::default()
+            },
+            Self,
+            Visibility::Visible,
+            BackgroundColor(Color::srgba_u8(0, 0, 0, 64)),
+            children![
+                (
+                    BackgroundColor(Color::srgba_u8(0, 0, 0, 32)),
+                    Node {
+                        width: Val::Percent(100.0),
+                        bottom: Val::Percent(0.0),
+                        position_type: PositionType::Absolute,
+                        height: Val::Px(FONT_HEIGHT),
+                        ..Node::default()
+                    },
+                    EditableText::default(),
+                    TextCursorStyle {
+                        color: Color::WHITE,
+                        selection_color: Color::srgb_u8(53, 132, 228),
+                        unfocused_selection_color: Color::srgb_u8(176, 176, 176),
+                        selected_text_color: None,
+                    },
+                    TextFont {
+                        font_size: FontSize::Px(FONT_SIZE),
+                        ..TextFont::default()
+                    },
+                    TextInput,
+                    Visibility::Inherited,
+                    TextSource::Chat
+                ),
+                (
+                    Node {
+                        width: Val::Percent(100.0),
+                        top: Val::Percent(0.0),
+                        position_type: PositionType::Absolute,
+                        bottom: Val::Px(FONT_HEIGHT),
+                        overflow: Overflow::scroll_y(),
+                        display: Display::Flex,
+                        flex_direction: FlexDirection::Column,
+                        ..Node::default()
+                    },
+                    TextChat,
+                    Visibility::Inherited,
+                    Scrollable,
+                ),
+            ],
+        )
+    }
 }
 #[derive(Event)]
 pub struct TextSubmission {
