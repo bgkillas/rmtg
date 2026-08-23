@@ -1,31 +1,17 @@
-use crate::events::scroll::{Scroll, Scrollable};
-use crate::keybinds::Keybind;
+use crate::events::scroll::Scrollable;
+use crate::ui::text_box::TextSource;
 use crate::{FONT_HEIGHT, FONT_SIZE};
 use bevy::color::Color;
-use bevy::input::ButtonInput;
-use bevy::input_focus::{FocusCause, InputFocus};
-use bevy::prelude::{BackgroundColor, Event, FlexDirection, Text, Visibility, Window};
-use bevy::text::{EditableText, FontSize, TextCursorStyle, TextFont};
+use bevy::prelude::{BackgroundColor, FlexDirection, Text, Visibility};
+use bevy::text::{FontSize, TextFont};
 use bevy::ui::{Display, Node, Overflow, PositionType, Val};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
 use bevy_ecs::component::Component;
-use bevy_ecs::entity::Entity;
-use bevy_ecs::message::MessageWriter;
-use bevy_ecs::observer::On;
-use bevy_ecs::query::With;
-use bevy_ecs::system::{Commands, Query, Res, ResMut, Single};
-use bevy_query_fn_macro::query_fn;
 #[derive(Component)]
 pub struct TextMenu;
 #[derive(Component)]
 pub struct TextChat;
-#[derive(Component)]
-pub struct TextInput;
-#[derive(Component, Clone, Copy)]
-pub enum TextSource {
-    Chat,
-}
 impl TextMenu {
     #[must_use]
     pub fn bundle() -> impl Bundle {
@@ -47,30 +33,18 @@ impl TextMenu {
                         width: Val::Percent(100.0),
                         bottom: Val::Percent(0.0),
                         position_type: PositionType::Absolute,
-                        height: Val::Px(FONT_HEIGHT),
+                        height: Val::Px(FONT_HEIGHT * 1.5),
                         ..Node::default()
                     },
-                    EditableText::default(),
-                    TextCursorStyle {
-                        color: Color::WHITE,
-                        selection_color: Color::srgb_u8(53, 132, 228),
-                        unfocused_selection_color: Color::srgb_u8(176, 176, 176),
-                        selected_text_color: None,
-                    },
-                    TextFont {
-                        font_size: FontSize::Px(FONT_SIZE),
-                        ..TextFont::default()
-                    },
-                    TextInput,
                     Visibility::Inherited,
-                    TextSource::Chat
+                    TextSource::Chat.bundle()
                 ),
                 (
                     Node {
                         width: Val::Percent(100.0),
                         top: Val::Percent(0.0),
                         position_type: PositionType::Absolute,
-                        bottom: Val::Px(FONT_HEIGHT),
+                        bottom: Val::Px(FONT_HEIGHT * 1.5),
                         overflow: Overflow::scroll_y(),
                         display: Display::Flex,
                         flex_direction: FlexDirection::Column,
@@ -83,11 +57,6 @@ impl TextMenu {
             ],
         )
     }
-}
-#[derive(Event)]
-pub struct TextSubmission {
-    pub string: String,
-    pub source: TextSource,
 }
 #[must_use]
 pub fn text_node(str: String) -> impl Bundle {
@@ -104,39 +73,4 @@ pub fn text_node(str: String) -> impl Bundle {
             ..TextFont::default()
         },
     )
-}
-pub fn text_message(
-    event: On<TextSubmission>,
-    mut commands: Commands,
-    text_chat: Single<Entity, With<TextChat>>,
-    mut msgs: MessageWriter<Scroll>,
-) {
-    commands
-        .entity(*text_chat)
-        .with_child(text_node(event.string.clone()));
-    msgs.write(Scroll::down(*text_chat));
-}
-#[query_fn]
-pub fn text_submission(
-    window: Single<Entity, With<Window>>,
-    mut active_input: ResMut<InputFocus>,
-    keybinds: Res<ButtonInput<Keybind>>,
-    mut text_input: Query<(&mut EditableText, &TextSource)>,
-    mut commands: Commands,
-    chat: Single<Entity, With<TextInput>>,
-) {
-    if keybinds.just_pressed(Keybind::Chat) {
-        if let Some(focused_entity) = active_input.get()
-            && let Ok(mut text) = text_input.get_mut(focused_entity)
-        {
-            commands.trigger(TextSubmission {
-                string: text.editable_text.value().to_string(),
-                source: *text.text_source,
-            });
-            text.editable_text.clear();
-            active_input.set(*window, FocusCause::Pressed);
-        } else {
-            active_input.set(*chat, FocusCause::Pressed);
-        }
-    }
 }

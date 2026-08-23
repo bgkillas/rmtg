@@ -41,9 +41,9 @@ impl EscMenu {
                 Node {
                     flex_direction: FlexDirection::Column,
                     flex_shrink: 0.0,
-                    width: Val::Percent(12.5),
+                    width: Val::Percent(25.0),
                     height: Val::Percent(50.0),
-                    left: Val::Percent(43.75),
+                    left: Val::Percent(37.5),
                     top: Val::Percent(25.0),
                     position_type: PositionType::Absolute,
                     ..Node::default()

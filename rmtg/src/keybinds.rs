@@ -101,7 +101,7 @@ impl Default for KeybindsList {
             Keybind::Remove =>      Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::Delete),
             Keybind::CopyObject =>  Bind::new(enum_set!(ctrl),  Menu::view_world(),         true,  true,  KeyCode::KeyC),
             Keybind::PasteObject => Bind::new(enum_set!(ctrl),  Menu::view_world(),         true,  true,  KeyCode::KeyV),
-            Keybind::Chat =>        Bind::new(enum_set!(),      enum_set!(Menu::World),     true,  false, KeyCode::Enter),
+            Keybind::Chat =>        Bind::new(enum_set!(),      Menu::view_world(),         true,  false, KeyCode::Enter),
             Keybind::Menu =>        Bind::new(enum_set!(),      EnumSet::all(),             true,  false, KeyCode::Escape),
             Keybind::Left =>        Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::KeyA),
             Keybind::Up =>          Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::KeyW),

@@ -16,9 +16,10 @@ use crate::net::{Msg, Peers, net_update, receive_message};
 use crate::pile::register_cards;
 use crate::spatial::{Cursor, update_cursor};
 use crate::startup::{spawn_objects, startup};
-use crate::ui::chat::text_submission;
 use crate::ui::esc_menu::{button_system, toggle_esc_menu};
 use crate::ui::menu::Menu;
+use crate::ui::moxfield::SearchedPlayer;
+use crate::ui::text_box::text_submission;
 use crate::{APP_NAME, FONT, PHYSICS_SCALE, USER_AGENT};
 use avian3d::PhysicsPlugins;
 use bevy::DefaultPlugins;
@@ -124,6 +125,7 @@ pub fn app_run() -> AppExit {
         ..LoadFonts::default()
     });
     app.init_resource::<Menu>();
+    app.init_resource::<SearchedPlayer>();
     app.init_resource::<KeybindsList>();
     app.init_resource::<Peers>();
     app.init_resource::<Client>();

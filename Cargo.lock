@@ -7282,6 +7282,7 @@ dependencies = [
  "arboard",
  "avian3d",
  "bevy",
+ "bevy-settings",
  "bevy_ecs",
  "bevy_framepace",
  "bevy_microphone",

@@ -4,3 +4,4 @@ pub mod esc_menu;
 pub mod menu;
 pub mod moxfield;
 pub mod side;
+pub mod text_box;

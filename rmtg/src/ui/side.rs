@@ -9,8 +9,9 @@ impl SideMenu {
     pub fn bundle() -> impl Bundle {
         (
             Node {
-                width: Val::Percent(100.0),
+                width: Val::Percent(100.0 / 3.0),
                 height: Val::Percent(100.0),
+                left: Val::Percent(2.0 * 100.0 / 3.0),
                 ..Node::default()
             },
             Self,

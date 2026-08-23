@@ -2,12 +2,13 @@ use crate::ui::calc::CalcMenu;
 use crate::ui::esc_menu::EscMenu;
 use crate::ui::moxfield::MoxfieldMenu;
 use crate::ui::side::SideMenu;
+use crate::ui::text_box::TextSource;
 use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::prelude::{Event, Resource, Visibility, Window};
 use bevy_ecs::change_detection::ResMut;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::observer::On;
-use bevy_ecs::prelude::{Single, With};
+use bevy_ecs::prelude::{Query, Single, With};
 use bevy_ecs::query::Without;
 use bevy_query_fn_macro::query_fn;
 use enumset::{EnumSet, EnumSetType, enum_set};
@@ -79,6 +80,7 @@ pub fn on_set_menu(
     mut menu: ResMut<Menu>,
     mut active_input: ResMut<InputFocus>,
     window: Single<Entity, With<Window>>,
+    text_input: Query<(Entity, &TextSource)>,
 ) {
     match *menu {
         Menu::World => {}
@@ -99,7 +101,11 @@ pub fn on_set_menu(
         }
         Menu::Moxfield => {
             *moxfield.visibility = Visibility::Visible;
-            moxfield.entity
+            text_input
+                .iter()
+                .find(|q| matches!(q.text_source, TextSource::Moxfield))
+                .unwrap()
+                .entity
         }
         Menu::Esc => {
             *esc.visibility = Visibility::Visible;

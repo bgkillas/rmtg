@@ -3,7 +3,7 @@ use crate::app::Client;
 use crate::events::move_up::MoveUp;
 use crate::pile::Pile;
 use crate::spatial::Spatial;
-use crate::ui::chat::TextSubmission;
+use crate::ui::text_box::{TextSource, TextSubmission};
 use bevy::log::warn;
 use bevy::math::Vec3;
 use bevy::prelude::{Commands, Res, Transform};
@@ -25,6 +25,9 @@ pub fn react_paste_card(
     runtime: Res<Runtime>,
     spatial: Spatial,
 ) {
+    if !matches!(event.source, TextSource::Chat) {
+        return;
+    }
     let Some((_, pos, _)) = spatial.ray() else {
         return;
     };
