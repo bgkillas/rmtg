@@ -170,7 +170,7 @@ pub fn spawn_boards(
     if let Some(pile) = owned.commanders {
         let ent = commands.spawn((transform, Pile::new(pile).bundle())).id();
         commands.trigger(MoveUp::new(ent));
-        transform.translation.x += CARD_WIDTH;
+        transform.translation.x += CARD_WIDTH * 1.125;
     }
     if let Some(pile) = owned.mainboard {
         let ent = commands.spawn((transform, Pile::new(pile).bundle())).id();

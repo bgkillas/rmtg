@@ -38,6 +38,7 @@ pub fn on_pile_added(
             &asset,
             Transform::from_xyz(0.0, -pile.thickness() / 2.0, 0.0),
         ));
+        parent.spawn(pile.side_outline(&asset));
     });
     commands.trigger(Repaint::new(on.entity));
 }
@@ -56,13 +57,21 @@ pub fn on_repaint(
     if let Some(new) = pile.pile.first().face_handles() {
         mat.0 = new.material;
     }
-    let [mut up, mut down, mut side, mut outline_up, mut outline_down] = transforms
+    let [
+        mut up,
+        mut down,
+        mut side,
+        mut outline_up,
+        mut outline_down,
+        mut side_outline,
+    ] = transforms
         .get_many_mut([
             pile.children[0],
             pile.children[1],
             pile.children[2],
             pile.children[3],
             pile.children[4],
+            pile.children[5],
         ])
         .unwrap();
     pile.pile.reposition_up(&mut up);
@@ -70,8 +79,9 @@ pub fn on_repaint(
     pile.pile.reposition_side(&mut side);
     pile.pile.reposition_up(&mut outline_up);
     pile.pile.reposition_down(&mut outline_down);
-    if pile.children.len() - 5 != pile.pile.len() - 1 {
-        for &ent in &pile.children[5..] {
+    pile.pile.reposition_side(&mut side_outline);
+    if pile.children.len() - 6 != pile.pile.len() - 1 {
+        for &ent in &pile.children[6..] {
             commands.entity(ent).despawn();
         }
         commands.entity(on.entity).with_children(|parent| {

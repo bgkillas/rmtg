@@ -1,6 +1,8 @@
 #![expect(clippy::shadow_reuse)]
 use crate::shapes::deck_outline::DeckOutline;
-use crate::shapes::{NewShape as _, OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, Shape, ShapeOutline as _};
+use crate::shapes::{
+    NewShape as _, OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, OUTLINE_RESOLUTION, Shape, ShapeOutline as _,
+};
 use crate::{
     CARD_HEIGHT, CARD_STOCK_COLOR, CARD_STOCK_INBETWEEN_COLOR, CARD_THICKNESS, CARD_WIDTH, PLAYER,
 };
@@ -11,17 +13,17 @@ use bevy::ecs::system::SystemParam;
 use bevy::image::Image;
 use bevy::material::AlphaMode;
 use bevy::mesh::{
-    CircularMeshUvMode, CircularSectorMeshBuilder, ExtrusionBuilder, Mesh, MeshBuilder as _,
-    RingMeshBuilder,
+    CircularMeshUvMode, CircularSectorMeshBuilder, CylinderMeshBuilder, ExtrusionBuilder, Mesh,
+    MeshBuilder as _, RingMeshBuilder,
 };
 use bevy::pbr::StandardMaterial;
-use bevy::prelude::{CircularSector, Rectangle, Res, Resource, Ring};
+use bevy::prelude::{CircularSector, Cylinder, Rectangle, Res, Resource, Ring};
 use enum_map::EnumMap;
 use importer::CARD_CORNER_RADIUS;
 use importer::card::Handles;
 use importer::image::parse_bytes;
 use std::array;
-use std::f32::consts::PI;
+use std::f32::consts::{FRAC_1_SQRT_2, PI};
 #[derive(SystemParam)]
 pub struct AssetManager<'w> {
     pub card: Res<'w, CardBase>,
@@ -44,6 +46,7 @@ pub struct CardBase {
     pub stock: Handle<Mesh>,
     pub side: Handle<Mesh>,
     pub outline: Handle<Mesh>,
+    pub side_outline: Handle<Mesh>,
     pub back: Handle<StandardMaterial>,
     pub back_image: Handle<Image>,
     pub color: Handle<StandardMaterial>,
@@ -110,6 +113,7 @@ impl CardBase {
             stock,
             side: meshes.add(generate_side_mesh()),
             outline: meshes.add(DeckOutline::from_height(0.0)),
+            side_outline: meshes.add(generate_side_outline()),
             back,
             back_image,
             color,
@@ -129,6 +133,30 @@ pub fn register_card(materials: &mut Assets<StandardMaterial>, image: Handle<Ima
         ..StandardMaterial::default()
     });
     Handles { image, material }
+}
+#[must_use]
+pub fn generate_side_outline() -> Mesh {
+    let mut q1 = Mesh::from(CylinderMeshBuilder {
+        cylinder: Cylinder::new(DeckOutline::THICKNESS, CARD_THICKNESS),
+        resolution: OUTLINE_RESOLUTION,
+        ..CylinderMeshBuilder::default()
+    });
+    let mut q2 = q1.clone();
+    let mut q3 = q1.clone();
+    let mut q4 = q1.clone();
+    let del = CARD_WIDTH * CARD_CORNER_RADIUS;
+    let rdd = del * FRAC_1_SQRT_2;
+    let wid = CARD_WIDTH / 2.0 - del + rdd;
+    let hei = CARD_HEIGHT / 2.0 - del + rdd;
+    q1.translate_by(Vec3::new(wid, 0.0, hei));
+    q2.translate_by(Vec3::new(-wid, 0.0, hei));
+    q3.translate_by(Vec3::new(wid, 0.0, -hei));
+    q4.translate_by(Vec3::new(-wid, 0.0, -hei));
+    let mut mesh = q1;
+    mesh.merge(&q2).unwrap();
+    mesh.merge(&q3).unwrap();
+    mesh.merge(&q4).unwrap();
+    mesh
 }
 #[must_use]
 pub fn generate_side_mesh() -> Mesh {

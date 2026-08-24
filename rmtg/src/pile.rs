@@ -107,6 +107,13 @@ impl Pile {
         )
     }
     #[must_use]
+    pub fn side_outline(&self, asset: &AssetManager) -> impl Bundle + use<> {
+        (
+            Mesh3d(asset.card.side_outline.clone()),
+            MeshMaterial3d(asset.outlines.default.clone()),
+        )
+    }
+    #[must_use]
     pub fn sides(&self, asset: &AssetManager) -> impl Bundle + use<> {
         (
             Transform::from_scale(Vec3::new(1.0, self.len() as f32, 1.0)),
