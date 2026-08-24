@@ -31,10 +31,10 @@ pub fn react_paste_card(
     let Some((_, pos, _)) = spatial.ray() else {
         return;
     };
-    if let Some(rest) = event.string.strip_prefix("prints ") {
+    if let Some(rest) = event.string.strip_prefix("/prints ") {
+        let client_owned = client.client.clone();
         match get_identifier(rest) {
             Identifier::Uuid(uuid) => {
-                let client_owned = client.client.clone();
                 runtime.spawn_hook(on_paste_card_prints_uuid, async move {
                     (
                         SubCard::get_prints_id(&client_owned, uuid, QUALITY).await,
@@ -43,7 +43,6 @@ pub fn react_paste_card(
                 });
             }
             Identifier::SetCn(set_cn) => {
-                let client_owned = client.client.clone();
                 runtime.spawn_hook(on_paste_card_prints_set, async move {
                     (
                         SubCard::get_prints_set_cn(&client_owned, &set_cn, QUALITY).await,
@@ -51,18 +50,25 @@ pub fn react_paste_card(
                     )
                 });
             }
-            Identifier::None => {}
+            Identifier::None => {
+                let owned = rest.to_owned();
+                runtime.spawn_hook(on_paste_card_prints_set, async move {
+                    (
+                        SubCard::get_prints_str(&client_owned, &owned, QUALITY).await,
+                        pos,
+                    )
+                });
+            }
         }
-    } else {
-        match get_identifier(&event.string) {
+    } else if let Some(rest) = event.string.strip_prefix("/card ") {
+        let client_owned = client.client.clone();
+        match get_identifier(rest) {
             Identifier::Uuid(uuid) => {
-                let client_owned = client.client.clone();
                 runtime.spawn_hook(on_paste_card_uuid, async move {
                     (SubCard::get_id(&client_owned, uuid, QUALITY).await, pos)
                 });
             }
             Identifier::SetCn(set_cn) => {
-                let client_owned = client.client.clone();
                 runtime.spawn_hook(on_paste_card_set, async move {
                     (
                         SubCard::get_set_cn(&client_owned, &set_cn, QUALITY).await,
@@ -70,7 +76,12 @@ pub fn react_paste_card(
                     )
                 });
             }
-            Identifier::None => {}
+            Identifier::None => {
+                let owned = rest.to_owned();
+                runtime.spawn_hook(on_paste_card_set, async move {
+                    (SubCard::get_str(&client_owned, &owned, QUALITY).await, pos)
+                });
+            }
         }
     }
 }

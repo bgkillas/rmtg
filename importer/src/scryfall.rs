@@ -257,6 +257,16 @@ impl SubCard {
             .await
             .map_err(|_| set_cn.into())
     }
+    pub async fn get_prints_str(
+        client: &Client,
+        set_cn: &str,
+        quality: Quality,
+    ) -> Result<Vec<Result<Self, Uuid>>, Box<str>> {
+        let card = Self::get_str(client, set_cn, quality).await?;
+        Self::get_prints(client, card.data.front.oracle_id, quality)
+            .await
+            .map_err(|_| set_cn.into())
+    }
     pub async fn get_prints(
         client: &Client,
         oracle: Uuid,
@@ -424,6 +434,29 @@ impl SubCard {
         })
         .await
         .ok_or_else(|| set_cn.into())
+    }
+    pub async fn get_str(client: &Client, name: &str, quality: Quality) -> Result<Self, Box<str>> {
+        async fn get_str(client: &Client, name: &str, quality: Quality) -> Option<SubCard> {
+            while CARDS_THROTTLE.try_wait().is_err() {
+                sleep(SLEEP_TIME).await;
+            }
+            //TODO search exact non strict then search general
+            let request = warn_if(
+                client
+                    .get(format!("https://{URL}/cards/{name}"))
+                    .send()
+                    .await,
+            )?;
+            let json_raw = warn_if(request.text().await)?;
+            let json = warn_if(parse(&json_raw))?;
+            let card = SubCard::from_scryfall(json)?;
+            card.spawn_image_getters(client, quality).await;
+            CACHE.lock().await.insert(card.inner.clone());
+            Some(card)
+        }
+        get_str(client, name, quality)
+            .await
+            .ok_or_else(|| name.into())
     }
     #[must_use]
     pub fn from_scryfall(json: JsonValue) -> Option<Self> {
