@@ -1,5 +1,6 @@
 use crate::FONT_HEIGHT;
 use crate::assets::AssetManager;
+use crate::events::repaint::Repaint;
 use crate::events::scroll::Scrollable;
 use crate::focus::Hover;
 use crate::keybinds::Keybind;
@@ -63,7 +64,7 @@ impl SideMenu {
                         left: Val::Percent(0.0),
                         position_type: PositionType::Absolute,
                         top: Val::Px(FONT_HEIGHT * 1.5),
-                        height: Val::Percent(100.0),
+                        bottom: Val::Percent(0.0),
                         width: Val::Percent(100.0),
                         overflow: Overflow::scroll_y(),
                         display: Display::Flex,
@@ -136,3 +137,5 @@ pub fn on_new_search(
         }
     });
 }
+#[query_fn]
+pub fn on_repaint_side_menu(on: On<Repaint>) {}

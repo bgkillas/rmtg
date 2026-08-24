@@ -64,7 +64,7 @@ impl MoxfieldMenu {
                         position_type: PositionType::Absolute,
                         top: Val::Px(FONT_HEIGHT * 1.5),
                         width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
+                        bottom: Val::Percent(0.0),
                         overflow: Overflow::scroll_y(),
                         display: Display::Flex,
                         flex_direction: FlexDirection::Column,
@@ -85,7 +85,7 @@ pub fn submit_moxfield(on: On<TextSubmission>, client: Res<Client>, runtime: Res
     let owned_client = client.client.clone();
     let owned_str = on.string.clone();
     runtime.spawn_hook(deck_hook, async move {
-        MoxfieldDeck::get_decks(&owned_client, &dbg!(owned_str)).await
+        MoxfieldDeck::get_decks(&owned_client, &owned_str).await
     });
 }
 #[query_fn]

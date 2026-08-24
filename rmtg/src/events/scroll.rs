@@ -21,6 +21,10 @@ pub struct Scroll {
     pub entity: Entity,
     pub delta: Vec2,
 }
+#[derive(Message, Debug)]
+pub struct ScrollToContentSize {
+    pub entity: Entity,
+}
 impl Scroll {
     #[must_use]
     pub fn new(entity: Entity, delta: Vec2) -> Self {
@@ -52,6 +56,24 @@ impl Scroll {
         Self {
             entity,
             delta: Vec2::new(delta, 0.0),
+        }
+    }
+}
+#[query_fn]
+pub fn scroll_to_content_size(
+    mut messages: PopulatedMessageReader<ScrollToContentSize>,
+    mut query: Query<(&mut ScrollPosition, &Node, &ComputedNode), With<Scrollable>>,
+) {
+    for msg in messages.read() {
+        let mut scrollable = query.get_mut(msg.entity).unwrap();
+        let max_offset = (scrollable.computed_node.content_size()
+            - scrollable.computed_node.size())
+            * scrollable.computed_node.inverse_scale_factor();
+        if scrollable.node.overflow.x == OverflowAxis::Scroll {
+            scrollable.scroll_position.x = scrollable.scroll_position.x.min(max_offset.x).max(0.0);
+        }
+        if scrollable.node.overflow.y == OverflowAxis::Scroll {
+            scrollable.scroll_position.y = scrollable.scroll_position.y.min(max_offset.y).max(0.0);
         }
     }
 }

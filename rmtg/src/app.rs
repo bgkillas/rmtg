@@ -8,7 +8,9 @@ use crate::events::hover::{update_box_select, update_hover};
 use crate::events::pile_merge::{DelayPileMerge, delayed_pile_merge};
 use crate::events::roll::{do_roll, update_rolling};
 use crate::events::scale::update_scale;
-use crate::events::scroll::{Scroll, scroll, send_scroll_events};
+use crate::events::scroll::{
+    Scroll, ScrollToContentSize, scroll, scroll_to_content_size, send_scroll_events,
+};
 use crate::focus::update_focus;
 use crate::keybinds::{Keybind, KeybindsList, update_keybinds};
 use crate::mat::create_mats;
@@ -134,6 +136,7 @@ pub fn app_run() -> AppExit {
     app.init_resource::<ButtonInput<Keybind>>();
     app.init_resource::<PollClipboard>();
     app.add_message::<Scroll>();
+    app.add_message::<ScrollToContentSize>();
     app.add_message::<DelayPileMerge>();
     add_events(&mut app);
     app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
@@ -172,7 +175,10 @@ pub fn app_run() -> AppExit {
         )
             .chain(),
     );
-    app.add_systems(PostUpdate, scroll.after(UiSystems::Layout));
+    app.add_systems(
+        PostUpdate,
+        (scroll, scroll_to_content_size).after(UiSystems::Layout),
+    );
     app.add_systems(
         FixedUpdate,
         (

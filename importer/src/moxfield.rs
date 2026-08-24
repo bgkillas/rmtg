@@ -156,16 +156,21 @@ impl MoxfieldDeck {
                 let count = j["quantity"].as_usize().unwrap_or_default();
                 iter::repeat_n(id, count)
             });
-            SubCard::get_list(client, iter, quality)
+            let vec = SubCard::get_list(client, iter, quality)
                 .await
                 .into_iter()
                 .map(Result::ok)
-                .collect()
+                .collect::<Option<Vec<_>>>();
+            if vec.as_ref().is_some_and(Vec::is_empty) {
+                None
+            } else {
+                vec
+            }
         }
         let boards = &json["boards"];
         self.boards = MaybeBoards::Full(Boards {
             commanders: get_board(client, &boards["commanders"], quality).await,
-            mainboard: get_board(client, &boards["boards"], quality).await,
+            mainboard: get_board(client, &boards["mainboard"], quality).await,
         });
         Some(())
     }
