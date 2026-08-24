@@ -23,7 +23,9 @@ pub fn on_pile_merge(
     mut commands: Commands,
     mut piles: Query<(Entity, &mut Pile, &mut Transform)>,
 ) {
-    let [mut pile1, mut pile2] = piles.get_many_mut([event.from, event.to]).unwrap();
+    let Ok([mut pile1, mut pile2]) = piles.get_many_mut([event.from, event.to]) else {
+        return;
+    };
     let l1 = pile1.pile.len();
     pile2.pile.extend(mem::take(&mut pile1.pile));
     let up = pile2.transform.up();

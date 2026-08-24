@@ -14,6 +14,7 @@ use bevy_query_fn_macro::query_fn;
 pub enum TextSource {
     Chat,
     Moxfield,
+    Search,
 }
 impl TextSource {
     pub fn bundle(self) -> impl Bundle {

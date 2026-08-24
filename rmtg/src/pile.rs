@@ -9,7 +9,7 @@ use bevy::image::Image;
 use bevy::math::{Dir3, Quat, Vec3};
 use bevy::mesh::Mesh3d;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{Bundle, Component, InheritedVisibility, Transform};
+use bevy::prelude::{Bundle, Component, ImageNode, InheritedVisibility, Transform};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Commands, Query, ResMut};
@@ -18,6 +18,7 @@ use bitcode::{Decode, Encode};
 use importer::bitcode;
 use importer::card::{Card, CardIter, CardIterMut, MaybeHandles, SubCard};
 use importer::scryfall::{CACHE, IMAGES_IN_PROGRESS, IMAGES_TO_PROCESS};
+use importer::uuid::Uuid;
 use itertools::Either;
 use rand::make_rng;
 use rand::rngs::StdRng;
@@ -42,8 +43,8 @@ impl FlippedState {
 impl From<Quat> for FlippedState {
     fn from(rotation: Quat) -> Self {
         match (rotation * Vec3::Y).y {
-            0.0..=1.0 => Self::Normal,
-            -1.0..0.0 => Self::Flipped,
+            0.0.. => Self::Normal,
+            ..0.0 => Self::Flipped,
             _ => unreachable!(),
         }
     }
@@ -63,9 +64,9 @@ impl TapState {
 impl From<Quat> for TapState {
     fn from(rotation: Quat) -> Self {
         match (rotation * Vec3::Z).z {
-            0.5..=1.0 => Self::Normal,
+            0.5.. => Self::Normal,
             -0.5..0.5 => Self::Tapped,
-            -1.0..-0.5 => Self::Reverse,
+            ..-0.5 => Self::Reverse,
             _ => unreachable!(),
         }
     }
@@ -558,9 +559,15 @@ impl From<SubCard> for Pile {
         Self::Single(Card::from(value))
     }
 }
+#[derive(Component)]
+pub struct ImageCard {
+    pub id: Uuid,
+    pub flipped: bool,
+}
 #[query_fn]
 pub fn register_cards(
     query: Query<(Entity, &mut Pile), With<PendingCards>>,
+    image_query: Query<(Entity, &ImageCard, &mut ImageNode), With<PendingCards>>,
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -600,12 +607,13 @@ pub fn register_cards(
             if matches!(card.face_handles, MaybeHandles::Waiting)
                 || matches!(card.back_handles, MaybeHandles::Waiting)
             {
-                has_some = true;
                 let card_cache = {
                     let cache = CACHE.blocking_lock();
                     cache.cards.get(&card.data.id).unwrap().clone()
                 };
-                if !matches!(card_cache.face_handles, MaybeHandles::Waiting) {
+                if matches!(card_cache.face_handles, MaybeHandles::Waiting) {
+                    has_some = true;
+                } else {
                     repaint = true;
                     card.face_handles = card_cache.face_handles;
                     card.back_handles = card_cache.back_handles;
@@ -617,6 +625,22 @@ pub fn register_cards(
         }
         if !has_some {
             commands.entity(pile.entity).remove::<PendingCards>();
+        }
+    }
+    for mut card in image_query {
+        let card_cache = {
+            let cache = CACHE.blocking_lock();
+            cache.cards.get(&card.image_card.id).unwrap().clone()
+        };
+        if !matches!(card_cache.face_handles, MaybeHandles::Waiting) {
+            if let Some(handles) = if card.image_card.flipped {
+                card_cache.back_handles.handles()
+            } else {
+                card_cache.face_handles.handles()
+            } {
+                card.image_node.image = handles.image;
+            }
+            commands.entity(card.entity).remove::<PendingCards>();
         }
     }
 }

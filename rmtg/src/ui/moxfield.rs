@@ -1,5 +1,6 @@
 use crate::app::Client;
 use crate::events::move_up::MoveUp;
+use crate::events::scroll::Scrollable;
 use crate::mat::PlayMat;
 use crate::pile::Pile;
 use crate::ui::esc_menu::button;
@@ -69,7 +70,8 @@ impl MoxfieldMenu {
                         ..Node::default()
                     },
                     Visibility::Inherited,
-                    MoxfieldDeckList { list: None }
+                    MoxfieldDeckList { list: None },
+                    Scrollable,
                 )
             ],
         )

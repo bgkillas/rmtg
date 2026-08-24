@@ -111,7 +111,11 @@ pub fn on_set_menu(
         Menu::World => *window,
         Menu::Side => {
             *side.visibility = Visibility::Visible;
-            side.entity
+            text_input
+                .iter()
+                .find(|q| matches!(q.text_source, TextSource::Search))
+                .unwrap()
+                .entity
         }
         Menu::Counter => {
             *counter.visibility = Visibility::Visible;

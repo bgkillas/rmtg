@@ -1,4 +1,4 @@
-use crate::events::clipboard::{PollClipboard, get_clipboard};
+use crate::events::clipboard::get_clipboard;
 use crate::events::clone::on_clone;
 use crate::events::delete::on_delete;
 use crate::events::gravity::on_change_gravity;
@@ -15,6 +15,7 @@ use crate::ui::chat::text_message;
 use crate::ui::esc_menu::on_iroh_bind_copy;
 use crate::ui::menu::on_set_menu;
 use crate::ui::moxfield::{spawn_boards, submit_moxfield};
+use crate::ui::side::on_new_search;
 use bevy::app::App;
 pub mod clipboard;
 pub mod clone;
@@ -53,5 +54,5 @@ pub fn add_events(app: &mut App) {
     app.add_observer(on_set_menu);
     app.add_observer(submit_moxfield);
     app.add_observer(spawn_boards);
-    app.init_resource::<PollClipboard>();
+    app.add_observer(on_new_search);
 }
