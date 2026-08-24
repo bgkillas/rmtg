@@ -1,4 +1,5 @@
 use crate::ui::calc::CalcMenu;
+use crate::ui::chat::TextMenu;
 use crate::ui::esc_menu::EscMenu;
 use crate::ui::moxfield::MoxfieldMenu;
 use crate::ui::side::SideMenu;
@@ -48,6 +49,7 @@ pub fn on_set_menu(
             Without<CalcMenu>,
             Without<MoxfieldMenu>,
             Without<SideMenu>,
+            Without<TextMenu>,
         ),
     >,
     mut counter: Single<
@@ -57,6 +59,7 @@ pub fn on_set_menu(
             Without<EscMenu>,
             Without<MoxfieldMenu>,
             Without<SideMenu>,
+            Without<TextMenu>,
         ),
     >,
     mut moxfield: Single<
@@ -66,12 +69,24 @@ pub fn on_set_menu(
             Without<CalcMenu>,
             Without<EscMenu>,
             Without<SideMenu>,
+            Without<TextMenu>,
         ),
     >,
     mut side: Single<
         (Entity, &mut Visibility),
         (
             With<SideMenu>,
+            Without<CalcMenu>,
+            Without<MoxfieldMenu>,
+            Without<EscMenu>,
+            Without<TextMenu>,
+        ),
+    >,
+    mut chat: Single<
+        (Entity, &mut Visibility),
+        (
+            With<TextMenu>,
+            Without<SideMenu>,
             Without<CalcMenu>,
             Without<MoxfieldMenu>,
             Without<EscMenu>,
@@ -86,7 +101,10 @@ pub fn on_set_menu(
         Menu::World => {}
         Menu::Side => *side.visibility = Visibility::Hidden,
         Menu::Counter => *counter.visibility = Visibility::Hidden,
-        Menu::Moxfield => *moxfield.visibility = Visibility::Hidden,
+        Menu::Moxfield => {
+            *chat.visibility = Visibility::Visible;
+            *moxfield.visibility = Visibility::Hidden;
+        }
         Menu::Esc => *esc.visibility = Visibility::Hidden,
     }
     let ent = match event.menu {
@@ -100,6 +118,7 @@ pub fn on_set_menu(
             counter.entity
         }
         Menu::Moxfield => {
+            *chat.visibility = Visibility::Hidden;
             *moxfield.visibility = Visibility::Visible;
             text_input
                 .iter()

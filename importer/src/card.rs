@@ -13,16 +13,16 @@ use std::slice::{Iter, IterMut};
 use std::sync::Arc;
 use uuid::Uuid;
 rules::generate_types!();
-type Value = f64;
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct Card {
     pub subcard: SubCard,
     pub equiped: Vec<SubCard>,
-    pub power: Option<Value>,
-    pub toughness: Option<Value>,
-    pub counters: Option<Value>,
-    pub loyalty: Option<Value>,
-    pub misc: Option<Value>,
+    pub amount: Option<i32>,
+    pub power: Option<i32>,
+    pub toughness: Option<i32>,
+    pub counters: Option<i32>,
+    pub loyalty: Option<i32>,
+    pub misc: Option<i32>,
     pub is_token: bool,
 }
 #[derive(Debug, Default, Encode, Decode, Clone)]

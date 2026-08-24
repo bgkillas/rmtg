@@ -73,7 +73,7 @@ impl From<Quat> for TapState {
 #[derive(Component, Default, Debug, Encode, Decode, Clone)]
 pub enum Pile {
     Multiple(Vec<SubCard>),
-    Single(Box<Card>),
+    Single(Card),
     #[default]
     Empty,
 }
@@ -180,7 +180,7 @@ impl Pile {
     #[must_use]
     pub fn new(mut v: Vec<SubCard>) -> Self {
         if v.len() == 1 {
-            Self::Single(Box::new(Card::from(v.remove(0))))
+            Self::Single(Card::from(v.remove(0)))
         } else {
             Self::Multiple(v)
         }
@@ -192,16 +192,17 @@ impl Pile {
                 let Pile::Multiple(equiped) = mem::take(s) else {
                     unreachable!();
                 };
-                *s = Pile::Single(Box::new(Card {
+                *s = Pile::Single(Card {
                     subcard,
                     equiped,
+                    amount: None,
                     power: None,
                     toughness: None,
                     counters: None,
                     loyalty: None,
                     misc: None,
                     is_token: false,
-                }));
+                });
                 true
             }
             s @ Pile::Single(_) => {
@@ -554,7 +555,7 @@ impl<'a> IntoIterator for &'a mut Pile {
 }
 impl From<SubCard> for Pile {
     fn from(value: SubCard) -> Self {
-        Self::Single(Box::new(Card::from(value)))
+        Self::Single(Card::from(value))
     }
 }
 #[query_fn]
