@@ -64,6 +64,7 @@ impl MoxfieldMenu {
                         position_type: PositionType::Absolute,
                         top: Val::Px(FONT_HEIGHT * 1.5),
                         width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
                         overflow: Overflow::scroll_y(),
                         display: Display::Flex,
                         flex_direction: FlexDirection::Column,

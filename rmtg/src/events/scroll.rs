@@ -16,7 +16,7 @@ use bevy_query_fn_macro::query_fn;
 use std::mem;
 #[derive(Component)]
 pub struct Scrollable;
-#[derive(Message)]
+#[derive(Message, Debug)]
 pub struct Scroll {
     pub entity: Entity,
     pub delta: Vec2,
