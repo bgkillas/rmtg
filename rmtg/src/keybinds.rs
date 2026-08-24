@@ -84,6 +84,7 @@ pub enum Keybind {
     Rotate,
     ScaleUp,
     ScaleDown,
+    Search,
 }
 #[derive(Resource, Deref, DerefMut)]
 pub struct KeybindsList(EnumMap<Keybind, Bind>);
@@ -114,6 +115,7 @@ impl Default for KeybindsList {
             Keybind::Reset =>       Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::Space),
             Keybind::ScaleUp =>     Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::Equal),
             Keybind::ScaleDown =>   Bind::new(enum_set!(),      Menu::view_world(),         true,  true,  KeyCode::Minus),
+            Keybind::Search =>      Bind::new(enum_set!(ctrl),  Menu::view_world(),         true,  true,  KeyCode::KeyZ),
         };
         Self(map)
     }

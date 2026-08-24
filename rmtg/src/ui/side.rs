@@ -20,3 +20,4 @@ impl SideMenu {
         )
     }
 }
+pub fn activate_side_menu() {}

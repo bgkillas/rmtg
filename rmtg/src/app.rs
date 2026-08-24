@@ -19,6 +19,7 @@ use crate::startup::{spawn_objects, startup};
 use crate::ui::esc_menu::{button_system, toggle_esc_menu};
 use crate::ui::menu::Menu;
 use crate::ui::moxfield::SearchedPlayer;
+use crate::ui::side::activate_side_menu;
 use crate::ui::text_box::text_submission;
 use crate::{APP_NAME, FONT, PHYSICS_SCALE, USER_AGENT};
 use avian3d::PhysicsPlugins;
@@ -140,7 +141,13 @@ pub fn app_run() -> AppExit {
         (
             delayed_pile_merge,
             update_cursor,
-            (update_focus, toggle_esc_menu, button_system).chain(),
+            (
+                update_focus,
+                toggle_esc_menu,
+                activate_side_menu,
+                button_system,
+            )
+                .chain(),
             update_keybinds.after(InputSystems),
         ),
     );

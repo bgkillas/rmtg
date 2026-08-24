@@ -1,4 +1,5 @@
 use crate::assets::AssetManager;
+use crate::focus::Hover;
 use crate::keybinds::Keybind;
 use crate::pile::Pile;
 use crate::shapes::ShapeOutline as _;
@@ -201,6 +202,7 @@ pub fn update_hover(
     keybinds: Res<ButtonInput<Keybind>>,
     spatial: Spatial,
     mut commands: Commands,
+    hover: Hover,
 ) {
     let Some((hit, _, pos)) = spatial.ray() else {
         return;
@@ -219,6 +221,9 @@ pub fn update_hover(
         {
             commands.trigger(SpawnBoxSelect { pos });
         }
+        return;
+    }
+    if hover.get().is_some() {
         return;
     }
     if keybinds.just_pressed(Keybind::HoldSelect) {
