@@ -440,10 +440,10 @@ impl SubCard {
             while CARDS_THROTTLE.try_wait().is_err() {
                 sleep(SLEEP_TIME).await;
             }
-            //TODO search exact non strict then search general
             let request = warn_if(
                 client
-                    .get(format!("https://{URL}/cards/{name}"))
+                    .get(format!("https://{URL}/cards/named"))
+                    .query(&(("fuzzy", name),))
                     .send()
                     .await,
             )?;

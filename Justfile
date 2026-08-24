@@ -38,5 +38,6 @@ update:
     cargo update
 update_rules:
     cd rules && curl -so rules.txt "$(curl -s 'https://magic.wizards.com/en/rules'|grep media.wizards.com|grep "downloads/MagicCompRules"|grep "\.txt"|sed 's/.*href="//g;s/" .*//;s/ /%20/g')"
+    cd rules && dos2unix rules.txt
 deploy USER PASS TOTP:
     cd steam && steamcmd +set_steam_guard_code {{TOTP}} +login {{USER}} {{PASS}} +run_app_build "$(pwd)/build.vdf" +quit
