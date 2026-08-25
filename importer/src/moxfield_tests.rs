@@ -17,7 +17,6 @@ async fn get_decks() {
             deck.get_deck(&client, Quality::Normal).await.unwrap();
             let time = tmr.elapsed().as_millis();
             let mut in_progress_images = IMAGES_IN_PROGRESS.lock().await;
-            let tmr = Instant::now();
             for card in deck.boards.clone().unwrap().commanders.unwrap() {
                 card.spawn_image_getters(&client, &mut in_progress_images, Quality::Normal, |f| {
                     tokio::spawn(f);
@@ -28,7 +27,6 @@ async fn get_decks() {
                     tokio::spawn(f);
                 });
             }
-            println!("{}", tmr.elapsed().as_millis());
             drop(in_progress_images);
             let cache = CACHE.lock().await;
             println!(

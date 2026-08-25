@@ -37,21 +37,16 @@ async fn test_list() {
         bruce_uuid,
         gisela_uuid,
     ]; 128];
-    let list = SubCard::get_list(
-        &client,
-        uuids.as_flattened().iter().copied(),
-        Quality::Normal,
-    )
-    .await;
+    let list = SubCard::get_list(&client, uuids.into_iter().flatten(), Quality::Normal)
+        .await
+        .unwrap();
     let time = tmr.elapsed().as_millis();
     let mut in_progress_images = IMAGES_IN_PROGRESS.lock().await;
-    let tmr = Instant::now();
     for card in list.iter().filter_map(|c| c.as_ref().ok()) {
         card.spawn_image_getters(&client, &mut in_progress_images, Quality::Normal, |f| {
             tokio::spawn(f);
         });
     }
-    println!("{}", tmr.elapsed().as_millis());
     drop(in_progress_images);
     let mut i = 0;
     for res in &list {
@@ -89,13 +84,11 @@ async fn test_prints() {
         .unwrap();
     let time = tmr.elapsed().as_millis();
     let mut in_progress_images = IMAGES_IN_PROGRESS.lock().await;
-    let tmr = Instant::now();
     for card in vec.iter().filter_map(|c| c.as_ref().ok()) {
         card.spawn_image_getters(&client, &mut in_progress_images, Quality::Normal, |f| {
             tokio::spawn(f);
         });
     }
-    println!("{}", tmr.elapsed().as_millis());
     drop(in_progress_images);
     let mut i = 0;
     for res in &vec {
