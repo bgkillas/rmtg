@@ -140,21 +140,26 @@ impl MoxfieldDeck {
     pub async fn parse_json(
         &mut self,
         client: &Client,
-        json: JsonValue,
+        mut json: JsonValue,
         quality: Quality,
     ) -> Option<()> {
-        self.boards = MaybeBoards::Full(Boards::from_json(client, &json["boards"], quality).await);
+        self.boards =
+            MaybeBoards::Full(Boards::from_json(client, json.remove("boards"), quality).await);
         Some(())
     }
 }
 impl Boards {
-    pub async fn from_json(client: &Client, json: &JsonValue, quality: Quality) -> Self {
+    pub async fn from_json(client: &Client, mut json: JsonValue, quality: Quality) -> Self {
         async fn get_board(
             client: &Client,
-            board: &JsonValue,
+            mut board: JsonValue,
             quality: Quality,
         ) -> Option<Vec<SubCard>> {
-            let iter = board["cards"].entries().flat_map(|(_, j)| {
+            let cards = board.remove("cards");
+            let JsonValue::Object(object) = cards else {
+                return None;
+            };
+            let iter = object.into_iter().flat_map(|(_, j)| {
                 let id = warn_if(Uuid::parse_str(
                     j["card"]["scryfall_id"].as_str().unwrap_or_default(),
                 ))
@@ -173,8 +178,8 @@ impl Boards {
                 vec
             }
         }
-        let commanders = get_board(client, &json["commanders"], quality).await;
-        let mainboard = get_board(client, &json["mainboard"], quality).await;
+        let commanders = get_board(client, json.remove("commanders"), quality).await;
+        let mainboard = get_board(client, json.remove("mainboard"), quality).await;
         Self {
             commanders,
             mainboard,

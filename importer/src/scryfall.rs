@@ -273,7 +273,7 @@ impl SubCard {
     #[must_use]
     pub async fn get_list(
         client: &Client,
-        iter: impl Iterator<Item = Uuid>,
+        iter: impl Iterator<Item = Uuid> + Send + 'static,
         quality: Quality,
     ) -> Option<Vec<Result<Self, Uuid>>> {
         async fn do_chunk(
@@ -307,8 +307,6 @@ impl SubCard {
             Some(Some(json.remove("data")))
         }
         let mut jsons = Vec::new();
-        #[expect(clippy::shadow_reuse)]
-        let iter = iter.collect::<Vec<_>>().into_iter();
         let mut chunks = iter.array_chunks::<75>();
         for chunk in chunks.by_ref() {
             jsons.append(do_chunk(client, chunk.into_iter()).await??.as_array_mut()?);
