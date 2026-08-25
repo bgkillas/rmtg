@@ -25,12 +25,12 @@ clippy:
     cargo fmt
     cargo clippy
 wasm:
-    cd rmtg && wasm-pack build --no-opt --out-dir ../www/pkg --target web --debug --no-default-features --features "mic,fps"
+    cd rmtg && wasm-pack build --no-opt --out-dir ../www/pkg --target web --debug --no-default-features --features "mic"
 wasm_rel:
-    cd rmtg && wasm-pack build --no-opt --out-dir ../www/pkg --target web --release --no-default-features --features "mic,fps"
+    cd rmtg && wasm-pack build --no-opt --out-dir ../www/pkg --target web --release --no-default-features --features "mic"
     wasm-opt -O4 -all -o www/pkg/rmtg_lib_bg.wasm www/pkg/rmtg_lib_bg.wasm
 wasm_full:
-    cd rmtg && wasm-pack build --no-opt --out-dir ../www/pkg --target web --profile release_lto --no-default-features --features "mic,fps"
+    cd rmtg && wasm-pack build --no-opt --out-dir ../www/pkg --target web --profile release_lto --no-default-features --features "mic"
     wasm-opt -O4 -all -o www/pkg/rmtg_lib_bg.wasm www/pkg/rmtg_lib_bg.wasm
 run_wasm:
     cd www && python3 -m http.server 8080

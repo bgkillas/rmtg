@@ -27,9 +27,9 @@ jobs:
     - name: Format
       run: cargo fmt --check
     - name: Clippy
-      run: cargo clippy --verbose
+      run: just clippy
     - name: Run tests
-      run: cargo test --verbose
+      run: just test
   build-linux:
     runs-on: ubuntu-latest
     steps:

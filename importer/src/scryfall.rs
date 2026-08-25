@@ -4,7 +4,6 @@ use crate::card_cache::{CacheReadImage, CacheResult, CardCache, Identifier, get_
 use crate::image::parse_bytes;
 use crate::warn_if;
 use bevy::image::Image;
-use bevy_p2p::runtime::Runtime;
 use futures::future::join_all;
 use jzon::{JsonValue, parse};
 use ratelimit::Ratelimiter;
@@ -171,6 +170,17 @@ async fn read_cards_check(
     }
     read_cards(client, set_cn, uuid, quality, front_image, back_image).await;
 }
+async fn read_cards_check_owned(
+    client: Client,
+    set_cn: Box<str>,
+    uuid: Uuid,
+    quality: Quality,
+    front_image: CacheReadImage,
+    back_image: CacheReadImage,
+) {
+    read_cards_check(&client, set_cn, uuid, quality, front_image, back_image).await;
+}
+pub type ReadCardsCheckedFuture = impl Future<Output = ()>;
 impl From<&MaybeHandles> for CacheReadImage {
     fn from(value: &MaybeHandles) -> Self {
         match value {
@@ -542,31 +552,13 @@ impl SubCard {
         });
         Some(card)
     }
-    pub fn spawn_image_getters_tokio(
-        &self,
-        client: &Client,
-        set: &mut HashSet<Uuid, FxBuildHasher>,
-        quality: Quality,
-    ) {
-        let face = CacheReadImage::from(&self.face_handles);
-        let back = CacheReadImage::from(&self.back_handles);
-        let id = self.data.id;
-        if (matches!(face, CacheReadImage::Missing) || matches!(back, CacheReadImage::Missing))
-            && set.insert(id)
-        {
-            let set_cn = self.data.set_cn.clone();
-            let cloned = client.clone();
-            tokio::spawn(async move {
-                read_cards_check(&cloned, set_cn, id, quality, face, back).await;
-            });
-        }
-    }
+    #[define_opaque(ReadCardsCheckedFuture)]
     pub fn spawn_image_getters(
         &self,
         client: &Client,
         set: &mut HashSet<Uuid, FxBuildHasher>,
         quality: Quality,
-        runtime: &Runtime,
+        spawn: impl FnOnce(ReadCardsCheckedFuture),
     ) {
         let face = CacheReadImage::from(&self.face_handles);
         let back = CacheReadImage::from(&self.back_handles);
@@ -576,9 +568,9 @@ impl SubCard {
         {
             let set_cn = self.data.set_cn.clone();
             let cloned = client.clone();
-            runtime.spawn(async move {
-                read_cards_check(&cloned, set_cn, id, quality, face, back).await;
-            });
+            spawn(read_cards_check_owned(
+                cloned, set_cn, id, quality, face, back,
+            ));
         }
     }
 }

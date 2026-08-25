@@ -604,7 +604,7 @@ pub fn register_cards(
                         &client.client,
                         &mut in_progress_images,
                         quality,
-                        &runtime,
+                        |f| runtime.spawn(f),
                     );
                 }
                 MaybeHandles::Some(_) | MaybeHandles::None => {}

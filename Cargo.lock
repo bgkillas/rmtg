@@ -4605,7 +4605,6 @@ version = "0.1.0"
 dependencies = [
  "base64 0.23.1",
  "bevy",
- "bevy_p2p",
  "bimap",
  "bitcode",
  "bytes",

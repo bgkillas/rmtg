@@ -19,10 +19,14 @@ async fn get_decks() {
             let mut in_progress_images = IMAGES_IN_PROGRESS.lock().await;
             let tmr = Instant::now();
             for card in deck.boards.clone().unwrap().commanders.unwrap() {
-                card.spawn_image_getters_tokio(&client, &mut in_progress_images, Quality::Normal);
+                card.spawn_image_getters(&client, &mut in_progress_images, Quality::Normal, |f| {
+                    tokio::spawn(f);
+                });
             }
             for card in deck.boards.clone().unwrap().mainboard.unwrap() {
-                card.spawn_image_getters_tokio(&client, &mut in_progress_images, Quality::Normal);
+                card.spawn_image_getters(&client, &mut in_progress_images, Quality::Normal, |f| {
+                    tokio::spawn(f);
+                });
             }
             println!("{}", tmr.elapsed().as_millis());
             drop(in_progress_images);

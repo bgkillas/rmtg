@@ -3,6 +3,7 @@
 #![feature(min_generic_const_args)]
 #![feature(extern_item_impls)]
 #![feature(arc_is_unique)]
+#![feature(type_alias_impl_trait)]
 #![cfg_attr(test, feature(test))]
 extern crate core;
 pub mod card;
