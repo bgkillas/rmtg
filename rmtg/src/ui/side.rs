@@ -12,7 +12,8 @@ use bevy::color::Color;
 use bevy::input::ButtonInput;
 use bevy::prelude::{Component, ImageNode, Visibility};
 use bevy::ui::{
-    BackgroundColor, Display, FlexDirection, FlexWrap, Node, Overflow, PositionType, Val,
+    AlignContent, AlignItems, BackgroundColor, Display, FlexDirection, FlexWrap, JustifyContent,
+    Node, Overflow, PositionType, Val,
 };
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::change_detection::Res;
@@ -70,6 +71,9 @@ impl SideMenu {
                         display: Display::Flex,
                         flex_direction: FlexDirection::Row,
                         flex_wrap: FlexWrap::Wrap,
+                        align_content: AlignContent::FlexStart,
+                        align_items: AlignItems::FlexStart,
+                        justify_content: JustifyContent::FlexStart,
                         ..Node::default()
                     },
                     Visibility::Inherited,
@@ -138,4 +142,10 @@ pub fn on_new_search(
     });
 }
 #[query_fn]
-pub fn on_repaint_side_menu(on: On<Repaint>) {}
+pub fn on_repaint_side_menu(
+    on: On<Repaint>,
+    piles: Query<&Pile>,
+    search_list: Single<(Entity, &mut SearchList)>,
+) {
+    let pile = piles.get(on.entity).unwrap();
+}

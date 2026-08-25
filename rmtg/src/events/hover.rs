@@ -22,7 +22,7 @@ use bevy_ecs::system::{Res, ResMut, Single};
 use bevy_query_fn_macro::query_fn;
 #[derive(Component, Clone)]
 pub struct Hoverable;
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Debug)]
 pub struct HoveredObject {
     pub held: bool,
 }
@@ -247,12 +247,14 @@ pub fn update_hover(
                 }
             }
         }
-    } else if olds.iter().all(|old| old.entity != hit.entity) {
+    } else {
         for old in olds {
-            if !old.hovered_object.held {
+            if !old.hovered_object.held && old.entity != hit.entity {
                 commands.trigger(RemoveHover::new(old.entity));
             }
         }
-        commands.trigger(AddHover::new(hit.entity, HoveredObject { held: false }));
+        if olds.iter().all(|old| old.entity != hit.entity) {
+            commands.trigger(AddHover::new(hit.entity, HoveredObject { held: false }));
+        }
     }
 }

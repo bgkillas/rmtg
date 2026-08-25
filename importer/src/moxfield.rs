@@ -143,6 +143,12 @@ impl MoxfieldDeck {
         json: JsonValue,
         quality: Quality,
     ) -> Option<()> {
+        self.boards = MaybeBoards::Full(Boards::from_json(client, &json["boards"], quality).await);
+        Some(())
+    }
+}
+impl Boards {
+    pub async fn from_json(client: &Client, json: &JsonValue, quality: Quality) -> Self {
         async fn get_board(
             client: &Client,
             board: &JsonValue,
@@ -167,11 +173,11 @@ impl MoxfieldDeck {
                 vec
             }
         }
-        let boards = &json["boards"];
-        self.boards = MaybeBoards::Full(Boards {
-            commanders: get_board(client, &boards["commanders"], quality).await,
-            mainboard: get_board(client, &boards["mainboard"], quality).await,
-        });
-        Some(())
+        let commanders = get_board(client, &json["commanders"], quality).await;
+        let mainboard = get_board(client, &json["mainboard"], quality).await;
+        Self {
+            commanders,
+            mainboard,
+        }
     }
 }

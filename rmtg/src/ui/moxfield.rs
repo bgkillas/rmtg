@@ -10,7 +10,10 @@ use bevy::color::Color;
 use bevy::log::warn;
 use bevy::prelude::{Component, PositionType, Resource, Transform, Visibility};
 use bevy::settings::SettingsGroup;
-use bevy::ui::{BackgroundColor, Display, FlexDirection, Node, Overflow, Val};
+use bevy::ui::{
+    AlignContent, AlignItems, BackgroundColor, Display, FlexDirection, JustifyContent, Node,
+    Overflow, Val,
+};
 use bevy::ui_widgets::{Activate, observe};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
@@ -68,6 +71,9 @@ impl MoxfieldMenu {
                         overflow: Overflow::scroll_y(),
                         display: Display::Flex,
                         flex_direction: FlexDirection::Column,
+                        align_content: AlignContent::FlexStart,
+                        align_items: AlignItems::FlexStart,
+                        justify_content: JustifyContent::FlexStart,
                         ..Node::default()
                     },
                     Visibility::Inherited,
