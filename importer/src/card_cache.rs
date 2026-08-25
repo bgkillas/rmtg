@@ -1,5 +1,5 @@
 use crate::card::{CardData, SubCardInner};
-use crate::scryfall::Side;
+use crate::scryfall::{Quality, Side};
 use bevy::asset::Handle;
 use bevy::image::Image;
 use bevy::platform::dirs::preferences_dir;
@@ -10,17 +10,31 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
+#[cfg(target_family = "wasm")]
+use tokio_with_wasm as tokio;
 use uuid::Uuid;
 pub const CACHE_FOLDER: &str = "cache";
 pub const DATA: &str = "card.data";
-pub const FRONT: &str = "front.png";
-pub const BACK: &str = "back.png";
 pub struct CardCache {
     pub cards: HashMap<Uuid, SubCardInner, FxBuildHasher>,
     pub in_storage: HashSet<Uuid, FxBuildHasher>,
     pub in_progress: HashSet<Uuid, FxBuildHasher>,
     pub in_progress_set_cn: HashSet<Box<str>, FxBuildHasher>,
     pub set_cn: BiHashMap<Box<str>, Uuid, FxBuildHasher, FxBuildHasher>,
+}
+impl Quality {
+    pub fn file_name(self, side: Side) -> &'static str {
+        match (self, side) {
+            (Self::Small, Side::Front) => "front_small.jpg",
+            (Self::Normal, Side::Front) => "front_normal.jpg",
+            (Self::Large, Side::Front) => "front_large.jpg",
+            (Self::Png, Side::Front) => "front.png",
+            (Self::Small, Side::Back) => "back_small.jpg",
+            (Self::Normal, Side::Back) => "back_normal.jpg",
+            (Self::Large, Side::Back) => "back_large.jpg",
+            (Self::Png, Side::Back) => "back.png",
+        }
+    }
 }
 #[derive(Clone)]
 pub enum CacheImage {
@@ -150,30 +164,24 @@ pub async fn get_images(
     set_cn: &str,
     uuid: Uuid,
     has_unique_face: bool,
+    quality: Quality,
 ) -> Option<(CacheReadImage, CacheReadImage)> {
     let folder_name = folder()?.join(folder_path(set_cn, uuid));
     let mut front_image = CacheReadImage::Missing;
     let mut back_image = CacheReadImage::None;
-    if let Ok(data) = fs::read(folder_name.join(FRONT)).await {
+    if let Ok(data) = fs::read(folder_name.join(quality.file_name(Side::Front))).await {
         front_image = CacheReadImage::Some(data.into_boxed_slice());
     }
-    if let Ok(data) = fs::read(folder_name.join(BACK)).await {
+    if let Ok(data) = fs::read(folder_name.join(quality.file_name(Side::Back))).await {
         back_image = CacheReadImage::Some(data.into_boxed_slice());
     } else if has_unique_face {
         back_image = CacheReadImage::Missing;
     }
     Some((front_image, back_image))
 }
-pub async fn write_image(bytes: &[u8], set_cn: &str, uuid: Uuid, side: Side) {
+pub async fn write_image(bytes: &[u8], set_cn: &str, uuid: Uuid, quality: Quality, side: Side) {
     if let Some(folder_name) = folder().map(|f| f.join(folder_path(set_cn, uuid))) {
         let _ = fs::create_dir_all(&folder_name).await;
-        let _ = fs::write(
-            folder_name.join(match side {
-                Side::Front => FRONT,
-                Side::Back => BACK,
-            }),
-            bytes,
-        )
-        .await;
+        let _ = fs::write(folder_name.join(quality.file_name(side)), bytes).await;
     }
 }

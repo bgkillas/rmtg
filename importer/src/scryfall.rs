@@ -1,13 +1,10 @@
 use crate::card::{CardData, CardInfo, Layout, MaybeHandles, SubCard, SubCardInner};
 use crate::card::{Colors, Cost, Types};
-use crate::card_cache::{
-    CacheReadImage, CacheResult, CardCache, Identifier, get_images, write_image,
-};
+use crate::card_cache::{CacheReadImage, CacheResult, CardCache, Identifier, get_images};
 use crate::image::parse_bytes;
 use crate::warn_if;
 use bevy::image::Image;
 use bevy_p2p::runtime::Runtime;
-use bytes::Bytes;
 use futures::future::join_all;
 use jzon::{JsonValue, parse};
 use ratelimit::Ratelimiter;
@@ -95,7 +92,7 @@ async fn get_image(
         uuid: Uuid,
         quality: Quality,
         side: Side,
-    ) -> Result<Bytes, reqwest::Error> {
+    ) -> Result<bytes::Bytes, reqwest::Error> {
         let byte = uuid.as_bytes()[0];
         let request = client
             .get(format!(
@@ -110,7 +107,7 @@ async fn get_image(
         request.bytes().await
     }
     let bytes = warn_if(get_bytes(client, uuid, quality, side).await)?;
-    write_image(&bytes, set_cn, uuid, side).await;
+    crate::card_cache::write_image(&bytes, set_cn, uuid, quality, side).await;
     throttled_parse_bytes(&bytes).await
 }
 #[cfg(target_family = "wasm")]
@@ -161,8 +158,13 @@ async fn read_cards_check(
     mut front_image: CacheReadImage,
     mut back_image: CacheReadImage,
 ) {
-    if let Some((front, back)) =
-        get_images(&set_cn, uuid, matches!(back_image, CacheReadImage::Missing)).await
+    if let Some((front, back)) = get_images(
+        &set_cn,
+        uuid,
+        matches!(back_image, CacheReadImage::Missing),
+        quality,
+    )
+    .await
     {
         front_image = front;
         back_image = back;

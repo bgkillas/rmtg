@@ -597,6 +597,7 @@ pub fn register_cards(
                     }
                 }
                 MaybeHandles::Waiting(quality) => {
+                    has_some = true;
                     card.face_handles = MaybeHandles::Downloading;
                     card.back_handles = MaybeHandles::Downloading;
                     card.spawn_image_getters(
