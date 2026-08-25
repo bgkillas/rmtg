@@ -211,6 +211,10 @@ impl ratelimit::Clock for Clock {
 }
 static CARDS_THROTTLE: LazyLock<Ratelimiter<Clock>> =
     LazyLock::new(|| Ratelimiter::with_clock(9, Clock::default()));
+static NAMED_THROTTLE: LazyLock<Ratelimiter<Clock>> =
+    LazyLock::new(|| Ratelimiter::with_clock(1, Clock::default()));
+static RANDOM_THROTTLE: LazyLock<Ratelimiter<Clock>> =
+    LazyLock::new(|| Ratelimiter::with_clock(1, Clock::default()));
 static SEARCH_THROTTLE: LazyLock<Ratelimiter<Clock>> =
     LazyLock::new(|| Ratelimiter::with_clock(1, Clock::default()));
 pub const SLEEP_TIME: Duration = Duration::new(0, 1_048_576);
@@ -405,6 +409,22 @@ impl SubCard {
             None
         }
     }
+    pub async fn get_random(client: &Client, quality: Quality) -> Option<Self> {
+        while RANDOM_THROTTLE.try_wait().is_err() {
+            sleep(SLEEP_TIME).await;
+        }
+        let request = warn_if(
+            client
+                .get(format!("https://{URL}/cards/random"))
+                .send()
+                .await,
+        )?;
+        let json_raw = warn_if(request.text().await)?;
+        let json = warn_if(parse(&json_raw))?;
+        let card = SubCard::from_scryfall(json, quality)?;
+        CACHE.lock().await.insert(card.inner.clone());
+        Some(card)
+    }
     pub async fn get_id(client: &Client, uuid: Uuid, quality: Quality) -> Result<Self, Uuid> {
         let res = {
             let mut cache = CACHE.lock().await;
@@ -442,7 +462,7 @@ impl SubCard {
     }
     pub async fn get_str(client: &Client, name: &str, quality: Quality) -> Result<Self, Box<str>> {
         async fn get_str(client: &Client, name: &str, quality: Quality) -> Option<SubCard> {
-            while CARDS_THROTTLE.try_wait().is_err() {
+            while NAMED_THROTTLE.try_wait().is_err() {
                 sleep(SLEEP_TIME).await;
             }
             let request = warn_if(

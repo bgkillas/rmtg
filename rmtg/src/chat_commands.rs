@@ -19,7 +19,7 @@ pub enum Identifier {
     SetCn(String),
     None,
 }
-pub fn react_paste_card(
+pub fn react_chat_commands(
     event: On<TextSubmission>,
     client: Res<Client>,
     runtime: Res<Runtime>,
@@ -83,6 +83,11 @@ pub fn react_paste_card(
                 });
             }
         }
+    } else if event.string == "/random" {
+        let client_owned = client.client.clone();
+        runtime.spawn_hook(on_paste_random_card, async move {
+            (SubCard::get_random(&client_owned, QUALITY).await, pos)
+        });
     }
 }
 fn get_identifier(string: &str) -> Identifier {
@@ -100,6 +105,13 @@ fn get_identifier(string: &str) -> Identifier {
         Identifier::Uuid(uuid)
     } else {
         Identifier::None
+    }
+}
+fn on_paste_random_card(In((is_ok, pos)): In<(Option<SubCard>, Vec3)>, mut commands: Commands) {
+    if let Some(val) = is_ok {
+        commands.run_system_cached_with(on_paste_card, (val, pos));
+    } else {
+        warn!("random failed");
     }
 }
 fn on_paste_card_uuid(In((is_ok, pos)): In<(Result<SubCard, Uuid>, Vec3)>, mut commands: Commands) {

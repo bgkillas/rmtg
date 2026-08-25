@@ -1,3 +1,4 @@
+use crate::chat_commands::react_chat_commands;
 use crate::events::clipboard::get_clipboard;
 use crate::events::clone::on_clone;
 use crate::events::delete::on_delete;
@@ -10,7 +11,6 @@ use crate::events::roll::on_roll;
 use crate::events::scale::on_scale;
 use crate::events::scroll::insert_scroll_bar;
 use crate::net::{connect_failed, on_connect, on_disconnect};
-use crate::paste::react_paste_card;
 use crate::ui::chat::text_message;
 use crate::ui::esc_menu::on_iroh_bind_copy;
 use crate::ui::menu::on_set_menu;
@@ -43,7 +43,7 @@ pub fn add_events(app: &mut App) {
     app.add_observer(spawn_box_select);
     app.add_observer(update_box_select_mesh);
     app.add_observer(on_scale);
-    app.add_observer(react_paste_card);
+    app.add_observer(react_chat_commands);
     app.add_observer(text_message);
     app.add_observer(insert_scroll_bar);
     app.add_observer(on_delete);
