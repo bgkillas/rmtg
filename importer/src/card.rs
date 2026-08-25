@@ -1,4 +1,5 @@
 use crate::coder::{DataCoder, DataCoderBoxUuid};
+use crate::scryfall::Quality;
 use bevy::asset::Handle;
 use bevy::image::Image;
 use bevy::pbr::StandardMaterial;
@@ -12,6 +13,7 @@ use std::ops::{Deref, DerefMut};
 use std::slice::{Iter, IterMut};
 use std::sync::Arc;
 use uuid::Uuid;
+
 rules::generate_types!();
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct Card {
@@ -88,7 +90,8 @@ pub struct CardInfo {
 #[derive(Default, Debug, Clone)]
 pub enum MaybeHandles {
     Some(Handles),
-    Waiting,
+    Waiting(Quality),
+    Downloading,
     #[default]
     None,
 }
@@ -168,8 +171,8 @@ impl MaybeHandles {
     #[must_use]
     pub fn handles(&self) -> Option<Handles> {
         match self {
-            MaybeHandles::Waiting | MaybeHandles::None => None,
-            MaybeHandles::Some(handles) => Some(handles.clone()),
+            Self::Waiting(_) | Self::Downloading | Self::None => None,
+            Self::Some(handles) => Some(handles.clone()),
         }
     }
 }

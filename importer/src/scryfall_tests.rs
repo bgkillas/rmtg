@@ -44,6 +44,13 @@ async fn test_list() {
     )
     .await;
     let time = tmr.elapsed().as_millis();
+    let mut in_progress_images = IMAGES_IN_PROGRESS.lock().await;
+    let tmr = Instant::now();
+    for card in list.iter().filter_map(|c| c.as_ref().ok()) {
+        card.spawn_image_getters_tokio(&client, &mut in_progress_images, Quality::Normal);
+    }
+    println!("{}", tmr.elapsed().as_millis());
+    drop(in_progress_images);
     let mut i = 0;
     for res in &list {
         if let Err(uuid) = res {
@@ -79,6 +86,13 @@ async fn test_prints() {
         .await
         .unwrap();
     let time = tmr.elapsed().as_millis();
+    let mut in_progress_images = IMAGES_IN_PROGRESS.lock().await;
+    let tmr = Instant::now();
+    for card in vec.iter().filter_map(|c| c.as_ref().ok()) {
+        card.spawn_image_getters_tokio(&client, &mut in_progress_images, Quality::Normal);
+    }
+    println!("{}", tmr.elapsed().as_millis());
+    drop(in_progress_images);
     let mut i = 0;
     for res in &vec {
         if let Err(uuid) = res {

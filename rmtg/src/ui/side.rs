@@ -148,4 +148,6 @@ pub fn on_repaint_side_menu(
     search_list: Single<(Entity, &mut SearchList)>,
 ) {
     let pile = piles.get(on.entity).unwrap();
+    _ = pile;
+    _ = search_list;
 }
