@@ -163,7 +163,7 @@ impl Boards {
                 iter::repeat_n(id, count)
             });
             let vec = SubCard::get_list(client, iter, quality)
-                .await
+                .await?
                 .into_iter()
                 .map(Result::ok)
                 .collect::<Option<Vec<_>>>();

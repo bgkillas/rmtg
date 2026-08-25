@@ -217,6 +217,8 @@ static RANDOM_THROTTLE: LazyLock<Ratelimiter<Clock>> =
     LazyLock::new(|| Ratelimiter::with_clock(1, Clock::default()));
 static SEARCH_THROTTLE: LazyLock<Ratelimiter<Clock>> =
     LazyLock::new(|| Ratelimiter::with_clock(1, Clock::default()));
+static COLLECTION_THROTTLE: LazyLock<Ratelimiter<Clock>> =
+    LazyLock::new(|| Ratelimiter::with_clock(1, Clock::default()));
 pub const SLEEP_TIME: Duration = Duration::new(0, 1_048_576);
 async fn get_uuid(client: &Client, uuid: Uuid, quality: Quality) -> Option<SubCard> {
     while CARDS_THROTTLE.try_wait().is_err() {
@@ -238,22 +240,6 @@ pub static IMAGES_TO_PROCESS: LazyLock<
 pub static IMAGES_IN_PROGRESS: LazyLock<Mutex<HashSet<Uuid, FxBuildHasher>>> =
     LazyLock::new(|| Mutex::new(HashSet::with_capacity_and_hasher(512, FxBuildHasher)));
 impl SubCard {
-    #[must_use]
-    pub async fn get_list(
-        client: &Client,
-        iter: impl Iterator<Item = Uuid>,
-        quality: Quality,
-    ) -> Vec<Result<Self, Uuid>> {
-        join_all(iter.map(|uuid| Self::get_id(client, uuid, quality))).await
-    }
-    #[must_use]
-    pub async fn get_list_set_cn(
-        client: &Client,
-        iter: impl Iterator<Item = &str>,
-        quality: Quality,
-    ) -> Vec<Result<Self, Box<str>>> {
-        join_all(iter.map(|set_cn| Self::get_set_cn(client, set_cn, quality))).await
-    }
     pub async fn get_prints_id(
         client: &Client,
         id: Uuid,
@@ -283,6 +269,69 @@ impl SubCard {
         Self::get_prints(client, card.data.front.oracle_id, quality)
             .await
             .map_err(|_| set_cn.into())
+    }
+    #[must_use]
+    pub async fn get_list(
+        client: &Client,
+        iter: impl Iterator<Item = Uuid>,
+        quality: Quality,
+    ) -> Option<Vec<Result<Self, Uuid>>> {
+        async fn do_chunk(
+            client: &Client,
+            iter: impl Iterator<Item = Uuid>,
+        ) -> Option<Option<JsonValue>> {
+            while COLLECTION_THROTTLE.try_wait().is_err() {
+                sleep(SLEEP_TIME).await;
+            }
+            let mut array = JsonValue::new_array();
+            for id in iter {
+                let mut val = JsonValue::new_object();
+                val.insert("id", id.to_string()).ok()?;
+                array.push(val).ok()?;
+            }
+            if array.as_array()?.is_empty() {
+                return Some(None);
+            }
+            let mut json = JsonValue::new_object();
+            json.insert("identifiers", array).ok()?;
+            let request = warn_if(
+                client
+                    .get(format!("https://{URL}/cards/collection"))
+                    .header(reqwest::header::CONTENT_TYPE, "application/json")
+                    .body(json.dump())
+                    .send()
+                    .await,
+            )?;
+            let json_raw = warn_if(request.text().await)?;
+            let mut json = warn_if(parse(&json_raw))?;
+            Some(Some(json.remove("data")))
+        }
+        let mut jsons = Vec::new();
+        #[expect(clippy::shadow_reuse)]
+        let iter = iter.collect::<Vec<_>>().into_iter();
+        let mut chunks = iter.array_chunks::<75>();
+        for chunk in chunks.by_ref() {
+            jsons.append(do_chunk(client, chunk.into_iter()).await??.as_array_mut()?);
+        }
+        if let Some(mut rest) = do_chunk(client, chunks.into_remainder()).await? {
+            jsons.append(rest.as_array_mut()?);
+        }
+        Some(
+            join_all(
+                jsons
+                    .into_iter()
+                    .map(|card_json| SubCard::get_json(card_json, quality)),
+            )
+            .await,
+        )
+    }
+    #[must_use]
+    pub async fn get_list_set_cn(
+        client: &Client,
+        iter: impl Iterator<Item = &str>,
+        quality: Quality,
+    ) -> Vec<Result<Self, Box<str>>> {
+        join_all(iter.map(|set_cn| Self::get_set_cn(client, set_cn, quality))).await
     }
     pub async fn get_prints(
         client: &Client,
