@@ -1,5 +1,6 @@
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 use crate::card::SubCard;
+use crate::card_cache::Identifier;
 use crate::scryfall::{CACHE, IMAGES_IN_PROGRESS, IMAGES_TO_PROCESS, Quality, SLEEP_TIME};
 use fdlimit::raise_fd_limit;
 use reqwest::Client;
@@ -39,7 +40,7 @@ async fn test_list() {
     ]; 128];
     let list = SubCard::get_list(
         &client,
-        uuids.into_iter().flatten().collect(),
+        uuids.into_iter().flatten().map(Identifier::from).collect(),
         Quality::Normal,
     )
     .await

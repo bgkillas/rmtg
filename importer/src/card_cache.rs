@@ -144,7 +144,8 @@ impl CardCache {
             CacheResult::None(Identifier::SetCn(set_cn))
         }
     }
-    pub fn insert(&mut self, card: SubCardInner) {
+    pub async fn insert(&mut self, card: SubCardInner) {
+        card.write_files().await;
         let uuid = card.data.id;
         let set_cn = card.data.set_cn.clone();
         self.in_progress_set_cn.remove(&set_cn);

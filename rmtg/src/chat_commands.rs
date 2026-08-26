@@ -65,13 +65,16 @@ pub fn react_chat_commands(
         match get_identifier(rest) {
             Identifier::Uuid(uuid) => {
                 runtime.spawn_hook(on_paste_card_uuid, async move {
-                    (SubCard::get_id(&client_owned, uuid, QUALITY).await, pos)
+                    (
+                        SubCard::get_id(&client_owned, uuid, QUALITY, false).await,
+                        pos,
+                    )
                 });
             }
             Identifier::SetCn(set_cn) => {
                 runtime.spawn_hook(on_paste_card_set, async move {
                     (
-                        SubCard::get_set_cn(&client_owned, &set_cn, QUALITY).await,
+                        SubCard::get_set_cn(&client_owned, &set_cn, QUALITY, false).await,
                         pos,
                     )
                 });

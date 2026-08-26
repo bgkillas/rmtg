@@ -246,7 +246,7 @@ impl SubCard {
         id: Uuid,
         quality: Quality,
     ) -> Result<Vec<Result<Self, Uuid>>, Uuid> {
-        let card = Self::get_id(client, id, quality).await?;
+        let card = Self::get_id(client, id, quality, false).await?;
         Self::get_prints(client, card.data.front.oracle_id, quality)
             .await
             .map_err(|_| id)
@@ -256,7 +256,7 @@ impl SubCard {
         set_cn: &str,
         quality: Quality,
     ) -> Result<Vec<Result<Self, Uuid>>, Box<str>> {
-        let card = Self::get_set_cn(client, set_cn, quality).await?;
+        let card = Self::get_set_cn(client, set_cn, quality, false).await?;
         Self::get_prints(client, card.data.front.oracle_id, quality)
             .await
             .map_err(|_| set_cn.into())
@@ -328,40 +328,32 @@ impl SubCard {
                 if val == last {
                     len += 1;
                 } else {
-                    match SubCard::get_cache_result(last.clone(), quality).await {
-                        Ok(card) => {
-                            for _ in 0..len {
-                                cards.push(Ok(card.clone()));
-                            }
-                        }
+                    match dbg!(SubCard::get_cache_result(last.clone(), quality, false).await) {
+                        Ok(card) => cards.extend(iter::repeat_n(Ok(card), len)),
                         Err(_) => uniqued.push((len, last)),
                     }
                     last = val;
                     len = 1;
                 }
             }
-            match SubCard::get_cache_result(last.clone(), quality).await {
-                Ok(card) => {
-                    for _ in 0..len {
-                        cards.push(Ok(card.clone()));
-                    }
-                }
+            match dbg!(SubCard::get_cache_result(last.clone(), quality, false).await) {
+                Ok(card) => cards.extend(iter::repeat_n(Ok(card), len)),
                 Err(_) => uniqued.push((len, last)),
             }
         }
+        println!("{uniqued:?}");
         let (chunks, remainder) = uniqued.as_chunks::<75>();
         for chunk in chunks {
             jsons.append(do_chunk(client, chunk).await?.as_array_mut()?);
         }
         if remainder.len() > 9 {
             jsons.append(do_chunk(client, remainder).await?.as_array_mut()?);
-        } else {
-            let list = join_all(
-                remainder
-                    .iter()
-                    .map(|(_, ident)| SubCard::get_identifier(client, ident.clone(), quality)),
-            )
-            .await;
+        } else if !remainder.is_empty() {
+            let list =
+                join_all(remainder.iter().map(|(_, ident)| {
+                    SubCard::get_identifier(client, ident.clone(), quality, true)
+                }))
+                .await;
             cards.extend(
                 list.into_iter()
                     .zip(remainder)
@@ -369,15 +361,16 @@ impl SubCard {
             );
         }
         let mut cache = CACHE.lock().await;
-        let list = jsons.into_iter().map(|card_json| {
-            let card = SubCard::from_scryfall(card_json, quality)?;
-            cache.insert(card.inner.clone());
-            Ok(card)
-        });
-        cards.extend(
-            list.zip(uniqued)
-                .flat_map(|(card, (n, _))| iter::repeat_n(card.map_err(Identifier::Uuid), n)),
-        );
+        for (card_json, (n, _)) in jsons.into_iter().zip(uniqued) {
+            let res = match SubCard::from_scryfall(card_json, quality) {
+                Ok(card) => {
+                    cache.insert(card.inner.clone()).await;
+                    Ok(card)
+                }
+                Err(e) => Err(Identifier::Uuid(e)),
+            };
+            cards.extend(iter::repeat_n(res, n));
+        }
         drop(cache);
         Some(cards)
     }
@@ -428,7 +421,7 @@ impl SubCard {
     }
     pub async fn get_json(json: JsonValue, quality: Quality) -> Result<Self, Uuid> {
         let uuid = Uuid::parse_str(json["id"].as_str().unwrap()).unwrap();
-        Self::get_cache_result_or(Identifier::Uuid(uuid), quality, async || {
+        Self::get_cache_result_or(Identifier::Uuid(uuid), quality, false, async || {
             Self::from_scryfall(json, quality).ok()
         })
         .await
@@ -437,12 +430,13 @@ impl SubCard {
     pub async fn get_cache_result_or(
         identifier: Identifier<'_>,
         quality: Quality,
+        no_wait: bool,
         on_none: impl AsyncFnOnce() -> Option<Self>,
     ) -> Option<Self> {
-        match Self::get_cache_result(identifier, quality).await {
+        match Self::get_cache_result(identifier, quality, no_wait).await {
             Ok(card) => Some(card),
             Err(_) if let Some(card) = on_none().await => {
-                CACHE.lock().await.insert(card.inner.clone());
+                CACHE.lock().await.insert(card.inner.clone()).await;
                 Some(card)
             }
             Err(e) => {
@@ -454,6 +448,7 @@ impl SubCard {
     pub async fn get_cache_result(
         identifier: Identifier<'_>,
         quality: Quality,
+        no_wait: bool,
     ) -> Result<Self, Identifier<'_>> {
         let cache_result = {
             let mut cache = CACHE.lock().await;
@@ -480,6 +475,7 @@ impl SubCard {
                     return Err(Identifier::Uuid(uuid));
                 }
             }
+            CacheResult::Wait(ident) if no_wait => return Err(ident),
             CacheResult::Wait(Identifier::Uuid(uuid)) => loop {
                 sleep(SLEEP_TIME).await;
                 let card = {
@@ -507,7 +503,7 @@ impl SubCard {
                 return Err(identifier);
             }
         };
-        CACHE.lock().await.insert(card.inner.clone());
+        CACHE.lock().await.insert(card.inner.clone()).await;
         Ok(card)
     }
     pub async fn get_random(client: &Client, quality: Quality) -> Option<Self> {
@@ -523,25 +519,31 @@ impl SubCard {
         let json_raw = warn_if(request.text().await)?;
         let json = warn_if(parse(&json_raw))?;
         let card = SubCard::from_scryfall(json, quality).ok()?;
-        CACHE.lock().await.insert(card.inner.clone());
+        CACHE.lock().await.insert(card.inner.clone()).await;
         Some(card)
     }
     pub async fn get_identifier<'a>(
         client: &Client,
         identifier: Identifier<'a>,
         quality: Quality,
+        no_wait: bool,
     ) -> Result<Self, Identifier<'a>> {
         match identifier {
-            Identifier::Uuid(uuid) => Self::get_id(client, uuid, quality)
+            Identifier::Uuid(uuid) => Self::get_id(client, uuid, quality, no_wait)
                 .await
                 .map_err(|_| identifier),
-            Identifier::SetCn(set_cn) => Self::get_set_cn(client, set_cn, quality)
+            Identifier::SetCn(set_cn) => Self::get_set_cn(client, set_cn, quality, no_wait)
                 .await
                 .map_err(|_| identifier),
         }
     }
-    pub async fn get_id(client: &Client, uuid: Uuid, quality: Quality) -> Result<Self, Uuid> {
-        Self::get_cache_result_or(Identifier::Uuid(uuid), quality, async || {
+    pub async fn get_id(
+        client: &Client,
+        uuid: Uuid,
+        quality: Quality,
+        no_wait: bool,
+    ) -> Result<Self, Uuid> {
+        Self::get_cache_result_or(Identifier::Uuid(uuid), quality, no_wait, async || {
             get_uuid(client, uuid, quality).await
         })
         .await
@@ -551,8 +553,9 @@ impl SubCard {
         client: &Client,
         set_cn: &str,
         quality: Quality,
+        no_wait: bool,
     ) -> Result<Self, Box<str>> {
-        Self::get_cache_result_or(Identifier::SetCn(set_cn), quality, async || {
+        Self::get_cache_result_or(Identifier::SetCn(set_cn), quality, no_wait, async || {
             while CARDS_THROTTLE.try_wait().is_err() {
                 sleep(SLEEP_TIME).await;
             }
@@ -584,7 +587,7 @@ impl SubCard {
             let json_raw = warn_if(request.text().await)?;
             let json = warn_if(parse(&json_raw))?;
             let card = SubCard::from_scryfall(json, quality).ok()?;
-            CACHE.lock().await.insert(card.inner.clone());
+            CACHE.lock().await.insert(card.inner.clone()).await;
             Some(card)
         }
         get_str(client, name, quality)
