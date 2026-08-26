@@ -210,113 +210,6 @@ impl ratelimit::Clock for Clock {
         self.instant.elapsed()
     }
 }
-async fn get_collection<'a, T: Sized + PartialEq + Ord + Clone + Send>(
-    client: &Client,
-    mut vec: Vec<T>,
-    quality: Quality,
-    to_json: impl Fn(T) -> Option<JsonValue> + Clone + Send,
-) -> Option<Vec<Result<SubCard, Identifier<'a>>>>
-where
-    Identifier<'a>: From<T>,
-{
-    async fn do_chunk<K: Sized + Clone>(
-        client: &Client,
-        vec: &[(usize, K)],
-        to_json: impl Fn(K) -> Option<JsonValue> + Clone,
-    ) -> Option<JsonValue> {
-        while COLLECTION_THROTTLE.try_wait().is_err() {
-            sleep(SLEEP_TIME).await;
-        }
-        let mut array = JsonValue::new_array();
-        for (_, id) in vec.iter().cloned() {
-            array.push(to_json(id)?).ok()?;
-        }
-        let mut json = JsonValue::new_object();
-        json.insert("identifiers", array).ok()?;
-        let request = warn_if(
-            client
-                .post(format!("https://{URL}/cards/collection"))
-                .header(reqwest::header::CONTENT_TYPE, "application/json")
-                .body(json.dump())
-                .send()
-                .await,
-        )?;
-        let json_raw = warn_if(request.text().await)?;
-        let mut json_res = warn_if(parse(&json_raw))?;
-        Some(json_res.remove("data"))
-    }
-    if vec.is_empty() {
-        return Some(Vec::new());
-    }
-    vec.sort_unstable();
-    let mut uniqued = Vec::with_capacity(vec.len());
-    let mut cards = Vec::with_capacity(vec.len());
-    let mut jsons = Vec::with_capacity(vec.len());
-    {
-        let mut iter = vec.into_iter();
-        let mut last = iter.next().unwrap();
-        let mut len = 1;
-        for val in iter {
-            if val == last {
-                len += 1;
-            } else {
-                match SubCard::get_cache_result(Identifier::from(last.clone()), quality).await {
-                    Ok(card) => {
-                        for _ in 0..len {
-                            cards.push(Ok(card.clone()));
-                        }
-                    }
-                    Err(e) => {
-                        CACHE.lock().await.remove_in_progress(e);
-                        uniqued.push((len, last));
-                    }
-                }
-                last = val;
-                len = 1;
-            }
-        }
-        match SubCard::get_cache_result(Identifier::from(last.clone()), quality).await {
-            Ok(card) => {
-                for _ in 0..len {
-                    cards.push(Ok(card.clone()));
-                }
-            }
-            Err(e) => {
-                CACHE.lock().await.remove_in_progress(e);
-                uniqued.push((len, last));
-            }
-        }
-    }
-    let (chunks, remainder) = uniqued.as_chunks::<75>();
-    for chunk in chunks {
-        jsons.append(
-            do_chunk(client, chunk, to_json.clone())
-                .await?
-                .as_array_mut()?,
-        );
-    }
-    if remainder.len() > 9 {
-        jsons.append(do_chunk(client, remainder, to_json).await?.as_array_mut()?);
-    } else {
-        let list = join_all(remainder.iter().map(|(_, ident)| {
-            SubCard::get_identifier(client, Identifier::from(ident.clone()), quality)
-        }))
-        .await;
-        cards.extend(
-            list.into_iter()
-                .zip(remainder)
-                .flat_map(|(card, (n, _))| iter::repeat_n(card, *n)),
-        );
-    }
-    let list = jsons
-        .into_iter()
-        .map(|card_json| SubCard::from_scryfall(card_json, quality));
-    cards.extend(
-        list.zip(uniqued)
-            .flat_map(|(card, (n, _))| iter::repeat_n(card.map_err(Identifier::Uuid), n)),
-    );
-    Some(cards)
-}
 static CARDS_THROTTLE: LazyLock<Ratelimiter<Clock>> =
     LazyLock::new(|| Ratelimiter::with_clock(9, Clock::default()));
 static NAMED_THROTTLE: LazyLock<Ratelimiter<Clock>> =
@@ -379,32 +272,114 @@ impl SubCard {
             .map_err(|_| set_cn.into())
     }
     #[must_use]
-    pub async fn get_list(
+    pub async fn get_list<'a>(
         client: &Client,
-        iter: Vec<Uuid>,
-        quality: Quality,
-    ) -> Option<Vec<Result<Self, Identifier<'_>>>> {
-        get_collection(client, iter, quality, |id| {
-            let mut val = JsonValue::new_object();
-            val.insert("id", id.to_string()).ok()?;
-            Some(val)
-        })
-        .await
-    }
-    #[must_use]
-    pub async fn get_list_set_cn<'a>(
-        client: &Client,
-        iter: Vec<&'a str>,
+        mut vec: Vec<Identifier<'a>>,
         quality: Quality,
     ) -> Option<Vec<Result<Self, Identifier<'a>>>> {
-        get_collection(client, iter, quality, |set_cn| {
-            let mut val = JsonValue::new_object();
-            let (set, cn) = set_cn.split_once('/')?;
-            val.insert("set", set).ok()?;
-            val.insert("collector_number", cn).ok()?;
-            Some(val)
-        })
-        .await
+        async fn do_chunk(client: &Client, vec: &[(usize, Identifier<'_>)]) -> Option<JsonValue> {
+            while COLLECTION_THROTTLE.try_wait().is_err() {
+                sleep(SLEEP_TIME).await;
+            }
+            let mut array = JsonValue::new_array();
+            for (_, id) in vec.iter().cloned() {
+                let val = match id {
+                    Identifier::Uuid(uuid) => {
+                        let mut val = JsonValue::new_object();
+                        val.insert("id", uuid.to_string()).ok()?;
+                        val
+                    }
+                    Identifier::SetCn(set_cn) => {
+                        let mut val = JsonValue::new_object();
+                        let (set, cn) = set_cn.split_once('/')?;
+                        val.insert("set", set).ok()?;
+                        val.insert("collector_number", cn).ok()?;
+                        val
+                    }
+                };
+                array.push(val).ok()?;
+            }
+            let mut json = JsonValue::new_object();
+            json.insert("identifiers", array).ok()?;
+            let request = warn_if(
+                client
+                    .post(format!("https://{URL}/cards/collection"))
+                    .header(reqwest::header::CONTENT_TYPE, "application/json")
+                    .body(json.dump())
+                    .send()
+                    .await,
+            )?;
+            let json_raw = warn_if(request.text().await)?;
+            let mut json_res = warn_if(parse(&json_raw))?;
+            Some(json_res.remove("data"))
+        }
+        if vec.is_empty() {
+            return Some(Vec::new());
+        }
+        vec.sort_unstable();
+        let mut uniqued = Vec::with_capacity(vec.len());
+        let mut cards = Vec::with_capacity(vec.len());
+        let mut jsons = Vec::with_capacity(vec.len());
+        {
+            let mut iter = vec.into_iter();
+            let mut last = iter.next().unwrap();
+            let mut len = 1;
+            for val in iter {
+                if val == last {
+                    len += 1;
+                } else {
+                    match SubCard::get_cache_result(last.clone(), quality).await {
+                        Ok(card) => {
+                            for _ in 0..len {
+                                cards.push(Ok(card.clone()));
+                            }
+                        }
+                        Err(_) => uniqued.push((len, last)),
+                    }
+                    last = val;
+                    len = 1;
+                }
+            }
+            match SubCard::get_cache_result(last.clone(), quality).await {
+                Ok(card) => {
+                    for _ in 0..len {
+                        cards.push(Ok(card.clone()));
+                    }
+                }
+                Err(_) => uniqued.push((len, last)),
+            }
+        }
+        let (chunks, remainder) = uniqued.as_chunks::<75>();
+        for chunk in chunks {
+            jsons.append(do_chunk(client, chunk).await?.as_array_mut()?);
+        }
+        if remainder.len() > 9 {
+            jsons.append(do_chunk(client, remainder).await?.as_array_mut()?);
+        } else {
+            let list = join_all(
+                remainder
+                    .iter()
+                    .map(|(_, ident)| SubCard::get_identifier(client, ident.clone(), quality)),
+            )
+            .await;
+            cards.extend(
+                list.into_iter()
+                    .zip(remainder)
+                    .flat_map(|(card, (n, _))| iter::repeat_n(card, *n)),
+            );
+        }
+        let mut cache = CACHE.lock().await;
+        let list = jsons.into_iter().map(|card_json| {
+            let card = SubCard::from_scryfall(card_json, quality)?;
+            cache.insert(card.inner.clone());
+            Ok(card)
+        });
+        cards.extend(
+            list.zip(uniqued)
+                .flat_map(|(card, (n, _))| iter::repeat_n(card.map_err(Identifier::Uuid), n)),
+        );
+        drop(cache);
+        Some(cards)
     }
     pub async fn get_prints(
         client: &Client,

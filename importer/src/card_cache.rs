@@ -94,7 +94,7 @@ impl Default for CardCache {
         }
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialOrd, PartialEq, Ord, Eq)]
 pub enum Identifier<'a> {
     Uuid(Uuid),
     SetCn(&'a str),

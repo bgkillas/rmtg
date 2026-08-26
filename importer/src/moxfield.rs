@@ -1,4 +1,5 @@
 use crate::card::{Colors, SubCard};
+use crate::card_cache::Identifier;
 use crate::scryfall::Quality;
 use crate::warn_if;
 use base64::prelude::BASE64_URL_SAFE_NO_PAD;
@@ -167,7 +168,7 @@ impl Boards {
                     ))
                     .unwrap_or_default();
                     let count = j["quantity"].as_usize().unwrap_or_default();
-                    iter::repeat_n(id, count)
+                    iter::repeat_n(Identifier::Uuid(id), count)
                 })
                 .collect();
             let vec = SubCard::get_list(client, iter, quality)
