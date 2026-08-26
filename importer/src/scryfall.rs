@@ -328,7 +328,7 @@ impl SubCard {
                 if val == last {
                     len += 1;
                 } else {
-                    match dbg!(SubCard::get_cache_result(last.clone(), quality, false).await) {
+                    match SubCard::get_cache_result(last.clone(), quality, false).await {
                         Ok(card) => cards.extend(iter::repeat_n(Ok(card), len)),
                         Err(_) => uniqued.push((len, last)),
                     }
@@ -336,12 +336,11 @@ impl SubCard {
                     len = 1;
                 }
             }
-            match dbg!(SubCard::get_cache_result(last.clone(), quality, false).await) {
+            match SubCard::get_cache_result(last.clone(), quality, false).await {
                 Ok(card) => cards.extend(iter::repeat_n(Ok(card), len)),
                 Err(_) => uniqued.push((len, last)),
             }
         }
-        println!("{uniqued:?}");
         let (chunks, remainder) = uniqued.as_chunks::<75>();
         for chunk in chunks {
             jsons.append(do_chunk(client, chunk).await?.as_array_mut()?);
@@ -360,18 +359,20 @@ impl SubCard {
                     .flat_map(|(card, (n, _))| iter::repeat_n(card, *n)),
             );
         }
-        let mut cache = CACHE.lock().await;
-        for (card_json, (n, _)) in jsons.into_iter().zip(uniqued) {
-            let res = match SubCard::from_scryfall(card_json, quality) {
-                Ok(card) => {
-                    cache.insert(card.inner.clone()).await;
-                    Ok(card)
-                }
-                Err(e) => Err(Identifier::Uuid(e)),
-            };
-            cards.extend(iter::repeat_n(res, n));
+        if !jsons.is_empty() {
+            let mut cache = CACHE.lock().await;
+            for (card_json, (n, _)) in jsons.into_iter().zip(uniqued) {
+                let res = match SubCard::from_scryfall(card_json, quality) {
+                    Ok(card) => {
+                        cache.insert(card.inner.clone()).await;
+                        Ok(card)
+                    }
+                    Err(e) => Err(Identifier::Uuid(e)),
+                };
+                cards.extend(iter::repeat_n(res, n));
+            }
+            drop(cache);
         }
-        drop(cache);
         Some(cards)
     }
     pub async fn get_prints(
