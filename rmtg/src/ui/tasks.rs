@@ -5,8 +5,8 @@ use bevy::ui::{AlignItems, FlexDirection, JustifyContent};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
 use bevy_ecs::query::With;
-use bevy_ecs::system::{Res, Single};
-use bevy_p2p::runtime::Runtime;
+use bevy_ecs::system::Single;
+use importer::scryfall::{CACHE, IMAGES_IN_PROGRESS};
 #[derive(Component)]
 pub struct TasksCounter;
 #[derive(Component)]
@@ -26,7 +26,7 @@ impl TasksCounter {
             Visibility::Hidden,
             children![(
                 Node {
-                    width: Val::Px(FONT_WIDTH * 6.0),
+                    width: Val::Px(FONT_WIDTH * 16.0),
                     height: Val::Px(FONT_HEIGHT * 1.5),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
@@ -50,15 +50,20 @@ impl TasksCounter {
     }
 }
 pub fn update_tasks_counter(
-    runtime: Res<Runtime>,
     mut visibility: Single<&mut Visibility, With<TasksCounter>>,
     mut text: Single<&mut Text, With<TasksCounterText>>,
 ) {
-    let tasks = runtime.runtime.metrics().num_alive_tasks();
-    **visibility = if tasks == 0 {
+    let cache = CACHE.blocking_lock();
+    let uuid = cache.in_progress.len();
+    let set_cn = cache.in_progress_set_cn.len();
+    drop(cache);
+    let images_in_progress = IMAGES_IN_PROGRESS.blocking_lock();
+    let images = images_in_progress.len();
+    drop(images_in_progress);
+    **visibility = if uuid == 0 && set_cn == 0 && images == 0 {
         Visibility::Hidden
     } else {
-        text.0 = tasks.to_string();
+        text.0 = format!("{} {images}", uuid + set_cn);
         Visibility::Visible
     };
 }

@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 name = "rmtg_lib"
 
 [features]
-default = ["mic", "steam"]
+default = ["mic"]
 mic = ["dep:bevy_microphone", "dep:rodio"]
 debug = ["bevy/debug", "bevy/track_location"]
 colliders = ["avian3d/debug-plugin"]

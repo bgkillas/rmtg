@@ -22,6 +22,7 @@ use crate::ui::esc_menu::{button_system, toggle_esc_menu};
 use crate::ui::menu::Menu;
 use crate::ui::moxfield::SearchedPlayer;
 use crate::ui::side::activate_side_menu;
+use crate::ui::tasks::update_tasks_counter;
 use crate::ui::text_box::text_submission;
 use crate::{APP_NAME, FONT, PHYSICS_SCALE, USER_AGENT};
 use avian3d::PhysicsPlugins;
@@ -185,8 +186,7 @@ pub fn app_run() -> AppExit {
             (net_update, receive_message).chain(),
             poll_clipboards,
             register_cards,
-            #[cfg(not(target_family = "wasm"))]
-            crate::ui::tasks::update_tasks_counter,
+            update_tasks_counter,
         ),
     );
     app.run()

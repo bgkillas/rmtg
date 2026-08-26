@@ -16,7 +16,6 @@ use crate::ui::chat::TextMenu;
 use crate::ui::esc_menu::EscMenu;
 use crate::ui::moxfield::MoxfieldMenu;
 use crate::ui::side::SideMenu;
-#[cfg(not(target_family = "wasm"))]
 use crate::ui::tasks::TasksCounter;
 use crate::{
     CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT, MAT_WIDTH, T, W,
@@ -91,7 +90,6 @@ pub fn startup(
     commands.spawn(SideMenu::bundle());
     commands.spawn(MoxfieldMenu::bundle());
     commands.spawn(CalcMenu::bundle());
-    #[cfg(not(target_family = "wasm"))]
     commands.spawn(TasksCounter::bundle());
 }
 pub fn spawn_objects(
