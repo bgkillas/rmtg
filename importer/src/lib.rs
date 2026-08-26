@@ -4,7 +4,6 @@
 #![feature(extern_item_impls)]
 #![feature(arc_is_unique)]
 #![feature(type_alias_impl_trait)]
-#![feature(iter_array_chunks)]
 #![cfg_attr(test, feature(test))]
 extern crate core;
 pub mod card;

@@ -37,9 +37,13 @@ async fn test_list() {
         bruce_uuid,
         gisela_uuid,
     ]; 128];
-    let list = SubCard::get_list(&client, uuids.into_iter().flatten(), Quality::Normal)
-        .await
-        .unwrap();
+    let list = SubCard::get_list(
+        &client,
+        uuids.into_iter().flatten().collect(),
+        Quality::Normal,
+    )
+    .await
+    .unwrap();
     let time = tmr.elapsed().as_millis();
     let mut in_progress_images = IMAGES_IN_PROGRESS.lock().await;
     for card in list.iter().filter_map(|c| c.as_ref().ok()) {
@@ -52,7 +56,7 @@ async fn test_list() {
     for res in &list {
         if let Err(uuid) = res {
             i += 1;
-            println!("{uuid}");
+            println!("{uuid:?}");
         }
     }
     let cache = CACHE.lock().await;

@@ -94,10 +94,20 @@ impl Default for CardCache {
         }
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Identifier<'a> {
     Uuid(Uuid),
     SetCn(&'a str),
+}
+impl From<Uuid> for Identifier<'_> {
+    fn from(value: Uuid) -> Self {
+        Self::Uuid(value)
+    }
+}
+impl<'a> From<&'a str> for Identifier<'a> {
+    fn from(value: &'a str) -> Self {
+        Self::SetCn(value)
+    }
 }
 #[derive(Debug)]
 pub enum CacheResult<'a> {
@@ -138,9 +148,19 @@ impl CardCache {
         let uuid = card.data.id;
         let set_cn = card.data.set_cn.clone();
         self.in_progress_set_cn.remove(&set_cn);
+        self.in_progress.remove(&uuid);
         self.set_cn.insert(set_cn, uuid);
         self.cards.insert(uuid, card);
-        self.in_progress.remove(&uuid);
+    }
+    pub fn remove_in_progress(&mut self, identifier: Identifier<'_>) {
+        match identifier {
+            Identifier::Uuid(uuid) => {
+                self.in_progress.remove(&uuid);
+            }
+            Identifier::SetCn(set_cn) => {
+                self.in_progress_set_cn.remove(set_cn);
+            }
+        }
     }
 }
 impl SubCardInner {

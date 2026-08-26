@@ -159,14 +159,17 @@ impl Boards {
             let JsonValue::Object(object) = cards else {
                 return None;
             };
-            let iter = object.into_iter().flat_map(|(_, j)| {
-                let id = warn_if(Uuid::parse_str(
-                    j["card"]["scryfall_id"].as_str().unwrap_or_default(),
-                ))
-                .unwrap_or_default();
-                let count = j["quantity"].as_usize().unwrap_or_default();
-                iter::repeat_n(id, count)
-            });
+            let iter = object
+                .into_iter()
+                .flat_map(|(_, j)| {
+                    let id = warn_if(Uuid::parse_str(
+                        j["card"]["scryfall_id"].as_str().unwrap_or_default(),
+                    ))
+                    .unwrap_or_default();
+                    let count = j["quantity"].as_usize().unwrap_or_default();
+                    iter::repeat_n(id, count)
+                })
+                .collect();
             let vec = SubCard::get_list(client, iter, quality)
                 .await?
                 .into_iter()
