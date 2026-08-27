@@ -4,6 +4,5 @@ pub mod esc_menu;
 pub mod menu;
 pub mod moxfield;
 pub mod side;
-#[cfg(not(target_family = "wasm"))]
 pub mod tasks;
 pub mod text_box;

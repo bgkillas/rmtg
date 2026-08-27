@@ -106,13 +106,14 @@ pub fn on_new_search(
     event: On<NewSearch>,
     menu: Res<Menu>,
     mut commands: Commands,
-    search_list: Single<(Entity, &mut SearchList)>,
+    mut search_list: Single<(Entity, &mut SearchList)>,
     piles: Query<&Pile>,
     assets: AssetManager,
 ) {
     if !matches!(*menu, Menu::Side) {
         commands.trigger(SetMenu::new(Menu::Side));
     }
+    search_list.search_list.list = Some(event.entity);
     let pile = piles.get(event.entity).unwrap();
     let mut ent = commands.entity(search_list.entity);
     ent.despawn_children();
@@ -144,10 +145,10 @@ pub fn on_new_search(
 #[query_fn]
 pub fn on_repaint_side_menu(
     on: On<Repaint>,
-    piles: Query<&Pile>,
-    search_list: Single<(Entity, &mut SearchList)>,
+    mut commands: Commands,
+    search_list: Single<&SearchList>,
 ) {
-    let pile = piles.get(on.entity).unwrap();
-    _ = pile;
-    _ = search_list;
+    if search_list.list == Some(on.entity) {
+        commands.trigger(NewSearch { entity: on.entity });
+    }
 }

@@ -2,7 +2,7 @@ use crate::ui::calc::CalcMenu;
 use crate::ui::chat::TextMenu;
 use crate::ui::esc_menu::EscMenu;
 use crate::ui::moxfield::MoxfieldMenu;
-use crate::ui::side::SideMenu;
+use crate::ui::side::{SearchList, SideMenu};
 use crate::ui::text_box::TextSource;
 use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::prelude::{Event, Resource, Visibility, Window};
@@ -96,10 +96,14 @@ pub fn on_set_menu(
     mut active_input: ResMut<InputFocus>,
     window: Single<Entity, With<Window>>,
     text_input: Query<(Entity, &TextSource)>,
+    mut search_list: Single<&mut SearchList>,
 ) {
     match *menu {
         Menu::World => {}
-        Menu::Side => *side.visibility = Visibility::Hidden,
+        Menu::Side => {
+            search_list.list = None;
+            *side.visibility = Visibility::Hidden;
+        }
         Menu::Counter => *counter.visibility = Visibility::Hidden,
         Menu::Moxfield => {
             *chat.visibility = Visibility::Visible;
