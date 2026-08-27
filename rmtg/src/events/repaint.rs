@@ -55,7 +55,7 @@ pub fn on_repaint(
     *pile.collider = pile.pile.collider();
     let mut mat = top.get_mut(pile.children[0]).unwrap();
     if let Some(new) = pile.pile.first().face_handles() {
-        mat.0 = new.material;
+        mat.0 = new.material();
     }
     let [
         mut up,

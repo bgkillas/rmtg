@@ -24,6 +24,7 @@ impl CloneObj {
         }
     }
 }
+#[allow(clippy::large_enum_variant)]
 pub enum CloneType {
     Pile(Pile),
     Shape(Shape),

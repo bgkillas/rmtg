@@ -138,11 +138,12 @@ pub fn on_new_search(
                 },
                 ImageCard {
                     id: card.data.id,
+                    quality: card.quality,
                     flipped: card.flipped,
                 },
             );
             if let Some(handles) = card.face_handles() {
-                parent.spawn((bundle, ImageNode::new(handles.image)));
+                parent.spawn((bundle, ImageNode::new(handles.image())));
             } else {
                 parent.spawn((
                     bundle,

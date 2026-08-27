@@ -4,6 +4,7 @@ use crate::card_cache::{CacheReadImage, CacheResult, CardCache, Identifier, get_
 use crate::image::parse_bytes;
 use crate::warn_if;
 use bevy::image::Image;
+use bitcode::{self, Decode, Encode};
 use futures::future::join_all;
 use jzon::{JsonValue, parse};
 use ratelimit::Ratelimiter;
@@ -27,12 +28,14 @@ use wasmtimer::tokio::sleep;
 pub static CACHE: LazyLock<Mutex<CardCache>> = LazyLock::new(|| Mutex::new(CardCache::default()));
 const URL: &str = "api.scryfall.com";
 const CARD_URL: &str = "cards.scryfall.io";
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Encode, Decode, Default, Eq, Hash, PartialEq)]
 pub enum Quality {
     Small,
     Normal,
+    #[default]
     Large,
     Png,
+    Art,
 }
 #[derive(Clone, Copy)]
 pub enum Side {
@@ -59,6 +62,7 @@ impl Quality {
             Quality::Normal => "normal",
             Quality::Large => "large",
             Quality::Png => "png",
+            Quality::Art => "art",
         }
     }
     #[must_use]
@@ -66,6 +70,7 @@ impl Quality {
         match self {
             Quality::Small | Quality::Normal | Quality::Large => "jpg",
             Quality::Png => "png",
+            Quality::Art => "webp",
         }
     }
 }
@@ -148,7 +153,10 @@ async fn read_cards(
         front_image.get_image(client, &set_cn, uuid, quality, Side::Front),
         back_image.get_image(client, &set_cn, uuid, quality, Side::Back)
     );
-    IMAGES_TO_PROCESS.lock().await.insert(uuid, (front, back));
+    IMAGES_TO_PROCESS
+        .lock()
+        .await
+        .insert((uuid, quality), (front, back));
 }
 async fn read_cards_check(
     client: &Client,
@@ -185,7 +193,7 @@ pub type ReadCardsCheckedFuture = impl Future<Output = ()>;
 impl From<&MaybeHandles> for CacheReadImage {
     fn from(value: &MaybeHandles) -> Self {
         match value {
-            MaybeHandles::Waiting(_) | MaybeHandles::Downloading => Self::Missing,
+            MaybeHandles::Waiting | MaybeHandles::Downloading => Self::Missing,
             MaybeHandles::Some(_) | MaybeHandles::None => Self::None,
         }
     }
@@ -236,9 +244,9 @@ async fn get_uuid(client: &Client, uuid: Uuid, quality: Quality) -> Option<SubCa
     SubCard::from_scryfall(json, quality).ok()
 }
 pub static IMAGES_TO_PROCESS: LazyLock<
-    Mutex<HashMap<Uuid, (Option<Image>, Option<Image>), FxBuildHasher>>,
+    Mutex<HashMap<(Uuid, Quality), (Option<Image>, Option<Image>), FxBuildHasher>>,
 > = LazyLock::new(|| Mutex::new(HashMap::with_capacity_and_hasher(512, FxBuildHasher)));
-pub static IMAGES_IN_PROGRESS: LazyLock<Mutex<HashSet<Uuid, FxBuildHasher>>> =
+pub static IMAGES_IN_PROGRESS: LazyLock<Mutex<HashSet<(Uuid, Quality), FxBuildHasher>>> =
     LazyLock::new(|| Mutex::new(HashSet::with_capacity_and_hasher(512, FxBuildHasher)));
 impl SubCard {
     pub async fn get_prints_id(
@@ -454,8 +462,8 @@ impl SubCard {
         let cache_result = {
             let mut cache = CACHE.lock().await;
             match identifier {
-                Identifier::Uuid(uuid) => cache.get(uuid),
-                Identifier::SetCn(set_cn) => cache.get_set_cn(set_cn),
+                Identifier::Uuid(uuid) => cache.get(uuid, quality),
+                Identifier::SetCn(set_cn) => cache.get_set_cn(set_cn, quality),
             }
         };
         let card = match cache_result {
@@ -463,13 +471,14 @@ impl SubCard {
             CacheResult::Cached(set_cn, uuid) => {
                 if let Some(data) = CardData::read_files(&set_cn, uuid).await {
                     let back_handles = if data.back.as_ref().is_some_and(|c| c.has_unique_face) {
-                        MaybeHandles::Waiting(quality)
+                        MaybeHandles::Waiting
                     } else {
                         MaybeHandles::None
                     };
                     Self::from(SubCardInner {
                         data: Arc::new(data),
-                        face_handles: MaybeHandles::Waiting(quality),
+                        quality,
+                        face_handles: MaybeHandles::Waiting,
                         back_handles,
                     })
                 } else {
@@ -479,26 +488,50 @@ impl SubCard {
             CacheResult::Wait(ident) if no_wait => return Err(ident),
             CacheResult::Wait(Identifier::Uuid(uuid)) => loop {
                 sleep(SLEEP_TIME).await;
-                let card = {
+                let (data, (face_handles, back_handles)) = {
                     let cache = CACHE.lock().await;
                     if cache.in_progress.contains(&uuid) {
                         continue;
                     }
-                    cache.cards.get(&uuid).unwrap().clone()
+                    (
+                        cache.cards.get(&uuid).unwrap().clone(),
+                        cache
+                            .handles
+                            .get(&(uuid, quality))
+                            .cloned()
+                            .unwrap_or_default(),
+                    )
                 };
-                return Ok(Self::from(card));
+                return Ok(Self::from(SubCardInner {
+                    data,
+                    quality,
+                    face_handles,
+                    back_handles,
+                }));
             },
             CacheResult::Wait(Identifier::SetCn(str)) => loop {
                 sleep(SLEEP_TIME).await;
-                let card = {
+                let (data, (face_handles, back_handles)) = {
                     let cache = CACHE.lock().await;
                     if cache.in_progress_set_cn.contains(str) {
                         continue;
                     }
                     let &uuid = cache.set_cn.get_by_left(str).unwrap();
-                    cache.cards.get(&uuid).unwrap().clone()
+                    (
+                        cache.cards.get(&uuid).unwrap().clone(),
+                        cache
+                            .handles
+                            .get(&(uuid, quality))
+                            .cloned()
+                            .unwrap_or_default(),
+                    )
                 };
-                return Ok(Self::from(card));
+                return Ok(Self::from(SubCardInner {
+                    data,
+                    quality,
+                    face_handles,
+                    back_handles,
+                }));
             },
             CacheResult::None(identifier) => {
                 return Err(identifier);
@@ -642,7 +675,7 @@ impl SubCard {
         fn inner(id: Uuid, json: JsonValue, quality: Quality) -> Option<SubCard> {
             let layout_str = json["layout"].as_str()?;
             let layout = Layout::from(layout_str);
-            let face_handles = MaybeHandles::Waiting(quality);
+            let face_handles = MaybeHandles::Waiting;
             let mut back_handles = MaybeHandles::None;
             let (front, back) = if json["card_faces"].is_null() {
                 let front = get_face(&json, &JsonValue::Null)?;
@@ -652,7 +685,7 @@ impl SubCard {
                 let front = get_face(&json, &faces[0])?;
                 let back = get_face(&json, &faces[1])?;
                 if back.has_unique_face {
-                    back_handles = MaybeHandles::Waiting(quality);
+                    back_handles = MaybeHandles::Waiting;
                 }
                 (front, Some(Box::new(back)))
             };
@@ -679,6 +712,7 @@ impl SubCard {
             };
             let card = SubCard::from(SubCardInner {
                 data: Arc::new(data),
+                quality,
                 face_handles,
                 back_handles,
             });
@@ -691,7 +725,7 @@ impl SubCard {
     pub fn spawn_image_getters(
         &self,
         client: &Client,
-        set: &mut HashSet<Uuid, FxBuildHasher>,
+        set: &mut HashSet<(Uuid, Quality), FxBuildHasher>,
         quality: Quality,
         spawn: impl FnOnce(ReadCardsCheckedFuture),
     ) {
@@ -699,7 +733,7 @@ impl SubCard {
         let back = CacheReadImage::from(&self.back_handles);
         let id = self.data.id;
         if (matches!(face, CacheReadImage::Missing) || matches!(back, CacheReadImage::Missing))
-            && set.insert(id)
+            && set.insert((id, quality))
         {
             let set_cn = self.data.set_cn.clone();
             let cloned = client.clone();

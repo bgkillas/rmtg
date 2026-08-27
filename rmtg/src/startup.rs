@@ -99,10 +99,10 @@ pub fn spawn_objects(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let mut card = SubCard::default();
-    card.face_handles = MaybeHandles::Some(Handles {
-        image: asset.card.back_image.clone(),
-        material: asset.card.back.clone(),
-    });
+    card.face_handles = MaybeHandles::Some(Handles::new(
+        asset.card.back_image.clone(),
+        asset.card.back.clone(),
+    ));
     commands.spawn((
         Transform::from_xyz(MAT_WIDTH + CARD_WIDTH, CARD_THICKNESS, 0.0),
         Pile::from(card).bundle(),

@@ -132,7 +132,7 @@ pub fn register_card(materials: &mut Assets<StandardMaterial>, image: Handle<Ima
         unlit: true,
         ..StandardMaterial::default()
     });
-    Handles { image, material }
+    Handles::new(image, material)
 }
 #[must_use]
 pub fn generate_side_outline() -> Mesh {

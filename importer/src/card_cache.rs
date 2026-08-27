@@ -1,4 +1,4 @@
-use crate::card::{CardData, SubCardInner};
+use crate::card::{CardData, MaybeHandles, SubCardInner};
 use crate::scryfall::{Quality, Side};
 use bevy::asset::Handle;
 use bevy::image::Image;
@@ -16,7 +16,8 @@ use uuid::Uuid;
 pub const CACHE_FOLDER: &str = "cache";
 pub const DATA: &str = "card.data";
 pub struct CardCache {
-    pub cards: HashMap<Uuid, SubCardInner, FxBuildHasher>,
+    pub cards: HashMap<Uuid, Arc<CardData>, FxBuildHasher>,
+    pub handles: HashMap<(Uuid, Quality), (MaybeHandles, MaybeHandles), FxBuildHasher>,
     pub in_storage: HashSet<Uuid, FxBuildHasher>,
     pub in_progress: HashSet<Uuid, FxBuildHasher>,
     pub in_progress_set_cn: HashSet<Box<str>, FxBuildHasher>,
@@ -29,10 +30,12 @@ impl Quality {
             (Self::Normal, Side::Front) => "front_normal.jpg",
             (Self::Large, Side::Front) => "front_large.jpg",
             (Self::Png, Side::Front) => "front.png",
+            (Self::Art, Side::Front) => "front_art.webp",
             (Self::Small, Side::Back) => "back_small.jpg",
             (Self::Normal, Side::Back) => "back_normal.jpg",
             (Self::Large, Side::Back) => "back_large.jpg",
             (Self::Png, Side::Back) => "back.png",
+            (Self::Art, Side::Back) => "back_art.webp",
         }
     }
 }
@@ -87,6 +90,7 @@ impl Default for CardCache {
         set_cn.reserve(512);
         Self {
             cards: HashMap::with_capacity_and_hasher(512, FxBuildHasher),
+            handles: HashMap::with_capacity_and_hasher(512, FxBuildHasher),
             in_storage,
             in_progress: HashSet::with_capacity_and_hasher(512, FxBuildHasher),
             in_progress_set_cn: HashSet::with_capacity_and_hasher(512, FxBuildHasher),
@@ -118,11 +122,23 @@ pub enum CacheResult<'a> {
 }
 impl CardCache {
     pub fn clean(&mut self) {
-        self.cards.retain(|_, card| !Arc::is_unique(&card.data));
+        self.cards.retain(|_, card| !Arc::is_unique(card));
+        self.handles
+            .retain(|_, (face, back)| !(face.is_unique() && back.is_unique()));
     }
-    pub fn get<'b>(&mut self, uuid: Uuid) -> CacheResult<'b> {
-        if let Some(val) = self.cards.get(&uuid) {
-            CacheResult::Some(val.clone())
+    pub fn get<'b>(&mut self, uuid: Uuid, quality: Quality) -> CacheResult<'b> {
+        if let Some(data) = self.cards.get(&uuid).cloned() {
+            let (face_handles, back_handles) = self
+                .handles
+                .get(&(uuid, quality))
+                .cloned()
+                .unwrap_or_default();
+            CacheResult::Some(SubCardInner {
+                data,
+                quality,
+                face_handles,
+                back_handles,
+            })
         } else if self.in_storage.contains(&uuid) {
             self.in_progress.insert(uuid);
             let set_cn = self.set_cn.get_by_right(&uuid).unwrap();
@@ -134,9 +150,9 @@ impl CardCache {
             CacheResult::None(Identifier::Uuid(uuid))
         }
     }
-    pub fn get_set_cn<'a>(&mut self, set_cn: &'a str) -> CacheResult<'a> {
+    pub fn get_set_cn<'a>(&mut self, set_cn: &'a str, quality: Quality) -> CacheResult<'a> {
         if let Some(&uuid) = self.set_cn.get_by_left(set_cn) {
-            self.get(uuid)
+            self.get(uuid, quality)
         } else if self.in_progress_set_cn.contains(set_cn) {
             CacheResult::Wait(Identifier::SetCn(set_cn))
         } else {
@@ -151,7 +167,9 @@ impl CardCache {
         self.in_progress_set_cn.remove(&set_cn);
         self.in_progress.remove(&uuid);
         self.set_cn.insert(set_cn, uuid);
-        self.cards.insert(uuid, card);
+        self.cards.insert(uuid, card.data);
+        self.handles
+            .insert((uuid, card.quality), (card.face_handles, card.back_handles));
     }
     pub fn remove_in_progress(&mut self, identifier: Identifier<'_>) {
         match identifier {

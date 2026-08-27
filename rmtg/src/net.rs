@@ -8,6 +8,8 @@ use bevy_p2p::events::{ConnectFailed, PeerConnected, PeerDisconnected};
 use bevy_p2p::iroh::EndpointId;
 use bevy_p2p::message::{MessageReceived, Net};
 use importer::coder::DataCoder;
+use rand::RngExt as _;
+use rand::rngs::StdRng;
 use rustc_hash::FxBuildHasher;
 use std::collections::HashMap;
 #[derive(Encode, Decode)]
@@ -35,17 +37,28 @@ pub fn receive_message(mut reader: PopulatedMessageReader<MessageReceived<Msg>>)
         }
     }
 }
+#[derive(Component, Clone, Copy, Encode, Decode)]
+pub struct GlobalId {
+    pub id: u64,
+}
+impl Default for GlobalId {
+    fn default() -> Self {
+        let mut rng = rand::make_rng::<StdRng>();
+        let id = rng.random();
+        Self { id }
+    }
+}
 #[derive(Component, Clone, Copy)]
 pub struct Endpoint {
     pub peer: EndpointId,
 }
-#[derive(Component, Default, Clone, Copy)]
+#[derive(Component, Default, Clone, Copy, Encode, Decode)]
 pub struct Peer {
-    pub id: usize,
+    pub id: u64,
 }
 impl Peer {
     #[must_use]
-    pub fn new(id: usize) -> Self {
+    pub fn new(id: u64) -> Self {
         Peer { id }
     }
 }

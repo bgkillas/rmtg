@@ -1,6 +1,6 @@
 use crate::coder::{DataCoder, DataCoderBoxUuid};
 use crate::scryfall::Quality;
-use bevy::asset::Handle;
+use bevy::asset::{Handle, StrongHandle};
 use bevy::image::Image;
 use bevy::pbr::StandardMaterial;
 use bevy::ui::widget::ImageNode;
@@ -30,11 +30,13 @@ pub struct Card {
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct SubCard {
     pub inner: SubCardInner,
+    pub global_id: u64,
     pub flipped: bool,
 }
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct SubCardInner {
     pub data: Arc<CardData>,
+    pub quality: Quality,
     #[bitcode(skip)]
     pub face_handles: MaybeHandles,
     #[bitcode(skip)]
@@ -90,15 +92,15 @@ pub struct CardInfo {
 #[derive(Default, Debug, Clone)]
 pub enum MaybeHandles {
     Some(Handles),
-    Waiting(Quality),
+    Waiting,
     Downloading,
     #[default]
     None,
 }
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Handles {
-    pub image: Handle<Image>,
-    pub material: Handle<StandardMaterial>,
+    pub image: Arc<StrongHandle>,
+    pub material: Arc<StrongHandle>,
 }
 #[derive(Default, Clone, PartialOrd, Encode, Decode, Eq, PartialEq)]
 pub struct Types {
@@ -167,11 +169,37 @@ pub enum SearchKey {
     Toughness,
     Loyalty,
 }
+impl Handles {
+    pub fn image(self) -> Handle<Image> {
+        Handle::Strong(self.image)
+    }
+    pub fn material(self) -> Handle<StandardMaterial> {
+        Handle::Strong(self.material)
+    }
+    pub fn is_unique(&self) -> bool {
+        Arc::is_unique(&self.image) && Arc::is_unique(&self.material)
+    }
+    pub fn new(image_handle: Handle<Image>, material_handle: Handle<StandardMaterial>) -> Self {
+        let Handle::Strong(image) = image_handle else {
+            panic!()
+        };
+        let Handle::Strong(material) = material_handle else {
+            panic!()
+        };
+        Self { image, material }
+    }
+}
 impl MaybeHandles {
+    pub fn is_unique(&self) -> bool {
+        match self {
+            Self::Some(handle) => handle.is_unique(),
+            Self::Waiting | Self::Downloading | Self::None => false,
+        }
+    }
     #[must_use]
     pub fn handles(&self) -> Option<Handles> {
         match self {
-            Self::Waiting(_) | Self::Downloading | Self::None => None,
+            Self::Waiting | Self::Downloading | Self::None => None,
             Self::Some(handles) => Some(handles.clone()),
         }
     }
@@ -627,12 +655,12 @@ impl SubCard {
     pub fn image_node(&self) -> ImageNode {
         match self.data.layout {
             Layout::Flip if self.flipped => ImageNode {
-                image: self.face_handles.handles().unwrap().image,
+                image: self.face_handles.handles().unwrap().image(),
                 flip_x: true,
                 flip_y: true,
                 ..ImageNode::default()
             },
-            _ => ImageNode::new(self.face_handles().unwrap().image),
+            _ => ImageNode::new(self.face_handles().unwrap().image()),
         }
     }
     #[must_use]

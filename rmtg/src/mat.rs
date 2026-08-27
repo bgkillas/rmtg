@@ -40,7 +40,7 @@ pub fn create_mats(
             transform,
             right,
             PLAYER[i],
-            Peer::new(i),
+            Peer::new(i as u64),
         );
     }
 }

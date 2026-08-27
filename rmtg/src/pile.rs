@@ -18,8 +18,8 @@ use bevy_p2p::runtime::Runtime;
 use bevy_query_fn_macro::query_fn;
 use bitcode::{Decode, Encode};
 use importer::bitcode;
-use importer::card::{Card, CardIter, CardIterMut, MaybeHandles, SubCard};
-use importer::scryfall::{CACHE, IMAGES_IN_PROGRESS, IMAGES_TO_PROCESS};
+use importer::card::{Card, CardIter, CardIterMut, Handles, MaybeHandles, SubCard};
+use importer::scryfall::{CACHE, IMAGES_IN_PROGRESS, IMAGES_TO_PROCESS, Quality};
 use importer::uuid::Uuid;
 use itertools::Either;
 use rand::make_rng;
@@ -142,7 +142,7 @@ impl Pile {
             MeshMaterial3d(
                 self.first()
                     .face_handles()
-                    .map_or_else(|| asset.card.back.clone(), |h| h.material),
+                    .map_or_else(|| asset.card.back.clone(), Handles::material),
             ),
             Mesh3d(asset.card.stock.clone()),
             CardTop,
@@ -161,7 +161,7 @@ impl Pile {
     pub fn is_oracle(&self) -> bool {
         matches!(
             self.first().face_maybe_handles(),
-            MaybeHandles::None | MaybeHandles::Waiting(_) | MaybeHandles::Downloading
+            MaybeHandles::None | MaybeHandles::Waiting | MaybeHandles::Downloading
         )
     }
     #[must_use]
@@ -564,6 +564,7 @@ impl From<SubCard> for Pile {
 #[derive(Component)]
 pub struct ImageCard {
     pub id: Uuid,
+    pub quality: Quality,
     pub flipped: bool,
 }
 #[query_fn]
@@ -584,26 +585,31 @@ pub fn register_cards(
         for card in &mut pile.pile {
             match card.face_handles {
                 MaybeHandles::Downloading => {
-                    let card_cache = cache.cards.get(&card.data.id).unwrap();
-                    if matches!(
-                        card_cache.face_handles,
-                        MaybeHandles::Downloading | MaybeHandles::Waiting(_)
-                    ) {
-                        has_some = true;
+                    if let Some((face_handles, back_handles)) =
+                        cache.handles.get(&(card.data.id, card.quality))
+                    {
+                        if matches!(
+                            face_handles,
+                            MaybeHandles::Downloading | MaybeHandles::Waiting
+                        ) {
+                            has_some = true;
+                        } else {
+                            repaint = true;
+                            card.face_handles = face_handles.clone();
+                            card.back_handles = back_handles.clone();
+                        }
                     } else {
-                        repaint = true;
-                        card.face_handles = card_cache.face_handles.clone();
-                        card.back_handles = card_cache.back_handles.clone();
+                        has_some = true;
                     }
                 }
-                MaybeHandles::Waiting(quality) => {
+                MaybeHandles::Waiting => {
                     has_some = true;
                     card.face_handles = MaybeHandles::Downloading;
                     card.back_handles = MaybeHandles::Downloading;
                     card.spawn_image_getters(
                         &client.client,
                         &mut in_progress_images,
-                        quality,
+                        card.quality,
                         |f| runtime.spawn(f),
                     );
                 }
@@ -636,25 +642,29 @@ pub fn register_cards(
             })
             .collect::<HashMap<_, _, FxBuildHasher>>();
         drop(new_images);
-        for (uuid, (front, back)) in map {
-            let card = cache.cards.get_mut(&uuid).unwrap();
-            card.face_handles = front.map_or(MaybeHandles::None, MaybeHandles::Some);
-            card.back_handles = back.map_or(MaybeHandles::None, MaybeHandles::Some);
+        for ((uuid, quality), (front, back)) in map {
+            if let Some((face_handles, back_handles)) = cache.handles.get_mut(&(uuid, quality)) {
+                *face_handles = front.map_or(MaybeHandles::None, MaybeHandles::Some);
+                *back_handles = back.map_or(MaybeHandles::None, MaybeHandles::Some);
+            }
         }
         drop(in_progress_images);
     }
     for mut card in image_query {
-        let card_cache = cache.cards.get(&card.image_card.id).unwrap();
-        if !matches!(
-            card_cache.face_handles,
-            MaybeHandles::Waiting(_) | MaybeHandles::Downloading
-        ) {
+        if let Some((face_handles, back_handles)) = cache
+            .handles
+            .get(&(card.image_card.id, card.image_card.quality))
+            && !matches!(
+                face_handles,
+                MaybeHandles::Waiting | MaybeHandles::Downloading
+            )
+        {
             if let Some(handles) = if card.image_card.flipped {
-                card_cache.back_handles.handles()
+                back_handles.handles()
             } else {
-                card_cache.face_handles.handles()
+                face_handles.handles()
             } {
-                card.image_node.image = handles.image;
+                card.image_node.image = handles.image();
             }
             commands.entity(card.entity).remove::<PendingCards>();
         }
