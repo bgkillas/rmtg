@@ -1,7 +1,7 @@
 use crate::FONT_HEIGHT;
 use crate::assets::AssetManager;
 use crate::events::repaint::Repaint;
-use crate::events::scroll::Scrollable;
+use crate::events::scroll::{Scroll, ScrollToContentSize, Scrollable};
 use crate::focus::Hover;
 use crate::keybinds::Keybind;
 use crate::pile::{ImageCard, PendingCards, Pile};
@@ -84,6 +84,17 @@ impl SideMenu {
         )
     }
 }
+pub fn on_side_set_menu(
+    on: On<SetMenu>,
+    list: Single<Entity, With<SearchList>>,
+    mut commands: Commands,
+) {
+    if !matches!(on.menu, Menu::Side) {
+        return;
+    }
+    commands.write_message(Scroll::up(*list));
+}
+
 #[query_fn]
 pub fn activate_side_menu(
     keybinds: Res<ButtonInput<Keybind>>,
@@ -150,5 +161,6 @@ pub fn on_repaint_side_menu(
 ) {
     if search_list.list == Some(on.entity) {
         commands.trigger(NewSearch { entity: on.entity });
+        commands.write_message(ScrollToContentSize::new(on.entity));
     }
 }

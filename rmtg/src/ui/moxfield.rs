@@ -1,9 +1,10 @@
 use crate::app::Client;
 use crate::events::move_up::MoveUp;
-use crate::events::scroll::Scrollable;
+use crate::events::scroll::{Scroll, Scrollable};
 use crate::mat::PlayMat;
 use crate::pile::Pile;
 use crate::ui::esc_menu::button;
+use crate::ui::menu::{Menu, SetMenu};
 use crate::ui::text_box::{TextSource, TextSubmission};
 use crate::{CARD_WIDTH, FONT_HEIGHT, QUALITY};
 use bevy::color::Color;
@@ -19,6 +20,7 @@ use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::observer::On;
+use bevy_ecs::query::With;
 use bevy_ecs::system::{Commands, In, Query, Res, Single};
 use bevy_p2p::runtime::Runtime;
 use bevy_query_fn_macro::query_fn;
@@ -83,6 +85,16 @@ impl MoxfieldMenu {
             ],
         )
     }
+}
+pub fn on_moxfield_set_menu(
+    on: On<SetMenu>,
+    list: Single<Entity, With<MoxfieldDeckList>>,
+    mut commands: Commands,
+) {
+    if !matches!(on.menu, Menu::Moxfield) {
+        return;
+    }
+    commands.write_message(Scroll::up(*list));
 }
 pub fn submit_moxfield(on: On<TextSubmission>, client: Res<Client>, runtime: Res<Runtime>) {
     if !matches!(on.source, TextSource::Moxfield) {

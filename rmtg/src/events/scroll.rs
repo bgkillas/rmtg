@@ -25,6 +25,12 @@ pub struct Scroll {
 pub struct ScrollToContentSize {
     pub entity: Entity,
 }
+impl ScrollToContentSize {
+    #[must_use]
+    pub fn new(entity: Entity) -> Self {
+        Self { entity }
+    }
+}
 impl Scroll {
     #[must_use]
     pub fn new(entity: Entity, delta: Vec2) -> Self {
