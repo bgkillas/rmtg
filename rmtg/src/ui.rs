@@ -3,6 +3,7 @@ pub mod chat;
 pub mod esc_menu;
 pub mod menu;
 pub mod moxfield;
+pub mod right_click;
 pub mod side;
 pub mod tasks;
 pub mod text_box;

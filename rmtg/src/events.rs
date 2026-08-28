@@ -15,6 +15,7 @@ use crate::ui::chat::text_message;
 use crate::ui::esc_menu::on_iroh_bind_copy;
 use crate::ui::menu::on_set_menu;
 use crate::ui::moxfield::{on_moxfield_set_menu, spawn_boards, submit_moxfield};
+use crate::ui::right_click::on_right_click;
 use crate::ui::side::{on_new_search, on_repaint_side_menu, on_side_set_menu};
 use bevy::app::App;
 pub mod clipboard;
@@ -58,4 +59,5 @@ pub fn add_events(app: &mut App) {
     app.add_observer(on_moxfield_set_menu);
     app.add_observer(on_side_set_menu);
     app.add_observer(on_new_search);
+    app.add_observer(on_right_click);
 }

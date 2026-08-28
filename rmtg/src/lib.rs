@@ -23,6 +23,11 @@ pub mod spatial;
 pub mod startup;
 pub mod ui;
 //TODO oracle card
+//TODO player color dice
+//TODO right click menu
+//TODO global id to entity/pile index map
+//TODO side menu ctrl click
+//TODO side menu move cards in/out
 pub const APP_NAME: &str = "com.github.bgkillas.rmtg";
 pub const USER_AGENT: &str = concat!("com.github.bgkillas.rmtg/", env!("CARGO_PKG_VERSION"));
 pub const ALPN: &[u8] = USER_AGENT.as_bytes();
@@ -55,7 +60,7 @@ pub const CARD_STOCK_INBETWEEN_COLOR: Color = Color::srgb_u8(64, 64, 64);
 pub const SCROLLBAR: Color = Color::srgb(0.486, 0.486, 0.529);
 pub const SCROLLBAR_OUTLINE: Color = Color::srgb(0.71, 0.71, 0.772);
 pub const SCROLLBAR_HOVER: Color = Color::WHITE;
-pub const BUTTON_BACKGROUND: Color = Color::BLACK;
+pub const BUTTON_BACKGROUND: Color = Color::srgba_u8(0, 0, 0, 128);
 pub const BUTTON_BORDER: Color = Color::srgb_u8(64, 64, 64);
 pub const BUTTON_HOVER: Color = Color::srgb_u8(32, 32, 32);
 pub const WORLD_FONT_SIZE: f32 = 280.0;

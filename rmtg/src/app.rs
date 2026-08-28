@@ -21,6 +21,7 @@ use crate::startup::{spawn_objects, startup};
 use crate::ui::esc_menu::{button_system, toggle_esc_menu};
 use crate::ui::menu::Menu;
 use crate::ui::moxfield::SearchedPlayer;
+use crate::ui::right_click::trigger_right_click_menu;
 use crate::ui::side::activate_side_menu;
 use crate::ui::tasks::update_tasks_counter;
 use crate::ui::text_box::text_submission;
@@ -143,7 +144,7 @@ pub fn app_run() -> AppExit {
     app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
     app.add_systems(
         PreUpdate,
-        (
+        ((
             delayed_pile_merge,
             update_cursor,
             (
@@ -153,8 +154,9 @@ pub fn app_run() -> AppExit {
                 button_system,
             )
                 .chain(),
-            update_keybinds.after(InputSystems),
-        ),
+            update_keybinds,
+        )
+            .after(InputSystems),),
     );
     app.add_systems(
         Update,
@@ -173,6 +175,7 @@ pub fn app_run() -> AppExit {
                 .chain(),
             text_submission,
             send_scroll_events,
+            trigger_right_click_menu,
         )
             .chain(),
     );
