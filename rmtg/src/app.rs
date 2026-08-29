@@ -2,7 +2,7 @@ use crate::camera::{camera_rotation, camera_translation};
 use crate::drag::drag;
 use crate::events::add_events;
 use crate::events::clipboard::{PollClipboard, poll_clipboards};
-use crate::events::clone::update_clone;
+use crate::events::clone::{CloneObjs, update_clone};
 use crate::events::delete::do_delete;
 use crate::events::hover::{update_box_select, update_hover};
 use crate::events::pile_merge::{DelayPileMerge, delayed_pile_merge};
@@ -137,6 +137,7 @@ pub fn app_run() -> AppExit {
     app.init_resource::<Cursor>();
     app.init_resource::<ButtonInput<Keybind>>();
     app.init_resource::<PollClipboard>();
+    app.init_resource::<CloneObjs>();
     app.add_message::<Scroll>();
     app.add_message::<ScrollToContentSize>();
     app.add_message::<DelayPileMerge>();

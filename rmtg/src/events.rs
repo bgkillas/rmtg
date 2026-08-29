@@ -1,6 +1,6 @@
 use crate::chat_commands::react_chat_commands;
 use crate::events::clipboard::get_clipboard;
-use crate::events::clone::on_clone;
+use crate::events::clone::{on_clone, on_clone_objects, on_paste_objects};
 use crate::events::delete::on_delete;
 use crate::events::gravity::on_change_gravity;
 use crate::events::hover::{add_hover, remove_hover, spawn_box_select, update_box_select_mesh};
@@ -15,7 +15,7 @@ use crate::ui::chat::text_message;
 use crate::ui::esc_menu::on_iroh_bind_copy;
 use crate::ui::menu::on_set_menu;
 use crate::ui::moxfield::{on_moxfield_set_menu, spawn_boards, submit_moxfield};
-use crate::ui::right_click::on_right_click;
+use crate::ui::right_click::{add_copy_menu, on_right_click, remove_right_click_menus};
 use crate::ui::side::{on_new_search, on_repaint_side_menu, on_side_set_menu};
 use bevy::app::App;
 pub mod clipboard;
@@ -60,4 +60,8 @@ pub fn add_events(app: &mut App) {
     app.add_observer(on_side_set_menu);
     app.add_observer(on_new_search);
     app.add_observer(on_right_click);
+    app.add_observer(add_copy_menu);
+    app.add_observer(remove_right_click_menus);
+    app.add_observer(on_clone_objects);
+    app.add_observer(on_paste_objects);
 }
