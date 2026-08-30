@@ -1,20 +1,26 @@
 use crate::FONT_WIDTH;
-use crate::events::clone::{CloneObjects, PasteObjects};
+use crate::events::clone::{CloneObjects, CloneObjs, PasteObjects};
 use crate::events::hover::HoveredObject;
+use crate::focus::Hover;
 use crate::keybinds::Keybind;
+use crate::pile::{PendingCards, Pile};
+use crate::shapes::Shape;
 use crate::spatial::Spatial;
 use crate::ui::esc_menu::button;
 use bevy::color::Color;
 use bevy::input::ButtonInput;
 use bevy::math::{Vec2, Vec3};
-use bevy::prelude::Event;
+use bevy::prelude::{Event, MouseButton};
 use bevy::ui::{BackgroundColor, Display, FlexDirection, Node, PositionType, Val};
 use bevy::ui_widgets::{Activate, observe};
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
+use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::observer::On;
+use bevy_ecs::prelude::Without;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Commands, Query, Res, Single};
+use bevy_query_fn_macro::query_fn;
 #[derive(Event)]
 pub struct TriggerRightClickMenu {
     pub entities: Box<[Entity]>,
@@ -39,16 +45,35 @@ impl TriggerRightClickMenu {
         }
     }
 }
+#[query_fn]
 pub fn trigger_right_click_menu(
     hovered: Query<Entity, With<HoveredObject>>,
     spatial: Spatial,
     keybinds: Res<ButtonInput<Keybind>>,
+    mouse: Res<ButtonInput<MouseButton>>,
+    menu: Option<Single<Entity, With<RightClickMenu>>>,
+    parent: Query<&ChildOf>,
     mut commands: Commands,
+    hover: Hover,
 ) {
     let Some((_, target_pos, _)) = spatial.ray() else {
         return;
     };
     if !keybinds.just_pressed(Keybind::ObjectMenu) {
+        if !mouse.get_just_pressed().is_empty()
+            && menu.is_some_and(|target| {
+                let mut current = hover.get();
+                while let Some(e) = current {
+                    if e == *target {
+                        return false;
+                    }
+                    current = parent.get(e).ok().map(ChildOf::parent);
+                }
+                true
+            })
+        {
+            commands.trigger(RemoveRightClickMenu);
+        }
         return;
     }
     commands.trigger(TriggerRightClickMenu::new(
@@ -57,8 +82,14 @@ pub fn trigger_right_click_menu(
         spatial.cursor.pos,
     ));
 }
-pub fn on_right_click(on: On<TriggerRightClickMenu>, mut commands: Commands) {
-    commands.trigger(RemoveRightClickMenu);
+pub fn on_right_click(
+    on: On<TriggerRightClickMenu>,
+    mut commands: Commands,
+    menu: Option<Single<(), With<RightClickMenu>>>,
+) {
+    if menu.is_some() {
+        commands.trigger(RemoveRightClickMenu);
+    }
     commands.spawn((
         Node {
             position_type: PositionType::Absolute,
@@ -79,21 +110,46 @@ pub fn on_right_click(on: On<TriggerRightClickMenu>, mut commands: Commands) {
 }
 pub fn remove_right_click_menus(
     _: On<RemoveRightClickMenu>,
-    menu: Option<Single<Entity, With<RightClickMenu>>>,
-    mut commands: Commands,
-) {
-    if let Some(ent) = menu {
-        commands.entity(*ent).despawn();
-    }
-}
-pub fn add_copy_menu(
-    _: On<AddMenus>,
     menu: Single<Entity, With<RightClickMenu>>,
     mut commands: Commands,
 ) {
-    let mut ent = commands.entity(*menu);
-    ent.with_child((button("Copy"), observe(on_copy)));
-    ent.with_child((button("Paste"), observe(on_paste)));
+    commands.entity(*menu).despawn();
+}
+#[derive(Event)]
+pub struct Intermediary;
+pub fn ensure_has_menus(_: On<AddMenus>, mut commands: Commands) {
+    commands.trigger(Intermediary);
+}
+pub fn ensure_has_menus_post(
+    _: On<Intermediary>,
+    mut commands: Commands,
+    menu: Single<&Children, With<RightClickMenu>>,
+) {
+    if menu.is_empty() {
+        commands.trigger(RemoveRightClickMenu);
+    }
+}
+#[query_fn]
+pub fn add_copy_menu(
+    _: On<AddMenus>,
+    menu: Single<(Entity, &RightClickMenu)>,
+    mut commands: Commands,
+    clones: Res<CloneObjs>,
+    hovered_entities: Query<(Option<&Shape>, Option<&Pile>), Without<PendingCards>>,
+) {
+    let mut ent = commands.entity(menu.entity);
+    if !menu.right_click_menu.entities.is_empty()
+        && menu.right_click_menu.entities.iter().all(|e| {
+            hovered_entities
+                .get(*e)
+                .is_ok_and(|c| c.shape.is_some() || c.pile.is_some())
+        })
+    {
+        ent.with_child((button("Copy"), observe(on_copy)));
+    }
+    if !clones.objects.is_empty() {
+        ent.with_child((button("Paste"), observe(on_paste)));
+    }
 }
 pub fn on_copy(_: On<Activate>, mut commands: Commands, menu: Single<&RightClickMenu>) {
     commands.trigger(CloneObjects {

@@ -2,6 +2,7 @@ use crate::events::clipboard::{ClipboardEvent, GetClipboard};
 use crate::keybinds::Keybind;
 use crate::net::Msg;
 use crate::ui::menu::{Menu, SetMenu};
+use crate::ui::right_click::{RemoveRightClickMenu, RightClickMenu};
 use crate::{ALPN, BUTTON_BACKGROUND, BUTTON_BORDER, BUTTON_HOVER, FONT_SIZE};
 use bevy::app::AppExit;
 use bevy::clipboard::Clipboard;
@@ -16,6 +17,7 @@ use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
 use bevy_ecs::message::MessageWriter;
 use bevy_ecs::observer::On;
+use bevy_ecs::prelude::{Single, With};
 use bevy_ecs::query::Changed;
 use bevy_ecs::system::{Commands, If, Query, Res, ResMut};
 use bevy_p2p::events::Binded;
@@ -144,8 +146,12 @@ pub fn toggle_esc_menu(
     keybinds: Res<ButtonInput<Keybind>>,
     menu: Res<Menu>,
     mut commands: Commands,
+    right_menu: Option<Single<(), With<RightClickMenu>>>,
 ) {
     if keybinds.just_pressed(Keybind::Menu) {
+        if right_menu.is_some() {
+            commands.trigger(RemoveRightClickMenu);
+        }
         commands.trigger(SetMenu::new(match *menu {
             Menu::World => Menu::Esc,
             Menu::Side | Menu::Counter | Menu::Moxfield | Menu::Esc => Menu::World,
