@@ -11,6 +11,7 @@ use bevy::color::Color;
 use bevy::input::ButtonInput;
 use bevy::math::{Vec2, Vec3};
 use bevy::prelude::{Event, MouseButton};
+use bevy::time::Time;
 use bevy::ui::{BackgroundColor, Display, FlexDirection, Node, PositionType, Val};
 use bevy::ui_widgets::{Activate, observe};
 use bevy_ecs::component::Component;
@@ -19,7 +20,7 @@ use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::observer::On;
 use bevy_ecs::prelude::Without;
 use bevy_ecs::query::With;
-use bevy_ecs::system::{Commands, Query, Res, Single};
+use bevy_ecs::system::{Commands, Local, Query, Res, Single};
 use bevy_query_fn_macro::query_fn;
 #[derive(Event)]
 pub struct TriggerRightClickMenu {
@@ -55,32 +56,39 @@ pub fn trigger_right_click_menu(
     parent: Query<&ChildOf>,
     mut commands: Commands,
     hover: Hover,
+    time: Res<Time>,
+    mut local: Local<f32>,
 ) {
     let Some((_, target_pos, _)) = spatial.ray() else {
         return;
     };
-    if !keybinds.just_pressed(Keybind::ObjectMenu) {
-        if !mouse.get_just_pressed().is_empty()
-            && menu.is_some_and(|target| {
-                let mut current = hover.get();
-                while let Some(e) = current {
-                    if e == *target {
-                        return false;
-                    }
-                    current = parent.get(e).ok().map(ChildOf::parent);
-                }
-                true
-            })
-        {
-            commands.trigger(RemoveRightClickMenu);
-        }
+    if keybinds.pressed(Keybind::ObjectMenu) {
+        *local += time.delta_secs();
+    } else if keybinds.just_released(Keybind::ObjectMenu) && *local < 0.125 {
+        *local = 0.0;
+        commands.trigger(TriggerRightClickMenu::new(
+            hovered.into_iter().collect(),
+            target_pos,
+            spatial.cursor.pos,
+        ));
         return;
+    } else {
+        *local = 0.0;
     }
-    commands.trigger(TriggerRightClickMenu::new(
-        hovered.into_iter().collect(),
-        target_pos,
-        spatial.cursor.pos,
-    ));
+    if !mouse.get_just_pressed().is_empty()
+        && menu.is_some_and(|target| {
+            let mut current = hover.get();
+            while let Some(e) = current {
+                if e == *target {
+                    return false;
+                }
+                current = parent.get(e).ok().map(ChildOf::parent);
+            }
+            true
+        })
+    {
+        commands.trigger(RemoveRightClickMenu);
+    }
 }
 pub fn on_right_click(
     on: On<TriggerRightClickMenu>,
