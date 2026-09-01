@@ -11,6 +11,7 @@ use crate::events::roll::on_roll;
 use crate::events::scale::on_scale;
 use crate::events::scroll::insert_scroll_bar;
 use crate::net::{connect_failed, on_connect, on_disconnect};
+use crate::ui::alt_menu::{on_activate_alt_menu, on_remove_alt_menu};
 use crate::ui::chat::text_message;
 use crate::ui::esc_menu::on_iroh_bind_copy;
 use crate::ui::menu::on_set_menu;
@@ -69,4 +70,6 @@ pub fn add_events(app: &mut App) {
     app.add_observer(on_paste_objects);
     app.add_observer(ensure_has_menus);
     app.add_observer(ensure_has_menus_post);
+    app.add_observer(on_activate_alt_menu);
+    app.add_observer(on_remove_alt_menu);
 }

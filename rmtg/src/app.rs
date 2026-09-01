@@ -18,6 +18,7 @@ use crate::net::{Msg, Peers, net_update, receive_message};
 use crate::pile::register_cards;
 use crate::spatial::{Cursor, update_cursor};
 use crate::startup::{spawn_objects, startup};
+use crate::ui::alt_menu::update_alt_menu;
 use crate::ui::esc_menu::{button_system, toggle_esc_menu};
 use crate::ui::menu::Menu;
 use crate::ui::moxfield::SearchedPlayer;
@@ -177,6 +178,7 @@ pub fn app_run() -> AppExit {
             text_submission,
             send_scroll_events,
             trigger_right_click_menu,
+            update_alt_menu,
         )
             .chain(),
     );

@@ -1,3 +1,4 @@
+pub mod alt_menu;
 pub mod calc;
 pub mod chat;
 pub mod esc_menu;
