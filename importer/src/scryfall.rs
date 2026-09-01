@@ -429,7 +429,11 @@ impl SubCard {
         inner(client, oracle, quality).await.ok_or(oracle)
     }
     pub async fn get_json(json: JsonValue, quality: Quality) -> Result<Self, Uuid> {
-        let uuid = Uuid::parse_str(json["id"].as_str().unwrap()).unwrap();
+        if json["object"].as_str() == Some("error") {
+            return Err(Uuid::max());
+        }
+        let uuid =
+            Uuid::from_str(json["id"].as_str().ok_or(Uuid::max())?).map_err(|_| Uuid::max())?;
         Self::get_cache_result_or(Identifier::Uuid(uuid), quality, false, async || {
             Self::from_scryfall(json, quality).ok()
         })
@@ -647,7 +651,7 @@ impl SubCard {
                         get(face, json, s)
                             .as_array()?
                             .iter()
-                            .map(|c| c.as_str().unwrap()),
+                            .map(|c| c.as_str().unwrap_or_default()),
                     )
                 })?
                 .map(Colors::parse);
@@ -689,8 +693,8 @@ impl SubCard {
                 }
                 (front, Some(Box::new(back)))
             };
-            let set = json["set"].as_str().unwrap();
-            let cn = json["collector_number"].as_str().unwrap();
+            let set = json["set"].as_str()?;
+            let cn = json["collector_number"].as_str()?;
             let set_cn = format!("{set}/{cn}").into_boxed_str();
             let tokens = json["all_parts"]
                 .as_array()
@@ -718,7 +722,11 @@ impl SubCard {
             });
             Some(card)
         }
-        let id = Uuid::from_str(json["id"].as_str().unwrap()).unwrap();
+        if json["object"].as_str() == Some("error") {
+            return Err(Uuid::max());
+        }
+        let id =
+            Uuid::from_str(json["id"].as_str().ok_or(Uuid::max())?).map_err(|_| Uuid::max())?;
         inner(id, json, quality).ok_or(id)
     }
     #[define_opaque(ReadCardsCheckedFuture)]
