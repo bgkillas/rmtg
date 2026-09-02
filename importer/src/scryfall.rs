@@ -7,6 +7,7 @@ use bevy::image::Image;
 use bitcode::{self, Decode, Encode};
 use futures::future::join_all;
 use jzon::{JsonValue, parse};
+use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
 use ratelimit::Ratelimiter;
 use reqwest::Client;
 use rustc_hash::FxBuildHasher;
@@ -42,6 +43,39 @@ pub enum Side {
     Front,
     Back,
 }
+pub const SEARCH_SET: &AsciiSet = &CONTROLS
+    .add(b' ')
+    .add(b'!')
+    .add(b'#')
+    .add(b'$')
+    .add(b'%')
+    .add(b'&')
+    .add(b'\'')
+    .add(b'(')
+    .add(b')')
+    .add(b'*')
+    .add(b'+')
+    .add(b',')
+    .add(b'-')
+    .add(b'.')
+    .add(b'/')
+    .add(b':')
+    .add(b';')
+    .add(b'<')
+    .add(b'=')
+    .add(b'>')
+    .add(b'?')
+    .add(b'@')
+    .add(b'[')
+    .add(b'\\')
+    .add(b']')
+    .add(b'^')
+    .add(b'_')
+    .add(b'`')
+    .add(b'{')
+    .add(b'|')
+    .add(b'}')
+    .add(b'~');
 impl Display for Side {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -388,24 +422,57 @@ impl SubCard {
         oracle: Uuid,
         quality: Quality,
     ) -> Result<Vec<Result<Self, Uuid>>, Uuid> {
+        let query = format!("oracleid={oracle}");
+        Self::search(client, &[&query, "game=paper", "unique:prints"], quality)
+            .await
+            .map_err(|_| oracle)
+    }
+    pub async fn search_str(
+        client: &Client,
+        query: &str,
+        quality: Quality,
+    ) -> Result<Vec<Result<Self, Uuid>>, Box<str>> {
+        let mut in_quote = false;
+        let querys = query
+            .split(|c| {
+                if c == '"' {
+                    in_quote = !in_quote;
+                    false
+                } else if in_quote {
+                    false
+                } else {
+                    c == ' '
+                }
+            })
+            .collect::<Vec<_>>();
+        Self::search(client, &querys, quality)
+            .await
+            .map_err(|_| query.into())
+    }
+    pub async fn search(
+        client: &Client,
+        querys: &[&str],
+        quality: Quality,
+    ) -> Result<Vec<Result<Self, Uuid>>, Box<[Box<str>]>> {
         async fn inner(
             client: &Client,
-            oracle: Uuid,
+            querys: &[&str],
             quality: Quality,
         ) -> Option<Vec<Result<SubCard, Uuid>>> {
             let mut jsons = Vec::new();
-            for i in 1.. {
+            for i in 1..9 {
                 while SEARCH_THROTTLE.try_wait().is_err() {
                     sleep(SLEEP_TIME).await;
                 }
-                let request = warn_if(client
-                    .get(format!(
-                        "https://{URL}/cards/search?q=oracleid%3D{oracle}+game%3Dpaper+unique%3Aprints"
-                    ))
-                    .query(&(("page", i),))
-                    .send()
-                    .await
-                )?;
+                let url = format!(
+                    "https://{URL}/cards/search?q={}",
+                    querys
+                        .iter()
+                        .map(|query| utf8_percent_encode(query, SEARCH_SET).to_string())
+                        .collect::<Vec<_>>()
+                        .join("+")
+                );
+                let request = warn_if(client.get(url).query(&(("page", i),)).send().await)?;
                 let json_raw = warn_if(request.text().await)?;
                 let mut json = warn_if(parse(&json_raw))?;
                 if jsons.capacity() == 0 {
@@ -426,7 +493,9 @@ impl SubCard {
                 .await,
             )
         }
-        inner(client, oracle, quality).await.ok_or(oracle)
+        inner(client, querys, quality)
+            .await
+            .ok_or_else(|| querys.iter().map(|s| Box::from(*s)).collect::<Box<[_]>>())
     }
     pub async fn get_json(json: JsonValue, quality: Quality) -> Result<Self, Uuid> {
         if json["object"].as_str() == Some("error") {
@@ -550,7 +619,10 @@ impl SubCard {
         }
         let request = warn_if(
             client
-                .get(format!("https://{URL}/cards/random"))
+                .get(format!(
+                    "https://{URL}/cards/random?q={}",
+                    utf8_percent_encode("game:paper", SEARCH_SET)
+                ))
                 .send()
                 .await,
         )?;

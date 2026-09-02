@@ -20,15 +20,22 @@ pub struct AltMenu {
 }
 pub fn update_alt_menu(
     keys: Res<ButtonInput<KeyCode>>,
-    menu: Option<Single<(), With<AltMenu>>>,
+    menu: Option<Single<&AltMenu>>,
     mut commands: Commands,
     spatial: Spatial,
 ) {
-    if keys.any_just_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
+    if keys.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
         let Some((hit, _, _)) = spatial.ray() else {
             return;
         };
-        commands.trigger(ActivateAltMenu { entity: hit.entity });
+        if let Some(m) = menu {
+            if m.entity != hit.entity {
+                commands.trigger(RemoveAltMenu);
+                commands.trigger(ActivateAltMenu { entity: hit.entity });
+            }
+        } else {
+            commands.trigger(ActivateAltMenu { entity: hit.entity });
+        }
     } else if keys.any_just_released([KeyCode::AltLeft, KeyCode::AltRight]) && menu.is_some() {
         commands.trigger(RemoveAltMenu);
     }

@@ -10,6 +10,7 @@ use bevy::prelude::{Commands, Res, Transform};
 use bevy_ecs::observer::On;
 use bevy_ecs::system::In;
 use bevy_p2p::runtime::Runtime;
+use futures::future::join_all;
 use importer::card::SubCard;
 use importer::uuid::Uuid;
 use std::str::FromStr as _;
@@ -86,10 +87,30 @@ pub fn react_chat_commands(
                 });
             }
         }
+    } else if let Some(rest) = event.string.strip_prefix("/search ") {
+        let client_owned = client.client.clone();
+        let owned = rest.to_owned();
+        runtime.spawn_hook(on_paste_cards, async move {
+            (
+                SubCard::search_str(&client_owned, &owned, QUALITY).await,
+                pos,
+            )
+        });
     } else if event.string == "/random" {
         let client_owned = client.client.clone();
         runtime.spawn_hook(on_paste_random_card, async move {
             (SubCard::get_random(&client_owned, QUALITY).await, pos)
+        });
+    } else if let Some(rest) = event.string.strip_prefix("/random ") {
+        let Ok(amount) = rest.parse() else {
+            warn!("{rest:?} not number");
+            return;
+        };
+        let client_owned = client.client.clone();
+        runtime.spawn_hook(on_paste_random_cards, async move {
+            let vec =
+                join_all((0..amount).map(|_| SubCard::get_random(&client_owned, QUALITY))).await;
+            (vec, pos)
         });
     }
 }
@@ -170,8 +191,54 @@ fn on_paste_card_prints(
             }
         })
         .collect();
-    let ent = commands
-        .spawn((Transform::from_translation(pos), Pile::new(pile).bundle()))
-        .id();
-    commands.trigger(MoveUp::new(ent));
+    if pile.is_empty() {
+        warn!("no cards found");
+    } else {
+        let ent = commands
+            .spawn((Transform::from_translation(pos), Pile::new(pile).bundle()))
+            .id();
+        commands.trigger(MoveUp::new(ent));
+    }
+}
+fn on_paste_random_cards(
+    In((cards, pos)): In<(Vec<Option<SubCard>>, Vec3)>,
+    mut commands: Commands,
+) {
+    let pile: Vec<_> = cards.into_iter().flatten().collect();
+    if pile.is_empty() {
+        warn!("random failed");
+    } else {
+        let ent = commands
+            .spawn((Transform::from_translation(pos), Pile::new(pile).bundle()))
+            .id();
+        commands.trigger(MoveUp::new(ent));
+    }
+}
+fn on_paste_cards(
+    In((is_ok, pos)): In<(Result<Vec<Result<SubCard, Uuid>>, Box<str>>, Vec3)>,
+    mut commands: Commands,
+) {
+    match is_ok {
+        Ok(cards) => {
+            let pile: Vec<_> = cards
+                .into_iter()
+                .filter_map(|c| match c {
+                    Ok(v) => Some(v),
+                    Err(e) => {
+                        warn!("{e:?}");
+                        None
+                    }
+                })
+                .collect();
+            if pile.is_empty() {
+                warn!("no cards found");
+            } else {
+                let ent = commands
+                    .spawn((Transform::from_translation(pos), Pile::new(pile).bundle()))
+                    .id();
+                commands.trigger(MoveUp::new(ent));
+            }
+        }
+        Err(e) => warn!("{e:?}"),
+    }
 }

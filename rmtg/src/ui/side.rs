@@ -94,7 +94,6 @@ pub fn on_side_set_menu(
     }
     commands.write_message(Scroll::up(*list));
 }
-
 #[query_fn]
 pub fn activate_side_menu(
     keybinds: Res<ButtonInput<Keybind>>,

@@ -38,6 +38,7 @@ itertools = "0.15.0"
 bevy_ecs = "0.19.1"
 bevy-settings = "0.19.1"
 bevy_framepace = "0.22.0"
+futures = "0.3.34"
 
 [target.'cfg(windows)'.dependencies]
 winapi = {version = "0.3.9",features = ["wincon"]}
