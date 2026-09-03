@@ -5,13 +5,21 @@ use avian3d::prelude::Collider;
 use bevy::math::Vec3;
 use bevy::mesh::Mesh3d;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{Children, Entity, EntityEvent, On, Query, Transform};
+use bevy::prelude::{Children, Entity, EntityEvent, On, Query, Resource, Transform};
 use bevy_ecs::lifecycle::Add;
-use bevy_ecs::system::Commands;
+use bevy_ecs::prelude::Remove;
+use bevy_ecs::system::{Commands, ResMut};
 use bevy_query_fn_macro::query_fn;
+use importer::uuid::Uuid;
+use rustc_hash::FxBuildHasher;
+use std::collections::HashMap;
 #[derive(EntityEvent)]
 pub struct Repaint {
     pub entity: Entity,
+}
+#[derive(Resource, Default)]
+pub struct GlobalIdMap {
+    pub map: HashMap<Uuid, Entity, FxBuildHasher>,
 }
 impl Repaint {
     #[must_use]
@@ -24,8 +32,12 @@ pub fn on_pile_added(
     piles: Query<&Pile>,
     mut commands: Commands,
     asset: AssetManager,
+    mut global_map: ResMut<GlobalIdMap>,
 ) {
     let pile = piles.get(on.entity).unwrap();
+    for card in pile {
+        global_map.map.insert(card.global_id, on.entity);
+    }
     commands.entity(on.entity).with_children(|parent| {
         parent.spawn(pile.up(&asset));
         parent.spawn(pile.down(&asset));
@@ -42,6 +54,16 @@ pub fn on_pile_added(
     });
     commands.trigger(Repaint::new(on.entity));
 }
+pub fn on_pile_removed(
+    on: On<Remove, Pile>,
+    piles: Query<&Pile>,
+    mut global_map: ResMut<GlobalIdMap>,
+) {
+    let pile = piles.get(on.entity).unwrap();
+    for card in pile {
+        global_map.map.remove(&card.global_id);
+    }
+}
 #[query_fn]
 pub fn on_repaint(
     on: On<Repaint>,
@@ -50,8 +72,13 @@ pub fn on_repaint(
     mut top: Query<&mut MeshMaterial3d<StandardMaterial>>,
     mut commands: Commands,
     assets: AssetManager,
+    mut global_map: ResMut<GlobalIdMap>,
 ) {
     let mut pile = decks.get_mut(on.entity).unwrap();
+    global_map.map.retain(|_, ent| *ent != on.entity);
+    for card in pile.pile {
+        global_map.map.insert(card.global_id, on.entity);
+    }
     *pile.collider = pile.pile.collider();
     let mut mat = top.get_mut(pile.children[0]).unwrap();
     if let Some(new) = pile.pile.first().face_handles() {

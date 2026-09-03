@@ -6,6 +6,8 @@ use bevy::pbr::StandardMaterial;
 use bevy::ui::widget::ImageNode;
 use bitcode::{Decode, Encode};
 use enumset::{EnumSet, EnumSetType};
+use rand::prelude::StdRng;
+use rand::{Rng as _, make_rng};
 use std::cmp::Ordering;
 use std::fmt::{Debug, Formatter};
 use std::mem;
@@ -27,11 +29,12 @@ pub struct Card {
     pub misc: Option<i32>,
     pub is_token: bool,
 }
-#[derive(Debug, Default, Encode, Decode, Clone)]
+#[derive(Debug, Default, Encode, Decode)]
 pub struct SubCard {
     pub inner: SubCardInner,
-    pub global_id: u64,
     pub flipped: bool,
+    #[bitcode(with = "DataCoder<Uuid>")]
+    pub global_id: Uuid,
 }
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct SubCardInner {
@@ -935,10 +938,33 @@ impl From<SubCard> for Card {
 }
 impl From<SubCardInner> for SubCard {
     fn from(inner: SubCardInner) -> Self {
-        Self {
+        let mut card = Self {
             inner,
-            ..Self::default()
-        }
+            flipped: false,
+            global_id: Uuid::max(),
+        };
+        card.new_global();
+        card
+    }
+}
+impl SubCard {
+    pub fn new_global(&mut self) {
+        let mut rng = make_rng::<StdRng>();
+        let mut bytes = [0; 16];
+        rng.fill_bytes(&mut bytes);
+        let global_id = Uuid::from_u128(u128::from_ne_bytes(bytes));
+        self.global_id = global_id;
+    }
+}
+impl Clone for SubCard {
+    fn clone(&self) -> Self {
+        let mut new = Self {
+            inner: self.inner.clone(),
+            flipped: self.flipped,
+            global_id: Uuid::max(),
+        };
+        new.new_global();
+        new
     }
 }
 impl Deref for SubCard {

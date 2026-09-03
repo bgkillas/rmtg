@@ -6,7 +6,7 @@ use crate::events::gravity::on_change_gravity;
 use crate::events::hover::{add_hover, remove_hover, spawn_box_select, update_box_select_mesh};
 use crate::events::move_up::move_up;
 use crate::events::pile_merge::{on_pile_merge, trigger_pile_merge};
-use crate::events::repaint::{on_pile_added, on_repaint};
+use crate::events::repaint::{on_pile_added, on_pile_removed, on_repaint};
 use crate::events::roll::on_roll;
 use crate::events::scale::on_scale;
 use crate::events::scroll::insert_scroll_bar;
@@ -54,6 +54,7 @@ pub fn add_events(app: &mut App) {
     app.add_observer(on_delete);
     app.add_observer(on_pile_merge);
     app.add_observer(on_pile_added);
+    app.add_observer(on_pile_removed);
     app.add_observer(trigger_pile_merge);
     app.add_observer(on_iroh_bind_copy);
     app.add_observer(on_set_menu);

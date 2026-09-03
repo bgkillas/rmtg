@@ -561,11 +561,12 @@ impl From<SubCard> for Pile {
         Self::Single(Card::from(value))
     }
 }
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct ImageCard {
     pub id: Uuid,
     pub quality: Quality,
     pub flipped: bool,
+    pub global_id: Uuid,
 }
 #[query_fn]
 pub fn register_cards(

@@ -139,6 +139,7 @@ pub fn on_new_search(
                     id: card.data.id,
                     quality: card.quality,
                     flipped: card.flipped,
+                    global_id: card.global_id,
                 },
             );
             if let Some(handles) = card.face_handles() {

@@ -1,11 +1,13 @@
 use crate::assets::AssetManager;
+use crate::events::repaint::GlobalIdMap;
+use crate::focus::Hover;
 use crate::pile::{ImageCard, PendingCards, Pile};
 use crate::spatial::Spatial;
 use bevy::input::ButtonInput;
 use bevy::prelude::{Component, Event, ImageNode, KeyCode, Node, Transform};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::observer::On;
-use bevy_ecs::query::With;
+use bevy_ecs::query::{Or, With, Without};
 use bevy_ecs::system::{Commands, Query, Res, Single};
 use bevy_query_fn_macro::query_fn;
 #[derive(Event)]
@@ -22,19 +24,27 @@ pub fn update_alt_menu(
     keys: Res<ButtonInput<KeyCode>>,
     menu: Option<Single<&AltMenu>>,
     mut commands: Commands,
+    has_image: Query<(), Or<((With<ImageCard>, Without<AltMenu>), With<Pile>)>>,
     spatial: Spatial,
+    hover: Hover,
 ) {
     if keys.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
-        let Some((hit, _, _)) = spatial.ray() else {
+        let Some(hit) = hover
+            .get()
+            .or_else(|| spatial.ray().map(|(r, _, _)| r.entity))
+        else {
             return;
         };
+        if !has_image.contains(hit) {
+            return;
+        }
         if let Some(m) = menu {
-            if m.entity != hit.entity {
+            if m.entity != hit {
                 commands.trigger(RemoveAltMenu);
-                commands.trigger(ActivateAltMenu { entity: hit.entity });
+                commands.trigger(ActivateAltMenu { entity: hit });
             }
         } else {
-            commands.trigger(ActivateAltMenu { entity: hit.entity });
+            commands.trigger(ActivateAltMenu { entity: hit });
         }
     } else if keys.any_just_released([KeyCode::AltLeft, KeyCode::AltRight]) && menu.is_some() {
         commands.trigger(RemoveAltMenu);
@@ -44,13 +54,23 @@ pub fn update_alt_menu(
 pub fn on_activate_alt_menu(
     event: On<ActivateAltMenu>,
     piles: Query<(&Pile, &Transform)>,
+    images: Query<&ImageCard>,
     mut commands: Commands,
     assets: AssetManager,
+    global_map: Res<GlobalIdMap>,
 ) {
-    let Ok(ent) = piles.get(event.entity) else {
-        return;
+    let card = match (piles.get(event.entity), images.get(event.entity)) {
+        (Ok(pile), Err(_)) => pile.pile.get_card(pile.transform.rotation),
+        (Err(_), Ok(image)) => {
+            let ent = global_map.map.get(&image.global_id).unwrap();
+            let pile = piles.get(*ent).unwrap();
+            pile.pile
+                .iter()
+                .find(|c| c.global_id == image.global_id)
+                .unwrap()
+        }
+        _ => unreachable!(),
     };
-    let card = ent.pile.get_card(ent.transform.rotation);
     let bundle = (
         AltMenu {
             entity: event.entity,
@@ -60,6 +80,7 @@ pub fn on_activate_alt_menu(
             id: card.data.id,
             quality: card.quality,
             flipped: card.flipped,
+            global_id: card.global_id,
         },
     );
     if let Some(handles) = card.face_handles() {
