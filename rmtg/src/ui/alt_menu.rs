@@ -7,7 +7,7 @@ use bevy::input::ButtonInput;
 use bevy::prelude::{Component, Event, ImageNode, KeyCode, Node, Transform};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::observer::On;
-use bevy_ecs::query::{Or, With, Without};
+use bevy_ecs::query::{Or, With};
 use bevy_ecs::system::{Commands, Query, Res, Single};
 use bevy_query_fn_macro::query_fn;
 #[derive(Event)]
@@ -24,7 +24,7 @@ pub fn update_alt_menu(
     keys: Res<ButtonInput<KeyCode>>,
     menu: Option<Single<&AltMenu>>,
     mut commands: Commands,
-    has_image: Query<(), Or<((With<ImageCard>, Without<AltMenu>), With<Pile>)>>,
+    has_image: Query<Option<&AltMenu>, Or<(With<ImageCard>, With<Pile>)>>,
     spatial: Spatial,
     hover: Hover,
 ) {
@@ -33,9 +33,19 @@ pub fn update_alt_menu(
             .get()
             .or_else(|| spatial.ray().map(|(r, _, _)| r.entity))
         else {
+            if menu.is_some() {
+                commands.trigger(RemoveAltMenu);
+            }
             return;
         };
-        if !has_image.contains(hit) {
+        if let Ok(image) = has_image.get(hit) {
+            if image.is_some() {
+                return;
+            }
+        } else {
+            if menu.is_some() {
+                commands.trigger(RemoveAltMenu);
+            }
             return;
         }
         if let Some(m) = menu {
