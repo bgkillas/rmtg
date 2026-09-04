@@ -22,7 +22,7 @@ use crate::startup::{spawn_objects, startup};
 use crate::ui::alt_menu::update_alt_menu;
 use crate::ui::esc_menu::{button_system, toggle_esc_menu};
 use crate::ui::menu::Menu;
-use crate::ui::moxfield::SearchedPlayer;
+use crate::ui::moxfield::startup_moxfield;
 use crate::ui::right_click::trigger_right_click_menu;
 use crate::ui::side::activate_side_menu;
 use crate::ui::tasks::update_tasks_counter;
@@ -82,15 +82,15 @@ pub fn app_run() -> AppExit {
                     min_total_threads: 1,
                     max_total_threads: usize::MAX,
                     io: TaskPoolThreadAssignmentPolicy {
-                        min_threads: 1,
-                        max_threads: 1,
+                        min_threads: 2,
+                        max_threads: 2,
                         percent: 0.25,
                         on_thread_spawn: None,
                         on_thread_destroy: None,
                     },
                     async_compute: TaskPoolThreadAssignmentPolicy {
-                        min_threads: 1,
-                        max_threads: 1,
+                        min_threads: 2,
+                        max_threads: 2,
                         percent: 0.25,
                         on_thread_spawn: None,
                         on_thread_destroy: None,
@@ -132,7 +132,6 @@ pub fn app_run() -> AppExit {
         ..LoadFonts::default()
     });
     app.init_resource::<Menu>();
-    app.init_resource::<SearchedPlayer>();
     app.init_resource::<KeybindsList>();
     app.init_resource::<Peers>();
     app.init_resource::<Client>();
@@ -145,7 +144,10 @@ pub fn app_run() -> AppExit {
     app.add_message::<ScrollToContentSize>();
     app.add_message::<DelayPileMerge>();
     add_events(&mut app);
-    app.add_systems(Startup, (startup, spawn_objects, create_mats).chain());
+    app.add_systems(
+        Startup,
+        (startup, spawn_objects, create_mats, startup_moxfield).chain(),
+    );
     app.add_systems(
         PreUpdate,
         ((

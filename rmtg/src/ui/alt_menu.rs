@@ -38,14 +38,13 @@ pub fn update_alt_menu(
             }
             return;
         };
-        if let Ok(image) = has_image.get(hit) {
-            if image.is_some() {
-                return;
-            }
-        } else {
+        let Ok(image) = has_image.get(hit) else {
             if menu.is_some() {
                 commands.trigger(RemoveAltMenu);
             }
+            return;
+        };
+        if image.is_some() {
             return;
         }
         if let Some(m) = menu {

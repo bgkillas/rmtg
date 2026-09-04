@@ -6778,6 +6778,7 @@ dependencies = [
  "bevy_framepace",
  "bevy_p2p",
  "bevy_query_fn_macro",
+ "bevy_reflect",
  "bevy_rich_text3d",
  "console_error_panic_hook",
  "enum-map",
