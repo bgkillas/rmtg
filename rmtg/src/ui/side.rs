@@ -198,10 +198,10 @@ pub fn on_remove_side_menu(
 pub fn on_repaint_side_menu(
     on: On<Repaint>,
     mut commands: Commands,
-    search_list: Single<&SearchList>,
+    search_list: Single<(Entity, &SearchList)>,
 ) {
-    if search_list.list == Some(on.entity) {
+    if search_list.search_list.list == Some(on.entity) {
         commands.trigger(NewSearch { entity: on.entity });
-        commands.write_message(ScrollToContentSize::new(on.entity));
+        commands.write_message(ScrollToContentSize::new(search_list.entity));
     }
 }
