@@ -27,7 +27,9 @@ pub fn on_pile_merge(
         return;
     };
     let l1 = pile1.pile.len();
-    pile2.pile.extend(mem::take(&mut pile1.pile));
+    pile2
+        .pile
+        .extend_if(mem::take(&mut pile1.pile), pile2.transform.rotation);
     let up = pile2.transform.up();
     pile2.transform.translation += up * l1 as f32 * CARD_THICKNESS / 2.0;
     commands.trigger(Repaint::new(pile2.entity));

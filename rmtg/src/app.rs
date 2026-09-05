@@ -19,7 +19,7 @@ use crate::net::{Msg, Peers, net_update, receive_message};
 use crate::pile::register_cards;
 use crate::spatial::{Cursor, update_cursor};
 use crate::startup::{spawn_objects, startup};
-use crate::ui::alt_menu::update_alt_menu;
+use crate::ui::alt_menu::{RotateUi, on_ui_rotate, update_alt_menu};
 use crate::ui::esc_menu::{button_system, toggle_esc_menu};
 use crate::ui::menu::Menu;
 use crate::ui::moxfield::startup_moxfield;
@@ -147,6 +147,7 @@ pub fn app_run() -> AppExit {
     app.add_message::<ScrollToContentSize>();
     app.add_message::<DelayPileMerge>();
     app.add_message::<DelayedHoveredMessage>();
+    app.add_message::<RotateUi>();
     add_events(&mut app);
     app.add_systems(
         Startup,
@@ -196,7 +197,7 @@ pub fn app_run() -> AppExit {
     );
     app.add_systems(
         PostUpdate,
-        (scroll, scroll_to_content_size).after(UiSystems::Layout),
+        (scroll, scroll_to_content_size, on_ui_rotate).after(UiSystems::Layout),
     );
     app.add_systems(
         FixedUpdate,

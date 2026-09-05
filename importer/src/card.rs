@@ -15,11 +15,14 @@ use std::ops::{Deref, DerefMut};
 use std::slice::{Iter, IterMut};
 use std::sync::Arc;
 use uuid::Uuid;
-
 rules::generate_types!();
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct Card {
     pub subcard: SubCard,
+    pub attributes: CardAttributes,
+}
+#[derive(Debug, Default, Encode, Decode, Clone)]
+pub struct CardAttributes {
     pub equiped: Vec<SubCard>,
     pub amount: Option<i32>,
     pub power: Option<i32>,
@@ -28,11 +31,12 @@ pub struct Card {
     pub loyalty: Option<i32>,
     pub misc: Option<i32>,
     pub is_token: bool,
+    pub face_down: bool,
 }
 #[derive(Debug, Default, Encode, Decode)]
 pub struct SubCard {
     pub inner: SubCardInner,
-    pub flipped: bool,
+    pub transformed: bool,
     #[bitcode(with = "DataCoder<Uuid>")]
     pub global_id: Uuid,
 }
@@ -54,7 +58,6 @@ pub struct CardData {
     pub tokens: Box<[Uuid]>,
     pub front: CardInfo,
     pub back: Option<Box<CardInfo>>,
-    pub layout: Layout,
 }
 #[derive(PartialEq, Debug, Default, Clone, Copy, Encode, Decode)]
 pub enum Layout {
@@ -90,6 +93,7 @@ pub struct CardInfo {
     pub power: Option<u8>,
     pub toughness: Option<u8>,
     pub loyalty: Option<u8>,
+    pub layout: Layout,
     pub has_unique_face: bool,
 }
 #[derive(Default, Debug, Clone)]
@@ -506,15 +510,15 @@ impl Cost {
 impl Card {
     #[must_use]
     pub fn is_modified(&self) -> bool {
-        !self.equiped.is_empty() || self.has_counters()
+        !self.attributes.equiped.is_empty() || self.has_counters()
     }
     #[must_use]
     pub fn has_counters(&self) -> bool {
-        self.power.is_some()
-            || self.toughness.is_some()
-            || self.counters.is_some()
-            || self.loyalty.is_some()
-            || self.misc.is_some()
+        self.attributes.power.is_some()
+            || self.attributes.toughness.is_some()
+            || self.attributes.counters.is_some()
+            || self.attributes.loyalty.is_some()
+            || self.attributes.misc.is_some()
     }
     #[must_use]
     pub fn filter(&self, text: &str) -> bool {
@@ -522,8 +526,8 @@ impl Card {
     }
     #[must_use]
     pub fn flatten(mut self) -> Vec<SubCard> {
-        let mut vec = Vec::with_capacity(self.equiped.len() + 1);
-        let drain = mem::take(&mut self.equiped);
+        let mut vec = Vec::with_capacity(self.attributes.equiped.len() + 1);
+        let drain = mem::take(&mut self.attributes.equiped);
         vec.extend(drain);
         vec.push(self.subcard);
         vec
@@ -532,7 +536,7 @@ impl Card {
     pub fn iter(&self) -> CardIter<'_> {
         CardIter {
             subcard: &self.subcard,
-            equiped: self.equiped.iter(),
+            equiped: self.attributes.equiped.iter(),
             started: false,
         }
     }
@@ -540,7 +544,7 @@ impl Card {
     pub fn iter_mut(&mut self) -> CardIterMut<'_> {
         CardIterMut {
             subcard: &raw mut self.subcard,
-            equiped: self.equiped.iter_mut(),
+            equiped: self.attributes.equiped.iter_mut(),
             started: false,
         }
     }
@@ -549,7 +553,7 @@ impl Card {
         if idx == 0 {
             Some(&self.subcard)
         } else {
-            self.equiped.get(idx - 1)
+            self.attributes.equiped.get(idx - 1)
         }
     }
     #[must_use]
@@ -557,7 +561,7 @@ impl Card {
         if idx == 0 {
             Some(&mut self.subcard)
         } else {
-            self.equiped.get_mut(idx - 1)
+            self.attributes.equiped.get_mut(idx - 1)
         }
     }
 }
@@ -640,7 +644,7 @@ impl SubCard {
     }
     #[must_use]
     pub fn face(&self) -> &CardInfo {
-        if self.flipped {
+        if self.transformed {
             self.data.back.as_ref().unwrap()
         } else {
             &self.data.front
@@ -648,23 +652,35 @@ impl SubCard {
     }
     #[must_use]
     pub fn back(&self) -> Option<&CardInfo> {
-        if self.flipped {
+        if self.transformed {
             Some(&self.data.front)
         } else {
             self.data.back.as_deref()
         }
     }
     #[must_use]
-    pub fn image_node(&self) -> ImageNode {
-        match self.data.layout {
-            Layout::Flip if self.flipped => ImageNode {
-                image: self.face_handles.handles().unwrap().image(),
+    pub fn image_node(&self, default: Handle<Image>) -> ImageNode {
+        match self.face().layout {
+            Layout::Flip if self.transformed => ImageNode {
+                image: if let Some(handles) = self.face_handles.handles() {
+                    handles.image()
+                } else {
+                    default
+                },
                 flip_x: true,
                 flip_y: true,
                 ..ImageNode::default()
             },
-            _ => ImageNode::new(self.face_handles().unwrap().image()),
+            _ => ImageNode::new(if let Some(handles) = self.face_handles() {
+                handles.image()
+            } else {
+                default
+            }),
         }
+    }
+    #[must_use]
+    pub fn ui_rotated(&self) -> bool {
+        matches!(self.face().layout, Layout::Side)
     }
     #[must_use]
     pub fn face_handles(&self) -> Option<Handles> {
@@ -676,7 +692,7 @@ impl SubCard {
     }
     #[must_use]
     pub fn face_maybe_handles(&self) -> &MaybeHandles {
-        if self.flipped {
+        if self.transformed {
             &self.back_handles
         } else {
             &self.face_handles
@@ -684,7 +700,7 @@ impl SubCard {
     }
     #[must_use]
     pub fn back_maybe_handles(&self) -> &MaybeHandles {
-        if self.flipped {
+        if self.transformed {
             &self.face_handles
         } else {
             &self.back_handles
@@ -940,7 +956,7 @@ impl From<SubCardInner> for SubCard {
     fn from(inner: SubCardInner) -> Self {
         let mut card = Self {
             inner,
-            flipped: false,
+            transformed: false,
             global_id: Uuid::max(),
         };
         card.new_global();
@@ -960,7 +976,7 @@ impl Clone for SubCard {
     fn clone(&self) -> Self {
         let mut new = Self {
             inner: self.inner.clone(),
-            flipped: self.flipped,
+            transformed: self.transformed,
             global_id: Uuid::max(),
         };
         new.new_global();

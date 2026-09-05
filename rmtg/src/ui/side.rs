@@ -13,7 +13,7 @@ use crate::{FONT_HEIGHT, PLAYER};
 use bevy::color::Color;
 use bevy::input::ButtonInput;
 use bevy::picking::hover::Hovered;
-use bevy::prelude::{Component, ImageNode, Transform, Visibility};
+use bevy::prelude::{Component, Transform, Visibility};
 use bevy::text::EditableText;
 use bevy::ui::{
     AlignContent, AlignItems, BackgroundColor, Display, FlexDirection, FlexWrap, JustifyContent,
@@ -177,7 +177,7 @@ pub fn on_new_search(
                 ImageCard {
                     id: card.data.id,
                     quality: card.quality,
-                    flipped: card.flipped,
+                    transformed: card.transformed,
                     global_id: card.global_id,
                 },
                 SideMenuEntry { entry },
@@ -186,11 +186,7 @@ pub fn on_new_search(
                 observe(on_side_pressed),
                 observe(on_side_unpressed),
                 observe(on_side_hover),
-                ImageNode::new(if let Some(handles) = card.face_handles() {
-                    handles.image()
-                } else {
-                    assets.card.back_image.clone()
-                }),
+                card.image_node(assets.card.back_image.clone()),
             ));
             if let Some(inner) = &side_hold
                 && inner.global_id == card.global_id
@@ -306,7 +302,7 @@ pub fn move_cards_in(
         ImageCard {
             id: card.data.id,
             quality: card.quality,
-            flipped: card.flipped,
+            transformed: card.transformed,
             global_id: card.global_id,
         },
         SideHold,

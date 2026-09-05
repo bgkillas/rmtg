@@ -1,4 +1,4 @@
-use crate::card::{CardData, CardInfo, Layout, MaybeHandles, SubCard, SubCardInner};
+use crate::card::{CardData, CardInfo, Layout, MainType, MaybeHandles, SubCard, SubCardInner};
 use crate::card::{Colors, Cost, Types};
 use crate::card_cache::{CacheReadImage, CacheResult, CardCache, Identifier, get_images};
 use crate::image::parse_bytes;
@@ -713,6 +713,8 @@ impl SubCard {
                     &face[s]
                 }
             }
+            let layout_str = json["layout"].as_str()?;
+            let mut layout = Layout::from(layout_str);
             let oracle_id = warn_if(Uuid::parse_str(get(face, json, "oracle_id").as_str()?))?;
             let [name_raw, mana_cost_raw, type_line_raw, oracle_text_raw] =
                 ["name", "mana_cost", "type_line", "oracle_text"]
@@ -733,6 +735,9 @@ impl SubCard {
             let oracle_text = oracle_text_raw.to_owned();
             let mana_cost = Cost::from(mana_cost_raw);
             let type_line = Types::from(type_line_raw);
+            if type_line.main_type.types.contains(MainType::Battle) {
+                layout = Layout::Side;
+            }
             let has_unique_face = face["image_uris"].is_array();
             Some(CardInfo {
                 oracle_id,
@@ -746,11 +751,10 @@ impl SubCard {
                 toughness,
                 loyalty,
                 has_unique_face,
+                layout,
             })
         }
         fn inner(id: Uuid, json: JsonValue, quality: Quality) -> Option<SubCard> {
-            let layout_str = json["layout"].as_str()?;
-            let layout = Layout::from(layout_str);
             let face_handles = MaybeHandles::Waiting;
             let mut back_handles = MaybeHandles::None;
             let (front, back) = if json["card_faces"].is_null() {
@@ -784,7 +788,6 @@ impl SubCard {
                 tokens: tokens.into(),
                 front,
                 back,
-                layout,
             };
             let card = SubCard::from(SubCardInner {
                 data: Arc::new(data),

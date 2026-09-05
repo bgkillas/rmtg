@@ -25,6 +25,7 @@ use bevy::app::App;
 pub mod clipboard;
 pub mod clone;
 pub mod delete;
+pub mod flip;
 pub mod gravity;
 pub mod hover;
 pub mod move_up;
@@ -33,6 +34,8 @@ pub mod repaint;
 pub mod roll;
 pub mod scale;
 pub mod scroll;
+pub mod tap;
+pub mod transform;
 pub fn add_events(app: &mut App) {
     app.add_observer(move_up);
     app.add_observer(get_clipboard);

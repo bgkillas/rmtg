@@ -18,7 +18,7 @@ use bevy_p2p::runtime::Runtime;
 use bevy_query_fn_macro::query_fn;
 use bitcode::{Decode, Encode};
 use importer::bitcode;
-use importer::card::{Card, CardIter, CardIterMut, Handles, MaybeHandles, SubCard};
+use importer::card::{Card, CardAttributes, CardIter, CardIterMut, Handles, MaybeHandles, SubCard};
 use importer::scryfall::{CACHE, IMAGES_IN_PROGRESS, IMAGES_TO_PROCESS, Quality};
 use importer::uuid::Uuid;
 use itertools::Either;
@@ -197,20 +197,23 @@ impl Pile {
                 };
                 *s = Pile::Single(Card {
                     subcard,
-                    equiped,
-                    amount: None,
-                    power: None,
-                    toughness: None,
-                    counters: None,
-                    loyalty: None,
-                    misc: None,
-                    is_token: false,
+                    attributes: CardAttributes {
+                        equiped,
+                        amount: None,
+                        power: None,
+                        toughness: None,
+                        counters: None,
+                        loyalty: None,
+                        misc: None,
+                        is_token: false,
+                        face_down: false,
+                    },
                 });
                 true
             }
             s @ Pile::Single(_) => {
                 if let Pile::Single(c) = &s
-                    && !c.equiped.is_empty()
+                    && !c.attributes.equiped.is_empty()
                 {
                     let Pile::Single(cards) = mem::take(s) else {
                         unreachable!();
@@ -227,7 +230,7 @@ impl Pile {
     #[must_use]
     pub fn is_equiped(&self) -> bool {
         if let Pile::Single(s) = self {
-            !s.equiped.is_empty()
+            !s.attributes.equiped.is_empty()
         } else {
             false
         }
@@ -259,7 +262,7 @@ impl Pile {
             unreachable!()
         };
         mem::swap(s, &mut top);
-        s.equiped.splice(0..0, top.flatten());
+        s.attributes.equiped.splice(0..0, top.flatten());
     }
     #[must_use]
     pub fn get_card(&self, rot: Quat) -> &SubCard {
@@ -383,6 +386,13 @@ impl Pile {
             Pile::Multiple(v) => &mut v[0],
             Pile::Single(s) => &mut s.subcard,
             Pile::Empty => unreachable!(),
+        }
+    }
+    pub fn extend_if(&mut self, other: Self, quat: Quat) {
+        if FlippedState::from(quat).flipped() {
+            self.extend(other);
+        } else {
+            self.extend_start(other);
         }
     }
     pub fn extend(&mut self, other: Self) {
@@ -530,7 +540,7 @@ impl Pile {
     }
     pub fn iter_equipment(&self) -> Iter<'_, SubCard> {
         match self {
-            Pile::Single(s) => s.equiped.iter(),
+            Pile::Single(s) => s.attributes.equiped.iter(),
             Pile::Multiple(_) | Pile::Empty => unreachable!(),
         }
     }
@@ -565,7 +575,7 @@ impl From<SubCard> for Pile {
 pub struct ImageCard {
     pub id: Uuid,
     pub quality: Quality,
-    pub flipped: bool,
+    pub transformed: bool,
     pub global_id: Uuid,
 }
 #[query_fn]
@@ -660,7 +670,7 @@ pub fn register_cards(
                 MaybeHandles::Waiting | MaybeHandles::Downloading
             )
         {
-            if let Some(handles) = if card.image_card.flipped {
+            if let Some(handles) = if card.image_card.transformed {
                 back_handles.handles()
             } else {
                 face_handles.handles()

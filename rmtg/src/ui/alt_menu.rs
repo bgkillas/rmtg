@@ -4,12 +4,22 @@ use crate::focus::Hover;
 use crate::pile::{ImageCard, PendingCards, Pile};
 use crate::spatial::Spatial;
 use bevy::input::ButtonInput;
-use bevy::prelude::{Component, Event, ImageNode, KeyCode, Node, Transform};
+use bevy::math::Rot2;
+use bevy::prelude::{
+    Component, ComputedNode, Event, KeyCode, Message, Node, Transform, Visibility,
+};
+use bevy::ui::{UiTransform, Val2};
 use bevy_ecs::entity::Entity;
+use bevy_ecs::message::PopulatedMessageReader;
 use bevy_ecs::observer::On;
 use bevy_ecs::query::{Or, With};
 use bevy_ecs::system::{Commands, Query, Res, Single};
 use bevy_query_fn_macro::query_fn;
+#[derive(Message)]
+pub struct RotateUi {
+    pub entity: Entity,
+    pub right: bool,
+}
 #[derive(Event)]
 pub struct ActivateAltMenu {
     pub entity: Entity,
@@ -88,17 +98,39 @@ pub fn on_activate_alt_menu(
         ImageCard {
             id: card.data.id,
             quality: card.quality,
-            flipped: card.flipped,
+            transformed: card.transformed,
             global_id: card.global_id,
         },
-        ImageNode::new(if let Some(handles) = card.face_handles() {
-            handles.image()
-        } else {
-            assets.card.back_image.clone()
-        }),
+        card.image_node(assets.card.back_image.clone()),
     ));
     if card.face_handles().is_none() {
         ent.insert(PendingCards);
+    }
+    if card.ui_rotated() {
+        ent.insert(Visibility::Hidden);
+        let entity = ent.id();
+        commands.write_message(RotateUi {
+            entity,
+            right: true,
+        });
+    }
+}
+#[query_fn]
+pub fn on_ui_rotate(
+    mut messeges: PopulatedMessageReader<RotateUi>,
+    mut query: Query<(&ComputedNode, &mut UiTransform, &mut Visibility)>,
+) {
+    for event in messeges.read() {
+        let mut node = query.get_mut(event.entity).unwrap();
+        *node.visibility = Visibility::Inherited;
+        node.ui_transform.rotation *= Rot2::from_sin_cos(1.0, 0.0);
+        node.ui_transform.translation =
+            if matches!(node.ui_transform.rotation.sin_cos(), (1.0 | -1.0, 0.0)) {
+                let size = node.computed_node.content_size();
+                Val2::px((size.y - size.x) / 2.0, (size.x - size.y) / 2.0)
+            } else {
+                Val2::px(0.0, 0.0)
+            }
     }
 }
 pub fn on_remove_alt_menu(
