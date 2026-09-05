@@ -29,7 +29,7 @@ use bevy_ecs::lifecycle::{Add, Insert, Remove};
 use bevy_ecs::message::{Message, MessageWriter, PopulatedMessageReader};
 use bevy_ecs::observer::On;
 use bevy_ecs::prelude::Commands;
-use bevy_ecs::query::{Changed, With};
+use bevy_ecs::query::{Changed, With, Without};
 use bevy_ecs::system::{Local, Query, Single};
 use bevy_ecs::world::EntityWorldMut;
 use bevy_query_fn_macro::query_fn;
@@ -279,6 +279,40 @@ pub fn move_cards_out(
     } else {
         commands.trigger(Repaint::new(pile_entity));
     }
+}
+#[query_fn]
+pub fn move_cards_in(
+    hover: Hover,
+    search_list: Single<(Entity, &SearchList)>,
+    mut piles: Query<&mut Pile, Without<HoveredObject>>,
+    mut commands: Commands,
+    mut hovered: Single<(Entity, &mut Pile), With<HoveredObject>>,
+    entries: Query<&SideMenuEntry>,
+) {
+    if hovered.pile.len() != 1 {
+        return;
+    }
+    let Some(ent) = hover.get() else {
+        return;
+    };
+    let Ok(entry) = entries.get(ent) else {
+        return;
+    };
+    let pile_entity = search_list.search_list.list.unwrap();
+    let mut pile = piles.get_mut(pile_entity).unwrap();
+    let card = hovered.pile.pop();
+    commands.entity(hovered.entity).despawn();
+    commands.entity(search_list.entity).with_child((
+        ImageCard {
+            id: card.data.id,
+            quality: card.quality,
+            flipped: card.flipped,
+            global_id: card.global_id,
+        },
+        SideHold,
+    ));
+    commands.trigger(Repaint::new(pile_entity));
+    pile.insert(entry.entry, card);
 }
 #[query_fn]
 pub fn on_remove_side_menu(

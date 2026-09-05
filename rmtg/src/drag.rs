@@ -46,13 +46,14 @@ pub fn drag(
     }
     if hovered_entities.is_empty() {
         for ent in last_ents.drain() {
-            let mut query = velocity.get_mut(ent).unwrap();
-            query.y = 0.0;
-            commands.trigger(NewGravity::new(ent, GRAVITY));
-            commands
-                .entity(ent)
-                .remove::<TargetPosition>()
-                .insert(LinearDamping(LIN_DAMPING));
+            if let Ok(mut query) = velocity.get_mut(ent) {
+                query.y = 0.0;
+                commands.trigger(NewGravity::new(ent, GRAVITY));
+                commands
+                    .entity(ent)
+                    .remove::<TargetPosition>()
+                    .insert(LinearDamping(LIN_DAMPING));
+            }
         }
         return;
     }

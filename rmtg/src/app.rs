@@ -25,8 +25,8 @@ use crate::ui::menu::Menu;
 use crate::ui::moxfield::startup_moxfield;
 use crate::ui::right_click::trigger_right_click_menu;
 use crate::ui::side::{
-    DelayedHoveredMessage, activate_side_menu, move_cards_out, on_side_delayed_hover,
-    update_side_search,
+    DelayedHoveredMessage, activate_side_menu, move_cards_in, move_cards_out,
+    on_side_delayed_hover, update_side_search,
 };
 use crate::ui::tasks::update_tasks_counter;
 use crate::ui::text_box::text_submission;
@@ -173,6 +173,7 @@ pub fn app_run() -> AppExit {
         (
             on_side_delayed_hover,
             move_cards_out,
+            move_cards_in,
             update_side_search,
             (camera_rotation, camera_translation).chain(),
             (
