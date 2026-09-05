@@ -1,4 +1,3 @@
-use crate::FONT_HEIGHT;
 use crate::assets::AssetManager;
 use crate::events::repaint::Repaint;
 use crate::events::scroll::{Scroll, ScrollToContentSize, Scrollable};
@@ -8,10 +7,12 @@ use crate::pile::{ImageCard, Pile};
 use crate::spatial::Spatial;
 use crate::ui::menu::{Menu, SetMenu};
 use crate::ui::text_box::TextSource;
+use crate::{FONT_HEIGHT, PLAYER};
 use bevy::color::Color;
 use bevy::input::ButtonInput;
 use bevy::picking::hover::Hovered;
 use bevy::prelude::{Component, ImageNode, Visibility};
+use bevy::text::EditableText;
 use bevy::ui::{
     AlignContent, AlignItems, BackgroundColor, Display, FlexDirection, FlexWrap, JustifyContent,
     Node, Overflow, PositionType, Pressed, Val,
@@ -26,8 +27,8 @@ use bevy_ecs::lifecycle::{Add, Insert, Remove};
 use bevy_ecs::message::{Message, MessageWriter, PopulatedMessageReader};
 use bevy_ecs::observer::On;
 use bevy_ecs::prelude::Commands;
-use bevy_ecs::query::With;
-use bevy_ecs::system::{Query, Single};
+use bevy_ecs::query::{Changed, With};
+use bevy_ecs::system::{Local, Query, Single};
 use bevy_ecs::world::EntityWorldMut;
 use bevy_query_fn_macro::query_fn;
 #[derive(Component)]
@@ -42,6 +43,8 @@ pub struct NewSearch {
 }
 #[derive(Component)]
 pub struct SideHold;
+#[derive(Component)]
+pub struct SideMenuText;
 #[derive(Component)]
 pub struct SideMenuEntry {
     pub entry: usize,
@@ -69,6 +72,7 @@ impl SideMenu {
                     },
                     BackgroundColor(Color::srgba_u8(0, 0, 0, 32)),
                     Visibility::Inherited,
+                    SideMenuText,
                     TextSource::Search.bundle(),
                 ),
                 (
@@ -93,6 +97,22 @@ impl SideMenu {
                 )
             ],
         )
+    }
+}
+#[query_fn]
+pub fn update_side_search(
+    text: Single<&EditableText, With<SideMenuText>>,
+    mut commands: Commands,
+    search_list: Single<(Entity, &SearchList)>,
+    mut last: Local<String>,
+) {
+    if text.editor().raw_text() == *last {
+        return;
+    }
+    text.editor().raw_text().clone_into(&mut last);
+    if let Some(entity) = search_list.search_list.list {
+        commands.trigger(NewSearch { entity });
+        commands.write_message(ScrollToContentSize::new(search_list.entity));
     }
 }
 pub fn on_side_set_menu(
@@ -131,6 +151,7 @@ pub fn on_new_search(
     piles: Query<&Pile>,
     assets: AssetManager,
     side_hold: Option<Single<&ImageCard, With<SideHold>>>,
+    text: Single<&EditableText, (With<SideMenuText>, Changed<EditableText>)>,
 ) {
     if !matches!(*menu, Menu::Side) {
         commands.trigger(SetMenu::new(Menu::Side));
@@ -139,8 +160,9 @@ pub fn on_new_search(
     let pile = piles.get(event.entity).unwrap();
     let mut ent = commands.entity(search_list.entity);
     ent.despawn_children();
+    let filter = text.editor().raw_text();
     ent.with_children(|parent| {
-        for (entry, card) in pile.iter().enumerate() {
+        for (entry, card) in pile.iter().filter(|c| c.filter(filter)).enumerate() {
             let mut ent = parent.spawn((
                 Node {
                     width: Val::Percent(100.0 / 3.0),
@@ -176,7 +198,7 @@ pub fn on_new_search(
 fn on_side_pressed(event: On<Add, Pressed>, mut commands: Commands) {
     commands
         .entity(event.entity)
-        .insert((SideHold, BackgroundColor(Color::srgba_u8(0, 0, 255, 128))));
+        .insert((SideHold, BackgroundColor(PLAYER[0])));
 }
 fn on_side_unpressed(event: On<Remove, Pressed>, mut commands: Commands) {
     commands

@@ -2,10 +2,11 @@ use crate::ui::calc::CalcMenu;
 use crate::ui::chat::TextMenu;
 use crate::ui::esc_menu::EscMenu;
 use crate::ui::moxfield::MoxfieldMenu;
-use crate::ui::side::{SearchList, SideMenu};
+use crate::ui::side::{SearchList, SideMenu, SideMenuText};
 use crate::ui::text_box::TextSource;
 use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::prelude::{Event, Resource, Visibility, Window};
+use bevy::text::EditableText;
 use bevy_ecs::change_detection::ResMut;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::observer::On;
@@ -98,11 +99,13 @@ pub fn on_set_menu(
     window: Single<Entity, With<Window>>,
     text_input: Query<(Entity, &TextSource)>,
     mut search_list: Single<(Entity, &mut SearchList)>,
+    mut search: Single<&mut EditableText, With<SideMenuText>>,
     mut commands: Commands,
 ) {
     match *menu {
         Menu::World => {}
         Menu::Side => {
+            search.clear();
             commands.entity(search_list.entity).despawn_children();
             search_list.search_list.list = None;
             *side.visibility = Visibility::Hidden;

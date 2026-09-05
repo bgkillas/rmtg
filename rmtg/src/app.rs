@@ -24,7 +24,9 @@ use crate::ui::esc_menu::{button_system, toggle_esc_menu};
 use crate::ui::menu::Menu;
 use crate::ui::moxfield::startup_moxfield;
 use crate::ui::right_click::trigger_right_click_menu;
-use crate::ui::side::{DelayedHoveredMessage, activate_side_menu, on_side_delayed_hover};
+use crate::ui::side::{
+    DelayedHoveredMessage, activate_side_menu, on_side_delayed_hover, update_side_search,
+};
 use crate::ui::tasks::update_tasks_counter;
 use crate::ui::text_box::text_submission;
 use crate::{APP_NAME, FONT, PHYSICS_SCALE, USER_AGENT};
@@ -169,6 +171,7 @@ pub fn app_run() -> AppExit {
         Update,
         (
             on_side_delayed_hover,
+            update_side_search,
             (camera_rotation, camera_translation).chain(),
             (
                 (update_box_select, update_hover).chain(),

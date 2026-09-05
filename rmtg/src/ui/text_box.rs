@@ -52,7 +52,7 @@ pub fn text_submission(
             && let Ok(mut text) = text_input.get_mut(focused_entity)
         {
             commands.trigger(TextSubmission {
-                string: text.editable_text.value().to_string(),
+                string: text.editable_text.editor().raw_text().to_owned(),
                 source: *text.text_source,
             });
             text.editable_text.clear();
