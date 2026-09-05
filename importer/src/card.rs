@@ -58,6 +58,7 @@ pub struct CardData {
     pub tokens: Box<[Uuid]>,
     pub front: CardInfo,
     pub back: Option<Box<CardInfo>>,
+    pub transformable: bool,
 }
 #[derive(PartialEq, Debug, Default, Clone, Copy, Encode, Decode)]
 pub enum Layout {

@@ -788,6 +788,15 @@ impl SubCard {
                 tokens: tokens.into(),
                 front,
                 back,
+                transformable: matches!(
+                    json["layout"].as_str()?,
+                    "flip"
+                        | "transform"
+                        | "meld"
+                        | "double_faced_token"
+                        | "reversible_card"
+                        | "modal_dfc"
+                ),
             };
             let card = SubCard::from(SubCardInner {
                 data: Arc::new(data),

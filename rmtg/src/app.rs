@@ -4,6 +4,7 @@ use crate::events::add_events;
 use crate::events::clipboard::{PollClipboard, poll_clipboards};
 use crate::events::clone::{CloneObjs, update_clone};
 use crate::events::delete::do_delete;
+use crate::events::flip::trigger_flip;
 use crate::events::hover::{update_box_select, update_hover};
 use crate::events::pile_merge::{DelayPileMerge, delayed_pile_merge};
 use crate::events::repaint::GlobalIdMap;
@@ -12,6 +13,8 @@ use crate::events::scale::update_scale;
 use crate::events::scroll::{
     Scroll, ScrollToContentSize, scroll, scroll_to_content_size, send_scroll_events,
 };
+use crate::events::tap::trigger_tap;
+use crate::events::transform::trigger_transform;
 use crate::focus::update_focus;
 use crate::keybinds::{Keybind, KeybindsList, update_keybinds};
 use crate::mat::create_mats;
@@ -185,6 +188,9 @@ pub fn app_run() -> AppExit {
                     drag,
                     update_clone,
                     update_scale,
+                    trigger_tap,
+                    trigger_flip,
+                    trigger_transform,
                 ),
             )
                 .chain(),

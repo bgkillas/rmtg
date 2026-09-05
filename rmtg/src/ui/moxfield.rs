@@ -108,6 +108,7 @@ pub fn submit_moxfield(
     runtime: Res<Runtime>,
     mut last: ResMut<SearchedPlayer>,
     mut commands: Commands,
+    ui_list: Single<Entity, With<MoxfieldDeckList>>,
 ) {
     if !matches!(on.source, TextSource::Moxfield) {
         return;
@@ -116,6 +117,7 @@ pub fn submit_moxfield(
     commands.queue(SaveSettings::IfChanged);
     let owned_client = client.client.clone();
     let owned_str = on.string.clone();
+    commands.entity(*ui_list).despawn_children();
     runtime.spawn_hook(deck_hook, async move {
         MoxfieldDeck::get_decks(&owned_client, &owned_str).await
     });
