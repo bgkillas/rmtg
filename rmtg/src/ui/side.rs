@@ -4,7 +4,7 @@ use crate::events::repaint::Repaint;
 use crate::events::scroll::{Scroll, ScrollToContentSize, Scrollable};
 use crate::focus::Hover;
 use crate::keybinds::Keybind;
-use crate::pile::{ImageCard, PendingCards, Pile};
+use crate::pile::{ImageCard, Pile};
 use crate::spatial::Spatial;
 use crate::ui::menu::{Menu, SetMenu};
 use crate::ui::text_box::TextSource;
@@ -16,7 +16,7 @@ use bevy::ui::{
     AlignContent, AlignItems, BackgroundColor, Display, FlexDirection, FlexWrap, JustifyContent,
     Node, Overflow, PositionType, Pressed, Val,
 };
-use bevy::ui_widgets::{Button, observe};
+use bevy::ui_widgets::{Activate, Button, observe};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::change_detection::Res;
 use bevy_ecs::children;
@@ -139,7 +139,7 @@ pub fn on_new_search(
     ent.despawn_children();
     ent.with_children(|parent| {
         for (entry, card) in pile.iter().enumerate() {
-            let bundle = (
+            parent.spawn((
                 Node {
                     width: Val::Percent(100.0 / 3.0),
                     max_width: Val::Percent(100.0 / 3.0),
@@ -157,16 +157,12 @@ pub fn on_new_search(
                 observe(on_side_pressed),
                 observe(on_side_unpressed),
                 observe(on_side_hover),
-            );
-            if let Some(handles) = card.face_handles() {
-                parent.spawn((bundle, ImageNode::new(handles.image())));
-            } else {
-                parent.spawn((
-                    bundle,
-                    PendingCards,
-                    ImageNode::new(assets.card.back_image.clone()),
-                ));
-            }
+                ImageNode::new(if let Some(handles) = card.face_handles() {
+                    handles.image()
+                } else {
+                    assets.card.back_image.clone()
+                }),
+            ));
         }
     });
 }
@@ -175,7 +171,7 @@ fn on_side_pressed(event: On<Add, Pressed>, mut commands: Commands) {
         .entity(event.entity)
         .insert((SideHold, BackgroundColor(Color::srgba_u8(0, 0, 255, 128))));
 }
-fn on_side_unpressed(event: On<Remove, Pressed>, mut commands: Commands) {
+fn on_side_unpressed(event: On<Activate>, mut commands: Commands) {
     commands
         .entity(event.entity)
         .remove::<(SideHold, BackgroundColor)>();
