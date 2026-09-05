@@ -40,6 +40,10 @@ pub struct NewSearch {
 }
 #[derive(Component)]
 pub struct SideHold;
+#[derive(Component)]
+pub struct SideMenuEntry {
+    pub entry: usize,
+}
 impl SideMenu {
     #[must_use]
     pub fn bundle() -> impl Bundle {
@@ -133,7 +137,7 @@ pub fn on_new_search(
     let mut ent = commands.entity(search_list.entity);
     ent.despawn_children();
     ent.with_children(|parent| {
-        for card in pile {
+        for (entry, card) in pile.iter().enumerate() {
             let bundle = (
                 Node {
                     width: Val::Percent(100.0 / 3.0),
@@ -146,6 +150,7 @@ pub fn on_new_search(
                     flipped: card.flipped,
                     global_id: card.global_id,
                 },
+                SideMenuEntry { entry },
                 Button,
                 Hovered::default(),
                 observe(on_side_pressed),
@@ -175,14 +180,22 @@ pub fn on_side_hold(event: On<Add, SideHold>, mut commands: Commands) {
 pub fn on_side_hover(
     event: On<Insert, Hovered>,
     hovered: Query<&Hovered>,
-    piles: Query<&Pile>,
+    mut piles: Query<&mut Pile>,
+    entries: Query<&SideMenuEntry>,
     search_list: Single<&SearchList>,
-    side_hold: Single<(Entity, &SideHold)>,
+    side_hold: Single<(Entity, &SideHold, &SideMenuEntry)>,
+    mut commands: Commands,
 ) {
     if side_hold.entity == event.entity || !hovered.get(event.entity).unwrap().0 {
         return;
     }
-    let _ = piles.get(search_list.list.unwrap()).unwrap();
+    let pile_entity = search_list.list.unwrap();
+    let mut pile = piles.get_mut(pile_entity).unwrap();
+    let from = side_hold.side_menu_entry.entry;
+    let to = entries.get(event.entity).unwrap().entry;
+    let card = pile.remove(from);
+    pile.insert(to, card);
+    commands.trigger(Repaint::new(pile_entity));
 }
 #[query_fn]
 pub fn on_remove_side_menu(
