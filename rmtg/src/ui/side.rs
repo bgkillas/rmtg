@@ -23,6 +23,7 @@ use bevy_ecs::children;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::event::Event;
 use bevy_ecs::lifecycle::{Add, Insert, Remove};
+use bevy_ecs::message::{Message, MessageWriter, PopulatedMessageReader};
 use bevy_ecs::observer::On;
 use bevy_ecs::prelude::Commands;
 use bevy_ecs::query::With;
@@ -154,6 +155,7 @@ pub fn on_new_search(
                 Button,
                 Hovered::default(),
                 observe(on_side_pressed),
+                observe(on_side_unpressed),
                 observe(on_side_hover),
             );
             if let Some(handles) = card.face_handles() {
@@ -169,33 +171,51 @@ pub fn on_new_search(
     });
 }
 fn on_side_pressed(event: On<Add, Pressed>, mut commands: Commands) {
-    commands.entity(event.entity).insert(SideHold);
-}
-pub fn on_side_hold(event: On<Add, SideHold>, mut commands: Commands) {
     commands
         .entity(event.entity)
-        .insert(BackgroundColor(Color::srgba_u8(0, 0, 255, 128)));
+        .insert((SideHold, BackgroundColor(Color::srgba_u8(0, 0, 255, 128))));
+}
+fn on_side_unpressed(event: On<Remove, Pressed>, mut commands: Commands) {
+    commands
+        .entity(event.entity)
+        .remove::<(SideHold, BackgroundColor)>();
+}
+#[derive(Message)]
+pub struct DelayedHoveredMessage {
+    pub entity: Entity,
 }
 #[query_fn]
-pub fn on_side_hover(
+fn on_side_hover(
     event: On<Insert, Hovered>,
     hovered: Query<&Hovered>,
+    mut messages: MessageWriter<DelayedHoveredMessage>,
+    side_hold: Single<Entity, With<SideHold>>,
+) {
+    if *side_hold == event.entity || !hovered.get(event.entity).unwrap().0 {
+        return;
+    }
+    messages.write(DelayedHoveredMessage {
+        entity: event.entity,
+    });
+}
+#[query_fn]
+pub fn on_side_delayed_hover(
+    mut events: PopulatedMessageReader<DelayedHoveredMessage>,
     mut piles: Query<&mut Pile>,
     entries: Query<&SideMenuEntry>,
     search_list: Single<&SearchList>,
-    side_hold: Single<(Entity, &SideHold, &SideMenuEntry)>,
+    side_hold: Single<&SideMenuEntry, With<SideHold>>,
     mut commands: Commands,
 ) {
-    if side_hold.entity == event.entity || !hovered.get(event.entity).unwrap().0 {
-        return;
+    for event in events.read() {
+        let pile_entity = search_list.list.unwrap();
+        let mut pile = piles.get_mut(pile_entity).unwrap();
+        let from = side_hold.entry;
+        let to = entries.get(event.entity).unwrap().entry;
+        let card = pile.remove(from);
+        pile.insert(to, card);
+        commands.trigger(Repaint::new(pile_entity));
     }
-    let pile_entity = search_list.list.unwrap();
-    let mut pile = piles.get_mut(pile_entity).unwrap();
-    let from = side_hold.side_menu_entry.entry;
-    let to = entries.get(event.entity).unwrap().entry;
-    let card = pile.remove(from);
-    pile.insert(to, card);
-    commands.trigger(Repaint::new(pile_entity));
 }
 #[query_fn]
 pub fn on_remove_side_menu(
