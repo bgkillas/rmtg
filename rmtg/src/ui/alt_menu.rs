@@ -80,7 +80,7 @@ pub fn on_activate_alt_menu(
         }
         _ => unreachable!(),
     };
-    let bundle = (
+    let mut ent = commands.spawn((
         AltMenu {
             entity: event.entity,
         },
@@ -91,15 +91,14 @@ pub fn on_activate_alt_menu(
             flipped: card.flipped,
             global_id: card.global_id,
         },
-    );
-    if let Some(handles) = card.face_handles() {
-        commands.spawn((bundle, ImageNode::new(handles.image())));
-    } else {
-        commands.spawn((
-            bundle,
-            PendingCards,
-            ImageNode::new(assets.card.back_image.clone()),
-        ));
+        ImageNode::new(if let Some(handles) = card.face_handles() {
+            handles.image()
+        } else {
+            assets.card.back_image.clone()
+        }),
+    ));
+    if card.face_handles().is_none() {
+        ent.insert(PendingCards);
     }
 }
 pub fn on_remove_alt_menu(

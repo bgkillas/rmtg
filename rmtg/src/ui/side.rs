@@ -16,7 +16,7 @@ use bevy::ui::{
     AlignContent, AlignItems, BackgroundColor, Display, FlexDirection, FlexWrap, JustifyContent,
     Node, Overflow, PositionType, Pressed, Val,
 };
-use bevy::ui_widgets::{Activate, Button, observe};
+use bevy::ui_widgets::{Button, observe};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::change_detection::Res;
 use bevy_ecs::children;
@@ -28,6 +28,7 @@ use bevy_ecs::observer::On;
 use bevy_ecs::prelude::Commands;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Query, Single};
+use bevy_ecs::world::EntityWorldMut;
 use bevy_query_fn_macro::query_fn;
 #[derive(Component)]
 pub struct SearchList {
@@ -129,6 +130,7 @@ pub fn on_new_search(
     mut search_list: Single<(Entity, &mut SearchList)>,
     piles: Query<&Pile>,
     assets: AssetManager,
+    side_hold: Option<Single<&ImageCard, With<SideHold>>>,
 ) {
     if !matches!(*menu, Menu::Side) {
         commands.trigger(SetMenu::new(Menu::Side));
@@ -139,7 +141,7 @@ pub fn on_new_search(
     ent.despawn_children();
     ent.with_children(|parent| {
         for (entry, card) in pile.iter().enumerate() {
-            parent.spawn((
+            let mut ent = parent.spawn((
                 Node {
                     width: Val::Percent(100.0 / 3.0),
                     max_width: Val::Percent(100.0 / 3.0),
@@ -163,6 +165,11 @@ pub fn on_new_search(
                     assets.card.back_image.clone()
                 }),
             ));
+            if let Some(inner) = &side_hold
+                && inner.global_id == card.global_id
+            {
+                ent.insert(Pressed);
+            }
         }
     });
 }
@@ -171,10 +178,12 @@ fn on_side_pressed(event: On<Add, Pressed>, mut commands: Commands) {
         .entity(event.entity)
         .insert((SideHold, BackgroundColor(Color::srgba_u8(0, 0, 255, 128))));
 }
-fn on_side_unpressed(event: On<Activate>, mut commands: Commands) {
+fn on_side_unpressed(event: On<Remove, Pressed>, mut commands: Commands) {
     commands
         .entity(event.entity)
-        .remove::<(SideHold, BackgroundColor)>();
+        .queue_silenced(|mut c: EntityWorldMut| {
+            c.remove::<(SideHold, BackgroundColor)>();
+        });
 }
 #[derive(Message)]
 pub struct DelayedHoveredMessage {
