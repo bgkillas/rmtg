@@ -1,4 +1,6 @@
 use crate::assets::AssetManager;
+use crate::events::hover::HoveredObject;
+use crate::events::move_up::MoveUp;
 use crate::events::repaint::Repaint;
 use crate::events::scroll::{Scroll, ScrollToContentSize, Scrollable};
 use crate::focus::Hover;
@@ -11,7 +13,7 @@ use crate::{FONT_HEIGHT, PLAYER};
 use bevy::color::Color;
 use bevy::input::ButtonInput;
 use bevy::picking::hover::Hovered;
-use bevy::prelude::{Component, ImageNode, Visibility};
+use bevy::prelude::{Component, ImageNode, Transform, Visibility};
 use bevy::text::EditableText;
 use bevy::ui::{
     AlignContent, AlignItems, BackgroundColor, Display, FlexDirection, FlexWrap, JustifyContent,
@@ -162,7 +164,10 @@ pub fn on_new_search(
     ent.despawn_children();
     let filter = text.editor().raw_text();
     ent.with_children(|parent| {
-        for (entry, card) in pile.iter().filter(|c| c.filter(filter)).enumerate() {
+        for (entry, card) in pile.iter().enumerate() {
+            if !card.filter(filter) {
+                continue;
+            }
             let mut ent = parent.spawn((
                 Node {
                     width: Val::Percent(100.0 / 3.0),
@@ -237,10 +242,41 @@ pub fn on_side_delayed_hover(
     for event in events.read() {
         let pile_entity = search_list.list.unwrap();
         let mut pile = piles.get_mut(pile_entity).unwrap();
-        let from = side_hold.entry;
         let to = entries.get(event.entity).unwrap().entry;
-        let card = pile.remove(from);
+        let card = pile.remove(side_hold.entry);
         pile.insert(to, card);
+        commands.trigger(Repaint::new(pile_entity));
+    }
+}
+#[query_fn]
+pub fn move_cards_out(
+    side_hold: Single<&SideMenuEntry, With<SideHold>>,
+    hover: Hover,
+    spatial: Spatial,
+    search_list: Single<&SearchList>,
+    mut piles: Query<&mut Pile>,
+    mut commands: Commands,
+) {
+    if hover.get().is_some() {
+        return;
+    }
+    let Some((_, _, pos)) = spatial.ray() else {
+        return;
+    };
+    let pile_entity = search_list.list.unwrap();
+    let mut pile = piles.get_mut(pile_entity).unwrap();
+    let card = pile.remove(side_hold.entry);
+    let ent = commands
+        .spawn((
+            Transform::from_translation(pos),
+            Pile::new(vec![card]).bundle(),
+            HoveredObject { held: false },
+        ))
+        .id();
+    commands.trigger(MoveUp::new(ent));
+    if pile.is_empty() {
+        commands.entity(pile_entity).despawn();
+    } else {
         commands.trigger(Repaint::new(pile_entity));
     }
 }
