@@ -150,7 +150,7 @@ pub fn app_run() -> AppExit {
     );
     app.add_systems(
         PreUpdate,
-        ((
+        (
             delayed_pile_merge,
             update_cursor,
             (
@@ -162,7 +162,7 @@ pub fn app_run() -> AppExit {
                 .chain(),
             update_keybinds,
         )
-            .after(InputSystems),),
+            .after(InputSystems),
     );
     app.add_systems(
         Update,

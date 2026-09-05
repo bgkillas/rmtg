@@ -11,6 +11,7 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::observer::On;
 use bevy_ecs::prelude::{Query, Single, With};
 use bevy_ecs::query::Without;
+use bevy_ecs::system::Commands;
 use bevy_query_fn_macro::query_fn;
 use enumset::{EnumSet, EnumSetType, enum_set};
 #[derive(Resource, EnumSetType, Default, Debug)]
@@ -96,12 +97,14 @@ pub fn on_set_menu(
     mut active_input: ResMut<InputFocus>,
     window: Single<Entity, With<Window>>,
     text_input: Query<(Entity, &TextSource)>,
-    mut search_list: Single<&mut SearchList>,
+    mut search_list: Single<(Entity, &mut SearchList)>,
+    mut commands: Commands,
 ) {
     match *menu {
         Menu::World => {}
         Menu::Side => {
-            search_list.list = None;
+            commands.entity(search_list.entity).despawn_children();
+            search_list.search_list.list = None;
             *side.visibility = Visibility::Hidden;
         }
         Menu::Counter => *counter.visibility = Visibility::Hidden,

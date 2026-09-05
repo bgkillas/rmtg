@@ -60,6 +60,9 @@ pub fn on_pile_removed(
     mut global_map: ResMut<GlobalIdMap>,
 ) {
     let pile = piles.get(on.entity).unwrap();
+    if matches!(pile, Pile::Empty) {
+        return;
+    }
     for card in pile {
         global_map.map.remove(&card.global_id);
     }

@@ -264,17 +264,17 @@ impl Pile {
     #[must_use]
     pub fn get_card(&self, rot: Quat) -> &SubCard {
         if FlippedState::from(rot).flipped() {
-            self.first()
-        } else {
             self.last()
+        } else {
+            self.first()
         }
     }
     #[must_use]
     pub fn get_mut_card(&mut self, rot: Quat) -> &mut SubCard {
         if FlippedState::from(rot).flipped() {
-            self.first_mut()
-        } else {
             self.last_mut()
+        } else {
+            self.first_mut()
         }
     }
     #[must_use]
@@ -301,9 +301,9 @@ impl Pile {
     #[must_use]
     pub fn take_card(&mut self, rot: Quat) -> SubCard {
         let ret = if FlippedState::from(rot).flipped() {
-            self.remove(0)
-        } else {
             self.pop()
+        } else {
+            self.remove(0)
         };
         self.set_single();
         ret
@@ -311,11 +311,11 @@ impl Pile {
     #[must_use]
     pub fn take_n_card(&mut self, rot: Quat, n: usize) -> Vec<SubCard> {
         let ret = if FlippedState::from(rot).flipped() {
-            self.drain(0..n.min(self.len())).collect()
-        } else {
             self.drain(self.len().saturating_sub(n)..self.len())
                 .rev()
                 .collect()
+        } else {
+            self.drain(0..n.min(self.len())).collect()
         };
         self.set_single();
         ret

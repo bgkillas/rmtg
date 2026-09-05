@@ -10,16 +10,19 @@ use crate::ui::menu::{Menu, SetMenu};
 use crate::ui::text_box::TextSource;
 use bevy::color::Color;
 use bevy::input::ButtonInput;
+use bevy::picking::hover::Hovered;
 use bevy::prelude::{Component, ImageNode, Visibility};
 use bevy::ui::{
     AlignContent, AlignItems, BackgroundColor, Display, FlexDirection, FlexWrap, JustifyContent,
-    Node, Overflow, PositionType, Val,
+    Node, Overflow, PositionType, Pressed, Val,
 };
+use bevy::ui_widgets::{Button, observe};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::change_detection::Res;
 use bevy_ecs::children;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::event::Event;
+use bevy_ecs::lifecycle::{Add, Insert, Remove};
 use bevy_ecs::observer::On;
 use bevy_ecs::prelude::Commands;
 use bevy_ecs::query::With;
@@ -35,6 +38,8 @@ pub struct SideMenu;
 pub struct NewSearch {
     pub entity: Entity,
 }
+#[derive(Component)]
+pub struct SideHold;
 impl SideMenu {
     #[must_use]
     pub fn bundle() -> impl Bundle {
@@ -141,6 +146,10 @@ pub fn on_new_search(
                     flipped: card.flipped,
                     global_id: card.global_id,
                 },
+                Button,
+                Hovered::default(),
+                observe(on_side_pressed),
+                observe(on_side_hover),
             );
             if let Some(handles) = card.face_handles() {
                 parent.spawn((bundle, ImageNode::new(handles.image())));
@@ -153,6 +162,37 @@ pub fn on_new_search(
             }
         }
     });
+}
+fn on_side_pressed(event: On<Add, Pressed>, mut commands: Commands) {
+    commands.entity(event.entity).insert(SideHold);
+}
+pub fn on_side_hold(event: On<Add, SideHold>, mut commands: Commands) {
+    commands
+        .entity(event.entity)
+        .insert(BackgroundColor(Color::srgba_u8(0, 0, 255, 128)));
+}
+#[query_fn]
+pub fn on_side_hover(
+    event: On<Insert, Hovered>,
+    hovered: Query<&Hovered>,
+    piles: Query<&Pile>,
+    search_list: Single<&SearchList>,
+    side_hold: Single<(Entity, &SideHold)>,
+) {
+    if side_hold.entity == event.entity || !hovered.get(event.entity).unwrap().0 {
+        return;
+    }
+    let _ = piles.get(search_list.list.unwrap()).unwrap();
+}
+#[query_fn]
+pub fn on_remove_side_menu(
+    on: On<Remove, Pile>,
+    mut commands: Commands,
+    search_list: Single<&SearchList>,
+) {
+    if search_list.list == Some(on.entity) {
+        commands.trigger(SetMenu { menu: Menu::World });
+    }
 }
 #[query_fn]
 pub fn on_repaint_side_menu(
