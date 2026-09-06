@@ -5,7 +5,7 @@ use crate::events::repaint::Repaint;
 use crate::physics::physics_base;
 use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH};
 use avian3d::prelude::{Collider, CollisionEventsEnabled};
-use bevy::asset::Assets;
+use bevy::asset::{Assets, Handle};
 use bevy::image::Image;
 use bevy::math::{Dir3, Quat, Vec3};
 use bevy::mesh::Mesh3d;
@@ -576,6 +576,7 @@ pub struct ImageCard {
     pub id: Uuid,
     pub quality: Quality,
     pub transformed: bool,
+    pub back_handle: Option<Handle<Image>>,
     pub global_id: Uuid,
 }
 #[query_fn]

@@ -33,6 +33,7 @@ use bevy_ecs::query::{Changed, With, Without};
 use bevy_ecs::system::{Local, Query, Single};
 use bevy_ecs::world::EntityWorldMut;
 use bevy_query_fn_macro::query_fn;
+use importer::card::Handles;
 #[derive(Component)]
 pub struct SearchList {
     pub list: Option<Entity>,
@@ -178,6 +179,7 @@ pub fn on_new_search(
                     id: card.data.id,
                     quality: card.quality,
                     transformed: card.transformed,
+                    back_handle: card.back_handles().map(Handles::image),
                     global_id: card.global_id,
                 },
                 SideMenuEntry { entry },
@@ -303,6 +305,7 @@ pub fn move_cards_in(
             id: card.data.id,
             quality: card.quality,
             transformed: card.transformed,
+            back_handle: card.back_handles().map(Handles::image),
             global_id: card.global_id,
         },
         SideHold,

@@ -15,6 +15,7 @@ use bevy_ecs::observer::On;
 use bevy_ecs::query::{Or, With};
 use bevy_ecs::system::{Commands, Query, Res, Single};
 use bevy_query_fn_macro::query_fn;
+use importer::card::Handles;
 #[derive(Message)]
 pub struct RotateUi {
     pub entity: Entity,
@@ -99,6 +100,7 @@ pub fn on_activate_alt_menu(
             id: card.data.id,
             quality: card.quality,
             transformed: card.transformed,
+            back_handle: card.back_handles().map(Handles::image),
             global_id: card.global_id,
         },
         card.image_node(assets.card.back_image.clone()),
@@ -123,7 +125,11 @@ pub fn on_ui_rotate(
     for event in messeges.read() {
         let mut node = query.get_mut(event.entity).unwrap();
         *node.visibility = Visibility::Inherited;
-        node.ui_transform.rotation *= Rot2::from_sin_cos(1.0, 0.0);
+        node.ui_transform.rotation *= if event.right {
+            Rot2::from_sin_cos(1.0, 0.0)
+        } else {
+            Rot2::from_sin_cos(-1.0, 0.0)
+        };
         node.ui_transform.translation =
             if matches!(node.ui_transform.rotation.sin_cos(), (1.0 | -1.0, 0.0)) {
                 let size = node.computed_node.content_size();

@@ -645,8 +645,10 @@ impl SubCard {
     }
     #[must_use]
     pub fn face(&self) -> &CardInfo {
-        if self.transformed {
-            self.data.back.as_ref().unwrap()
+        if self.transformed
+            && let Some(back) = &self.data.back
+        {
+            back
         } else {
             &self.data.front
         }
@@ -693,7 +695,7 @@ impl SubCard {
     }
     #[must_use]
     pub fn face_maybe_handles(&self) -> &MaybeHandles {
-        if self.transformed {
+        if self.transformed && !matches!(self.data.front.layout, Layout::Flip) {
             &self.back_handles
         } else {
             &self.face_handles
@@ -701,7 +703,7 @@ impl SubCard {
     }
     #[must_use]
     pub fn back_maybe_handles(&self) -> &MaybeHandles {
-        if self.transformed {
+        if self.transformed && !matches!(self.data.front.layout, Layout::Flip) {
             &self.face_handles
         } else {
             &self.back_handles
