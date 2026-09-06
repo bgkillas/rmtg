@@ -21,7 +21,7 @@ impl CameraIndicator {
         (
             Self,
             Endpoint::from(peer),
-            Transform::from_translation(pos).with_scale(Vec3::splat(CARD_WIDTH)),
+            Transform::from_translation(pos).with_scale(Vec3::splat(CARD_WIDTH / 2.0)),
             Mesh3d(assets.meshes.sphere.clone()),
             MeshMaterial3d(assets.outlines.players[0].clone()),
         )

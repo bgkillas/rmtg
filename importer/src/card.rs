@@ -16,6 +16,19 @@ use std::slice::{Iter, IterMut};
 use std::sync::Arc;
 use uuid::Uuid;
 rules::generate_types!();
+#[derive(Debug, Default, Encode, Decode)]
+pub struct CardId {
+    pub subcard: SubCardId,
+    pub attributes: CardAttributes,
+}
+#[derive(Debug, Default, Encode, Decode)]
+pub struct SubCardId {
+    #[bitcode(with = "DataCoder<Uuid>")]
+    pub id: Uuid,
+    pub transformed: bool,
+    #[bitcode(with = "DataCoder<Uuid>")]
+    pub global_id: Uuid,
+}
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct Card {
     pub subcard: SubCard,
@@ -508,7 +521,24 @@ impl Cost {
             - self.hybrid
     }
 }
+impl SubCard {
+    #[must_use]
+    pub fn get_simple(&self) -> SubCardId {
+        SubCardId {
+            id: self.data.id,
+            transformed: self.transformed,
+            global_id: self.global_id,
+        }
+    }
+}
 impl Card {
+    #[must_use]
+    pub fn get_simple(&self) -> CardId {
+        CardId {
+            subcard: self.subcard.get_simple(),
+            attributes: self.attributes.clone(),
+        }
+    }
     #[must_use]
     pub fn is_modified(&self) -> bool {
         !self.attributes.equiped.is_empty() || self.has_counters()

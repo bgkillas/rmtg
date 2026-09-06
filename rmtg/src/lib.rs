@@ -26,10 +26,6 @@ pub mod startup;
 pub mod ui;
 //TODO oracle card
 //TODO player color dice
-//TODO right click menu
-//TODO global id to entity/pile index map
-//TODO side menu ctrl click
-//TODO side menu move cards in/out
 pub const APP_NAME: &str = "com.github.bgkillas.rmtg";
 pub const USER_AGENT: &str = concat!("com.github.bgkillas.rmtg/", env!("CARGO_PKG_VERSION"));
 pub const ALPN: &[u8] = USER_AGENT.as_bytes();
