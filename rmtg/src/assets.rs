@@ -17,7 +17,7 @@ use bevy::mesh::{
     MeshBuilder as _, RingMeshBuilder,
 };
 use bevy::pbr::StandardMaterial;
-use bevy::prelude::{CircularSector, Cylinder, Rectangle, Res, Resource, Ring};
+use bevy::prelude::{CircularSector, Cylinder, Rectangle, Res, Resource, Ring, Sphere};
 use enum_map::EnumMap;
 use importer::CARD_CORNER_RADIUS;
 use importer::card::Handles;
@@ -39,6 +39,7 @@ pub struct OutlineMaterials {
 #[derive(Resource)]
 pub struct ShapeMeshes {
     pub map: EnumMap<Shape, (Handle<Mesh>, Handle<Mesh>)>,
+    pub sphere: Handle<Mesh>,
     pub material: Handle<StandardMaterial>,
 }
 #[derive(Resource)]
@@ -56,6 +57,7 @@ impl ShapeMeshes {
     pub fn new(meshes: &mut Assets<Mesh>, materials: &mut Assets<StandardMaterial>) -> Self {
         Self {
             map: EnumMap::from_fn(|e: Shape| (meshes.add(e.mesh()), meshes.add(e.outline_mesh()))),
+            sphere: meshes.add(Sphere::new(1.0)),
             material: materials.add(StandardMaterial {
                 base_color: Color::WHITE,
                 unlit: true,

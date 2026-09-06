@@ -1,11 +1,14 @@
+use crate::camera_indicator::move_camera;
 use crate::spatial::Spatial;
 use bevy::log::info;
 use bevy::math::Vec3;
 use bevy::prelude::{Component, PopulatedMessageReader, Resource};
 use bevy_ecs::observer::On;
+use bevy_ecs::system::Commands;
 use bevy_p2p::bitcode::{self, Decode, Encode};
 use bevy_p2p::events::{ConnectFailed, PeerConnected, PeerDisconnected};
 use bevy_p2p::iroh::EndpointId;
+use bevy_p2p::iroh_res::Compression;
 use bevy_p2p::message::{MessageReceived, Net};
 use importer::coder::DataCoder;
 use rand::RngExt as _;
@@ -24,15 +27,17 @@ pub enum Msg {
 pub fn net_update(net: Net<Msg>, spatial: Spatial) {
     if let Some((_, cursor, _)) = spatial.ray() {
         let camera = spatial.camera.transform.translation;
-        net.broadcast(Msg::Camera { camera, cursor });
+        net.broadcast(Compression::None, Msg::Camera { camera, cursor });
     }
 }
-pub fn receive_message(mut reader: PopulatedMessageReader<MessageReceived<Msg>>) {
+pub fn receive_message(
+    mut reader: PopulatedMessageReader<MessageReceived<Msg>>,
+    mut commands: Commands,
+) {
     for msg in reader.read() {
         match &msg.message {
-            Msg::Camera { camera, cursor } => {
-                _ = camera;
-                _ = cursor;
+            &Msg::Camera { camera, cursor } => {
+                commands.run_system_cached_with(move_camera, (msg.peer, camera, cursor));
             }
         }
     }
@@ -51,6 +56,11 @@ impl Default for GlobalId {
 #[derive(Component, Clone, Copy)]
 pub struct Endpoint {
     pub peer: EndpointId,
+}
+impl From<EndpointId> for Endpoint {
+    fn from(peer: EndpointId) -> Self {
+        Self { peer }
+    }
 }
 #[derive(Component, Default, Clone, Copy, Encode, Decode)]
 pub struct Peer {

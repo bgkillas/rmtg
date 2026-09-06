@@ -9,6 +9,7 @@ use importer::scryfall::Quality;
 pub mod app;
 pub mod assets;
 pub mod camera;
+pub mod camera_indicator;
 pub mod card_spot;
 pub mod chat_commands;
 pub mod drag;
