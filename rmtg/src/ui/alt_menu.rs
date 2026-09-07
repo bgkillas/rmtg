@@ -33,13 +33,13 @@ pub struct AltMenu {
 }
 pub fn update_alt_menu(
     keys: Res<ButtonInput<KeyCode>>,
-    menu: Option<Single<&AltMenu>>,
+    menu: Option<Single<(), With<AltMenu>>>,
     mut commands: Commands,
     has_image: Query<Option<&AltMenu>, Or<(With<ImageCard>, With<Pile>)>>,
     spatial: Spatial,
     hover: Hover,
 ) {
-    if keys.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
+    if keys.any_just_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
         let Some(hit) = hover
             .get()
             .or_else(|| spatial.ray().map(|(r, _, _)| r.entity))
@@ -56,18 +56,16 @@ pub fn update_alt_menu(
             return;
         };
         if image.is_some() {
+            if menu.is_some() {
+                commands.trigger(RemoveAltMenu);
+            }
             return;
         }
-        if let Some(m) = menu {
-            if m.entity != hit {
-                commands.trigger(RemoveAltMenu);
-                commands.trigger(ActivateAltMenu { entity: hit });
-            }
+        if menu.is_some() {
+            commands.trigger(RemoveAltMenu);
         } else {
             commands.trigger(ActivateAltMenu { entity: hit });
         }
-    } else if keys.any_just_released([KeyCode::AltLeft, KeyCode::AltRight]) && menu.is_some() {
-        commands.trigger(RemoveAltMenu);
     }
 }
 #[query_fn]
