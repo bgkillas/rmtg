@@ -1,5 +1,6 @@
 use crate::QUALITY;
 use crate::app::Client;
+use crate::events::clipboard::{ClipboardEvent, GetClipboard};
 use crate::events::move_up::MoveUp;
 use crate::pile::Pile;
 use crate::spatial::Spatial;
@@ -11,13 +12,13 @@ use bevy_ecs::observer::On;
 use bevy_ecs::system::In;
 use bevy_p2p::runtime::Runtime;
 use futures::future::join_all;
-use importer::card::SubCard;
+use importer::card::{SetCn, SubCard};
 use importer::uuid::Uuid;
 use std::str::FromStr as _;
 #[derive(Debug)]
 pub enum Identifier {
     Uuid(Uuid),
-    SetCn(String),
+    SetCn(SetCn),
     None,
 }
 pub fn react_chat_commands(
@@ -25,6 +26,7 @@ pub fn react_chat_commands(
     client: Res<Client>,
     runtime: Res<Runtime>,
     spatial: Spatial,
+    mut commands: Commands,
 ) {
     if !matches!(event.source, TextSource::Chat) {
         return;
@@ -53,7 +55,7 @@ pub fn react_chat_commands(
             }
             Identifier::None => {
                 let owned = rest.to_owned();
-                runtime.spawn_hook(on_paste_card_prints_set, async move {
+                runtime.spawn_hook(on_paste_card_prints_str, async move {
                     (
                         SubCard::get_prints_str(&client_owned, &owned, QUALITY).await,
                         pos,
@@ -82,7 +84,7 @@ pub fn react_chat_commands(
             }
             Identifier::None => {
                 let owned = rest.to_owned();
-                runtime.spawn_hook(on_paste_card_set, async move {
+                runtime.spawn_hook(on_paste_card_str, async move {
                     (SubCard::get_str(&client_owned, &owned, QUALITY).await, pos)
                 });
             }
@@ -106,12 +108,18 @@ pub fn react_chat_commands(
             warn!("{rest:?} not number");
             return;
         };
+        if amount == 0 {
+            warn!("should not be zero");
+            return;
+        }
         let client_owned = client.client.clone();
         runtime.spawn_hook(on_paste_random_cards, async move {
             let vec =
                 join_all((0..amount).map(|_| SubCard::get_random(&client_owned, QUALITY))).await;
-            (vec, pos)
+            (vec.into_iter().collect::<Option<Vec<_>>>(), pos)
         });
+    } else if event.string == "/import" {
+        commands.trigger(GetClipboard::text(ClipboardEvent::ImportDeck(pos)));
     }
 }
 fn get_identifier(string: &str) -> Identifier {
@@ -121,7 +129,7 @@ fn get_identifier(string: &str) -> Identifier {
         && let Some((set, after)) = rest.split_once('/')
         && let Some((cn, _)) = after.split_once('/')
     {
-        let set_cn = format!("{set}/{cn}");
+        let set_cn = SetCn::new(set, cn);
         Identifier::SetCn(set_cn)
     } else if let Some((_, rest)) = string.split_once("scryfall.com/card/")
         && let Ok(uuid) = Uuid::from_str(rest)
@@ -144,7 +152,13 @@ fn on_paste_card_uuid(In((is_ok, pos)): In<(Result<SubCard, Uuid>, Vec3)>, mut c
         Err(e) => warn!("{e:?}"),
     }
 }
-fn on_paste_card_set(
+fn on_paste_card_set(In((is_ok, pos)): In<(Result<SubCard, SetCn>, Vec3)>, mut commands: Commands) {
+    match is_ok {
+        Ok(val) => commands.run_system_cached_with(on_paste_card, (val, pos)),
+        Err(e) => warn!("{e:?}"),
+    }
+}
+fn on_paste_card_str(
     In((is_ok, pos)): In<(Result<SubCard, Box<str>>, Vec3)>,
     mut commands: Commands,
 ) {
@@ -168,8 +182,17 @@ fn on_paste_card_prints_uuid(
         Err(e) => warn!("{e:?}"),
     }
 }
-fn on_paste_card_prints_set(
+fn on_paste_card_prints_str(
     In((is_ok, pos)): In<(Result<Vec<Result<SubCard, Uuid>>, Box<str>>, Vec3)>,
+    mut commands: Commands,
+) {
+    match is_ok {
+        Ok(val) => commands.run_system_cached_with(on_paste_card_prints, (val, pos)),
+        Err(e) => warn!("{e:?}"),
+    }
+}
+fn on_paste_card_prints_set(
+    In((is_ok, pos)): In<(Result<Vec<Result<SubCard, Uuid>>, SetCn>, Vec3)>,
     mut commands: Commands,
 ) {
     match is_ok {
@@ -200,21 +223,20 @@ fn on_paste_card_prints(
         commands.trigger(MoveUp::new(ent));
     }
 }
-fn on_paste_random_cards(
-    In((cards, pos)): In<(Vec<Option<SubCard>>, Vec3)>,
+pub fn on_paste_random_cards(
+    In((cards, pos)): In<(Option<Vec<SubCard>>, Vec3)>,
     mut commands: Commands,
 ) {
-    let pile: Vec<_> = cards.into_iter().flatten().collect();
-    if pile.is_empty() {
-        warn!("random failed");
-    } else {
+    if let Some(pile) = cards {
         let ent = commands
             .spawn((Transform::from_translation(pos), Pile::new(pile).bundle()))
             .id();
         commands.trigger(MoveUp::new(ent));
+    } else {
+        warn!("random failed");
     }
 }
-fn on_paste_cards(
+pub fn on_paste_cards(
     In((is_ok, pos)): In<(Result<Vec<Result<SubCard, Uuid>>, Box<str>>, Vec3)>,
     mut commands: Commands,
 ) {

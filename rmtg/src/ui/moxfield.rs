@@ -133,7 +133,7 @@ pub fn startup_moxfield(last: Res<SearchedPlayer>, client: Res<Client>, runtime:
     });
 }
 #[query_fn]
-fn deck_hook(
+pub fn deck_hook(
     In(list): In<Option<Vec<MoxfieldDeck>>>,
     mut ui_list: Single<(Entity, &mut MoxfieldDeckList)>,
     mut commands: Commands,

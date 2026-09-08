@@ -9,7 +9,7 @@ use enumset::{EnumSet, EnumSetType};
 use rand::prelude::StdRng;
 use rand::{Rng as _, make_rng};
 use std::cmp::Ordering;
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::slice::{Iter, IterMut};
@@ -62,11 +62,16 @@ pub struct SubCardInner {
     #[bitcode(skip)]
     pub back_handles: MaybeHandles,
 }
+#[derive(Hash, Eq, PartialEq, Debug, Clone, Default, Encode, Decode, Ord, PartialOrd)]
+pub struct SetCn {
+    pub set: Box<str>,
+    pub cn: Box<str>,
+}
 #[derive(PartialEq, Debug, Clone, Default, Encode, Decode)]
 pub struct CardData {
     #[bitcode(with = "DataCoder<Uuid>")]
     pub id: Uuid,
-    pub set_cn: Box<str>,
+    pub set_cn: SetCn,
     #[bitcode(with = "DataCoderBoxUuid")]
     pub tokens: Box<[Uuid]>,
     pub front: CardInfo,
@@ -258,6 +263,19 @@ impl Debug for Types {
             write!(f, "{ty:?}")?;
         }
         write!(f, "\"")
+    }
+}
+impl SetCn {
+    pub fn new(set: &str, cn: &str) -> Self {
+        Self {
+            set: set.into(),
+            cn: cn.into(),
+        }
+    }
+}
+impl Display for SetCn {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/{}", self.set, self.cn)
     }
 }
 impl Debug for Colors {

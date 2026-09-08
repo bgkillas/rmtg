@@ -1,4 +1,4 @@
-use crate::card::{CardData, MaybeHandles, SubCardInner};
+use crate::card::{CardData, MaybeHandles, SetCn, SubCardInner};
 use crate::scryfall::{Quality, Side};
 use bevy::asset::Handle;
 use bevy::image::Image;
@@ -20,8 +20,8 @@ pub struct CardCache {
     pub handles: HashMap<(Uuid, Quality), (MaybeHandles, MaybeHandles), FxBuildHasher>,
     pub in_storage: HashSet<Uuid, FxBuildHasher>,
     pub in_progress: HashSet<Uuid, FxBuildHasher>,
-    pub in_progress_set_cn: HashSet<Box<str>, FxBuildHasher>,
-    pub set_cn: BiHashMap<Box<str>, Uuid, FxBuildHasher, FxBuildHasher>,
+    pub in_progress_set_cn: HashSet<SetCn, FxBuildHasher>,
+    pub set_cn: BiHashMap<SetCn, Uuid, FxBuildHasher, FxBuildHasher>,
 }
 impl Quality {
     pub fn file_name(self, side: Side) -> &'static str {
@@ -59,7 +59,7 @@ impl CardData {
         folder_path(&self.set_cn, self.id)
     }
 }
-fn folder_path(set_cn: &str, id: Uuid) -> String {
+fn folder_path(set_cn: &SetCn, id: Uuid) -> String {
     format!("{set_cn}_{id}")
 }
 impl Default for CardCache {
@@ -78,7 +78,7 @@ impl Default for CardCache {
                                 && let Ok(uuid) = uuid_str.parse()
                             {
                                 in_storage.insert(uuid);
-                                set_cn.insert(format!("{set}/{cn}").into_boxed_str(), uuid);
+                                set_cn.insert(SetCn::new(set, cn), uuid);
                             }
                         }
                     }
@@ -99,26 +99,26 @@ impl Default for CardCache {
     }
 }
 #[derive(Debug, Clone, PartialOrd, PartialEq, Ord, Eq)]
-pub enum Identifier<'a> {
+pub enum Identifier {
     Uuid(Uuid),
-    SetCn(&'a str),
+    SetCn(SetCn),
 }
-impl From<Uuid> for Identifier<'_> {
+impl From<Uuid> for Identifier {
     fn from(value: Uuid) -> Self {
         Self::Uuid(value)
     }
 }
-impl<'a> From<&'a str> for Identifier<'a> {
-    fn from(value: &'a str) -> Self {
+impl From<SetCn> for Identifier {
+    fn from(value: SetCn) -> Self {
         Self::SetCn(value)
     }
 }
 #[derive(Debug)]
-pub enum CacheResult<'a> {
+pub enum CacheResult {
     Some(SubCardInner),
-    Cached(Box<str>, Uuid),
-    Wait(Identifier<'a>),
-    None(Identifier<'a>),
+    Cached(SetCn, Uuid),
+    Wait(Identifier),
+    None(Identifier),
 }
 impl CardCache {
     pub fn clean(&mut self) {
@@ -126,7 +126,7 @@ impl CardCache {
         self.handles
             .retain(|_, (face, back)| !(face.is_unique() && back.is_unique()));
     }
-    pub fn get<'b>(&mut self, uuid: Uuid, quality: Quality) -> CacheResult<'b> {
+    pub fn get(&mut self, uuid: Uuid, quality: Quality) -> CacheResult {
         if let Some(data) = self.cards.get(&uuid).cloned() {
             let (face_handles, back_handles) = self
                 .handles
@@ -150,14 +150,14 @@ impl CardCache {
             CacheResult::None(Identifier::Uuid(uuid))
         }
     }
-    pub fn get_set_cn<'a>(&mut self, set_cn: &'a str, quality: Quality) -> CacheResult<'a> {
+    pub fn get_set_cn(&mut self, set_cn: &SetCn, quality: Quality) -> CacheResult {
         if let Some(&uuid) = self.set_cn.get_by_left(set_cn) {
             self.get(uuid, quality)
         } else if self.in_progress_set_cn.contains(set_cn) {
-            CacheResult::Wait(Identifier::SetCn(set_cn))
+            CacheResult::Wait(Identifier::SetCn(set_cn.clone()))
         } else {
-            self.in_progress_set_cn.insert(set_cn.into());
-            CacheResult::None(Identifier::SetCn(set_cn))
+            self.in_progress_set_cn.insert(set_cn.clone());
+            CacheResult::None(Identifier::SetCn(set_cn.clone()))
         }
     }
     pub async fn insert(&mut self, card: SubCardInner) {
@@ -171,13 +171,13 @@ impl CardCache {
         self.handles
             .insert((uuid, card.quality), (card.face_handles, card.back_handles));
     }
-    pub fn remove_in_progress(&mut self, identifier: Identifier<'_>) {
+    pub fn remove_in_progress(&mut self, identifier: Identifier) {
         match identifier {
             Identifier::Uuid(uuid) => {
                 self.in_progress.remove(&uuid);
             }
             Identifier::SetCn(set_cn) => {
-                self.in_progress_set_cn.remove(set_cn);
+                self.in_progress_set_cn.remove(&set_cn);
             }
         }
     }
@@ -192,7 +192,7 @@ impl SubCardInner {
     }
 }
 impl CardData {
-    pub async fn read_files(set_cn: &str, uuid: Uuid) -> Option<Self> {
+    pub async fn read_files(set_cn: &SetCn, uuid: Uuid) -> Option<Self> {
         let folder_name = folder()?.join(folder_path(set_cn, uuid));
         let card_data = fs::read(folder_name.join(DATA)).await.ok()?;
         let data = decode::<CardData>(&card_data).ok()?;
@@ -200,7 +200,7 @@ impl CardData {
     }
 }
 pub async fn get_images(
-    set_cn: &str,
+    set_cn: &SetCn,
     uuid: Uuid,
     has_unique_face: bool,
     quality: Quality,
@@ -218,7 +218,7 @@ pub async fn get_images(
     }
     Some((front_image, back_image))
 }
-pub async fn write_image(bytes: &[u8], set_cn: &str, uuid: Uuid, quality: Quality, side: Side) {
+pub async fn write_image(bytes: &[u8], set_cn: &SetCn, uuid: Uuid, quality: Quality, side: Side) {
     if let Some(folder_name) = folder().map(|f| f.join(folder_path(set_cn, uuid))) {
         let _ = fs::create_dir_all(&folder_name).await;
         let _ = fs::write(folder_name.join(quality.file_name(side)), bytes).await;

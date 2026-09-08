@@ -18,6 +18,7 @@ pub mod circle;
 pub mod coder;
 #[cfg(test)]
 mod image_bench;
+pub mod importer;
 pub mod moxfield;
 #[cfg(test)]
 mod moxfield_tests;

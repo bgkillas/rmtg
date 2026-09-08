@@ -1,6 +1,7 @@
 use crate::events::clipboard::{ClipboardEvent, GetClipboard};
 use crate::keybinds::Keybind;
 use crate::net::Msg;
+use crate::spatial::Spatial;
 use crate::ui::menu::{Menu, SetMenu};
 use crate::ui::right_click::{RemoveRightClickMenu, RightClickMenu};
 use crate::{ALPN, BUTTON_BACKGROUND, BUTTON_BORDER, BUTTON_HOVER, FONT_SIZE};
@@ -56,6 +57,10 @@ impl EscMenu {
                     (button("Connect To Clipboard"), observe(on_connect)),
                     (button("Disconnect"), observe(on_disconnect)),
                     (button("Moxfield Deck List"), observe(on_moxfield_deck_list)),
+                    (
+                        button("Import Deck From Clipboard"),
+                        observe(on_deck_import)
+                    ),
                     (button("Exit"), observe(on_exit)),
                 ]
             )],
@@ -82,6 +87,12 @@ fn on_copy(
 }
 fn on_moxfield_deck_list(_: On<Activate>, mut commands: Commands) {
     commands.trigger(SetMenu::new(Menu::Moxfield));
+}
+fn on_deck_import(_: On<Activate>, mut commands: Commands, spatial: Spatial) {
+    let Some((_, pos, _)) = spatial.ray() else {
+        return;
+    };
+    commands.trigger(GetClipboard::text(ClipboardEvent::ImportDeck(pos)));
 }
 pub fn on_iroh_bind_copy(
     _: On<Binded>,

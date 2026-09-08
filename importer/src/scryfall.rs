@@ -1,4 +1,6 @@
-use crate::card::{CardData, CardInfo, Layout, MainType, MaybeHandles, SubCard, SubCardInner};
+use crate::card::{
+    CardData, CardInfo, Layout, MainType, MaybeHandles, SetCn, SubCard, SubCardInner,
+};
 use crate::card::{Colors, Cost, Types};
 use crate::card_cache::{CacheReadImage, CacheResult, CardCache, Identifier, get_images};
 use crate::image::parse_bytes;
@@ -121,7 +123,7 @@ pub async fn throttled_parse_bytes(bytes: &[u8]) -> Option<Image> {
 #[cfg(not(target_family = "wasm"))]
 async fn get_image(
     client: &Client,
-    set_cn: &str,
+    set_cn: &SetCn,
     uuid: Uuid,
     quality: Quality,
     side: Side,
@@ -157,7 +159,7 @@ impl CacheReadImage {
     pub async fn get_image(
         self,
         client: &Client,
-        set_cn: &str,
+        set_cn: &SetCn,
         uuid: Uuid,
         quality: Quality,
         side: Side,
@@ -177,7 +179,7 @@ impl CacheReadImage {
 }
 async fn read_cards(
     client: &Client,
-    set_cn: Box<str>,
+    set_cn: SetCn,
     uuid: Uuid,
     quality: Quality,
     front_image: CacheReadImage,
@@ -194,7 +196,7 @@ async fn read_cards(
 }
 async fn read_cards_check(
     client: &Client,
-    set_cn: Box<str>,
+    set_cn: SetCn,
     uuid: Uuid,
     quality: Quality,
     mut front_image: CacheReadImage,
@@ -215,7 +217,7 @@ async fn read_cards_check(
 }
 async fn read_cards_check_owned(
     client: Client,
-    set_cn: Box<str>,
+    set_cn: SetCn,
     uuid: Uuid,
     quality: Quality,
     front_image: CacheReadImage,
@@ -295,13 +297,13 @@ impl SubCard {
     }
     pub async fn get_prints_set_cn(
         client: &Client,
-        set_cn: &str,
+        set_cn: &SetCn,
         quality: Quality,
-    ) -> Result<Vec<Result<Self, Uuid>>, Box<str>> {
+    ) -> Result<Vec<Result<Self, Uuid>>, SetCn> {
         let card = Self::get_set_cn(client, set_cn, quality, false).await?;
         Self::get_prints(client, card.data.front.oracle_id, quality)
             .await
-            .map_err(|_| set_cn.into())
+            .map_err(|_| set_cn.clone())
     }
     pub async fn get_prints_str(
         client: &Client,
@@ -314,28 +316,27 @@ impl SubCard {
             .map_err(|_| set_cn.into())
     }
     #[must_use]
-    pub async fn get_list<'a>(
+    pub async fn get_list(
         client: &Client,
-        mut vec: Vec<Identifier<'a>>,
+        mut vec: Vec<Identifier>,
         quality: Quality,
-    ) -> Option<Vec<Result<Self, Identifier<'a>>>> {
-        async fn do_chunk(client: &Client, vec: &[(usize, Identifier<'_>)]) -> Option<JsonValue> {
+    ) -> Option<Vec<Result<Self, Identifier>>> {
+        async fn do_chunk(client: &Client, vec: &[(usize, Identifier)]) -> Option<JsonValue> {
             while COLLECTION_THROTTLE.try_wait().is_err() {
                 sleep(SLEEP_TIME).await;
             }
             let mut array = JsonValue::new_array();
-            for (_, id) in vec.iter().cloned() {
+            for (_, id) in vec {
                 let val = match id {
-                    Identifier::Uuid(uuid) => {
+                    &Identifier::Uuid(uuid) => {
                         let mut val = JsonValue::new_object();
                         val.insert("id", uuid.to_string()).ok()?;
                         val
                     }
                     Identifier::SetCn(set_cn) => {
                         let mut val = JsonValue::new_object();
-                        let (set, cn) = set_cn.split_once('/')?;
-                        val.insert("set", set).ok()?;
-                        val.insert("collector_number", cn).ok()?;
+                        val.insert("set", &*set_cn.set).ok()?;
+                        val.insert("collector_number", &*set_cn.cn).ok()?;
                         val
                     }
                 };
@@ -510,7 +511,7 @@ impl SubCard {
         .ok_or(uuid)
     }
     pub async fn get_cache_result_or(
-        identifier: Identifier<'_>,
+        identifier: Identifier,
         quality: Quality,
         no_wait: bool,
         on_none: impl AsyncFnOnce() -> Option<Self>,
@@ -528,15 +529,15 @@ impl SubCard {
         }
     }
     pub async fn get_cache_result(
-        identifier: Identifier<'_>,
+        identifier: Identifier,
         quality: Quality,
         no_wait: bool,
-    ) -> Result<Self, Identifier<'_>> {
+    ) -> Result<Self, Identifier> {
         let cache_result = {
             let mut cache = CACHE.lock().await;
             match identifier {
                 Identifier::Uuid(uuid) => cache.get(uuid, quality),
-                Identifier::SetCn(set_cn) => cache.get_set_cn(set_cn, quality),
+                Identifier::SetCn(set_cn) => cache.get_set_cn(&set_cn, quality),
             }
         };
         let card = match cache_result {
@@ -586,10 +587,10 @@ impl SubCard {
                 sleep(SLEEP_TIME).await;
                 let (data, (face_handles, back_handles)) = {
                     let cache = CACHE.lock().await;
-                    if cache.in_progress_set_cn.contains(str) {
+                    if cache.in_progress_set_cn.contains(&str) {
                         continue;
                     }
-                    let &uuid = cache.set_cn.get_by_left(str).unwrap();
+                    let &uuid = cache.set_cn.get_by_left(&str).unwrap();
                     (
                         cache.cards.get(&uuid).unwrap().clone(),
                         cache
@@ -632,19 +633,19 @@ impl SubCard {
         CACHE.lock().await.insert(card.inner.clone()).await;
         Some(card)
     }
-    pub async fn get_identifier<'a>(
+    pub async fn get_identifier(
         client: &Client,
-        identifier: Identifier<'a>,
+        identifier: Identifier,
         quality: Quality,
         no_wait: bool,
-    ) -> Result<Self, Identifier<'a>> {
+    ) -> Result<Self, Identifier> {
         match identifier {
             Identifier::Uuid(uuid) => Self::get_id(client, uuid, quality, no_wait)
                 .await
-                .map_err(|_| identifier),
-            Identifier::SetCn(set_cn) => Self::get_set_cn(client, set_cn, quality, no_wait)
+                .map_err(Identifier::Uuid),
+            Identifier::SetCn(set_cn) => Self::get_set_cn(client, &set_cn, quality, no_wait)
                 .await
-                .map_err(|_| identifier),
+                .map_err(Identifier::SetCn),
         }
     }
     pub async fn get_id(
@@ -661,26 +662,31 @@ impl SubCard {
     }
     pub async fn get_set_cn(
         client: &Client,
-        set_cn: &str,
+        set_cn: &SetCn,
         quality: Quality,
         no_wait: bool,
-    ) -> Result<Self, Box<str>> {
-        Self::get_cache_result_or(Identifier::SetCn(set_cn), quality, no_wait, async || {
-            while CARDS_THROTTLE.try_wait().is_err() {
-                sleep(SLEEP_TIME).await;
-            }
-            let request = warn_if(
-                client
-                    .get(format!("https://{URL}/cards/{set_cn}"))
-                    .send()
-                    .await,
-            )?;
-            let json_raw = warn_if(request.text().await)?;
-            let json = warn_if(parse(&json_raw))?;
-            Self::from_scryfall(json, quality).ok()
-        })
+    ) -> Result<Self, SetCn> {
+        Self::get_cache_result_or(
+            Identifier::SetCn(set_cn.clone()),
+            quality,
+            no_wait,
+            async || {
+                while CARDS_THROTTLE.try_wait().is_err() {
+                    sleep(SLEEP_TIME).await;
+                }
+                let request = warn_if(
+                    client
+                        .get(format!("https://{URL}/cards/{set_cn}"))
+                        .send()
+                        .await,
+                )?;
+                let json_raw = warn_if(request.text().await)?;
+                let json = warn_if(parse(&json_raw))?;
+                Self::from_scryfall(json, quality).ok()
+            },
+        )
         .await
-        .ok_or_else(|| set_cn.into())
+        .ok_or_else(|| set_cn.clone())
     }
     pub async fn get_str(client: &Client, name: &str, quality: Quality) -> Result<Self, Box<str>> {
         async fn get_str(client: &Client, name: &str, quality: Quality) -> Option<SubCard> {
@@ -771,7 +777,7 @@ impl SubCard {
             };
             let set = json["set"].as_str()?;
             let cn = json["collector_number"].as_str()?;
-            let set_cn = format!("{set}/{cn}").into_boxed_str();
+            let set_cn = SetCn::new(set, cn);
             let tokens = json["all_parts"]
                 .as_array()
                 .map(|v| {
