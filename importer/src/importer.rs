@@ -8,7 +8,7 @@ impl SubCard {
         list: String,
         quality: Quality,
     ) -> Option<Vec<SubCard>> {
-        let mut cards = Vec::new();
+        let mut cards = Vec::with_capacity(128);
         for card in list.lines() {
             let (val, after_number) = card.split_once(|c: char| !c.is_numeric())?;
             let amount = val.parse().ok()?;

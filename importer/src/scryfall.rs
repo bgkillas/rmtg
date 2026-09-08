@@ -120,7 +120,6 @@ pub async fn throttled_parse_bytes(bytes: &[u8]) -> Option<Image> {
     drop(lock);
     res
 }
-#[cfg(not(target_family = "wasm"))]
 async fn get_image(
     client: &Client,
     set_cn: &SetCn,
@@ -128,32 +127,35 @@ async fn get_image(
     quality: Quality,
     side: Side,
 ) -> Option<Image> {
-    async fn get_bytes(
-        client: &Client,
-        uuid: Uuid,
-        quality: Quality,
-        side: Side,
-    ) -> Result<bytes::Bytes, reqwest::Error> {
-        let byte = uuid.as_bytes()[0];
-        let request = client
-            .get(format!(
-                "https://{CARD_URL}/{}/{side}/{:x}/{:x}/{uuid}.{}",
-                quality.name(),
-                byte / 16,
-                byte % 16,
-                quality.extension(),
-            ))
-            .send()
-            .await?;
-        request.bytes().await
+    #[cfg(not(target_family = "wasm"))]
+    {
+        async fn get_bytes(
+            client: &Client,
+            uuid: Uuid,
+            quality: Quality,
+            side: Side,
+        ) -> Result<bytes::Bytes, reqwest::Error> {
+            let byte = uuid.as_bytes()[0];
+            let request = client
+                .get(format!(
+                    "https://{CARD_URL}/{}/{side}/{:x}/{:x}/{uuid}.{}",
+                    quality.name(),
+                    byte / 16,
+                    byte % 16,
+                    quality.extension(),
+                ))
+                .send()
+                .await?;
+            request.bytes().await
+        }
+        let bytes = warn_if(get_bytes(client, uuid, quality, side).await)?;
+        crate::card_cache::write_image(&bytes, set_cn, uuid, quality, side).await;
+        throttled_parse_bytes(&bytes).await
     }
-    let bytes = warn_if(get_bytes(client, uuid, quality, side).await)?;
-    crate::card_cache::write_image(&bytes, set_cn, uuid, quality, side).await;
-    throttled_parse_bytes(&bytes).await
-}
-#[cfg(target_family = "wasm")]
-async fn get_image(_: &Client, _: &str, _: Uuid, _: Quality, _: Side) -> Option<Image> {
-    None
+    #[cfg(target_family = "wasm")]
+    {
+        None
+    }
 }
 impl CacheReadImage {
     pub async fn get_image(
