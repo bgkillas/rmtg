@@ -1390,15 +1390,15 @@ checksum = "bff34eb29ff4b8a8688bc7299f14fb6b597461ca80fec03ed7d22939ab33e48f"
 [[package]]
 name = "bevy_p2p"
 version = "0.1.0"
-source = "git+https://github.com/bgkillas/bevy_p2p#59c9942d4e0f66c8520ca85fdc59aca5b56d12e6"
+source = "git+https://github.com/bgkillas/bevy_p2p#a2e3e3caf396ede1818d7cfcbdc719f3b59f182d"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
+ "bevy_log",
  "bevy_platform",
  "bimap",
  "bitcode",
  "iroh",
- "lz4_flex",
  "rustc-hash 2.1.3",
  "steamworks",
  "tokio",
@@ -4968,12 +4968,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 
 [[package]]
-name = "lz4_flex"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecbdfe44b1bd960b68170b417450a628c43f7cf56bb3c5317e61cb230ee7f226"
-
-[[package]]
 name = "mac-addr"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5964,7 +5958,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.45.0",
 ]
 
 [[package]]
@@ -6809,11 +6803,11 @@ checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 
 [[package]]
 name = "reqwest"
-version = "0.13.4"
+version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "219c5811de6525e5416c7d5d53bb656d3afdbc6c5af816e0802bcfa42dbdc1c3"
+checksum = "16a1cfa75cc186dd73d5818e510e042e40927bccc9c236b061cea97e1eb08029"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "bytes",
  "futures-core",
  "futures-util",

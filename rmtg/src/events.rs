@@ -10,6 +10,7 @@ use crate::events::repaint::{on_pile_added, on_pile_removed, on_repaint};
 use crate::events::roll::on_roll;
 use crate::events::scale::on_scale;
 use crate::events::scroll::insert_scroll_bar;
+use crate::events::select_drag::{on_select_drag_source_removed, on_select_drag_target_removed};
 use crate::net::{connect_failed, on_connect, on_disconnect};
 use crate::ui::alt_menu::{on_activate_alt_menu, on_remove_alt_menu};
 use crate::ui::chat::text_message;
@@ -34,6 +35,7 @@ pub mod repaint;
 pub mod roll;
 pub mod scale;
 pub mod scroll;
+pub mod select_drag;
 pub mod tap;
 pub mod transform;
 pub fn add_events(app: &mut App) {
@@ -77,4 +79,6 @@ pub fn add_events(app: &mut App) {
     app.add_observer(on_activate_alt_menu);
     app.add_observer(on_remove_alt_menu);
     app.add_observer(on_remove_side_menu);
+    app.add_observer(on_select_drag_source_removed);
+    app.add_observer(on_select_drag_target_removed);
 }

@@ -6,7 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-reqwest = { version = "0.13.4", features = ["rustls", "query"], default-features = false}
+reqwest = { version = "0.13.5", features = ["rustls", "query"], default-features = false}
 uuid = "1.26.0"
 image = {version = "0.25.10", default-features = false, features = ["jpeg", "png"]}
 jzon = "0.12.5"

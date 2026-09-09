@@ -27,6 +27,8 @@ impl Repaint {
         Self { entity }
     }
 }
+pub const OUTLINES_START: usize = 3;
+pub const SELECT_DRAG_START: usize = 6;
 pub fn on_pile_added(
     on: On<Add, Pile>,
     piles: Query<&Pile>,

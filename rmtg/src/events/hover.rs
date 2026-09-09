@@ -1,4 +1,5 @@
 use crate::assets::AssetManager;
+use crate::events::repaint::{OUTLINES_START, SELECT_DRAG_START};
 use crate::focus::Hover;
 use crate::keybinds::Keybind;
 use crate::pile::Pile;
@@ -57,7 +58,7 @@ pub fn add_hover(
 ) {
     let childs = children.get(event.entity).unwrap();
     if is_pile.contains(event.entity) {
-        for &child in &childs[3..6] {
+        for &child in &childs[OUTLINES_START..SELECT_DRAG_START] {
             let mut mat = query.get_mut(child).unwrap();
             mat.0 = asset.outlines.players[0].clone();
         }
@@ -77,7 +78,7 @@ pub fn remove_hover(
 ) {
     let childs = children.get(event.entity).unwrap();
     if is_pile.contains(event.entity) {
-        for &child in &childs[3..6] {
+        for &child in &childs[OUTLINES_START..SELECT_DRAG_START] {
             let mut mat = query.get_mut(child).unwrap();
             mat.0 = asset.outlines.default.clone();
         }

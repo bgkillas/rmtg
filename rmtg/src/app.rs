@@ -13,6 +13,7 @@ use crate::events::scale::update_scale;
 use crate::events::scroll::{
     Scroll, ScrollToContentSize, scroll, scroll_to_content_size, send_scroll_events,
 };
+use crate::events::select_drag::{add_select_drags, update_select_drags};
 use crate::events::tap::trigger_tap;
 use crate::events::transform::trigger_transform;
 use crate::focus::update_focus;
@@ -184,6 +185,7 @@ pub fn app_run() -> AppExit {
                 (update_box_select, update_hover).chain(),
                 (
                     (do_roll, update_rolling).chain(),
+                    (add_select_drags, update_select_drags).chain(),
                     do_delete,
                     drag,
                     update_clone,
