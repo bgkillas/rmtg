@@ -1,6 +1,7 @@
 use crate::assets::AssetManager;
 use crate::events::repaint::GlobalIdMap;
 use crate::focus::Hover;
+use crate::keybinds::Keybind;
 use crate::pile::{ImageCard, PendingCards, Pile};
 use crate::spatial::Spatial;
 use bevy::input::ButtonInput;
@@ -33,7 +34,8 @@ pub struct AltMenu {
 }
 pub fn update_alt_menu(
     keys: Res<ButtonInput<KeyCode>>,
-    menu: Option<Single<(), With<AltMenu>>>,
+    keybinds: Res<ButtonInput<Keybind>>,
+    menu: Option<Single<&AltMenu>>,
     mut commands: Commands,
     has_image: Query<Option<&AltMenu>, Or<(With<ImageCard>, With<Pile>)>>,
     spatial: Spatial,
@@ -61,11 +63,16 @@ pub fn update_alt_menu(
             }
             return;
         }
-        if menu.is_some() {
+        if let Some(m) = menu {
             commands.trigger(RemoveAltMenu);
+            if m.entity != hit {
+                commands.trigger(ActivateAltMenu { entity: hit });
+            }
         } else {
             commands.trigger(ActivateAltMenu { entity: hit });
         }
+    } else if keybinds.just_pressed(Keybind::Menu) && menu.is_some() {
+        commands.trigger(RemoveAltMenu);
     }
 }
 #[query_fn]

@@ -57,10 +57,7 @@ impl EscMenu {
                     (button("Connect To Clipboard"), observe(on_connect)),
                     (button("Disconnect"), observe(on_disconnect)),
                     (button("Moxfield Deck List"), observe(on_moxfield_deck_list)),
-                    (
-                        button("Import Deck From Clipboard"),
-                        observe(on_deck_import)
-                    ),
+                    (button("Import Deck"), observe(on_deck_import)),
                     (button("Exit"), observe(on_exit)),
                 ]
             )],
