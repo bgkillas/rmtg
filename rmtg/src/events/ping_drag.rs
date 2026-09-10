@@ -25,23 +25,33 @@ pub struct DragObject;
 impl DragObject {
     pub fn bundle(assets: &AssetManager, from: Vec3, to: Vec3) -> impl Bundle {
         let orig = (from + to) / 2.0;
+        let length = (to - from).length();
+        let transform = Transform::from_translation(orig)
+            .with_scale(Vec3::new(CURSOR_SCALE, length, CURSOR_SCALE))
+            .looking_to(Vec3::Y, to - orig);
         (
             Self,
             Mesh3d(assets.meshes.cylinder.clone()),
             MeshMaterial3d(assets.outlines.players[0].clone()),
-            Transform::from_translation(orig)
-                .with_scale(Vec3::new(CURSOR_SCALE, (to - from).length(), CURSOR_SCALE))
-                .looking_to(Vec3::Y, to - orig),
+            transform,
             children![
                 (
                     Mesh3d(assets.meshes.sphere.clone()),
                     MeshMaterial3d(assets.outlines.players[0].clone()),
-                    Transform::from_translation(from - orig).with_scale(Vec3::splat(CURSOR_SCALE))
+                    Transform::from_translation(Vec3::new(0.0, -0.5, 0.0)).with_scale(Vec3::new(
+                        1.0,
+                        CURSOR_SCALE * transform.scale.y.recip(),
+                        1.0
+                    ))
                 ),
                 (
                     Mesh3d(assets.meshes.sphere.clone()),
                     MeshMaterial3d(assets.outlines.players[0].clone()),
-                    Transform::from_translation(to - orig).with_scale(Vec3::splat(CURSOR_SCALE))
+                    Transform::from_translation(Vec3::new(0.0, 0.5, 0.0)).with_scale(Vec3::new(
+                        1.0,
+                        CURSOR_SCALE * transform.scale.y.recip(),
+                        1.0
+                    ))
                 )
             ],
         )
@@ -72,8 +82,8 @@ pub fn move_drag_object(
     t0.translation = orig;
     t0.scale.y = (event.to - event.from).length();
     t0.look_to(Vec3::Y, event.to - orig);
-    t1.translation = event.from - orig;
-    t2.translation = event.to - orig;
+    t1.scale.y = CURSOR_SCALE * t0.scale.y.recip();
+    t2.scale.y = CURSOR_SCALE * t0.scale.y.recip();
 }
 #[query_fn]
 pub fn update_ping_drag(
