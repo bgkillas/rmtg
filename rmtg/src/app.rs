@@ -21,6 +21,7 @@ use crate::keybinds::{Keybind, KeybindsList, update_keybinds};
 use crate::mat::create_mats;
 use crate::net::{Msg, Peers, net_update, receive_message};
 use crate::pile::register_cards;
+use crate::ping_drag::update_ping_drag;
 use crate::spatial::{Cursor, update_cursor};
 use crate::startup::{spawn_objects, startup};
 use crate::ui::alt_menu::{RotateUi, on_ui_rotate, update_alt_menu};
@@ -180,6 +181,7 @@ pub fn app_run() -> AppExit {
             move_cards_out,
             move_cards_in,
             update_side_search,
+            update_ping_drag,
             (camera_rotation, camera_translation).chain(),
             (
                 (update_box_select, update_hover).chain(),

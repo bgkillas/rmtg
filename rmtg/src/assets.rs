@@ -14,10 +14,10 @@ use bevy::image::Image;
 use bevy::material::AlphaMode;
 use bevy::mesh::{
     CircularMeshUvMode, CircularSectorMeshBuilder, CylinderMeshBuilder, ExtrusionBuilder, Mesh,
-    MeshBuilder as _, RingMeshBuilder,
+    MeshBuilder as _, RingMeshBuilder, SphereKind, SphereMeshBuilder,
 };
 use bevy::pbr::StandardMaterial;
-use bevy::prelude::{CircularSector, Cylinder, Rectangle, Res, Resource, Ring, Sphere};
+use bevy::prelude::{CircularSector, Cylinder, Rectangle, Res, Resource, Ring};
 use enum_map::EnumMap;
 use importer::CARD_CORNER_RADIUS;
 use importer::card::Handles;
@@ -40,6 +40,7 @@ pub struct OutlineMaterials {
 pub struct ShapeMeshes {
     pub map: EnumMap<Shape, (Handle<Mesh>, Handle<Mesh>)>,
     pub sphere: Handle<Mesh>,
+    pub cylinder: Handle<Mesh>,
     pub material: Handle<StandardMaterial>,
 }
 #[derive(Resource)]
@@ -57,7 +58,11 @@ impl ShapeMeshes {
     pub fn new(meshes: &mut Assets<Mesh>, materials: &mut Assets<StandardMaterial>) -> Self {
         Self {
             map: EnumMap::from_fn(|e: Shape| (meshes.add(e.mesh()), meshes.add(e.outline_mesh()))),
-            sphere: meshes.add(Sphere::new(1.0)),
+            sphere: meshes.add(SphereMeshBuilder::new(
+                1.0,
+                SphereKind::Ico { subdivisions: 5 },
+            )),
+            cylinder: meshes.add(CylinderMeshBuilder::new(1.0, 1.0, 32)),
             material: materials.add(StandardMaterial {
                 base_color: Color::WHITE,
                 unlit: true,
