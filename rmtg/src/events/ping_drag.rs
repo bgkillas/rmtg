@@ -1,7 +1,6 @@
 use crate::CARD_THICKNESS;
 use crate::assets::AssetManager;
 use crate::camera_indicator::CURSOR_SCALE;
-use crate::events::select_drag::MaybeDragSource;
 use crate::keybinds::Keybind;
 use crate::spatial::Spatial;
 use bevy::input::ButtonInput;
@@ -96,7 +95,7 @@ pub fn update_ping_drag(
     mut commands: Commands,
     assets: AssetManager,
     spatial: Spatial,
-    ping_drag: Option<Single<(Entity, &PingDrag, Option<&MaybeDragSource>)>>,
+    ping_drag: Option<Single<(Entity, &PingDrag)>>,
 ) {
     if keybinds.just_pressed(Keybind::Ping) {
         let Some((_, from, _)) = spatial.ray() else {
@@ -104,9 +103,7 @@ pub fn update_ping_drag(
         };
         commands.spawn((PingDrag { from }, DragObject::bundle(&assets, from, from)));
     } else if keybinds.just_released(Keybind::Ping) {
-        if let Some(ping) = ping_drag
-            && ping.maybe_drag_source.is_none()
-        {
+        if let Some(ping) = ping_drag {
             commands.entity(ping.entity).despawn();
         }
     } else if let Some(ping) = ping_drag {
