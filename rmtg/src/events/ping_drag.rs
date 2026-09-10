@@ -1,9 +1,10 @@
+use crate::CARD_THICKNESS;
 use crate::assets::AssetManager;
 use crate::camera_indicator::CURSOR_SCALE;
 use crate::keybinds::Keybind;
 use crate::spatial::Spatial;
 use bevy::input::ButtonInput;
-use bevy::math::Vec3;
+use bevy::math::{Quat, Vec3};
 use bevy::mesh::Mesh3d;
 use bevy::pbr::MeshMaterial3d;
 use bevy::prelude::Transform;
@@ -25,10 +26,13 @@ pub struct DragObject;
 impl DragObject {
     pub fn bundle(assets: &AssetManager, from: Vec3, to: Vec3) -> impl Bundle {
         let orig = (from + to) / 2.0;
-        let length = (to - from).length();
+        let length = (to - from).length().max(CARD_THICKNESS / 64.0);
         let transform = Transform::from_translation(orig)
             .with_scale(Vec3::new(CURSOR_SCALE, length, CURSOR_SCALE))
-            .looking_to(Vec3::Y, to - orig);
+            .with_rotation(Quat::from_rotation_arc_colinear(
+                Vec3::Y,
+                (to - orig).normalize(),
+            ));
         (
             Self,
             Mesh3d(assets.meshes.cylinder.clone()),
@@ -80,8 +84,8 @@ pub fn move_drag_object(
         .unwrap();
     let orig = (event.from + event.to) / 2.0;
     t0.translation = orig;
-    t0.scale.y = (event.to - event.from).length();
-    t0.look_to(Vec3::Y, event.to - orig);
+    t0.scale.y = (event.to - event.from).length().max(CARD_THICKNESS / 64.0);
+    t0.rotation = Quat::from_rotation_arc_colinear(Vec3::Y, (event.to - orig).normalize());
     t1.scale.y = CURSOR_SCALE * t0.scale.y.recip();
     t2.scale.y = CURSOR_SCALE * t0.scale.y.recip();
 }
