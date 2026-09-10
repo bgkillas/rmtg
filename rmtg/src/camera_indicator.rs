@@ -16,6 +16,7 @@ use bevy_query_fn_macro::query_fn;
 pub struct CameraIndicator;
 #[derive(Component)]
 pub struct CursorIndicator;
+pub const CURSOR_SCALE: f32 = 4.0 * CARD_THICKNESS;
 impl CameraIndicator {
     pub fn bundle(assets: &AssetManager, peer: EndpointId, pos: Vec3) -> impl Bundle {
         (
@@ -32,7 +33,7 @@ impl CursorIndicator {
         (
             Self,
             Endpoint::from(peer),
-            Transform::from_translation(pos).with_scale(Vec3::splat(4.0 * CARD_THICKNESS)),
+            Transform::from_translation(pos).with_scale(Vec3::splat(CURSOR_SCALE)),
             Mesh3d(assets.meshes.sphere.clone()),
             MeshMaterial3d(assets.outlines.players[0].clone()),
         )

@@ -6,6 +6,7 @@ use crate::events::gravity::on_change_gravity;
 use crate::events::hover::{add_hover, remove_hover, spawn_box_select, update_box_select_mesh};
 use crate::events::move_up::move_up;
 use crate::events::pile_merge::{on_pile_merge, trigger_pile_merge};
+use crate::events::ping_drag::move_drag_object;
 use crate::events::repaint::{on_pile_added, on_pile_removed, on_repaint};
 use crate::events::roll::on_roll;
 use crate::events::scale::on_scale;
@@ -31,6 +32,7 @@ pub mod gravity;
 pub mod hover;
 pub mod move_up;
 pub mod pile_merge;
+pub mod ping_drag;
 pub mod repaint;
 pub mod roll;
 pub mod scale;
@@ -81,4 +83,5 @@ pub fn add_events(app: &mut App) {
     app.add_observer(on_remove_side_menu);
     app.add_observer(on_select_drag_source_removed);
     app.add_observer(on_select_drag_target_removed);
+    app.add_observer(move_drag_object);
 }

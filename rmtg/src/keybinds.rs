@@ -65,6 +65,7 @@ impl Keybinds<'_, '_> {
 #[derive(Enum, EnumSetType, Debug, Hash)]
 pub enum Keybind {
     Select,
+    Ping,
     HoldSelect,
     SelectDrag,
     Shuffle,
@@ -100,6 +101,7 @@ impl Default for KeybindsList {
         let shift = Modifier::Shift;
         let map = enum_map! {
             Keybind::Select =>      Bind::new(enum_set!(),              Menu::view_world(),         true,  true,  MouseButton::Left),
+            Keybind::Ping =>        Bind::new(enum_set!(),              Menu::view_world(),         true,  true,  MouseButton::Middle),
             Keybind::HoldSelect =>  Bind::new(enum_set!(ctrl),          Menu::view_world(),         true,  true,  MouseButton::Left),
             Keybind::SelectDrag =>  Bind::new(enum_set!(ctrl | shift),  Menu::view_world(),         true,  true,  MouseButton::Left),
             Keybind::Rotate =>      Bind::new(enum_set!(),              Menu::view_world(),         false, true,  MouseButton::Right),

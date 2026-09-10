@@ -20,7 +20,6 @@ pub mod mat;
 pub mod net;
 pub mod physics;
 pub mod pile;
-pub mod ping_drag;
 pub mod shapes;
 pub mod spatial;
 pub mod startup;
