@@ -34,14 +34,32 @@ pub struct SelectDragTarget {
     pub source: Entity,
     pub entity: Entity,
 }
+#[derive(Component)]
+pub struct MaybeDragSource {
+    pub source: Entity,
+}
+#[query_fn]
+pub fn on_select_drag_removed(
+    event: On<Remove, SelectDrag>,
+    sources: Query<&SelectDrag>,
+    mut commands: Commands,
+) {
+    let Ok(source) = sources.get(event.entity) else {
+        return;
+    };
+    commands.entity(source.source).try_despawn();
+    commands.entity(source.target).try_despawn();
+}
 #[query_fn]
 pub fn on_select_drag_source_removed(
     event: On<Remove, SelectDragSource>,
     sources: Query<&SelectDragSource>,
     mut commands: Commands,
 ) {
-    let source = sources.get(event.entity).unwrap();
-    commands.entity(source.entity).despawn();
+    let Ok(source) = sources.get(event.entity) else {
+        return;
+    };
+    commands.entity(source.entity).try_despawn();
     commands.entity(source.target).try_despawn();
 }
 #[query_fn]
@@ -50,8 +68,10 @@ pub fn on_select_drag_target_removed(
     targets: Query<&SelectDragTarget>,
     mut commands: Commands,
 ) {
-    let target = targets.get(event.entity).unwrap();
-    commands.entity(target.entity).despawn();
+    let Ok(target) = targets.get(event.entity) else {
+        return;
+    };
+    commands.entity(target.entity).try_despawn();
     commands.entity(target.source).try_despawn();
 }
 #[query_fn]
@@ -78,24 +98,37 @@ pub fn add_select_drags(
     spatial: Spatial,
     transforms: Query<&Transform, With<Hoverable>>,
     assets: AssetManager,
-    ping_drag: Option<Single<Entity, With<PingDrag>>>,
+    ping_drag: Option<Single<(Entity, &MaybeDragSource), With<PingDrag>>>,
 ) {
     let Some((hit, target, _)) = spatial.ray() else {
         return;
     };
-    let Ok(transform) = transforms.get(hit.entity) else {
-        return;
-    };
     if keybinds.just_pressed(Keybind::SelectDrag) {
+        let Ok(transform) = transforms.get(hit.entity) else {
+            return;
+        };
         commands.spawn((
             PingDrag {
                 from: transform.translation,
             },
+            MaybeDragSource { source: hit.entity },
             DragObject::bundle(&assets, transform.translation, target),
         ));
     } else if keybinds.just_released(Keybind::SelectDrag)
         && let Some(drag) = ping_drag
     {
-        commands.entity(*drag).despawn();
+        commands.entity(drag.entity).despawn();
+        let Ok(transform) = transforms.get(hit.entity) else {
+            return;
+        };
+        if drag.maybe_drag_source.source != hit.entity {
+            commands.spawn((
+                SelectDrag {
+                    source: drag.maybe_drag_source.source,
+                    target: hit.entity,
+                },
+                DragObject::bundle(&assets, transform.translation, target),
+            ));
+        }
     }
 }
