@@ -1,5 +1,6 @@
 use crate::focus::Focus;
 use crate::keybinds::Keybind;
+use crate::mat::{MAT_X, MAT_Z};
 use crate::net::{Peer, Peers};
 use crate::spatial::Spatial;
 use crate::ui::menu::Menu;
@@ -96,12 +97,8 @@ pub fn default_cam_pos(n: Peer) -> Transform {
         2 => (true, true),
         _ => (false, true),
     };
-    let x = if rev_x {
-        -MAT_WIDTH / 2.0
-    } else {
-        MAT_WIDTH / 2.0
-    };
-    let z = if rev_z { -MAT_WIDTH } else { MAT_WIDTH };
+    let x = if rev_x { -MAT_X } else { MAT_X };
+    let z = if rev_z { -MAT_Z } else { MAT_Z };
     Transform::from_xyz(x, START_Y, z).looking_at(Vec3::new(x, 0.0, 0.0), Vec3::Y)
 }
 pub fn camera_rotation(

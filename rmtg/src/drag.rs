@@ -1,11 +1,11 @@
-use crate::CARD_WIDTH;
 use crate::events::gravity::NewGravity;
 use crate::events::hover::{BoxSelect, HoveredObject};
 use crate::keybinds::Keybind;
 use crate::physics::{GRAVITY, LIN_DAMPING};
 use crate::spatial::Spatial;
 use crate::startup::wall_aabb;
-use avian3d::prelude::{LinearDamping, LinearVelocity, SleepingDisabled};
+use crate::{CARD_THICKNESS, CARD_WIDTH};
+use avian3d::prelude::{ColliderDisabled, LinearDamping, LinearVelocity, SleepingDisabled};
 use bevy::ecs::entity::EntityHash;
 use bevy::input::ButtonInput;
 use bevy::math::{Dir3, Vec3};
@@ -51,7 +51,7 @@ pub fn drag(
                 commands.trigger(NewGravity::new(ent, GRAVITY));
                 commands
                     .entity(ent)
-                    .remove::<TargetPosition>()
+                    .remove::<(TargetPosition, SleepingDisabled, ColliderDisabled)>()
                     .insert(LinearDamping(LIN_DAMPING));
             }
         }
@@ -66,7 +66,7 @@ pub fn drag(
             commands.trigger(NewGravity::new(ent, GRAVITY));
             commands
                 .entity(ent)
-                .remove::<TargetPosition>()
+                .remove::<(TargetPosition, SleepingDisabled, ColliderDisabled)>()
                 .insert(LinearDamping(LIN_DAMPING));
         }
         return;
@@ -93,11 +93,15 @@ pub fn drag(
                     .entity(hovered.entity)
                     .insert(TargetPosition { pos })
                     .insert(LinearDamping(0.0))
+                    .insert(ColliderDisabled)
                     .insert(SleepingDisabled);
                 pos
             };
             let delta =
                 Vec3::from(wall_aabb().closest_point(target)) - hovered.transform.translation;
+            if delta.y <= CARD_THICKNESS / 8.0 {
+                commands.entity(hovered.entity).remove::<ColliderDisabled>();
+            }
             hovered.linear_velocity.0 = delta / (time.delta_secs() * 4.0);
         }
         *last = pos;
@@ -112,7 +116,7 @@ pub fn drag(
             commands.trigger(NewGravity::new(ent, GRAVITY));
             commands
                 .entity(ent)
-                .remove::<(TargetPosition, SleepingDisabled)>()
+                .remove::<(TargetPosition, SleepingDisabled, ColliderDisabled)>()
                 .insert(LinearDamping(LIN_DAMPING));
         }
     }
