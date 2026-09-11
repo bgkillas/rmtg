@@ -2,7 +2,9 @@ use crate::events::hover::HoveredObject;
 use crate::keybinds::Keybind;
 use crate::pile::{FlippedState, Pile, TapState};
 use crate::ui::alt_menu::{AltMenu, RotateUi};
+use avian3d::parry::glamx::Vec3;
 use bevy::input::ButtonInput;
+use bevy::math::Quat;
 use bevy::prelude::Transform;
 use bevy_ecs::change_detection::Res;
 use bevy_ecs::entity::Entity;
@@ -15,6 +17,18 @@ use std::f32::consts::PI;
 pub struct Tapped {
     pub entity: Entity,
     pub state: TapState,
+}
+impl TapState {
+    pub fn set_state(self, rot: &mut Quat) {
+        let forward = *rot * Vec3::Z;
+        let delta = if forward.x.is_sign_positive() {
+            1.0 - forward.z
+        } else {
+            forward.z - 1.0
+        }
+        .round();
+        *rot = Quat::from_rotation_y(delta * PI / 2.0);
+    }
 }
 #[query_fn]
 pub fn trigger_tap(
@@ -48,6 +62,7 @@ pub fn trigger_tap(
             _ => continue,
         }
         let state = TapState::from(obj.transform.rotation);
+        state.set_state(&mut obj.transform.rotation);
         commands.trigger(Tapped {
             entity: obj.entity,
             state,
