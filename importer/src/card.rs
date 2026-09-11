@@ -15,6 +15,7 @@ use std::mem;
 use std::num::NonZero;
 use std::ops::{Deref, DerefMut};
 use std::slice::{Iter, IterMut};
+use std::str::FromStr;
 use std::sync::Arc;
 use uuid::Uuid;
 rules::generate_types!();
@@ -112,6 +113,8 @@ pub struct CardInfo {
     pub mana_cost: Cost,
     pub type_line: Types,
     pub oracle_text: Box<str>,
+    #[bitcode(with = "DataCoder<EnumSet<KeyWord>>")]
+    pub keywords: EnumSet<KeyWord>,
     pub colors: Colors,
     pub color_identity: Colors,
     pub power: Option<u8>,
@@ -201,8 +204,8 @@ pub enum SearchKey {
     Toughness,
     Loyalty,
 }
-#[derive(Enum, Debug, Clone, Copy)]
-pub enum Counter {
+#[derive(Enum, EnumSetType, Debug)]
+pub enum KeyWord {
     Flying,
     FirstStrike,
     DoubleStrike,
@@ -218,6 +221,10 @@ pub enum Counter {
     Shadow,
     Trample,
     Vigilance,
+}
+#[derive(Enum, Debug, Clone, Copy)]
+pub enum Counter {
+    KeyWord(KeyWord),
     Shield,
     Stun,
     Finality,
@@ -1080,5 +1087,28 @@ impl Deref for SubCard {
 impl DerefMut for SubCard {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
+    }
+}
+impl FromStr for KeyWord {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "Flying" => Self::Flying,
+            "First strike" => Self::FirstStrike,
+            "Double strike" => Self::DoubleStrike,
+            "Deathtouch" => Self::Deathtouch,
+            "Decayed" => Self::Decayed,
+            "Exalted" => Self::Exalted,
+            "Haste" => Self::Haste,
+            "Hexproof" => Self::Hexproof,
+            "Indestructible" => Self::Indestructible,
+            "Lifelink" => Self::Lifelink,
+            "Menace" => Self::Menace,
+            "Reach" => Self::Reach,
+            "Shadow" => Self::Shadow,
+            "Trample" => Self::Trample,
+            "Vigilance" => Self::Vigilance,
+            _ => return Err(()),
+        })
     }
 }

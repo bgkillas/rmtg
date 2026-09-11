@@ -1,4 +1,4 @@
-use crate::card::{Color, Counter, MainType, SubType, SuperType};
+use crate::card::{Color, Counter, KeyWord, MainType, SubType, SuperType};
 use bevy::math::Vec3;
 use bitcode::{Decode, Encode};
 use core::direct_const_arg;
@@ -59,6 +59,7 @@ coder!(EnumSet<SuperType>);
 coder!(EnumSet<MainType>);
 coder!(EnumSet<SubType>);
 coder!(EnumSet<Color>);
+coder!(EnumSet<KeyWord>);
 coder!(EnumMap<Counter, Option<NonZero<u32>>>);
 coder!(Vec3);
 coder!(Uuid);

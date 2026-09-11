@@ -7,6 +7,7 @@ use crate::image::parse_bytes;
 use crate::warn_if;
 use bevy::image::Image;
 use bitcode::{self, Decode, Encode};
+use enumset::EnumSet;
 use futures::future::join_all;
 use jzon::{JsonValue, parse};
 use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
@@ -747,12 +748,19 @@ impl SubCard {
                 layout = Layout::Side;
             }
             let has_unique_face = face["image_uris"].is_array();
+            let mut keywords = EnumSet::new();
+            for keyword_str in get(face, json, "keywords").as_array()? {
+                if let Ok(keyword) = keyword_str.as_str()?.parse() {
+                    keywords.insert(keyword);
+                }
+            }
             Some(CardInfo {
                 oracle_id,
                 name: name.into_boxed_str(),
                 mana_cost,
                 type_line,
                 oracle_text: oracle_text.into_boxed_str(),
+                keywords,
                 colors,
                 color_identity,
                 power,

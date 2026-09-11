@@ -31,6 +31,7 @@ pub mod flip;
 pub mod gravity;
 pub mod hand;
 pub mod hover;
+pub mod life_counter;
 pub mod move_up;
 pub mod pile_merge;
 pub mod ping_drag;
