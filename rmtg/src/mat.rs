@@ -10,15 +10,13 @@ use bevy::prelude::{Commands, Component, InheritedVisibility, Rectangle, Transfo
 use bevy_ecs::system::ResMut;
 use std::f32::consts::PI;
 #[derive(Component)]
-pub struct PlayMat {
-    pub player: Peer,
-}
+pub struct PlayMat;
 pub const MAT_DELTA_X: f32 = CARD_HEIGHT / 2.0 + MAT_BAR;
 pub const MAT_DELTA_Z: f32 = CARD_HEIGHT / 2.0 + MAT_BAR;
 pub const MAT_X: f32 = MAT_WIDTH / 2.0 + MAT_DELTA_X;
 pub const MAT_Z: f32 = MAT_HEIGHT / 2.0 + MAT_DELTA_Z;
 pub const MAT_EDGE_X: f32 = MAT_WIDTH + MAT_DELTA_X;
-pub const MAT_EDGE_Y: f32 = MAT_HEIGHT + MAT_DELTA_Z;
+pub const MAT_EDGE_Z: f32 = MAT_HEIGHT + MAT_DELTA_Z;
 pub fn create_mats(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -46,7 +44,7 @@ pub fn create_mats(
             transform,
             right,
             PLAYER[i],
-            Peer::new(i as u64),
+            Peer::new(i),
         );
     }
 }
@@ -68,7 +66,7 @@ fn make_mat(
         Transform::from_xyz(if right { x } else { -x }, y, z)
     };
     commands
-        .spawn((transform, PlayMat { player }, InheritedVisibility::VISIBLE))
+        .spawn((transform, PlayMat, player, InheritedVisibility::VISIBLE))
         .with_children(|p| {
             p.spawn((
                 Mesh3d(meshes.add(Rectangle::new(MAT_WIDTH, MAT_BAR))),

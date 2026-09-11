@@ -24,6 +24,9 @@ pub struct PingDrag {
 #[derive(Component)]
 pub struct DragObject;
 impl DragObject {
+    pub fn empty(assets: &AssetManager) -> impl Bundle {
+        Self::bundle(assets, Vec3::splat(0.0), Vec3::splat(0.0))
+    }
     pub fn bundle(assets: &AssetManager, from: Vec3, to: Vec3) -> impl Bundle {
         let orig = (from + to) / 2.0;
         let length = (to - from).length().max(CARD_THICKNESS / 64.0);
@@ -101,7 +104,7 @@ pub fn update_ping_drag(
         let Some((_, from, _)) = spatial.ray() else {
             return;
         };
-        commands.spawn((PingDrag { from }, DragObject::bundle(&assets, from, from)));
+        commands.spawn((PingDrag { from }, DragObject::empty(&assets)));
     } else if keybinds.just_released(Keybind::Ping) {
         if let Some(ping) = ping_drag {
             commands.entity(ping.entity).despawn();

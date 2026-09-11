@@ -28,6 +28,7 @@ pub mod clone;
 pub mod delete;
 pub mod flip;
 pub mod gravity;
+pub mod hand;
 pub mod hover;
 pub mod move_up;
 pub mod pile_merge;

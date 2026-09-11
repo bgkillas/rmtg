@@ -1,5 +1,5 @@
 use crate::assets::AssetManager;
-use crate::events::hover::Hoverable;
+use crate::events::hover::{Hoverable, HoveredObject};
 use crate::events::ping_drag::{DragObject, MoveDragObject};
 use crate::keybinds::Keybind;
 use crate::spatial::Spatial;
@@ -7,7 +7,6 @@ use bevy::input::ButtonInput;
 use bevy::prelude::Transform;
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
-use bevy_ecs::prelude::Single;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Commands, Query, Res};
 use bevy_query_fn_macro::query_fn;
@@ -58,68 +57,61 @@ pub struct TempSelect;
 pub fn add_select_drags(
     mut commands: Commands,
     keybinds: Res<ButtonInput<Keybind>>,
-    spatial: Spatial,
-    transforms: Query<&Transform, With<Hoverable>>,
+    hovered: Query<Entity, With<HoveredObject>>,
+    can_select: Query<(), With<Hoverable>>,
     assets: AssetManager,
-    ping_drag: Option<Single<(Entity, &MaybeDragSource)>>,
-    select_drag: Option<Single<(Entity, &SelectDrag), With<TempSelect>>>,
+    maybe_drags: Query<(Entity, &MaybeDragSource)>,
+    select_drags: Query<(Entity, &SelectDrag), With<TempSelect>>,
+    spatial: Spatial,
 ) {
     if keybinds.just_pressed(Keybind::SelectDrag) {
-        let Some((hit, target, _)) = spatial.ray() else {
-            return;
-        };
-        let Ok(transform) = transforms.get(hit.entity) else {
-            return;
-        };
-        commands.spawn((
-            MaybeDragSource { source: hit.entity },
-            DragObject::bundle(&assets, transform.translation, target),
-        ));
-    } else if keybinds.just_released(Keybind::SelectDrag) {
-        if let Some(ping) = ping_drag {
-            commands.entity(ping.entity).despawn();
-        }
-        if let Some(temp) = select_drag {
-            commands.entity(temp.entity).remove::<TempSelect>();
-        }
-    } else {
-        let Some((hit, target, _)) = spatial.ray() else {
-            return;
-        };
-        if let Some(temp) = select_drag {
-            if hit.entity == temp.select_drag.target {
+        for entity in hovered {
+            if !can_select.contains(entity) {
                 return;
             }
-            let Ok(from) = transforms.get(temp.select_drag.source) else {
-                return;
-            };
+            commands.spawn((
+                MaybeDragSource { source: entity },
+                DragObject::empty(&assets),
+            ));
+        }
+    } else if keybinds.just_released(Keybind::SelectDrag) {
+        for ping in maybe_drags {
+            commands.entity(ping.entity).despawn();
+        }
+        for temp in select_drags {
+            commands.entity(temp.entity).remove::<TempSelect>();
+        }
+    } else if let Some((hit, _, _)) = spatial.ray() {
+        for temp in select_drags {
+            if hit.entity == temp.select_drag.target {
+                continue;
+            }
             commands.entity(temp.entity).despawn();
-            if let Ok(transform) = transforms.get(hit.entity)
-                && hit.entity != temp.select_drag.target
-            {
+            if can_select.contains(hit.entity) {
                 commands.spawn((
                     SelectDrag {
                         source: temp.select_drag.source,
                         target: hit.entity,
                     },
                     TempSelect,
-                    DragObject::bundle(&assets, from.translation, transform.translation),
+                    DragObject::empty(&assets),
                 ));
             } else {
                 commands.spawn((
                     MaybeDragSource {
                         source: temp.select_drag.source,
                     },
-                    DragObject::bundle(&assets, from.translation, target),
+                    DragObject::empty(&assets),
                 ));
             }
-        } else if let Some(drag) = ping_drag
-            && let Ok(from) = transforms.get(drag.maybe_drag_source.source)
-            && drag.maybe_drag_source.source != hit.entity
-        {
-            let Ok(transform) = transforms.get(hit.entity) else {
-                return;
-            };
+        }
+        if !can_select.contains(hit.entity) {
+            return;
+        }
+        for drag in maybe_drags {
+            if drag.maybe_drag_source.source == hit.entity {
+                continue;
+            }
             commands.entity(drag.entity).despawn();
             commands.spawn((
                 SelectDrag {
@@ -127,7 +119,7 @@ pub fn add_select_drags(
                     target: hit.entity,
                 },
                 TempSelect,
-                DragObject::bundle(&assets, from.translation, transform.translation),
+                DragObject::empty(&assets),
             ));
         }
     }

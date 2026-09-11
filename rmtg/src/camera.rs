@@ -91,11 +91,11 @@ pub fn camera_translation(
 }
 #[must_use]
 pub fn default_cam_pos(n: Peer) -> Transform {
-    let (rev_x, rev_z) = match n.id {
-        0 => (false, false),
-        1 => (true, false),
-        2 => (true, true),
-        _ => (false, true),
+    let (rev_x, rev_z) = match n {
+        Peer::Zero => (false, false),
+        Peer::One => (true, false),
+        Peer::Two => (true, true),
+        Peer::Three => (false, true),
     };
     let x = if rev_x { -MAT_X } else { MAT_X };
     let z = if rev_z { -MAT_Z } else { MAT_Z };

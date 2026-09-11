@@ -2,6 +2,7 @@ use crate::app::Client;
 use crate::events::move_up::MoveUp;
 use crate::events::scroll::{Scroll, Scrollable};
 use crate::mat::PlayMat;
+use crate::net::Peer;
 use crate::pile::Pile;
 use crate::ui::esc_menu::button;
 use crate::ui::menu::{Menu, SetMenu};
@@ -206,11 +207,11 @@ fn on_deck_get(
 pub fn spawn_boards(
     boards: On<Boards>,
     mut commands: Commands,
-    playmats: Query<(&PlayMat, &Transform)>,
+    playmats: Query<(&Peer, &Transform), With<PlayMat>>,
 ) {
     let mut transform = *playmats
         .iter()
-        .find(|p| p.play_mat.player.id == 0)
+        .find(|p| *p.peer == Peer::Zero)
         .unwrap()
         .transform;
     let owned = boards.clone();

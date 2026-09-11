@@ -62,14 +62,23 @@ impl From<EndpointId> for Endpoint {
         Self { peer }
     }
 }
-#[derive(Component, Default, Clone, Copy, Encode, Decode)]
-pub struct Peer {
-    pub id: u64,
+#[derive(Component, Default, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum Peer {
+    #[default]
+    Zero,
+    One,
+    Two,
+    Three,
 }
 impl Peer {
-    #[must_use]
-    pub fn new(id: u64) -> Self {
-        Peer { id }
+    pub fn new(id: usize) -> Self {
+        match id {
+            0 => Peer::Zero,
+            1 => Peer::One,
+            2 => Peer::Two,
+            3 => Peer::Three,
+            _ => unreachable!(),
+        }
     }
 }
 #[derive(Resource, Default)]
