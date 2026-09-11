@@ -13,16 +13,22 @@ use std::f32::consts::PI;
 pub struct PlayMat {
     pub player: Peer,
 }
+pub const MAT_DELTA_X: f32 = CARD_HEIGHT / 2.0 + MAT_BAR;
+pub const MAT_DELTA_Z: f32 = CARD_HEIGHT / 2.0 + MAT_BAR;
+pub const MAT_X: f32 = MAT_WIDTH / 2.0 + MAT_DELTA_X;
+pub const MAT_Z: f32 = MAT_HEIGHT / 2.0 + MAT_DELTA_Z;
+pub const MAT_EDGE_X: f32 = MAT_WIDTH + MAT_DELTA_X;
+pub const MAT_EDGE_Y: f32 = MAT_HEIGHT + MAT_DELTA_Z;
 pub fn create_mats(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut commands: Commands,
 ) {
-    let player0 = Transform::from_xyz(MAT_WIDTH / 2.0, -CARD_THICKNESS, MAT_HEIGHT / 2.0);
-    let player1 = Transform::from_xyz(-MAT_WIDTH / 2.0, -CARD_THICKNESS, MAT_HEIGHT / 2.0);
-    let mut player2 = Transform::from_xyz(-MAT_WIDTH / 2.0, -CARD_THICKNESS, -MAT_HEIGHT / 2.0);
+    let player0 = Transform::from_xyz(MAT_X, -CARD_THICKNESS, MAT_Z);
+    let player1 = Transform::from_xyz(-MAT_X, -CARD_THICKNESS, MAT_Z);
+    let mut player2 = Transform::from_xyz(-MAT_X, -CARD_THICKNESS, -MAT_Z);
     player2.rotate_y(PI);
-    let mut player3 = Transform::from_xyz(MAT_WIDTH / 2.0, -CARD_THICKNESS, -MAT_HEIGHT / 2.0);
+    let mut player3 = Transform::from_xyz(MAT_X, -CARD_THICKNESS, -MAT_Z);
     player3.rotate_y(PI);
     for (i, (transform, right)) in [
         (player0, true),

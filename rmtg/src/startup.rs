@@ -1,5 +1,6 @@
 use crate::assets::{AssetManager, CardBase, OutlineMaterials, ShapeMeshes, TextMesh};
 use crate::camera::{CameraVelocity, default_cam_pos};
+use crate::mat::{MAT_DELTA_Z, MAT_EDGE_X};
 use crate::net::Peer;
 use crate::physics::WorldLayer;
 use crate::pile::Pile;
@@ -18,8 +19,7 @@ use crate::ui::moxfield::MoxfieldMenu;
 use crate::ui::side::SideMenu;
 use crate::ui::tasks::TasksCounter;
 use crate::{
-    CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT, MAT_WIDTH, T, W,
-    WALL_COLOR,
+    CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH, CEILING_COLOR, FLOOR_COLOR, FONT, T, W, WALL_COLOR,
 };
 use avian3d::prelude::{Collider, CollisionLayers, LayerMask, RigidBody};
 use bevy::asset::{AssetId, Assets};
@@ -104,45 +104,52 @@ pub fn spawn_objects(
         asset.card.back.clone(),
     ));
     commands.spawn((
-        Transform::from_xyz(MAT_WIDTH + CARD_WIDTH, CARD_THICKNESS, 0.0),
+        Transform::from_xyz(MAT_EDGE_X + CARD_WIDTH, CARD_THICKNESS, 0.0),
         Pile::from(card).bundle(),
     ));
-    let x_unit = MAT_WIDTH + CARD_WIDTH;
-    let z_unit = CARD_HEIGHT;
+    let x_unit = MAT_EDGE_X + CARD_WIDTH;
+    let z_start = MAT_DELTA_Z + CARD_HEIGHT;
+    let z_delta = CARD_HEIGHT / 2.0;
     for i in 0..4 {
-        let (rev_x, rev_z) = match i {
-            0 => (x_unit, z_unit),
-            1 => (-x_unit, z_unit),
-            2 => (-x_unit, -z_unit),
-            _ => (x_unit, -z_unit),
+        let (rev_x, mut rev_z, del) = match i {
+            0 => (x_unit, z_start, z_delta),
+            1 => (-x_unit, z_start, z_delta),
+            2 => (-x_unit, -z_start, -z_delta),
+            _ => (x_unit, -z_start, -z_delta),
         };
         Icosahedron::insert_dice(
             &asset,
             commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
         );
+        rev_z += del;
         Dodecahedron::insert_dice(
             &asset,
-            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 1.5)),
+            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
         );
+        rev_z += del;
         Trapezohedron::insert_dice(
             &asset,
-            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 2.0)),
+            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
         );
+        rev_z += del;
         Octahedron::insert_dice(
             &asset,
-            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 2.5)),
+            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
         );
+        rev_z += del;
         Cube::insert_dice(
             &asset,
-            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 3.0)),
+            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
         );
+        rev_z += del;
         Tetrahedron::insert_dice(
             &asset,
-            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 3.5)),
+            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
         );
+        rev_z += del;
         Coin::insert_dice(
             &asset,
-            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z * 4.0)),
+            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
         );
     }
     let mesh = meshes.add(Cuboid::new(2.0 * W, T, 2.0 * W));
