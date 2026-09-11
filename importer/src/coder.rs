@@ -1,9 +1,11 @@
-use crate::card::{Color, MainType, SubType, SuperType};
+use crate::card::{Color, Counter, MainType, SubType, SuperType};
 use bevy::math::Vec3;
 use bitcode::{Decode, Encode};
 use core::direct_const_arg;
+use enum_map::EnumMap;
 use enumset::EnumSet;
 use std::mem;
+use std::num::NonZero;
 use uuid::Uuid;
 pub trait FixedSize: Sized + Copy {
     type const SIZE: usize;
@@ -30,10 +32,34 @@ macro_rules! coder {
         }
     };
 }
+#[derive(Encode, Decode)]
+#[repr(transparent)]
+pub struct DataCoderBox<T: FixedSize> {
+    pub data: [u8; direct_const_arg!(T::SIZE)],
+}
+#[expect(unused)]
+macro_rules! coder_box {
+    ($ty:ty) => {
+        impl FixedSize for $ty {
+            type const SIZE: usize = const { size_of::<$ty>() };
+        }
+        impl From<&Box<$ty>> for DataCoderBox<$ty> {
+            fn from(value: &Box<$ty>) -> Self {
+                unsafe { mem::transmute_copy(value) }
+            }
+        }
+        impl From<DataCoderBox<$ty>> for Box<$ty> {
+            fn from(value: DataCoderBox<$ty>) -> Self {
+                Box::new(unsafe { mem::transmute::<DataCoderBox<$ty>, $ty>(value) })
+            }
+        }
+    };
+}
 coder!(EnumSet<SuperType>);
 coder!(EnumSet<MainType>);
 coder!(EnumSet<SubType>);
 coder!(EnumSet<Color>);
+coder!(EnumMap<Counter, Option<NonZero<u32>>>);
 coder!(Vec3);
 coder!(Uuid);
 #[derive(Encode, Decode)]

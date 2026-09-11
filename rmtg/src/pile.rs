@@ -18,7 +18,7 @@ use bevy_p2p::runtime::Runtime;
 use bevy_query_fn_macro::query_fn;
 use bitcode::{Decode, Encode};
 use importer::bitcode;
-use importer::card::{Card, CardAttributes, CardIter, CardIterMut, Handles, MaybeHandles, SubCard};
+use importer::card::{Card, CardIter, CardIterMut, Handles, MaybeHandles, SubCard};
 use importer::scryfall::{CACHE, IMAGES_IN_PROGRESS, IMAGES_TO_PROCESS, Quality};
 use importer::uuid::Uuid;
 use itertools::Either;
@@ -73,6 +73,7 @@ impl From<Quat> for TapState {
         }
     }
 }
+#[expect(clippy::large_enum_variant)]
 #[derive(Component, Default, Debug, Encode, Decode, Clone)]
 pub enum Pile {
     Multiple(Vec<SubCard>),
@@ -195,25 +196,12 @@ impl Pile {
                 let Pile::Multiple(equiped) = mem::take(s) else {
                     unreachable!();
                 };
-                *s = Pile::Single(Card {
-                    subcard,
-                    attributes: CardAttributes {
-                        equiped,
-                        amount: None,
-                        power: None,
-                        toughness: None,
-                        counters: None,
-                        loyalty: None,
-                        misc: None,
-                        is_token: false,
-                        face_down: false,
-                    },
-                });
+                *s = Pile::Single(Card { subcard, equiped });
                 true
             }
             s @ Pile::Single(_) => {
                 if let Pile::Single(c) = &s
-                    && !c.attributes.equiped.is_empty()
+                    && !c.equiped.is_empty()
                 {
                     let Pile::Single(cards) = mem::take(s) else {
                         unreachable!();
@@ -230,7 +218,7 @@ impl Pile {
     #[must_use]
     pub fn is_equiped(&self) -> bool {
         if let Pile::Single(s) = self {
-            !s.attributes.equiped.is_empty()
+            !s.equiped.is_empty()
         } else {
             false
         }
@@ -262,7 +250,7 @@ impl Pile {
             unreachable!()
         };
         mem::swap(s, &mut top);
-        s.attributes.equiped.splice(0..0, top.flatten());
+        s.equiped.splice(0..0, top.flatten());
     }
     #[must_use]
     pub fn get_card(&self, rot: Quat) -> &SubCard {
@@ -540,7 +528,7 @@ impl Pile {
     }
     pub fn iter_equipment(&self) -> Iter<'_, SubCard> {
         match self {
-            Pile::Single(s) => s.attributes.equiped.iter(),
+            Pile::Single(s) => s.equiped.iter(),
             Pile::Multiple(_) | Pile::Empty => unreachable!(),
         }
     }

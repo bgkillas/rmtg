@@ -25,6 +25,7 @@ use crate::ui::side::{on_new_search, on_remove_side_menu, on_repaint_side_menu, 
 use bevy::app::App;
 pub mod clipboard;
 pub mod clone;
+pub mod combat_damage;
 pub mod delete;
 pub mod flip;
 pub mod gravity;

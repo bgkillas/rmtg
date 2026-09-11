@@ -737,7 +737,7 @@ impl SubCard {
                     )
                 })?
                 .map(Colors::parse);
-            let [power, toughness, loyalty] = ["power", "toughness", "loyalty"]
+            let [power, toughness, loyalty, defense] = ["power", "toughness", "loyalty", "defense"]
                 .map(|s| get(face, json, s).as_str().and_then(|l| l.parse().ok()));
             let name = name_raw.to_owned();
             let oracle_text = oracle_text_raw.to_owned();
@@ -760,6 +760,7 @@ impl SubCard {
                 loyalty,
                 has_unique_face,
                 layout,
+                defense,
             })
         }
         fn inner(id: Uuid, json: JsonValue, quality: Quality) -> Option<SubCard> {

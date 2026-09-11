@@ -5,12 +5,14 @@ use bevy::image::Image;
 use bevy::pbr::StandardMaterial;
 use bevy::ui::widget::ImageNode;
 use bitcode::{Decode, Encode};
+use enum_map::{Enum, EnumMap};
 use enumset::{EnumSet, EnumSetType};
 use rand::prelude::StdRng;
 use rand::{Rng as _, make_rng};
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
 use std::mem;
+use std::num::NonZero;
 use std::ops::{Deref, DerefMut};
 use std::slice::{Iter, IterMut};
 use std::sync::Arc;
@@ -32,17 +34,19 @@ pub struct SubCardId {
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct Card {
     pub subcard: SubCard,
-    pub attributes: CardAttributes,
+    pub equiped: Vec<SubCard>,
 }
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct CardAttributes {
-    pub equiped: Vec<SubCard>,
-    pub amount: Option<i32>,
-    pub power: Option<i32>,
-    pub toughness: Option<i32>,
-    pub counters: Option<i32>,
-    pub loyalty: Option<i32>,
-    pub misc: Option<i32>,
+    pub amount: Option<u32>,
+    pub power: Option<u32>,
+    pub toughness: Option<u32>,
+    pub plus_one_counters: Option<NonZero<i32>>,
+    pub loyalty: Option<u32>,
+    pub defense: Option<u32>,
+    pub misc: Option<u32>,
+    #[bitcode(with = "DataCoder<EnumMap<Counter, Option<NonZero<u32>>>>")]
+    pub counters: EnumMap<Counter, Option<NonZero<u32>>>,
     pub is_token: bool,
     pub face_down: bool,
 }
@@ -52,6 +56,7 @@ pub struct SubCard {
     pub transformed: bool,
     #[bitcode(with = "DataCoder<Uuid>")]
     pub global_id: Uuid,
+    pub attributes: CardAttributes,
 }
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct SubCardInner {
@@ -112,6 +117,7 @@ pub struct CardInfo {
     pub power: Option<u8>,
     pub toughness: Option<u8>,
     pub loyalty: Option<u8>,
+    pub defense: Option<u8>,
     pub layout: Layout,
     pub has_unique_face: bool,
 }
@@ -194,6 +200,28 @@ pub enum SearchKey {
     Power,
     Toughness,
     Loyalty,
+}
+#[derive(Enum, Debug, Clone, Copy)]
+pub enum Counter {
+    Flying,
+    FirstStrike,
+    DoubleStrike,
+    Deathtouch,
+    Decayed,
+    Exalted,
+    Haste,
+    Hexproof,
+    Indestructible,
+    Lifelink,
+    Menace,
+    Reach,
+    Shadow,
+    Trample,
+    Vigilance,
+    Shield,
+    Stun,
+    Finality,
+    Hone,
 }
 impl Handles {
     pub fn image(self) -> Handle<Image> {
@@ -554,20 +582,27 @@ impl Card {
     pub fn get_simple(&self) -> CardId {
         CardId {
             subcard: self.subcard.get_simple(),
-            attributes: self.attributes.clone(),
+            attributes: self.subcard.attributes.clone(),
         }
     }
     #[must_use]
     pub fn is_modified(&self) -> bool {
-        !self.attributes.equiped.is_empty() || self.has_counters()
+        !self.equiped.is_empty() || self.has_counters()
     }
     #[must_use]
     pub fn has_counters(&self) -> bool {
-        self.attributes.power.is_some()
-            || self.attributes.toughness.is_some()
-            || self.attributes.counters.is_some()
-            || self.attributes.loyalty.is_some()
-            || self.attributes.misc.is_some()
+        self.subcard.attributes.power.is_some()
+            || self.subcard.attributes.toughness.is_some()
+            || self.subcard.attributes.plus_one_counters.is_some()
+            || self.subcard.attributes.loyalty.is_some()
+            || self.subcard.attributes.misc.is_some()
+            || self.subcard.attributes.defense.is_some()
+            || self
+                .subcard
+                .attributes
+                .counters
+                .iter()
+                .any(|(_, c)| c.is_some())
     }
     #[must_use]
     pub fn filter(&self, text: &str) -> bool {
@@ -575,8 +610,8 @@ impl Card {
     }
     #[must_use]
     pub fn flatten(mut self) -> Vec<SubCard> {
-        let mut vec = Vec::with_capacity(self.attributes.equiped.len() + 1);
-        let drain = mem::take(&mut self.attributes.equiped);
+        let mut vec = Vec::with_capacity(self.equiped.len() + 1);
+        let drain = mem::take(&mut self.equiped);
         vec.extend(drain);
         vec.push(self.subcard);
         vec
@@ -585,7 +620,7 @@ impl Card {
     pub fn iter(&self) -> CardIter<'_> {
         CardIter {
             subcard: &self.subcard,
-            equiped: self.attributes.equiped.iter(),
+            equiped: self.equiped.iter(),
             started: false,
         }
     }
@@ -593,7 +628,7 @@ impl Card {
     pub fn iter_mut(&mut self) -> CardIterMut<'_> {
         CardIterMut {
             subcard: &raw mut self.subcard,
-            equiped: self.attributes.equiped.iter_mut(),
+            equiped: self.equiped.iter_mut(),
             started: false,
         }
     }
@@ -602,7 +637,7 @@ impl Card {
         if idx == 0 {
             Some(&self.subcard)
         } else {
-            self.attributes.equiped.get(idx - 1)
+            self.equiped.get(idx - 1)
         }
     }
     #[must_use]
@@ -610,7 +645,7 @@ impl Card {
         if idx == 0 {
             Some(&mut self.subcard)
         } else {
-            self.attributes.equiped.get_mut(idx - 1)
+            self.equiped.get_mut(idx - 1)
         }
     }
 }
@@ -1009,6 +1044,7 @@ impl From<SubCardInner> for SubCard {
             inner,
             transformed: false,
             global_id: Uuid::max(),
+            attributes: CardAttributes::default(),
         };
         card.new_global();
         card
@@ -1029,6 +1065,7 @@ impl Clone for SubCard {
             inner: self.inner.clone(),
             transformed: self.transformed,
             global_id: Uuid::max(),
+            attributes: self.attributes.clone(),
         };
         new.new_global();
         new

@@ -4311,6 +4311,7 @@ dependencies = [
  "bimap",
  "bitcode",
  "bytes",
+ "enum-map",
  "enumset",
  "fast_image_resize",
  "fdlimit",
