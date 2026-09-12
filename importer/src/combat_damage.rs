@@ -1,9 +1,13 @@
-use importer::card::{KeyWord, SubCard};
+use crate::card::{KeyWord, SubCard};
+#[derive(PartialEq, Debug)]
 pub struct CombatData {
     pub damage: i32,
     pub lifegain: u32,
 }
 impl CombatData {
+    pub fn new(damage: i32, lifegain: u32) -> Self {
+        Self { damage, lifegain }
+    }
     pub fn get(attacker: &SubCard, blockers: &[&SubCard]) -> Option<Self> {
         fn strike(
             attacker: &SubCard,
@@ -22,7 +26,11 @@ impl CombatData {
             } else {
                 0
             };
-            if attacker.has(KeyWord::Lifelink) {
+            if attacker.has(KeyWord::Lifelink)
+                && (attacker.has(KeyWord::Trample)
+                    || blockers.is_empty()
+                    || blockers_toughness.iter().flatten().any(|t| *t != 0))
+            {
                 lifegain += power;
             }
             for (blocker, toughnesses) in blockers.iter().zip(blockers_toughness) {
@@ -66,7 +74,7 @@ impl CombatData {
                     }
                 }
             }
-            if attacker.has(KeyWord::Trample) {
+            if attacker.has(KeyWord::Trample) || blockers.is_empty() {
                 damage = damage.saturating_add_unsigned(power);
             }
             CombatData { damage, lifegain }

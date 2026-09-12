@@ -584,10 +584,11 @@ impl SubCard {
         }
     }
     pub fn get_power(&self) -> Option<u32> {
-        let power = self
-            .attributes
-            .power
-            .unwrap_or(u32::from(self.face().power?));
+        let power = if let Some(power) = self.attributes.power {
+            power
+        } else {
+            u32::from(self.face().power?)
+        };
         if let Some(delta) = self.attributes.plus_one_counters {
             power.checked_add_signed(delta.get())
         } else {
@@ -595,10 +596,11 @@ impl SubCard {
         }
     }
     pub fn get_toughness(&self) -> Option<u32> {
-        let toughness = self
-            .attributes
-            .toughness
-            .unwrap_or(u32::from(self.face().toughness?));
+        let toughness = if let Some(toughness) = self.attributes.toughness {
+            toughness
+        } else {
+            u32::from(self.face().toughness?)
+        };
         if let Some(delta) = self.attributes.plus_one_counters {
             toughness.checked_add_signed(delta.get())
         } else {
@@ -620,6 +622,9 @@ impl SubCard {
     pub fn has(&self, keyword: KeyWord) -> bool {
         self.attributes.counters[Counter::KeyWord(keyword)].is_some()
             || self.face().keywords.contains(keyword)
+    }
+    pub fn get_mut(&mut self, keyword: KeyWord) -> &mut Option<NonZero<u32>> {
+        &mut self.attributes.counters[Counter::KeyWord(keyword)]
     }
 }
 impl Card {
@@ -1093,6 +1098,19 @@ impl From<SubCardInner> for SubCard {
         };
         card.new_global();
         card
+    }
+}
+impl From<CardData> for SubCard {
+    fn from(inner: CardData) -> Self {
+        Self::from(SubCardInner::from(inner))
+    }
+}
+impl From<CardData> for SubCardInner {
+    fn from(inner: CardData) -> Self {
+        Self {
+            data: Arc::new(inner),
+            ..Self::default()
+        }
     }
 }
 impl SubCard {

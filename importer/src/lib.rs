@@ -16,6 +16,9 @@ pub use uuid;
 pub mod card_cache;
 pub mod circle;
 pub mod coder;
+pub mod combat_damage;
+#[cfg(test)]
+mod combat_damage_tests;
 #[cfg(test)]
 mod image_bench;
 pub mod importer;
