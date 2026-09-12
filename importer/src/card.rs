@@ -39,7 +39,7 @@ pub struct Card {
 }
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct CardAttributes {
-    pub amount: Option<u32>,
+    pub amount: Option<NonZero<u32>>,
     pub power: Option<u32>,
     pub toughness: Option<u32>,
     pub plus_one_counters: Option<NonZero<i32>>,
@@ -582,6 +582,44 @@ impl SubCard {
             transformed: self.transformed,
             global_id: self.global_id,
         }
+    }
+    pub fn get_power(&self) -> Option<u32> {
+        let power = self
+            .attributes
+            .power
+            .unwrap_or(u32::from(self.face().power?));
+        if let Some(delta) = self.attributes.plus_one_counters {
+            power.checked_add_signed(delta.get())
+        } else {
+            Some(power)
+        }
+    }
+    pub fn get_toughness(&self) -> Option<u32> {
+        let toughness = self
+            .attributes
+            .toughness
+            .unwrap_or(u32::from(self.face().toughness?));
+        if let Some(delta) = self.attributes.plus_one_counters {
+            toughness.checked_add_signed(delta.get())
+        } else {
+            Some(toughness)
+        }
+    }
+    pub fn get_amount(&self) -> u32 {
+        self.attributes.amount.map_or(1, NonZero::get)
+    }
+    pub fn can_be_in_combat(&self) -> bool {
+        self.get_power().is_some() && self.get_toughness().is_some()
+    }
+    pub fn has_first_strike_damage(&self) -> bool {
+        self.has(KeyWord::FirstStrike) || self.has(KeyWord::DoubleStrike)
+    }
+    pub fn has_normal_strike_damage(&self) -> bool {
+        !self.has(KeyWord::FirstStrike) || self.has(KeyWord::DoubleStrike)
+    }
+    pub fn has(&self, keyword: KeyWord) -> bool {
+        self.attributes.counters[Counter::KeyWord(keyword)].is_some()
+            || self.face().keywords.contains(keyword)
     }
 }
 impl Card {
