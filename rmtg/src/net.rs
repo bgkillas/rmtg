@@ -10,6 +10,7 @@ use bevy_p2p::events::{ConnectFailed, PeerConnected, PeerDisconnected};
 use bevy_p2p::iroh::EndpointId;
 use bevy_p2p::iroh_res::Compression;
 use bevy_p2p::message::{MessageReceived, Net};
+use enum_map::Enum;
 use importer::coder::DataCoder;
 use rand::RngExt as _;
 use rand::rngs::StdRng;
@@ -62,7 +63,7 @@ impl From<EndpointId> for Endpoint {
         Self { peer }
     }
 }
-#[derive(Component, Default, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Enum, Component, Default, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Peer {
     #[default]
     Zero,

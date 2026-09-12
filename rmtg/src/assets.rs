@@ -1,4 +1,5 @@
 #![expect(clippy::shadow_reuse)]
+use crate::net::Peer;
 use crate::shapes::deck_outline::DeckOutline;
 use crate::shapes::{
     NewShape as _, OUTLINE_COLOR, OUTLINE_DEPTH_BIAS, OUTLINE_RESOLUTION, Shape, ShapeOutline as _,
@@ -22,7 +23,6 @@ use enum_map::EnumMap;
 use importer::CARD_CORNER_RADIUS;
 use importer::card::Handles;
 use importer::image::parse_bytes;
-use std::array;
 use std::f32::consts::{FRAC_1_SQRT_2, PI};
 #[derive(SystemParam)]
 pub struct AssetManager<'w> {
@@ -34,13 +34,14 @@ pub struct AssetManager<'w> {
 #[derive(Resource)]
 pub struct OutlineMaterials {
     pub default: Handle<StandardMaterial>,
-    pub players: [Handle<StandardMaterial>; PLAYER.len()],
+    pub players: EnumMap<Peer, Handle<StandardMaterial>>,
 }
 #[derive(Resource)]
 pub struct ShapeMeshes {
     pub map: EnumMap<Shape, (Handle<Mesh>, Handle<Mesh>)>,
     pub sphere: Handle<Mesh>,
     pub cylinder: Handle<Mesh>,
+    pub square: Handle<Mesh>,
     pub material: Handle<StandardMaterial>,
 }
 #[derive(Resource)]
@@ -63,6 +64,7 @@ impl ShapeMeshes {
                 SphereKind::Ico { subdivisions: 5 },
             )),
             cylinder: meshes.add(CylinderMeshBuilder::new(1.0, 1.0, 32)),
+            square: meshes.add(Rectangle::new(1.0, 1.0)),
             material: materials.add(StandardMaterial {
                 base_color: Color::WHITE,
                 unlit: true,
@@ -80,9 +82,14 @@ impl OutlineMaterials {
                 depth_bias: OUTLINE_DEPTH_BIAS,
                 ..StandardMaterial::default()
             }),
-            players: array::from_fn(|i| {
+            players: EnumMap::from_fn(|i| {
                 materials.add(StandardMaterial {
-                    base_color: PLAYER[i],
+                    base_color: PLAYER[match i {
+                        Peer::Zero => 0,
+                        Peer::One => 1,
+                        Peer::Two => 2,
+                        Peer::Three => 3,
+                    }],
                     unlit: true,
                     depth_bias: OUTLINE_DEPTH_BIAS,
                     ..StandardMaterial::default()

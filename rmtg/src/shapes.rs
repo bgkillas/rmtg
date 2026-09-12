@@ -1,5 +1,6 @@
 use crate::assets::AssetManager;
 use crate::events::hover::Hoverable;
+use crate::events::select_drag::SelectableObject;
 use crate::physics::{bounce, physics_base};
 use crate::shapes::coin::{Coin, CoinOutline};
 use crate::shapes::cube::{Cube, CubeOutline};
@@ -151,7 +152,12 @@ where
     }
     fn insert_dice<'a>(asset: &AssetManager, mut ent: EntityCommands<'a>) -> EntityCommands<'a> {
         let height = Self::HEIGHT;
-        ent.insert((Self::bundle(height, asset), bounce(), Hoverable));
+        ent.insert((
+            Self::bundle(height, asset),
+            bounce(),
+            Hoverable,
+            SelectableObject,
+        ));
         ent.with_children(|parent| {
             for (i, t) in Self::from_height(height).faces().into_iter().enumerate() {
                 parent.spawn((

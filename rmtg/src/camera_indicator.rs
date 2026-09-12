@@ -1,5 +1,5 @@
 use crate::assets::AssetManager;
-use crate::net::Endpoint;
+use crate::net::{Endpoint, Peer};
 use crate::{CARD_THICKNESS, CARD_WIDTH};
 use avian3d::parry::glamx::Vec3;
 use bevy::mesh::Mesh3d;
@@ -24,7 +24,7 @@ impl CameraIndicator {
             Endpoint::from(peer),
             Transform::from_translation(pos).with_scale(Vec3::splat(CARD_WIDTH / 2.0)),
             Mesh3d(assets.meshes.sphere.clone()),
-            MeshMaterial3d(assets.outlines.players[0].clone()),
+            MeshMaterial3d(assets.outlines.players[Peer::Zero].clone()),
         )
     }
 }
@@ -35,7 +35,7 @@ impl CursorIndicator {
             Endpoint::from(peer),
             Transform::from_translation(pos).with_scale(Vec3::splat(CURSOR_SCALE)),
             Mesh3d(assets.meshes.sphere.clone()),
-            MeshMaterial3d(assets.outlines.players[0].clone()),
+            MeshMaterial3d(assets.outlines.players[Peer::Zero].clone()),
         )
     }
 }

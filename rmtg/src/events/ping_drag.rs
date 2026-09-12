@@ -2,6 +2,7 @@ use crate::CARD_THICKNESS;
 use crate::assets::AssetManager;
 use crate::camera_indicator::CURSOR_SCALE;
 use crate::keybinds::Keybind;
+use crate::net::Peer;
 use crate::spatial::Spatial;
 use bevy::input::ButtonInput;
 use bevy::math::{Quat, Vec3};
@@ -39,12 +40,12 @@ impl DragObject {
         (
             Self,
             Mesh3d(assets.meshes.cylinder.clone()),
-            MeshMaterial3d(assets.outlines.players[0].clone()),
+            MeshMaterial3d(assets.outlines.players[Peer::Zero].clone()),
             transform,
             children![
                 (
                     Mesh3d(assets.meshes.sphere.clone()),
-                    MeshMaterial3d(assets.outlines.players[0].clone()),
+                    MeshMaterial3d(assets.outlines.players[Peer::Zero].clone()),
                     Transform::from_translation(Vec3::new(0.0, -0.5, 0.0)).with_scale(Vec3::new(
                         1.0,
                         CURSOR_SCALE * transform.scale.y.recip(),
@@ -53,7 +54,7 @@ impl DragObject {
                 ),
                 (
                     Mesh3d(assets.meshes.sphere.clone()),
-                    MeshMaterial3d(assets.outlines.players[0].clone()),
+                    MeshMaterial3d(assets.outlines.players[Peer::Zero].clone()),
                     Transform::from_translation(Vec3::new(0.0, 0.5, 0.0)).with_scale(Vec3::new(
                         1.0,
                         CURSOR_SCALE * transform.scale.y.recip(),

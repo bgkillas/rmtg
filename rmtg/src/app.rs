@@ -7,6 +7,7 @@ use crate::events::delete::do_delete;
 use crate::events::flip::trigger_flip;
 use crate::events::hand::{add_near_to_hand, hand_startup};
 use crate::events::hover::{update_box_select, update_hover};
+use crate::events::life_counter::startup_life_counters;
 use crate::events::pile_merge::{DelayPileMerge, delayed_pile_merge};
 use crate::events::ping_drag::update_ping_drag;
 use crate::events::repaint::GlobalIdMap;
@@ -165,6 +166,7 @@ pub fn app_run() -> AppExit {
             create_mats,
             hand_startup,
             startup_moxfield,
+            startup_life_counters,
         )
             .chain(),
     );

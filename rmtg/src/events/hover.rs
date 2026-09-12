@@ -2,6 +2,7 @@ use crate::assets::AssetManager;
 use crate::events::repaint::{OUTLINES_START, SELECT_DRAG_START};
 use crate::focus::Hover;
 use crate::keybinds::Keybind;
+use crate::net::Peer;
 use crate::pile::Pile;
 use crate::shapes::ShapeOutline as _;
 use crate::shapes::drag_outline::DragOutline;
@@ -60,11 +61,11 @@ pub fn add_hover(
     if is_pile.contains(event.entity) {
         for &child in &childs[OUTLINES_START..SELECT_DRAG_START] {
             let mut mat = query.get_mut(child).unwrap();
-            mat.0 = asset.outlines.players[0].clone();
+            mat.0 = asset.outlines.players[Peer::Zero].clone();
         }
     } else {
         let mut mat = query.get_mut(childs[0]).unwrap();
-        mat.0 = asset.outlines.players[0].clone();
+        mat.0 = asset.outlines.players[Peer::Zero].clone();
     }
     commands.entity(event.entity).insert(event.hovered);
 }
@@ -112,7 +113,7 @@ pub fn spawn_box_select(
         .spawn((
             BoxSelect { start: vec },
             Transform::from_translation(event.pos),
-            MeshMaterial3d(asset.outlines.players[0].clone()),
+            MeshMaterial3d(asset.outlines.players[Peer::Zero].clone()),
         ))
         .id();
     commands.trigger(UpdateBoxSelect { entity, vec });

@@ -1,5 +1,5 @@
 use crate::assets::AssetManager;
-use crate::events::hover::{Hoverable, HoveredObject};
+use crate::events::hover::HoveredObject;
 use crate::events::ping_drag::{DragObject, MoveDragObject};
 use crate::keybinds::Keybind;
 use crate::spatial::Spatial;
@@ -15,6 +15,8 @@ pub struct SelectDrag {
     pub source: Entity,
     pub target: Entity,
 }
+#[derive(Component)]
+pub struct SelectableObject;
 #[derive(Component)]
 pub struct MaybeDragSource {
     pub source: Entity,
@@ -58,7 +60,7 @@ pub fn add_select_drags(
     mut commands: Commands,
     keybinds: Res<ButtonInput<Keybind>>,
     hovered: Query<Entity, With<HoveredObject>>,
-    can_select: Query<(), With<Hoverable>>,
+    can_select: Query<(), With<SelectableObject>>,
     assets: AssetManager,
     maybe_drags: Query<(Entity, &MaybeDragSource)>,
     select_drags: Query<(Entity, &SelectDrag), With<TempSelect>>,
