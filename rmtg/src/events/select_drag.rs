@@ -7,19 +7,104 @@ use bevy::input::ButtonInput;
 use bevy::prelude::Transform;
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
+use bevy_ecs::event::Event;
+use bevy_ecs::lifecycle::{Add, Remove};
+use bevy_ecs::observer::On;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Commands, Query, Res};
 use bevy_query_fn_macro::query_fn;
+#[derive(Event)]
+pub struct AddSelectDrag {
+    pub source: Entity,
+    pub target: Entity,
+}
+#[derive(Event)]
+pub struct RemoveSelectDrag {
+    pub source: Entity,
+    pub target: Entity,
+}
 #[derive(Component)]
 pub struct SelectDrag {
     pub source: Entity,
     pub target: Entity,
+    pub source_identifier: Entity,
+    pub target_identifier: Entity,
+}
+#[derive(Component)]
+pub struct SelectDragSource {
+    pub master: Entity,
+    pub target: Entity,
+}
+#[derive(Component)]
+pub struct SelectDragTarget {
+    pub master: Entity,
+    pub source: Entity,
 }
 #[derive(Component)]
 pub struct SelectableObject;
 #[derive(Component)]
 pub struct MaybeDragSource {
     pub source: Entity,
+}
+#[query_fn]
+pub fn on_add_select_drag(
+    event: On<Add, SelectDrag>,
+    mut drags: Query<&mut SelectDrag>,
+    mut commands: Commands,
+) {
+    let mut drag = drags.get_mut(event.entity).unwrap();
+    let source = commands
+        .spawn(SelectDragSource {
+            master: event.entity,
+            target: drag.target,
+        })
+        .id();
+    let target = commands
+        .spawn(SelectDragTarget {
+            master: event.entity,
+            source: drag.source,
+        })
+        .id();
+    drag.source_identifier = source;
+    drag.target_identifier = target;
+    commands.entity(drag.source).add_child(source);
+    commands.entity(drag.target).add_child(target);
+    commands.trigger(AddSelectDrag {
+        source: drag.source,
+        target: drag.target,
+    });
+}
+#[query_fn]
+pub fn on_remove_select_drag(
+    event: On<Remove, SelectDrag>,
+    drags: Query<&SelectDrag>,
+    mut commands: Commands,
+) {
+    let drag = drags.get(event.entity).unwrap();
+    commands.entity(drag.source_identifier).try_despawn();
+    commands.entity(drag.target_identifier).try_despawn();
+    commands.trigger(RemoveSelectDrag {
+        source: drag.source,
+        target: drag.target,
+    });
+}
+#[query_fn]
+pub fn on_remove_select_drag_source(
+    event: On<Remove, SelectDragSource>,
+    drags: Query<&SelectDragSource>,
+    mut commands: Commands,
+) {
+    let drag = drags.get(event.entity).unwrap();
+    commands.entity(drag.master).try_despawn();
+}
+#[query_fn]
+pub fn on_remove_select_drag_target(
+    event: On<Remove, SelectDragTarget>,
+    drags: Query<&SelectDragTarget>,
+    mut commands: Commands,
+) {
+    let drag = drags.get(event.entity).unwrap();
+    commands.entity(drag.master).try_despawn();
 }
 #[query_fn]
 pub fn update_select_drags(
@@ -94,6 +179,8 @@ pub fn add_select_drags(
                     SelectDrag {
                         source: temp.select_drag.source,
                         target: hit.entity,
+                        source_identifier: Entity::PLACEHOLDER,
+                        target_identifier: Entity::PLACEHOLDER,
                     },
                     TempSelect,
                     DragObject::empty(&assets),
@@ -119,6 +206,8 @@ pub fn add_select_drags(
                 SelectDrag {
                     source: drag.maybe_drag_source.source,
                     target: hit.entity,
+                    source_identifier: Entity::PLACEHOLDER,
+                    target_identifier: Entity::PLACEHOLDER,
                 },
                 TempSelect,
                 DragObject::empty(&assets),
