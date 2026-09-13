@@ -18,7 +18,7 @@ impl CombatData {
     pub fn new(damage: i32, lifegain: u32) -> Self {
         Self { damage, lifegain }
     }
-    pub fn get(attacker: &SubCard, blockers: &[&SubCard]) -> Option<Self> {
+    pub fn get(attacker: &SubCard, blockers: &mut [&SubCard]) -> Option<Self> {
         fn strike(
             attacker: &SubCard,
             blockers: &[&SubCard],
@@ -95,6 +95,11 @@ impl CombatData {
         {
             return None;
         }
+        blockers.sort_by(|a, b| {
+            a.has(KeyWord::Indestructible)
+                .cmp(&b.has(KeyWord::Indestructible))
+                .then(b.get_toughness().cmp(&a.get_toughness()))
+        });
         let mut attacker_toughness = attacker.get_toughness().unwrap();
         let mut blockers_toughness = blockers
             .iter()

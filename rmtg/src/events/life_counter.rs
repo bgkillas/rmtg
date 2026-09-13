@@ -51,8 +51,8 @@ impl CombatState {
     pub fn sum<'a>(&self, get: impl Fn(Entity) -> &'a SubCard) -> CombatData {
         let mut data = CombatData::default();
         for (&attacker, defenders) in &self.state {
-            let list = defenders.iter().map(|&e| get(e)).collect::<Vec<_>>();
-            data = data + CombatData::get(get(attacker), &list).unwrap();
+            let mut list = defenders.iter().map(|&e| get(e)).collect::<Vec<_>>();
+            data = data + CombatData::get(get(attacker), &mut list).unwrap();
         }
         data
     }
