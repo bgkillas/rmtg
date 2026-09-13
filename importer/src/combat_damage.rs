@@ -1,8 +1,18 @@
 use crate::card::{KeyWord, SubCard};
-#[derive(PartialEq, Debug)]
+use std::ops::Add;
+#[derive(PartialEq, Default, Debug)]
 pub struct CombatData {
     pub damage: i32,
     pub lifegain: u32,
+}
+impl Add for CombatData {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            damage: self.damage + rhs.damage,
+            lifegain: self.lifegain + rhs.lifegain,
+        }
+    }
 }
 impl CombatData {
     pub fn new(damage: i32, lifegain: u32) -> Self {
@@ -104,9 +114,6 @@ impl CombatData {
             &mut blockers_toughness,
             SubCard::has_normal_strike_damage,
         );
-        Some(Self {
-            damage: first.damage + normal.damage,
-            lifegain: first.lifegain + normal.lifegain,
-        })
+        Some(first + normal)
     }
 }

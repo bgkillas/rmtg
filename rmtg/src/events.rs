@@ -4,6 +4,7 @@ use crate::events::clone::{on_clone, on_clone_objects, on_paste_objects};
 use crate::events::delete::on_delete;
 use crate::events::gravity::on_change_gravity;
 use crate::events::hover::{add_hover, remove_hover, spawn_box_select, update_box_select_mesh};
+use crate::events::life_counter::{on_expected_damage, update_lifetotal};
 use crate::events::move_up::move_up;
 use crate::events::pile_merge::{on_pile_merge, trigger_pile_merge};
 use crate::events::ping_drag::move_drag_object;
@@ -91,4 +92,6 @@ pub fn add_events(app: &mut App) {
     app.add_observer(on_remove_select_drag);
     app.add_observer(on_remove_select_drag_source);
     app.add_observer(on_remove_select_drag_target);
+    app.add_observer(update_lifetotal);
+    app.add_observer(on_expected_damage);
 }
