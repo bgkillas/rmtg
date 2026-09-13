@@ -1,13 +1,14 @@
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
 use bevy::mesh::{Mesh, MeshBuilder};
+use core::direct_const_arg;
 #[derive(Clone, Copy)]
 pub struct Octahedron {
     pub unit_length: f32,
 }
 impl ShapeMesh for Octahedron {
     type Outline = OctahedronOutline;
-    type const VERTICES: usize = 6;
-    type const FACES: usize = 8;
+    const VERTICES: usize = direct_const_arg!(6);
+    const FACES: usize = direct_const_arg!(8);
     const SHAPE: Shape = Shape::Octahedron;
     fn text_size(height: f32) -> f32 {
         height / 3.0
@@ -47,7 +48,7 @@ impl ShapeMesh for Octahedron {
 }
 impl ShapeOutline for OctahedronOutline {
     type Mesh = Octahedron;
-    type const EDGES: usize = 12;
+    const EDGES: usize = direct_const_arg!(12);
     fn edge_indices() -> [[usize; 2]; Self::EDGES] {
         [
             [0, 1],

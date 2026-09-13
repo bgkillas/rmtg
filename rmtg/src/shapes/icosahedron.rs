@@ -1,5 +1,6 @@
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
 use bevy::mesh::{Mesh, MeshBuilder};
+use core::direct_const_arg;
 use std::f32::consts::GOLDEN_RATIO;
 #[derive(Clone, Copy)]
 pub struct Icosahedron {
@@ -7,8 +8,8 @@ pub struct Icosahedron {
 }
 impl ShapeMesh for Icosahedron {
     type Outline = IcosahedronOutline;
-    type const VERTICES: usize = 12;
-    type const FACES: usize = 20;
+    const VERTICES: usize = direct_const_arg!(12);
+    const FACES: usize = direct_const_arg!(20);
     const SHAPE: Shape = Shape::Icosahedron;
     fn text_size(height: f32) -> f32 {
         height * 0.23
@@ -67,7 +68,7 @@ impl ShapeMesh for Icosahedron {
 }
 impl ShapeOutline for IcosahedronOutline {
     type Mesh = Icosahedron;
-    type const EDGES: usize = 30;
+    const EDGES: usize = direct_const_arg!(30);
     fn edge_indices() -> [[usize; 2]; Self::EDGES] {
         [
             [0, 1],

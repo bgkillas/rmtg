@@ -3,16 +3,17 @@ use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH};
 use bevy::math::Vec3;
 use bevy::mesh::{Mesh, MeshBuilder, TorusMeshBuilder};
 use bevy::prelude::Torus;
+use core::direct_const_arg;
 use importer::CARD_CORNER_RADIUS;
 use std::f32::consts::PI;
 #[derive(Clone, Copy)]
 pub struct Deck {}
 impl ShapeMesh for Deck {
     type Outline = DeckOutline;
-    type const VERTICES: usize = 8;
-    type const FACES: usize = 6;
-    type const FACE_VERTICES: usize = 4;
-    type const TRIANGLES: usize = 2;
+    const VERTICES: usize = direct_const_arg!(8);
+    const FACES: usize = direct_const_arg!(6);
+    const FACE_VERTICES: usize = direct_const_arg!(4);
+    const TRIANGLES: usize = direct_const_arg!(2);
     const SHAPE: Shape = Shape::Cube;
     fn text_size(height: f32) -> f32 {
         height
@@ -50,7 +51,7 @@ impl ShapeMesh for Deck {
 }
 impl ShapeOutline for DeckOutline {
     type Mesh = Deck;
-    type const EDGES: usize = 4;
+    const EDGES: usize = direct_const_arg!(4);
     const THICKNESS: f32 = CARD_THICKNESS / 3.0;
     fn edge_indices() -> [[usize; 2]; Self::EDGES] {
         [[0, 1], [2, 3], [4, 5], [6, 7]]

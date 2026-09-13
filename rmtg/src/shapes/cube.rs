@@ -1,16 +1,17 @@
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
 use avian3d::prelude::Collider;
 use bevy::mesh::{Mesh, MeshBuilder};
+use core::direct_const_arg;
 #[derive(Clone, Copy)]
 pub struct Cube {
     pub unit_length: f32,
 }
 impl ShapeMesh for Cube {
     type Outline = CubeOutline;
-    type const VERTICES: usize = 8;
-    type const FACES: usize = 6;
-    type const FACE_VERTICES: usize = 4;
-    type const TRIANGLES: usize = 2;
+    const VERTICES: usize = direct_const_arg!(8);
+    const FACES: usize = direct_const_arg!(6);
+    const FACE_VERTICES: usize = direct_const_arg!(4);
+    const TRIANGLES: usize = direct_const_arg!(2);
     const SHAPE: Shape = Shape::Cube;
     fn collider(height: f32, _: &Mesh) -> Collider {
         let one = 2.0 * Self::convert_height(height);
@@ -54,7 +55,7 @@ impl ShapeMesh for Cube {
 }
 impl ShapeOutline for CubeOutline {
     type Mesh = Cube;
-    type const EDGES: usize = 12;
+    const EDGES: usize = direct_const_arg!(12);
     fn edge_indices() -> [[usize; 2]; Self::EDGES] {
         [
             [0, 1],

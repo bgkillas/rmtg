@@ -10,8 +10,8 @@ pub struct Tetrahedron {
 }
 impl ShapeMesh for Tetrahedron {
     type Outline = TetrahedronOutline;
-    type const VERTICES: usize = 4;
-    type const FACES: usize = 4;
+    const VERTICES: usize = direct_const_arg!(4);
+    const FACES: usize = direct_const_arg!(4);
     const IS_REVERSED: bool = true;
     const SHAPE: Shape = Shape::Tetrahedron;
     fn collider(height: f32, _: &Mesh) -> Collider {
@@ -53,7 +53,7 @@ impl ShapeMesh for Tetrahedron {
 }
 impl ShapeOutline for TetrahedronOutline {
     type Mesh = Tetrahedron;
-    type const EDGES: usize = 6;
+    const EDGES: usize = direct_const_arg!(6);
     fn edge_indices() -> [[usize; 2]; Self::EDGES] {
         [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]]
     }

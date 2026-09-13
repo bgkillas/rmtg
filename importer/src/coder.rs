@@ -8,7 +8,8 @@ use std::mem;
 use std::num::NonZero;
 use uuid::Uuid;
 pub trait FixedSize: Sized + Copy {
-    type const SIZE: usize;
+    #[rustc_always_gca]
+    const SIZE: usize;
 }
 #[derive(Encode, Decode)]
 #[repr(transparent)]
@@ -18,7 +19,7 @@ pub struct DataCoder<T: FixedSize> {
 macro_rules! coder {
     ($ty:ty) => {
         impl FixedSize for $ty {
-            type const SIZE: usize = const { size_of::<$ty>() };
+            const SIZE: usize = direct_const_arg!(const { size_of::<$ty>() });
         }
         impl From<&$ty> for DataCoder<$ty> {
             fn from(value: &$ty) -> Self {
@@ -41,7 +42,7 @@ pub struct DataCoderBox<T: FixedSize> {
 macro_rules! coder_box {
     ($ty:ty) => {
         impl FixedSize for $ty {
-            type const SIZE: usize = const { size_of::<$ty>() };
+            const SIZE: usize = direct_const_arg!(const { size_of::<$ty>() });
         }
         impl From<&Box<$ty>> for DataCoderBox<$ty> {
             fn from(value: &Box<$ty>) -> Self {

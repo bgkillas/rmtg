@@ -12,10 +12,10 @@ pub struct Trapezohedron {
 }
 impl ShapeMesh for Trapezohedron {
     type Outline = TrapezohedronOutline;
-    type const VERTICES: usize = 12;
-    type const FACES: usize = 10;
-    type const FACE_VERTICES: usize = 4;
-    type const TRIANGLES: usize = 2;
+    const VERTICES: usize = direct_const_arg!(12);
+    const FACES: usize = direct_const_arg!(10);
+    const FACE_VERTICES: usize = direct_const_arg!(4);
+    const TRIANGLES: usize = direct_const_arg!(2);
     const SHAPE: Shape = Shape::Trapezohedron;
     fn text_size(height: f32) -> f32 {
         height / 4.0
@@ -85,7 +85,7 @@ impl ShapeMesh for Trapezohedron {
 }
 impl ShapeOutline for TrapezohedronOutline {
     type Mesh = Trapezohedron;
-    type const EDGES: usize = 20;
+    const EDGES: usize = direct_const_arg!(20);
     fn edge_indices() -> [[usize; 2]; Self::EDGES] {
         [
             [8, 2],

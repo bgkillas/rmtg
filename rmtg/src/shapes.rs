@@ -118,10 +118,14 @@ where
     Self::Outline: From<Self>,
 {
     type Outline: ShapeOutline;
-    type const VERTICES: usize;
-    type const FACES: usize;
-    type const FACE_VERTICES: usize = 3;
-    type const TRIANGLES: usize = 1;
+    #[rustc_always_gca]
+    const VERTICES: usize;
+    #[rustc_always_gca]
+    const FACES: usize;
+    #[rustc_always_gca]
+    const FACE_VERTICES: usize = direct_const_arg!(3);
+    #[rustc_always_gca]
+    const TRIANGLES: usize = direct_const_arg!(1);
     const IS_REVERSED: bool = false;
     const HEIGHT: f32 = CARD_WIDTH / 2.0;
     const SHAPE: Shape;
@@ -253,7 +257,8 @@ where
     Self::Mesh: From<Self>,
 {
     type Mesh: ShapeMesh;
-    type const EDGES: usize;
+    #[rustc_always_gca]
+    const EDGES: usize;
     const THICKNESS: f32 = CARD_THICKNESS * 7.0 / 8.0;
     #[must_use]
     fn edge_indices() -> [[usize; 2]; direct_const_arg!(Self::EDGES)];

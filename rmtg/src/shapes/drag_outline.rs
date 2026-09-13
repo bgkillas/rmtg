@@ -2,6 +2,7 @@ use crate::CARD_THICKNESS;
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
 use avian3d::prelude::Collider;
 use bevy::mesh::{Mesh, MeshBuilder};
+use core::direct_const_arg;
 #[derive(Clone, Copy)]
 pub struct Drag {
     pub x: f32,
@@ -9,10 +10,10 @@ pub struct Drag {
 }
 impl ShapeMesh for Drag {
     type Outline = DragOutline;
-    type const VERTICES: usize = 4;
-    type const FACES: usize = 2;
-    type const FACE_VERTICES: usize = 4;
-    type const TRIANGLES: usize = 2;
+    const VERTICES: usize = direct_const_arg!(4);
+    const FACES: usize = direct_const_arg!(2);
+    const FACE_VERTICES: usize = direct_const_arg!(4);
+    const TRIANGLES: usize = direct_const_arg!(2);
     const SHAPE: Shape = Shape::Cube;
     fn collider(height: f32, _: &Mesh) -> Collider {
         Collider::cuboid(height, height, height)
@@ -46,7 +47,7 @@ impl ShapeMesh for Drag {
 }
 impl ShapeOutline for DragOutline {
     type Mesh = Drag;
-    type const EDGES: usize = 4;
+    const EDGES: usize = direct_const_arg!(4);
     const THICKNESS: f32 = 4.0 * CARD_THICKNESS;
     fn edge_indices() -> [[usize; 2]; Self::EDGES] {
         [[0, 1], [0, 2], [3, 2], [3, 1]]
