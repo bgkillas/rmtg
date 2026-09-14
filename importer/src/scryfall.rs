@@ -113,7 +113,7 @@ impl Quality {
 }
 pub async fn throttled_parse_bytes(bytes: &[u8]) -> Option<Image> {
     static THROTTLE: LazyLock<Semaphore> = LazyLock::new(|| {
-        let cpus = 1;
+        let cpus = 4;
         Semaphore::new(cpus)
     });
     let lock = THROTTLE.acquire().await.unwrap();

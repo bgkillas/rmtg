@@ -5,7 +5,7 @@ use crate::events::clipboard::{PollClipboard, poll_clipboards};
 use crate::events::clone::{CloneObjs, update_clone};
 use crate::events::delete::do_delete;
 use crate::events::flip::trigger_flip;
-use crate::events::hand::{add_near_to_hand, hand_startup};
+use crate::events::hand::{add_near_to_hand, hand_startup, update_hand};
 use crate::events::hover::{update_box_select, update_hover};
 use crate::events::life_counter::{ExpectedDamage, startup_life_counters, update_expected_damage};
 use crate::events::pile_merge::{DelayPileMerge, delayed_pile_merge};
@@ -214,7 +214,7 @@ pub fn app_run() -> AppExit {
                     trigger_tap,
                     trigger_flip,
                     trigger_transform,
-                    add_near_to_hand,
+                    (add_near_to_hand, update_hand).chain(),
                 ),
             )
                 .chain(),

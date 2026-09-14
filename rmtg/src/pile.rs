@@ -3,6 +3,7 @@ use crate::assets::{AssetManager, register_card};
 use crate::events::hover::Hoverable;
 use crate::events::repaint::Repaint;
 use crate::events::select_drag::SelectableObject;
+use crate::net::Peer;
 use crate::physics::physics_base;
 use crate::{CARD_HEIGHT, CARD_THICKNESS, CARD_WIDTH};
 use avian3d::prelude::{Collider, CollisionEventsEnabled};
@@ -94,6 +95,7 @@ impl Pile {
     #[must_use]
     pub fn bundle(self) -> impl Bundle {
         (
+            Peer::Zero,
             self.collider(),
             self,
             physics_base(),

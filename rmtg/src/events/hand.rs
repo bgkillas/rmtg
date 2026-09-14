@@ -1,17 +1,24 @@
 use crate::mat::{MAT_DELTA_X, MAT_EDGE_Z};
 use crate::net::Peer;
+use crate::pile::Pile;
+use crate::spatial::Spatial;
 use crate::{CARD_HEIGHT, CARD_WIDTH, MAT_BAR, MAT_WIDTH};
 use avian3d::prelude::ColliderAabb;
 use bevy::math::Vec3;
 use bevy::prelude::Transform;
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::component::Component;
-use bevy_ecs::system::Commands;
+use bevy_ecs::lifecycle::{Add, Remove};
+use bevy_ecs::observer::On;
+use bevy_ecs::query::Without;
+use bevy_ecs::system::{Commands, Query};
 use bevy_query_fn_macro::query_fn;
 #[derive(Component)]
 pub struct Hand {
     pub collider: ColliderAabb,
 }
+#[derive(Component)]
+pub struct InHand;
 impl Hand {
     pub fn bundle(peer: Peer) -> impl Bundle {
         let (rev_x, rev_z) = match peer {
@@ -48,6 +55,36 @@ pub fn hand_startup(mut commands: Commands) {
     commands.spawn(Hand::bundle(Peer::Three));
 }
 #[query_fn]
-pub fn add_near_to_hand() {
+pub fn add_to_hand(event: On<Add, InHand>) {
     //TODO
+    _ = event;
+}
+#[query_fn]
+pub fn remove_from_hand(event: On<Remove, InHand>) {
+    //TODO
+    _ = event;
+}
+#[query_fn]
+pub fn update_hand() {
+    //TODO
+}
+#[query_fn]
+pub fn add_near_to_hand(
+    hands: Query<&Hand>,
+    piles: Query<&Pile, Without<InHand>>,
+    mut commands: Commands,
+    spatial: Spatial,
+) {
+    for hand in hands {
+        spatial
+            .spatial
+            .aabb_intersections_with_aabb_callback(hand.collider, |ent| {
+                if let Ok(pile) = piles.get(ent)
+                    && pile.len() == 1
+                {
+                    commands.entity(ent).insert(InHand);
+                }
+                true
+            });
+    }
 }
