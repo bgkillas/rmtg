@@ -10,7 +10,7 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::event::Event;
 use bevy_ecs::lifecycle::{Add, Remove};
 use bevy_ecs::observer::On;
-use bevy_ecs::query::With;
+use bevy_ecs::query::{With, Without};
 use bevy_ecs::system::{Commands, Query, Res};
 use bevy_query_fn_macro::query_fn;
 #[derive(Event)]
@@ -149,6 +149,7 @@ pub fn add_select_drags(
     assets: AssetManager,
     maybe_drags: Query<(Entity, &MaybeDragSource)>,
     select_drags: Query<(Entity, &SelectDrag), With<TempSelect>>,
+    select_drags_non_temp: Query<(Entity, &SelectDrag), Without<TempSelect>>,
     spatial: Spatial,
 ) {
     if keybinds.just_pressed(Keybind::SelectDrag) {
@@ -174,7 +175,12 @@ pub fn add_select_drags(
                 continue;
             }
             commands.entity(temp.entity).despawn();
-            if can_select.contains(hit.entity) {
+            if let Some(old) = select_drags_non_temp.iter().find(|s| {
+                s.select_drag.source == temp.select_drag.source
+                    && s.select_drag.target == temp.select_drag.target
+            }) {
+                commands.entity(old.entity).insert(TempSelect);
+            } else if can_select.contains(hit.entity) {
                 commands.spawn((
                     SelectDrag {
                         source: temp.select_drag.source,
@@ -202,16 +208,23 @@ pub fn add_select_drags(
                 continue;
             }
             commands.entity(drag.entity).despawn();
-            commands.spawn((
-                SelectDrag {
-                    source: drag.maybe_drag_source.source,
-                    target: hit.entity,
-                    source_identifier: Entity::PLACEHOLDER,
-                    target_identifier: Entity::PLACEHOLDER,
-                },
-                TempSelect,
-                DragObject::empty(&assets),
-            ));
+            if let Some(old) = select_drags_non_temp.iter().find(|s| {
+                s.select_drag.source == drag.maybe_drag_source.source
+                    && s.select_drag.target == hit.entity
+            }) {
+                commands.entity(old.entity).insert(TempSelect);
+            } else {
+                commands.spawn((
+                    SelectDrag {
+                        source: drag.maybe_drag_source.source,
+                        target: hit.entity,
+                        source_identifier: Entity::PLACEHOLDER,
+                        target_identifier: Entity::PLACEHOLDER,
+                    },
+                    TempSelect,
+                    DragObject::empty(&assets),
+                ));
+            }
         }
     }
 }
