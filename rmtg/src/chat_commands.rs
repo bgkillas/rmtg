@@ -120,6 +120,16 @@ pub fn react_chat_commands(
         });
     } else if event.string == "/import" {
         commands.trigger(GetClipboard::text(ClipboardEvent::ImportDeck(pos)));
+    } else if event.string == "/cached" {
+        let client_owned = client.client.clone();
+        runtime.spawn_hook(on_paste_random_cards, async move {
+            (
+                SubCard::get_cached(&client_owned, QUALITY)
+                    .await
+                    .map(|v| v.into_iter().flatten().collect()),
+                pos,
+            )
+        });
     }
 }
 fn get_identifier(string: &str) -> Identifier {
@@ -227,7 +237,9 @@ pub fn on_paste_random_cards(
     In((cards, pos)): In<(Option<Vec<SubCard>>, Vec3)>,
     mut commands: Commands,
 ) {
-    if let Some(pile) = cards {
+    if let Some(pile) = cards
+        && !pile.is_empty()
+    {
         let ent = commands
             .spawn((Transform::from_translation(pos), Pile::new(pile).bundle()))
             .id();

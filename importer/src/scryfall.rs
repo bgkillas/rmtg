@@ -319,6 +319,21 @@ impl SubCard {
             .map_err(|_| set_cn.into())
     }
     #[must_use]
+    pub async fn get_cached(
+        client: &Client,
+        quality: Quality,
+    ) -> Option<Vec<Result<Self, Identifier>>> {
+        let vec = CACHE
+            .lock()
+            .await
+            .in_storage
+            .iter()
+            .copied()
+            .map(Identifier::Uuid)
+            .collect();
+        Self::get_list(client, vec, quality).await
+    }
+    #[must_use]
     pub async fn get_list(
         client: &Client,
         mut vec: Vec<Identifier>,
