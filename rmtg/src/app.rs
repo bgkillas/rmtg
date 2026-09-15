@@ -7,7 +7,9 @@ use crate::events::delete::do_delete;
 use crate::events::flip::trigger_flip;
 use crate::events::hand::{add_near_to_hand, hand_startup, update_hand};
 use crate::events::hover::{update_box_select, update_hover};
-use crate::events::life_counter::{ExpectedDamage, startup_life_counters, update_expected_damage};
+use crate::events::life_counter::{
+    ExpectedDamage, life_counter_button, startup_life_counters, update_expected_damage,
+};
 use crate::events::pile_merge::{DelayPileMerge, delayed_pile_merge};
 use crate::events::ping_drag::update_ping_drag;
 use crate::events::repaint::GlobalIdMap;
@@ -207,6 +209,7 @@ pub fn app_run() -> AppExit {
                         update_expected_damage,
                     )
                         .chain(),
+                    life_counter_button,
                     do_delete,
                     drag,
                     update_clone,

@@ -38,7 +38,7 @@ impl Hand {
         }
         let collider = ColliderAabb::new(
             Vec3::new(x, CARD_HEIGHT / 2.0, z),
-            Vec3::new(width / 2.0, CARD_HEIGHT / 2.0, CARD_HEIGHT / 2.0),
+            Vec3::new(width / 2.0, CARD_HEIGHT / 2.0, CARD_HEIGHT / 4.0),
         );
         (
             Self { collider },

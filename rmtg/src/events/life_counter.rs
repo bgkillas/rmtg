@@ -1,12 +1,15 @@
 use crate::assets::AssetManager;
 use crate::events::select_drag::{SelectDragTarget, SelectableObject};
+use crate::keybinds::Keybind;
 use crate::mat::{MAT_DELTA_X, MAT_DELTA_Z};
 use crate::net::Peer;
 use crate::pile::Pile;
+use crate::spatial::Spatial;
 use crate::{CARD_THICKNESS, WORLD_FONT_SIZE};
 use avian3d::parry::glamx::Vec2;
 use avian3d::prelude::{Collider, RigidBody};
 use bevy::color::Srgba;
+use bevy::input::ButtonInput;
 use bevy::math::Vec3;
 use bevy::mesh::Mesh3d;
 use bevy::pbr::MeshMaterial3d;
@@ -28,12 +31,12 @@ use importer::card::SubCard;
 use importer::combat_damage::CombatData;
 #[derive(Component)]
 pub struct LifeCounter {
-    pub life: u32,
+    pub life: i32,
 }
 #[derive(Event)]
 pub struct NewLifeCount {
     pub peer: Peer,
-    pub life: u32,
+    pub life: i32,
 }
 #[derive(Event)]
 pub struct NewExpectedDamage {
@@ -105,7 +108,7 @@ pub fn on_expected_damage(
     let counter = counters.iter().find(|c| *c.peer == event.peer).unwrap();
     let mut text = texts.get_mut(counter.children[1]).unwrap();
     let data = expected.peers[event.peer].sum(|e| piles.get(e).unwrap().first());
-    *text = Text3d::new(data.damage.to_string());
+    *text = Text3d::new((-data.damage).to_string());
 }
 #[query_fn]
 pub fn update_lifetotal(
@@ -190,4 +193,32 @@ pub fn startup_life_counters(mut commands: Commands, assets: AssetManager) {
     commands.spawn(LifeCounter::bundle(Peer::One, &assets));
     commands.spawn(LifeCounter::bundle(Peer::Two, &assets));
     commands.spawn(LifeCounter::bundle(Peer::Three, &assets));
+}
+#[query_fn]
+pub fn life_counter_button(
+    spatial: Spatial,
+    counters: Query<(&LifeCounter, &Peer)>,
+    keybinds: Res<ButtonInput<Keybind>>,
+    mut commands: Commands,
+) {
+    let increment = keybinds.just_pressed(Keybind::Increase);
+    let decrement = keybinds.just_pressed(Keybind::Decrease);
+    if !(increment ^ decrement) {
+        return;
+    }
+    let Some((hit, _, _)) = spatial.ray() else {
+        return;
+    };
+    let Ok(counter) = counters.get(hit.entity) else {
+        return;
+    };
+    let life = if increment {
+        counter.life_counter.life + 1
+    } else {
+        counter.life_counter.life - 1
+    };
+    commands.trigger(NewLifeCount {
+        peer: *counter.peer,
+        life,
+    });
 }

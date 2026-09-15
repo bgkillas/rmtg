@@ -92,6 +92,8 @@ pub enum Keybind {
     TapLeft,
     Transform,
     Flip,
+    Increase,
+    Decrease,
 }
 #[derive(Resource, Deref, DerefMut)]
 pub struct KeybindsList(EnumMap<Keybind, Bind>);
@@ -100,6 +102,8 @@ impl Default for KeybindsList {
         let ctrl = Modifier::Control;
         let shift = Modifier::Shift;
         let map = enum_map! {
+            Keybind::Increase =>    Bind::new(enum_set!(),              Menu::view_world(),         true,  true,  MouseButton::Left),
+            Keybind::Decrease =>    Bind::new(enum_set!(),              Menu::view_world(),         true,  true,  MouseButton::Right),
             Keybind::Select =>      Bind::new(enum_set!(),              Menu::view_world(),         true,  true,  MouseButton::Left),
             Keybind::Ping =>        Bind::new(enum_set!(),              Menu::view_world(),         true,  true,  MouseButton::Middle),
             Keybind::HoldSelect =>  Bind::new(enum_set!(ctrl),          Menu::view_world(),         true,  true,  MouseButton::Left),
