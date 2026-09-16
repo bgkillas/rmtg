@@ -40,8 +40,8 @@ pub struct Card {
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct CardAttributes {
     pub amount: Option<NonZero<u32>>,
-    pub power: Option<u32>,
-    pub toughness: Option<u32>,
+    pub power: Option<i32>,
+    pub toughness: Option<i32>,
     pub plus_one_counters: Option<NonZero<i32>>,
     pub loyalty: Option<u32>,
     pub defense: Option<u32>,
@@ -117,8 +117,8 @@ pub struct CardInfo {
     pub keywords: EnumSet<KeyWord>,
     pub colors: Colors,
     pub color_identity: Colors,
-    pub power: Option<u8>,
-    pub toughness: Option<u8>,
+    pub power: Option<i8>,
+    pub toughness: Option<i8>,
     pub loyalty: Option<u8>,
     pub defense: Option<u8>,
     pub layout: Layout,
@@ -587,25 +587,35 @@ impl SubCard {
         let power = if let Some(power) = self.attributes.power {
             power
         } else {
-            u32::from(self.face().power?)
+            i32::from(self.face().power?)
         };
-        if let Some(delta) = self.attributes.plus_one_counters {
-            power.checked_add_signed(delta.get())
-        } else {
-            Some(power)
-        }
+        Some(
+            (power
+                + self
+                    .attributes
+                    .plus_one_counters
+                    .map(NonZero::get)
+                    .unwrap_or_default())
+            .max(0)
+            .cast_unsigned(),
+        )
     }
     pub fn get_toughness(&self) -> Option<u32> {
         let toughness = if let Some(toughness) = self.attributes.toughness {
             toughness
         } else {
-            u32::from(self.face().toughness?)
+            i32::from(self.face().toughness?)
         };
-        if let Some(delta) = self.attributes.plus_one_counters {
-            toughness.checked_add_signed(delta.get())
-        } else {
-            Some(toughness)
-        }
+        Some(
+            (toughness
+                + self
+                    .attributes
+                    .plus_one_counters
+                    .map(NonZero::get)
+                    .unwrap_or_default())
+            .max(0)
+            .cast_unsigned(),
+        )
     }
     pub fn get_amount(&self) -> u32 {
         self.attributes.amount.map_or(1, NonZero::get)
