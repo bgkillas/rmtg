@@ -196,11 +196,14 @@ pub fn update_box_select(
         },
     );
 }
+#[derive(Component)]
+pub struct NoBoxSelect;
 #[query_fn]
 pub fn update_hover(
     box_select: Option<Single<(), With<BoxSelect>>>,
     olds: Query<(Entity, &HoveredObject)>,
     hoverable: Query<(), With<Hoverable>>,
+    life_counters: Query<(), With<NoBoxSelect>>,
     keybinds: Res<ButtonInput<Keybind>>,
     spatial: Spatial,
     mut commands: Commands,
@@ -220,6 +223,7 @@ pub fn update_hover(
         if box_select.is_none()
             && (keybinds.just_pressed(Keybind::HoldSelect)
                 || keybinds.just_pressed(Keybind::Select))
+            && !life_counters.contains(hit.entity)
         {
             commands.trigger(SpawnBoxSelect { pos });
         }

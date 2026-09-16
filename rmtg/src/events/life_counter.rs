@@ -1,4 +1,5 @@
 use crate::assets::AssetManager;
+use crate::events::hover::NoBoxSelect;
 use crate::events::select_drag::{SelectDragTarget, SelectableObject};
 use crate::keybinds::Keybind;
 use crate::mat::{MAT_DELTA_X, MAT_DELTA_Z};
@@ -101,14 +102,15 @@ pub fn update_expected_damage(
 pub fn on_expected_damage(
     event: On<NewExpectedDamage>,
     counters: Query<(&Peer, &Children), With<LifeCounter>>,
-    mut texts: Query<&mut Text3d>,
+    mut texts: Query<(&mut CombatDamageText, &mut Text3d)>,
     expected: Res<ExpectedDamage>,
     piles: Query<&Pile>,
 ) {
     let counter = counters.iter().find(|c| *c.peer == event.peer).unwrap();
     let mut text = texts.get_mut(counter.children[1]).unwrap();
     let data = expected.peers[event.peer].sum(|e| piles.get(e).unwrap().first());
-    *text = Text3d::new((-data.damage).to_string());
+    text.combat_damage_text.delta = -data.damage;
+    *text.text3d = Text3d::new((-data.damage).to_string());
 }
 #[query_fn]
 pub fn update_lifetotal(
@@ -121,8 +123,10 @@ pub fn update_lifetotal(
     let mut text = texts.get_mut(counter.children[0]).unwrap();
     *text = Text3d::new(on.life.to_string());
 }
-#[derive(Component)]
-pub struct CombatDamageText;
+#[derive(Component, Default)]
+pub struct CombatDamageText {
+    pub delta: i32,
+}
 impl Default for LifeCounter {
     fn default() -> Self {
         Self { life: 40 }
@@ -147,6 +151,7 @@ impl LifeCounter {
         (
             peer,
             Self::default(),
+            NoBoxSelect,
             Mesh3d(assets.meshes.square.clone()),
             MeshMaterial3d(assets.outlines.players[peer].clone()),
             Collider::cuboid(1.0, 1.0, CARD_THICKNESS / 64.0),
@@ -171,8 +176,11 @@ impl LifeCounter {
                 ),
                 (
                     peer,
-                    CombatDamageText,
-                    Transform::from_xyz(0.0, -0.35, CARD_THICKNESS / 64.0),
+                    CombatDamageText::default(),
+                    Collider::cuboid(1.0, 1.0 / 6.0, CARD_THICKNESS / 32.0),
+                    RigidBody::Static,
+                    NoBoxSelect,
+                    Transform::from_xyz(0.0, -1.0 / 3.0, CARD_THICKNESS / 64.0),
                     Text3d::new(0.to_string()),
                     Mesh3d::default(),
                     MeshMaterial3d(assets.text_mesh.mesh.clone()),
@@ -198,6 +206,7 @@ pub fn startup_life_counters(mut commands: Commands, assets: AssetManager) {
 pub fn life_counter_button(
     spatial: Spatial,
     counters: Query<(&LifeCounter, &Peer)>,
+    combat_damage: Query<&CombatDamageText>,
     keybinds: Res<ButtonInput<Keybind>>,
     mut commands: Commands,
 ) {
@@ -209,6 +218,8 @@ pub fn life_counter_button(
     let Some((hit, _, _)) = spatial.ray() else {
         return;
     };
+    //TODO
+    _ = combat_damage;
     let Ok(counter) = counters.get(hit.entity) else {
         return;
     };
