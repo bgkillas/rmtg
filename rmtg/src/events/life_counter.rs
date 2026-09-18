@@ -1,6 +1,6 @@
 use crate::assets::AssetManager;
 use crate::events::hover::NoBoxSelect;
-use crate::events::select_drag::{SelectDragTarget, SelectableObject};
+use crate::events::select_drag::{IgnoreSelectableObject, SelectDragTarget, SelectableObject};
 use crate::keybinds::Keybind;
 use crate::mat::{MAT_DELTA_X, MAT_DELTA_Z};
 use crate::net::Peer;
@@ -20,7 +20,7 @@ use bevy_ecs::children;
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::{Entity, EntityHashMap, EntityHashSet};
 use bevy_ecs::event::Event;
-use bevy_ecs::hierarchy::Children;
+use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::observer::On;
 use bevy_ecs::query::{With, Without};
 use bevy_ecs::resource::Resource;
@@ -180,6 +180,7 @@ impl LifeCounter {
                     Collider::cuboid(1.0, 1.0 / 6.0, CARD_THICKNESS / 32.0),
                     RigidBody::Static,
                     NoBoxSelect,
+                    IgnoreSelectableObject,
                     Transform::from_xyz(0.0, -1.0 / 3.0, CARD_THICKNESS / 64.0),
                     Text3d::new(0.to_string()),
                     Mesh3d::default(),
@@ -207,6 +208,7 @@ pub fn life_counter_button(
     spatial: Spatial,
     counters: Query<(&LifeCounter, &Peer)>,
     combat_damage: Query<&CombatDamageText>,
+    parents: Query<&ChildOf>,
     keybinds: Res<ButtonInput<Keybind>>,
     mut commands: Commands,
 ) {
@@ -218,15 +220,20 @@ pub fn life_counter_button(
     let Some((hit, _, _)) = spatial.ray() else {
         return;
     };
-    //TODO
-    _ = combat_damage;
-    let Ok(counter) = counters.get(hit.entity) else {
-        return;
+    let (delta, counter) = match (counters.get(hit.entity), combat_damage.get(hit.entity)) {
+        (Ok(counter), Err(_)) => (1, counter),
+        (Err(_), Ok(counter)) => (
+            counter.delta,
+            counters.get(parents.get(hit.entity).unwrap().0).unwrap(),
+        ),
+        _ => {
+            return;
+        }
     };
     let life = if increment {
-        counter.life_counter.life + 1
+        counter.life_counter.life + delta
     } else {
-        counter.life_counter.life - 1
+        counter.life_counter.life - delta
     };
     commands.trigger(NewLifeCount {
         peer: *counter.peer,

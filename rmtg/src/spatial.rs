@@ -8,6 +8,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::math::{Dir3, Ray3d, Vec2, Vec3};
 use bevy::prelude::{GlobalTransform, InfinitePlane3d, Single, Transform, With};
 use bevy::window::{PrimaryWindow, Window};
+use bevy_ecs::entity::Entity;
 use bevy_ecs::query::{QueryData, Without};
 use bevy_ecs::resource::Resource;
 use bevy_ecs::system::{Res, ResMut};
@@ -53,6 +54,26 @@ impl Spatial<'_, '_> {
             f32::MAX,
             true,
             &SpatialQueryFilter::default(),
+        );
+        let dist = ray.intersect_plane(Vec3::splat(0.0), InfinitePlane3d::new(Dir3::Y))?;
+        hit.map(|data| {
+            (
+                data,
+                ray.origin + ray.direction * data.distance,
+                ray.origin + ray.direction * dist,
+            )
+        })
+    }
+    #[must_use]
+    pub fn ray_with(&self, check: impl Fn(Entity) -> bool) -> Option<(RayHitData, Vec3, Vec3)> {
+        let ray = self.cam_ray()?;
+        let hit = self.spatial.cast_ray_predicate(
+            ray.origin,
+            ray.direction,
+            f32::MAX,
+            true,
+            &SpatialQueryFilter::default(),
+            &check,
         );
         let dist = ray.intersect_plane(Vec3::splat(0.0), InfinitePlane3d::new(Dir3::Y))?;
         hit.map(|data| {

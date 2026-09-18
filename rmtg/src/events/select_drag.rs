@@ -43,6 +43,8 @@ pub struct SelectDragTarget {
 #[derive(Component)]
 pub struct SelectableObject;
 #[derive(Component)]
+pub struct IgnoreSelectableObject;
+#[derive(Component)]
 pub struct MaybeDragSource {
     pub source: Entity,
 }
@@ -146,6 +148,7 @@ pub fn add_select_drags(
     keybinds: Res<ButtonInput<Keybind>>,
     hovered: Query<Entity, With<HoveredObject>>,
     can_select: Query<(), With<SelectableObject>>,
+    cant_select: Query<(), With<IgnoreSelectableObject>>,
     assets: AssetManager,
     maybe_drags: Query<(Entity, &MaybeDragSource)>,
     select_drags: Query<(Entity, &SelectDrag), With<TempSelect>>,
@@ -169,7 +172,7 @@ pub fn add_select_drags(
         for temp in select_drags {
             commands.entity(temp.entity).remove::<TempSelect>();
         }
-    } else if let Some((hit, _, _)) = spatial.ray() {
+    } else if let Some((hit, _, _)) = spatial.ray_with(|e| !cant_select.contains(e)) {
         for temp in select_drags {
             if hit.entity == temp.select_drag.target {
                 continue;
