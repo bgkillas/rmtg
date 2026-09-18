@@ -85,6 +85,32 @@ impl Spatial<'_, '_> {
         })
     }
     #[must_use]
+    pub fn ray_find_from(
+        &self,
+        origin: Vec3,
+        to: Vec3,
+        check: impl Fn(Entity) -> bool,
+    ) -> Option<(RayHitData, Vec3)> {
+        let direction = Dir3::new(to - origin).ok()?;
+        let ray = Ray3d::new(origin, direction);
+        let mut ret = None;
+        self.spatial.ray_hits_callback(
+            ray.origin,
+            ray.direction,
+            f32::MAX,
+            true,
+            &SpatialQueryFilter::default(),
+            |hit| {
+                if !check(hit.entity) {
+                    return true;
+                }
+                ret = Some((hit, ray.origin + ray.direction * hit.distance));
+                false
+            },
+        );
+        ret
+    }
+    #[must_use]
     pub fn cam_ray(&self) -> Option<Ray3d> {
         self.camera
             .camera

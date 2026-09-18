@@ -3,6 +3,7 @@ use crate::events::hover::HoveredObject;
 use crate::events::ping_drag::{DragObject, MoveDragObject};
 use crate::keybinds::Keybind;
 use crate::spatial::Spatial;
+use avian3d::prelude::Collider;
 use bevy::input::ButtonInput;
 use bevy::prelude::Transform;
 use bevy_ecs::component::Component;
@@ -111,17 +112,23 @@ pub fn on_remove_select_drag_target(
 #[query_fn]
 pub fn update_select_drags(
     drags: Query<(Entity, &SelectDrag)>,
-    transforms: Query<&Transform>,
+    transforms: Query<(&Transform, &Collider)>,
     mut commands: Commands,
 ) {
     for drag in drags {
-        let [t1, t2] = transforms
+        let [q1, q2] = transforms
             .get_many([drag.select_drag.source, drag.select_drag.target])
             .unwrap();
+        let (to, _) = q2.collider.project_point(
+            q2.transform.translation,
+            q2.transform.rotation,
+            q1.transform.translation,
+            true,
+        );
         commands.trigger(MoveDragObject::new(
             drag.entity,
-            t1.translation,
-            t2.translation,
+            q1.transform.translation,
+            to,
         ));
     }
 }
