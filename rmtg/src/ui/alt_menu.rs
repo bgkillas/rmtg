@@ -41,6 +41,7 @@ pub fn update_alt_menu(
     spatial: Spatial,
     hover: Hover,
 ) {
+    //TODO if holding along cards switch
     if keys.any_just_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
         let Some(hit) = hover
             .get()
