@@ -14,7 +14,7 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::message::PopulatedMessageReader;
 use bevy_ecs::observer::On;
 use bevy_ecs::query::{Or, With};
-use bevy_ecs::system::{Commands, Query, Res, Single};
+use bevy_ecs::system::{Commands, Local, Query, Res, Single};
 use bevy_query_fn_macro::query_fn;
 use importer::card::Handles;
 #[derive(Message)]
@@ -40,9 +40,11 @@ pub fn update_alt_menu(
     has_image: Query<Option<&AltMenu>, Or<(With<ImageCard>, With<Pile>)>>,
     spatial: Spatial,
     hover: Hover,
+    mut did_remove: Local<bool>,
 ) {
-    //TODO if holding along cards switch
-    if keys.any_just_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
+    let just = keys.any_just_pressed([KeyCode::AltLeft, KeyCode::AltRight]);
+    let held = keys.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]);
+    if just || held {
         let Some(hit) = hover
             .get()
             .or_else(|| spatial.ray().map(|(r, _, _)| r.entity))
@@ -65,14 +67,23 @@ pub fn update_alt_menu(
             return;
         }
         if let Some(m) = menu {
-            commands.trigger(RemoveAltMenu);
-            if m.entity != hit {
+            if just {
+                commands.trigger(RemoveAltMenu);
+                *did_remove = true;
+                if m.entity != hit {
+                    *did_remove = false;
+                    commands.trigger(ActivateAltMenu { entity: hit });
+                }
+            } else if m.entity != hit && !*did_remove {
+                commands.trigger(RemoveAltMenu);
                 commands.trigger(ActivateAltMenu { entity: hit });
             }
-        } else {
+        } else if just || !*did_remove {
+            *did_remove = false;
             commands.trigger(ActivateAltMenu { entity: hit });
         }
     } else if keybinds.just_pressed(Keybind::Menu) && menu.is_some() {
+        *did_remove = false;
         commands.trigger(RemoveAltMenu);
     }
 }
