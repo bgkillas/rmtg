@@ -806,16 +806,13 @@ impl SubCard {
             let set = json["set"].as_str()?;
             let cn = json["collector_number"].as_str()?;
             let set_cn = SetCn::new(set, cn);
-            let tokens = json["all_parts"]
-                .as_array()
-                .map(|v| {
-                    v.iter()
-                        .filter(|p| p["component"].as_str() == Some("token"))
-                        .filter_map(|p| p["id"].as_str())
-                        .filter_map(|s| Uuid::from_str(s).ok())
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
+            let tokens = json["all_parts"].as_array().map_or_default(|v| {
+                v.iter()
+                    .filter(|p| p["component"].as_str() == Some("token"))
+                    .filter_map(|p| p["id"].as_str())
+                    .filter_map(|s| Uuid::from_str(s).ok())
+                    .collect::<Vec<_>>()
+            });
             let data = CardData {
                 id,
                 set_cn,

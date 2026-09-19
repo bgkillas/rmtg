@@ -594,8 +594,7 @@ impl SubCard {
                 + self
                     .attributes
                     .plus_one_counters
-                    .map(NonZero::get)
-                    .unwrap_or_default())
+                    .map_or_default(NonZero::get))
             .max(0)
             .cast_unsigned(),
         )
@@ -611,8 +610,7 @@ impl SubCard {
                 + self
                     .attributes
                     .plus_one_counters
-                    .map(NonZero::get)
-                    .unwrap_or_default())
+                    .map_or_default(NonZero::get))
             .max(0)
             .cast_unsigned(),
         )

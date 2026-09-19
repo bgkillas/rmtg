@@ -11,7 +11,6 @@ use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::lifecycle::{Add, Remove};
 use bevy_ecs::observer::On;
-use bevy_ecs::query::Without;
 use bevy_ecs::system::{Commands, Query};
 use bevy_query_fn_macro::query_fn;
 use rustc_hash::FxBuildHasher;
@@ -43,8 +42,8 @@ impl Hand {
             z = -z;
         }
         let collider = ColliderAabb::new(
-            Vec3::new(x, CARD_HEIGHT / 2.0, z),
-            Vec3::new(width / 2.0, CARD_HEIGHT / 2.0, CARD_HEIGHT / 4.0),
+            Vec3::new(x, CARD_HEIGHT, z),
+            Vec3::new(width / 2.0, CARD_HEIGHT, CARD_HEIGHT / 4.0),
         );
         (
             Self {
@@ -91,7 +90,7 @@ pub fn update_hand(hands: Query<(&Hand, &Peer)>) {
 #[query_fn]
 pub fn add_near_to_hand(
     hands: Query<(&Hand, &Peer)>,
-    piles: Query<&Pile, Without<InHand>>,
+    piles: Query<&Pile>,
     mut commands: Commands,
     spatial: Spatial,
 ) {

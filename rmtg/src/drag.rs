@@ -1,11 +1,13 @@
 use crate::events::gravity::NewGravity;
 use crate::events::hover::{BoxSelect, HoveredObject};
 use crate::keybinds::Keybind;
-use crate::physics::{GRAVITY, LIN_DAMPING};
+use crate::physics::{GRAVITY, LIN_DAMPING, WorldLayer};
 use crate::spatial::Spatial;
 use crate::startup::wall_aabb;
 use crate::{CARD_THICKNESS, CARD_WIDTH};
-use avian3d::prelude::{ColliderDisabled, LinearDamping, LinearVelocity, SleepingDisabled};
+use avian3d::prelude::{
+    CollisionLayers, LayerMask, LinearDamping, LinearVelocity, SleepingDisabled,
+};
 use bevy::ecs::entity::EntityHash;
 use bevy::input::ButtonInput;
 use bevy::math::{Dir3, Vec3};
@@ -51,8 +53,11 @@ pub fn drag(
                 commands.trigger(NewGravity::new(ent, GRAVITY));
                 commands
                     .entity(ent)
-                    .remove::<(TargetPosition, SleepingDisabled, ColliderDisabled)>()
-                    .insert(LinearDamping(LIN_DAMPING));
+                    .remove::<(TargetPosition, SleepingDisabled)>()
+                    .insert((
+                        CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),
+                        LinearDamping(LIN_DAMPING),
+                    ));
             }
         }
         return;
@@ -66,8 +71,11 @@ pub fn drag(
             commands.trigger(NewGravity::new(ent, GRAVITY));
             commands
                 .entity(ent)
-                .remove::<(TargetPosition, SleepingDisabled, ColliderDisabled)>()
-                .insert(LinearDamping(LIN_DAMPING));
+                .remove::<(TargetPosition, SleepingDisabled)>()
+                .insert((
+                    CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),
+                    LinearDamping(LIN_DAMPING),
+                ));
         }
         return;
     }
@@ -89,18 +97,20 @@ pub fn drag(
                 commands.trigger(NewGravity::new(hovered.entity, 0.0));
                 let mut pos = hovered.transform.translation + delta;
                 pos.y += CARD_WIDTH;
-                commands
-                    .entity(hovered.entity)
-                    .insert(TargetPosition { pos })
-                    .insert(LinearDamping(0.0))
-                    .insert(ColliderDisabled)
-                    .insert(SleepingDisabled);
+                commands.entity(hovered.entity).insert((
+                    TargetPosition { pos },
+                    LinearDamping(0.0),
+                    CollisionLayers::NONE,
+                    SleepingDisabled,
+                ));
                 pos
             };
             let delta =
                 Vec3::from(wall_aabb().closest_point(target)) - hovered.transform.translation;
             if delta.y <= CARD_THICKNESS / 8.0 {
-                commands.entity(hovered.entity).remove::<ColliderDisabled>();
+                commands
+                    .entity(hovered.entity)
+                    .insert(CollisionLayers::new(WorldLayer::Default, LayerMask::ALL));
             }
             hovered.linear_velocity.0 = delta / (time.delta_secs() * 4.0);
         }
@@ -116,8 +126,11 @@ pub fn drag(
             commands.trigger(NewGravity::new(ent, GRAVITY));
             commands
                 .entity(ent)
-                .remove::<(TargetPosition, SleepingDisabled, ColliderDisabled)>()
-                .insert(LinearDamping(LIN_DAMPING));
+                .remove::<(TargetPosition, SleepingDisabled)>()
+                .insert((
+                    LinearDamping(LIN_DAMPING),
+                    CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),
+                ));
         }
     }
 }
