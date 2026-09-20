@@ -85,6 +85,8 @@ pub fn update_alt_menu(
     } else if keybinds.just_pressed(Keybind::Menu) && menu.is_some() {
         *did_remove = false;
         commands.trigger(RemoveAltMenu);
+    } else {
+        *did_remove = false;
     }
 }
 #[query_fn]
