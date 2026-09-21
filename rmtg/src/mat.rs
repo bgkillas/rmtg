@@ -22,11 +22,11 @@ pub fn create_mats(
     mut meshes: ResMut<Assets<Mesh>>,
     mut commands: Commands,
 ) {
-    let player0 = Transform::from_xyz(MAT_X, -CARD_THICKNESS, MAT_Z);
-    let player1 = Transform::from_xyz(-MAT_X, -CARD_THICKNESS, MAT_Z);
-    let mut player2 = Transform::from_xyz(-MAT_X, -CARD_THICKNESS, -MAT_Z);
+    let player0 = Transform::from_xyz(MAT_X, 0.0, MAT_Z);
+    let player1 = Transform::from_xyz(-MAT_X, 0.0, MAT_Z);
+    let mut player2 = Transform::from_xyz(-MAT_X, 0.0, -MAT_Z);
     player2.rotate_y(PI);
-    let mut player3 = Transform::from_xyz(MAT_X, -CARD_THICKNESS, -MAT_Z);
+    let mut player3 = Transform::from_xyz(MAT_X, 0.0, -MAT_Z);
     player3.rotate_y(PI);
     for (i, (transform, right)) in [
         (player0, true),
