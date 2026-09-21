@@ -13,7 +13,7 @@ use bevy::ui::{UiTransform, Val2};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::message::PopulatedMessageReader;
 use bevy_ecs::observer::On;
-use bevy_ecs::query::{Or, With};
+use bevy_ecs::query::{Or, With, Without};
 use bevy_ecs::system::{Commands, Local, Query, Res, Single};
 use bevy_query_fn_macro::query_fn;
 use importer::card::Handles;
@@ -32,12 +32,13 @@ pub struct RemoveAltMenu;
 pub struct AltMenu {
     pub entity: Entity,
 }
+#[query_fn]
 pub fn update_alt_menu(
     keys: Res<ButtonInput<KeyCode>>,
     keybinds: Res<ButtonInput<Keybind>>,
     menu: Option<Single<&AltMenu>>,
     mut commands: Commands,
-    has_image: Query<Option<&AltMenu>, Or<(With<ImageCard>, With<Pile>)>>,
+    has_image: Query<(), Or<((With<ImageCard>, Without<AltMenu>), With<Pile>)>>,
     spatial: Spatial,
     hover: Hover,
     mut did_remove: Local<bool>,
@@ -47,25 +48,19 @@ pub fn update_alt_menu(
     if just || held {
         let Some(hit) = hover
             .get()
-            .or_else(|| spatial.ray().map(|(r, _, _)| r.entity))
+            .and_then(|e| has_image.contains(e).then_some(e))
+            .or_else(|| {
+                spatial
+                    .ray()
+                    .map(|(r, _, _)| r.entity)
+                    .and_then(|e| has_image.contains(e).then_some(e))
+            })
         else {
             if menu.is_some() {
                 commands.trigger(RemoveAltMenu);
             }
             return;
         };
-        let Ok(image) = has_image.get(hit) else {
-            if menu.is_some() {
-                commands.trigger(RemoveAltMenu);
-            }
-            return;
-        };
-        if image.is_some() {
-            if menu.is_some() {
-                commands.trigger(RemoveAltMenu);
-            }
-            return;
-        }
         if let Some(m) = menu {
             if just {
                 commands.trigger(RemoveAltMenu);
