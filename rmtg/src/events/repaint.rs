@@ -6,8 +6,10 @@ use bevy::math::Vec3;
 use bevy::mesh::Mesh3d;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{Children, Entity, EntityEvent, On, Query, Resource, Transform};
+use bevy_ecs::component::Component;
 use bevy_ecs::lifecycle::Add;
 use bevy_ecs::prelude::Remove;
+use bevy_ecs::query::With;
 use bevy_ecs::system::{Commands, ResMut};
 use bevy_query_fn_macro::query_fn;
 use importer::uuid::Uuid;
@@ -69,6 +71,8 @@ pub fn on_pile_removed(
         global_map.map.remove(&card.global_id);
     }
 }
+#[derive(Component)]
+pub struct CardLine;
 #[query_fn]
 pub fn on_repaint(
     on: On<Repaint>,
@@ -78,6 +82,7 @@ pub fn on_repaint(
     mut commands: Commands,
     assets: AssetManager,
     mut global_map: ResMut<GlobalIdMap>,
+    card_lines: Query<(), With<CardLine>>,
 ) {
     let mut pile = decks.get_mut(on.entity).unwrap();
     global_map.map.retain(|_, ent| *ent != on.entity);
@@ -112,13 +117,16 @@ pub fn on_repaint(
     pile.pile.reposition_up(&mut outline_up);
     pile.pile.reposition_down(&mut outline_down);
     pile.pile.reposition_side(&mut side_outline);
-    if pile.children.len() - 6 != pile.pile.len() - 1 {
-        for &ent in &pile.children[6..] {
-            commands.entity(ent).despawn();
+    if pile.children.len() - SELECT_DRAG_START != pile.pile.len() - 1 {
+        for &ent in &pile.children[SELECT_DRAG_START..] {
+            if card_lines.contains(ent) {
+                commands.entity(ent).despawn();
+            }
         }
         commands.entity(on.entity).with_children(|parent| {
             for i in 1..pile.pile.len() {
                 parent.spawn((
+                    CardLine,
                     Transform::from_xyz(
                         0.0,
                         (i as f32 - pile.pile.len() as f32 / 2.0) * CARD_THICKNESS,
