@@ -40,12 +40,12 @@ impl DragObject {
         (
             Self,
             Mesh3d(assets.meshes.cylinder.clone()),
-            MeshMaterial3d(assets.outlines.players[Peer::Zero].clone()),
+            MeshMaterial3d(assets.outlines.players_dark[Peer::Zero].clone()),
             transform,
             children![
                 (
                     Mesh3d(assets.meshes.sphere.clone()),
-                    MeshMaterial3d(assets.outlines.players[Peer::Zero].clone()),
+                    MeshMaterial3d(assets.outlines.players_dark[Peer::Zero].clone()),
                     Transform::from_translation(Vec3::new(0.0, -0.5, 0.0)).with_scale(Vec3::new(
                         1.0,
                         CURSOR_SCALE * transform.scale.y.recip(),
@@ -54,7 +54,7 @@ impl DragObject {
                 ),
                 (
                     Mesh3d(assets.meshes.sphere.clone()),
-                    MeshMaterial3d(assets.outlines.players[Peer::Zero].clone()),
+                    MeshMaterial3d(assets.outlines.players_dark[Peer::Zero].clone()),
                     Transform::from_translation(Vec3::new(0.0, 0.5, 0.0)).with_scale(Vec3::new(
                         1.0,
                         CURSOR_SCALE * transform.scale.y.recip(),

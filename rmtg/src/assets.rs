@@ -6,6 +6,7 @@ use crate::shapes::{
 };
 use crate::{
     CARD_HEIGHT, CARD_STOCK_COLOR, CARD_STOCK_INBETWEEN_COLOR, CARD_THICKNESS, CARD_WIDTH, PLAYER,
+    PLAYER_DARK,
 };
 use avian3d::parry::glamx::{Quat, Vec3};
 use bevy::asset::{Assets, Handle};
@@ -35,6 +36,7 @@ pub struct AssetManager<'w> {
 pub struct OutlineMaterials {
     pub default: Handle<StandardMaterial>,
     pub players: EnumMap<Peer, Handle<StandardMaterial>>,
+    pub players_dark: EnumMap<Peer, Handle<StandardMaterial>>,
 }
 #[derive(Resource)]
 pub struct ShapeMeshes {
@@ -85,6 +87,19 @@ impl OutlineMaterials {
             players: EnumMap::from_fn(|i| {
                 materials.add(StandardMaterial {
                     base_color: PLAYER[match i {
+                        Peer::Zero => 0,
+                        Peer::One => 1,
+                        Peer::Two => 2,
+                        Peer::Three => 3,
+                    }],
+                    unlit: true,
+                    depth_bias: OUTLINE_DEPTH_BIAS,
+                    ..StandardMaterial::default()
+                })
+            }),
+            players_dark: EnumMap::from_fn(|i| {
+                materials.add(StandardMaterial {
+                    base_color: PLAYER_DARK[match i {
                         Peer::Zero => 0,
                         Peer::One => 1,
                         Peer::Two => 2,

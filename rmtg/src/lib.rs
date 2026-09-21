@@ -44,6 +44,20 @@ pub const PLAYER3: Color = Color::srgb_u8(85, 255, 85);
 pub const PLAYER4: Color = Color::srgb_u8(85, 255, 255);
 pub const PLAYER5: Color = Color::srgb_u8(255, 255, 85);
 pub const PLAYER: [Color; 6] = [PLAYER0, PLAYER1, PLAYER2, PLAYER3, PLAYER4, PLAYER5];
+pub const PLAYER_DARK0: Color = Color::srgb_u8(170, 00, 00);
+pub const PLAYER_DARK1: Color = Color::srgb_u8(00, 00, 170);
+pub const PLAYER_DARK2: Color = Color::srgb_u8(170, 00, 170);
+pub const PLAYER_DARK3: Color = Color::srgb_u8(00, 170, 00);
+pub const PLAYER_DARK4: Color = Color::srgb_u8(00, 170, 170);
+pub const PLAYER_DARK5: Color = Color::srgb_u8(170, 170, 00);
+pub const PLAYER_DARK: [Color; 6] = [
+    PLAYER_DARK0,
+    PLAYER_DARK1,
+    PLAYER_DARK2,
+    PLAYER_DARK3,
+    PLAYER_DARK4,
+    PLAYER_DARK5,
+];
 pub const MAT_WIDTH: f32 = 8.0;
 pub const MAT_HEIGHT: f32 = MAT_WIDTH * 9.0 / 16.0;
 pub const MAT_BAR: f32 = MAT_HEIGHT / 64.0;

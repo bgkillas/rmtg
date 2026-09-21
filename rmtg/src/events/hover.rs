@@ -23,6 +23,10 @@ use bevy_ecs::event::Event;
 use bevy_ecs::system::{Res, ResMut, Single};
 use bevy_query_fn_macro::query_fn;
 #[derive(Component, Clone)]
+pub struct Owner {
+    pub peer: Peer,
+}
+#[derive(Component, Clone)]
 pub struct Hoverable;
 #[derive(Component, Clone, Copy, Debug)]
 pub struct HoveredObject {
@@ -113,7 +117,7 @@ pub fn spawn_box_select(
         .spawn((
             BoxSelect { start: vec },
             Transform::from_translation(event.pos),
-            MeshMaterial3d(asset.outlines.players[Peer::Zero].clone()),
+            MeshMaterial3d(asset.outlines.players_dark[Peer::Zero].clone()),
         ))
         .id();
     commands.trigger(UpdateBoxSelect { entity, vec });
