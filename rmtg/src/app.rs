@@ -14,6 +14,7 @@ use crate::events::pile_merge::{DelayPileMerge, delayed_pile_merge};
 use crate::events::ping_drag::update_ping_drag;
 use crate::events::repaint::GlobalIdMap;
 use crate::events::roll::{do_roll, update_rolling};
+use crate::events::save_states::{SaveStates, update_save_states};
 use crate::events::scale::update_scale;
 use crate::events::scroll::{
     Scroll, ScrollToContentSize, scroll, scroll_to_content_size, send_scroll_events,
@@ -155,6 +156,7 @@ pub fn app_run() -> AppExit {
     app.init_resource::<CloneObjs>();
     app.init_resource::<GlobalIdMap>();
     app.init_resource::<ExpectedDamage>();
+    app.init_resource::<SaveStates>();
     app.add_message::<Scroll>();
     app.add_message::<ScrollToContentSize>();
     app.add_message::<DelayPileMerge>();
@@ -230,7 +232,10 @@ pub fn app_run() -> AppExit {
     );
     app.add_systems(
         PostUpdate,
-        (scroll, scroll_to_content_size, on_ui_rotate).after(UiSystems::Layout),
+        (
+            (scroll, scroll_to_content_size, on_ui_rotate).after(UiSystems::Layout),
+            update_save_states,
+        ),
     );
     app.add_systems(
         FixedUpdate,

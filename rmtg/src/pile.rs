@@ -16,10 +16,9 @@ use bevy::prelude::{Bundle, Component, ImageNode, InheritedVisibility, Transform
 use bevy_ecs::entity::Entity;
 use bevy_ecs::query::With;
 use bevy_ecs::system::{Commands, Query, Res, ResMut};
+use bevy_p2p::bitcode::{self, Decode, Encode};
 use bevy_p2p::runtime::Runtime;
 use bevy_query_fn_macro::query_fn;
-use bitcode::{Decode, Encode};
-use importer::bitcode;
 use importer::card::{Card, CardIter, CardIterMut, Handles, MaybeHandles, SubCard};
 use importer::scryfall::{CACHE, IMAGES_IN_PROGRESS, IMAGES_TO_PROCESS, Quality};
 use importer::uuid::Uuid;

@@ -2363,6 +2363,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "circular-buffer"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "662f6b21c6e889ee4e3f449e197c40f03603472fcd40c709093d386e3dca07cf"
+
+[[package]]
 name = "clap"
 version = "4.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6785,6 +6791,7 @@ dependencies = [
  "bevy_query_fn_macro",
  "bevy_reflect",
  "bevy_rich_text3d",
+ "circular-buffer",
  "console_error_panic_hook",
  "enum-map",
  "enumset",

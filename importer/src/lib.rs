@@ -9,7 +9,6 @@ extern crate core;
 pub mod card;
 pub mod image;
 use bevy::log::warn;
-pub use bitcode;
 pub use reqwest;
 use std::fmt::Debug;
 pub use uuid;

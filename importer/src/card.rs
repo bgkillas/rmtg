@@ -39,6 +39,7 @@ pub struct Card {
 }
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct CardAttributes {
+    pub transformed: bool,
     pub amount: Option<NonZero<u32>>,
     pub power: Option<i32>,
     pub toughness: Option<i32>,
@@ -54,7 +55,6 @@ pub struct CardAttributes {
 #[derive(Debug, Default, Encode, Decode)]
 pub struct SubCard {
     pub inner: SubCardInner,
-    pub transformed: bool,
     #[bitcode(with = "DataCoder<Uuid>")]
     pub global_id: Uuid,
     pub attributes: CardAttributes,
@@ -579,7 +579,7 @@ impl SubCard {
     pub fn get_simple(&self) -> SubCardId {
         SubCardId {
             id: self.data.id,
-            transformed: self.transformed,
+            transformed: self.attributes.transformed,
             global_id: self.global_id,
         }
     }
@@ -786,7 +786,7 @@ impl SubCard {
     }
     #[must_use]
     pub fn face(&self) -> &CardInfo {
-        if self.transformed
+        if self.attributes.transformed
             && let Some(back) = &self.data.back
         {
             back
@@ -796,7 +796,7 @@ impl SubCard {
     }
     #[must_use]
     pub fn back(&self) -> Option<&CardInfo> {
-        if self.transformed {
+        if self.attributes.transformed {
             Some(&self.data.front)
         } else {
             self.data.back.as_deref()
@@ -805,7 +805,7 @@ impl SubCard {
     #[must_use]
     pub fn image_node(&self, default: Handle<Image>) -> ImageNode {
         match self.face().layout {
-            Layout::Flip if self.transformed => ImageNode {
+            Layout::Flip if self.attributes.transformed => ImageNode {
                 image: if let Some(handles) = self.face_handles.handles() {
                     handles.image()
                 } else {
@@ -836,7 +836,7 @@ impl SubCard {
     }
     #[must_use]
     pub fn face_maybe_handles(&self) -> &MaybeHandles {
-        if self.transformed && !matches!(self.data.front.layout, Layout::Flip) {
+        if self.attributes.transformed && !matches!(self.data.front.layout, Layout::Flip) {
             &self.back_handles
         } else {
             &self.face_handles
@@ -844,7 +844,7 @@ impl SubCard {
     }
     #[must_use]
     pub fn back_maybe_handles(&self) -> &MaybeHandles {
-        if self.transformed && !matches!(self.data.front.layout, Layout::Flip) {
+        if self.attributes.transformed && !matches!(self.data.front.layout, Layout::Flip) {
             &self.face_handles
         } else {
             &self.back_handles
@@ -1100,7 +1100,6 @@ impl From<SubCardInner> for SubCard {
     fn from(inner: SubCardInner) -> Self {
         let mut card = Self {
             inner,
-            transformed: false,
             global_id: Uuid::max(),
             attributes: CardAttributes::default(),
         };
@@ -1134,7 +1133,6 @@ impl Clone for SubCard {
     fn clone(&self) -> Self {
         let mut new = Self {
             inner: self.inner.clone(),
-            transformed: self.transformed,
             global_id: Uuid::max(),
             attributes: self.attributes.clone(),
         };

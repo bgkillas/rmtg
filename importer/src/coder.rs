@@ -1,5 +1,6 @@
 use crate::card::{Color, Counter, KeyWord, MainType, SubType, SuperType};
 use bevy::math::Vec3;
+use bevy::prelude::Transform;
 use bitcode::{Decode, Encode};
 use core::direct_const_arg;
 use enum_map::EnumMap;
@@ -63,6 +64,7 @@ coder!(EnumSet<Color>);
 coder!(EnumSet<KeyWord>);
 coder!(EnumMap<Counter, Option<NonZero<u32>>>);
 coder!(Vec3);
+coder!(Transform);
 coder!(Uuid);
 #[derive(Encode, Decode)]
 #[repr(transparent)]

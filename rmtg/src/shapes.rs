@@ -25,6 +25,7 @@ use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::relationship::RelatedSpawner;
 use bevy_ecs::spawn::{Spawn, SpawnRelated as _, SpawnWith};
 use bevy_ecs::system::EntityCommands;
+use bevy_p2p::bitcode::{self, Decode, Encode};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor};
 use core::direct_const_arg;
 use enum_map::Enum;
@@ -41,7 +42,7 @@ pub const OUTLINE_COLOR: Color = Color::BLACK;
 pub const OUTLINE_DEPTH_BIAS: f32 = 1.0 / 4096.0;
 pub const OUTLINE_SUBDIVISIONS: u32 = 5;
 pub const OUTLINE_RESOLUTION: u32 = 32;
-#[derive(Enum, Component, Clone, Copy, Debug)]
+#[derive(Enum, Component, Encode, Decode, Clone, Copy, Debug)]
 pub enum Shape {
     Cube,
     Dodecahedron,

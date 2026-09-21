@@ -178,7 +178,7 @@ pub fn on_new_search(
                 ImageCard {
                     id: card.data.id,
                     quality: card.quality,
-                    transformed: card.transformed,
+                    transformed: card.attributes.transformed,
                     back_handle: card.back_handles().map(Handles::image),
                     global_id: card.global_id,
                 },
@@ -304,7 +304,7 @@ pub fn move_cards_in(
         ImageCard {
             id: card.data.id,
             quality: card.quality,
-            transformed: card.transformed,
+            transformed: card.attributes.transformed,
             back_handle: card.back_handles().map(Handles::image),
             global_id: card.global_id,
         },

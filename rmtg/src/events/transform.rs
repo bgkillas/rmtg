@@ -38,10 +38,10 @@ pub fn trigger_transform(
             }
             let card = obj.pile.first_mut();
             if card.data.transformable {
-                card.transformed = !card.transformed;
+                card.attributes.transformed = !card.attributes.transformed;
                 commands.trigger(Transformed {
                     entity: obj.entity,
-                    state: card.transformed,
+                    state: card.attributes.transformed,
                 });
                 commands.trigger(Repaint::new(obj.entity));
             }

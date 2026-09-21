@@ -118,7 +118,7 @@ pub fn on_activate_alt_menu(
         ImageCard {
             id: card.data.id,
             quality: card.quality,
-            transformed: card.transformed,
+            transformed: card.attributes.transformed,
             back_handle: card.back_handles().map(Handles::image),
             global_id: card.global_id,
         },
