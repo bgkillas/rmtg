@@ -46,16 +46,15 @@ impl Clone for CloneType {
 }
 pub fn on_clone(clone: On<CloneObj>, mut commands: Commands, asset: AssetManager) {
     let mut ent = commands.spawn(clone.transform);
-    let id = match &clone.clone_type {
+    match &clone.clone_type {
         CloneType::Pile(deck) => {
             ent.insert(deck.clone().bundle());
-            ent.id()
         }
         &CloneType::Shape(shape) => {
-            let shape_ent = shape.insert_dice(&asset, ent);
-            shape_ent.id()
+            shape.insert(&asset, &mut ent);
         }
-    };
+    }
+    let id = ent.id();
     commands.trigger(MoveUp::new(id));
 }
 #[query_fn]

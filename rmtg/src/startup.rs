@@ -117,40 +117,40 @@ pub fn spawn_objects(
             2 => (-x_unit, -z_start, -z_delta),
             _ => (x_unit, -z_start, -z_delta),
         };
-        Icosahedron::insert_dice(
-            &asset,
-            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
-        );
+        commands.spawn((
+            Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
+            Icosahedron::bundle_faces(&asset),
+        ));
         rev_z += del;
-        Dodecahedron::insert_dice(
-            &asset,
-            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
-        );
+        commands.spawn((
+            Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
+            Dodecahedron::bundle_faces(&asset),
+        ));
         rev_z += del;
-        Trapezohedron::insert_dice(
-            &asset,
-            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
-        );
+        commands.spawn((
+            Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
+            Trapezohedron::bundle_faces(&asset),
+        ));
         rev_z += del;
-        Octahedron::insert_dice(
-            &asset,
-            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
-        );
+        commands.spawn((
+            Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
+            Octahedron::bundle_faces(&asset),
+        ));
         rev_z += del;
-        Cube::insert_dice(
-            &asset,
-            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
-        );
+        commands.spawn((
+            Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
+            Cube::bundle_faces(&asset),
+        ));
         rev_z += del;
-        Tetrahedron::insert_dice(
-            &asset,
-            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
-        );
+        commands.spawn((
+            Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
+            Tetrahedron::bundle_faces(&asset),
+        ));
         rev_z += del;
-        Coin::insert_dice(
-            &asset,
-            commands.spawn(Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z)),
-        );
+        commands.spawn((
+            Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
+            Coin::bundle_faces(&asset),
+        ));
     }
     let mesh = meshes.add(Cuboid::new(2.0 * W, T, 2.0 * W));
     commands.spawn((

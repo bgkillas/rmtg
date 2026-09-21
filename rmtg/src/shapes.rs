@@ -20,9 +20,11 @@ use bevy::mesh::{
     SphereMeshBuilder,
 };
 use bevy::pbr::MeshMaterial3d;
-use bevy::prelude::{
-    Bundle, Component, Cylinder, EntityCommands, InheritedVisibility, Sphere, Transform,
-};
+use bevy::prelude::{Bundle, Component, Cylinder, InheritedVisibility, Sphere, Transform};
+use bevy_ecs::hierarchy::{ChildOf, Children};
+use bevy_ecs::relationship::RelatedSpawner;
+use bevy_ecs::spawn::{SpawnRelated as _, SpawnWith};
+use bevy_ecs::system::EntityCommands;
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor};
 use core::direct_const_arg;
 use enum_map::Enum;
@@ -62,21 +64,16 @@ impl Shape {
             Shape::Coin => 2,
         }
     }
-    #[must_use]
-    pub fn insert_dice<'a>(
-        self,
-        asset: &AssetManager,
-        ent: EntityCommands<'a>,
-    ) -> EntityCommands<'a> {
+    pub fn insert(self, asset: &AssetManager, ent: &mut EntityCommands) {
         match self {
-            Shape::Cube => Cube::insert_dice(asset, ent),
-            Shape::Dodecahedron => Dodecahedron::insert_dice(asset, ent),
-            Shape::Icosahedron => Icosahedron::insert_dice(asset, ent),
-            Shape::Octahedron => Octahedron::insert_dice(asset, ent),
-            Shape::Tetrahedron => Tetrahedron::insert_dice(asset, ent),
-            Shape::Trapezohedron => Trapezohedron::insert_dice(asset, ent),
-            Shape::Coin => Coin::insert_dice(asset, ent),
-        }
+            Shape::Cube => ent.insert(Cube::bundle_faces(asset)),
+            Shape::Dodecahedron => ent.insert(Dodecahedron::bundle_faces(asset)),
+            Shape::Icosahedron => ent.insert(Icosahedron::bundle_faces(asset)),
+            Shape::Octahedron => ent.insert(Octahedron::bundle_faces(asset)),
+            Shape::Tetrahedron => ent.insert(Tetrahedron::bundle_faces(asset)),
+            Shape::Trapezohedron => ent.insert(Trapezohedron::bundle_faces(asset)),
+            Shape::Coin => ent.insert(Coin::bundle_faces(asset)),
+        };
     }
     #[must_use]
     pub fn mesh(self) -> Mesh {
@@ -154,35 +151,35 @@ where
     fn face_string(i: usize) -> String {
         (i + 1).to_string()
     }
-    fn insert_dice<'a>(asset: &AssetManager, mut ent: EntityCommands<'a>) -> EntityCommands<'a> {
+    fn bundle_faces(asset: &AssetManager) -> impl Bundle {
         let height = Self::HEIGHT;
-        ent.insert((
+        let mesh = asset.text_mesh.mesh.clone();
+        (
             Self::bundle(height, asset),
             bounce(),
             Hoverable,
             SelectableObject,
-        ));
-        ent.with_children(|parent| {
-            for (i, t) in Self::from_height(height).faces().into_iter().enumerate() {
-                parent.spawn((
-                    t,
-                    Text3d::new(Self::face_string(i)),
-                    Mesh3d::default(),
-                    MeshMaterial3d(asset.text_mesh.mesh.clone()),
-                    Text3dStyling {
-                        size: WORLD_FONT_SIZE,
-                        anchor: TextAnchor::CENTER,
-                        color: Srgba::BLACK,
-                        world_scale: Some(Vec2::splat(Self::text_size(height))),
-                        ..Text3dStyling::default()
-                    },
-                    FaceNumber {
-                        num: u8::try_from(i + 1).unwrap(),
-                    },
-                ));
-            }
-        });
-        ent
+            Children::spawn(SpawnWith(move |parent: &mut RelatedSpawner<ChildOf>| {
+                for (i, t) in Self::from_height(height).faces().into_iter().enumerate() {
+                    parent.spawn((
+                        t,
+                        Text3d::new(Self::face_string(i)),
+                        Mesh3d::default(),
+                        MeshMaterial3d(mesh.clone()),
+                        Text3dStyling {
+                            size: WORLD_FONT_SIZE,
+                            anchor: TextAnchor::CENTER,
+                            color: Srgba::BLACK,
+                            world_scale: Some(Vec2::splat(Self::text_size(height))),
+                            ..Text3dStyling::default()
+                        },
+                        FaceNumber {
+                            num: u8::try_from(i + 1).unwrap(),
+                        },
+                    ));
+                }
+            })),
+        )
     }
     #[must_use]
     fn text_size(height: f32) -> f32;
