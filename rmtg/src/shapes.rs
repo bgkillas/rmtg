@@ -23,7 +23,7 @@ use bevy::pbr::MeshMaterial3d;
 use bevy::prelude::{Bundle, Component, Cylinder, InheritedVisibility, Sphere, Transform};
 use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::relationship::RelatedSpawner;
-use bevy_ecs::spawn::{SpawnRelated as _, SpawnWith};
+use bevy_ecs::spawn::{Spawn, SpawnRelated as _, SpawnWith};
 use bevy_ecs::system::EntityCommands;
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor};
 use core::direct_const_arg;
@@ -66,13 +66,13 @@ impl Shape {
     }
     pub fn insert(self, asset: &AssetManager, ent: &mut EntityCommands) {
         match self {
-            Shape::Cube => ent.insert(Cube::bundle_faces(asset)),
-            Shape::Dodecahedron => ent.insert(Dodecahedron::bundle_faces(asset)),
-            Shape::Icosahedron => ent.insert(Icosahedron::bundle_faces(asset)),
-            Shape::Octahedron => ent.insert(Octahedron::bundle_faces(asset)),
-            Shape::Tetrahedron => ent.insert(Tetrahedron::bundle_faces(asset)),
-            Shape::Trapezohedron => ent.insert(Trapezohedron::bundle_faces(asset)),
-            Shape::Coin => ent.insert(Coin::bundle_faces(asset)),
+            Shape::Cube => ent.insert(Cube::bundle(asset)),
+            Shape::Dodecahedron => ent.insert(Dodecahedron::bundle(asset)),
+            Shape::Icosahedron => ent.insert(Icosahedron::bundle(asset)),
+            Shape::Octahedron => ent.insert(Octahedron::bundle(asset)),
+            Shape::Tetrahedron => ent.insert(Tetrahedron::bundle(asset)),
+            Shape::Trapezohedron => ent.insert(Trapezohedron::bundle(asset)),
+            Shape::Coin => ent.insert(Coin::bundle(asset)),
         };
     }
     #[must_use]
@@ -127,23 +127,6 @@ where
     const HEIGHT: f32 = CARD_WIDTH / 2.0;
     const SHAPE: Shape;
     #[must_use]
-    fn bundle(height: f32, asset: &AssetManager) -> impl Bundle {
-        let mesh = Mesh::from(Self::from_height(height));
-        (
-            Self::SHAPE,
-            Self::collider(height, &mesh),
-            physics_base(),
-            Mesh3d(asset.meshes.map[Self::SHAPE].0.clone()),
-            MeshMaterial3d(asset.meshes.material.clone()),
-            #[cfg(not(feature = "colliders"))]
-            bevy::ecs::children![(
-                Mesh3d(asset.meshes.map[Self::SHAPE].1.clone()),
-                MeshMaterial3d(asset.outlines.default.clone()),
-            )],
-            InheritedVisibility::VISIBLE,
-        )
-    }
-    #[must_use]
     fn collider(_: f32, mesh: &Mesh) -> Collider {
         Collider::convex_hull_from_mesh(mesh).unwrap()
     }
@@ -151,34 +134,47 @@ where
     fn face_string(i: usize) -> String {
         (i + 1).to_string()
     }
-    fn bundle_faces(asset: &AssetManager) -> impl Bundle {
+    fn bundle(asset: &AssetManager) -> impl Bundle {
         let height = Self::HEIGHT;
-        let mesh = asset.text_mesh.mesh.clone();
+        let mesh = Mesh::from(Self::from_height(height));
+        let text_mesh = asset.text_mesh.mesh.clone();
         (
-            Self::bundle(height, asset),
             bounce(),
             Hoverable,
             SelectableObject,
-            Children::spawn(SpawnWith(move |parent: &mut RelatedSpawner<ChildOf>| {
-                for (i, t) in Self::from_height(height).faces().into_iter().enumerate() {
-                    parent.spawn((
-                        t,
-                        Text3d::new(Self::face_string(i)),
-                        Mesh3d::default(),
-                        MeshMaterial3d(mesh.clone()),
-                        Text3dStyling {
-                            size: WORLD_FONT_SIZE,
-                            anchor: TextAnchor::CENTER,
-                            color: Srgba::BLACK,
-                            world_scale: Some(Vec2::splat(Self::text_size(height))),
-                            ..Text3dStyling::default()
-                        },
-                        FaceNumber {
-                            num: u8::try_from(i + 1).unwrap(),
-                        },
-                    ));
-                }
-            })),
+            Self::SHAPE,
+            Self::collider(height, &mesh),
+            physics_base(),
+            Mesh3d(asset.meshes.map[Self::SHAPE].0.clone()),
+            MeshMaterial3d(asset.meshes.material.clone()),
+            InheritedVisibility::VISIBLE,
+            Children::spawn((
+                #[cfg(not(feature = "colliders"))]
+                Spawn((
+                    Mesh3d(asset.meshes.map[Self::SHAPE].1.clone()),
+                    MeshMaterial3d(asset.outlines.default.clone()),
+                )),
+                SpawnWith(move |parent: &mut RelatedSpawner<ChildOf>| {
+                    for (i, t) in Self::from_height(height).faces().into_iter().enumerate() {
+                        parent.spawn((
+                            t,
+                            Text3d::new(Self::face_string(i)),
+                            Mesh3d::default(),
+                            MeshMaterial3d(text_mesh.clone()),
+                            Text3dStyling {
+                                size: WORLD_FONT_SIZE,
+                                anchor: TextAnchor::CENTER,
+                                color: Srgba::BLACK,
+                                world_scale: Some(Vec2::splat(Self::text_size(height))),
+                                ..Text3dStyling::default()
+                            },
+                            FaceNumber {
+                                num: u8::try_from(i + 1).unwrap(),
+                            },
+                        ));
+                    }
+                }),
+            )),
         )
     }
     #[must_use]

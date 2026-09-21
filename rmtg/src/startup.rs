@@ -119,37 +119,37 @@ pub fn spawn_objects(
         };
         commands.spawn((
             Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
-            Icosahedron::bundle_faces(&asset),
+            Icosahedron::bundle(&asset),
         ));
         rev_z += del;
         commands.spawn((
             Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
-            Dodecahedron::bundle_faces(&asset),
+            Dodecahedron::bundle(&asset),
         ));
         rev_z += del;
         commands.spawn((
             Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
-            Trapezohedron::bundle_faces(&asset),
+            Trapezohedron::bundle(&asset),
         ));
         rev_z += del;
         commands.spawn((
             Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
-            Octahedron::bundle_faces(&asset),
+            Octahedron::bundle(&asset),
         ));
         rev_z += del;
         commands.spawn((
             Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
-            Cube::bundle_faces(&asset),
+            Cube::bundle(&asset),
         ));
         rev_z += del;
         commands.spawn((
             Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
-            Tetrahedron::bundle_faces(&asset),
+            Tetrahedron::bundle(&asset),
         ));
         rev_z += del;
         commands.spawn((
             Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
-            Coin::bundle_faces(&asset),
+            Coin::bundle(&asset),
         ));
     }
     let mesh = meshes.add(Cuboid::new(2.0 * W, T, 2.0 * W));
