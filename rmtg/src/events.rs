@@ -11,6 +11,7 @@ use crate::events::pile_merge::{on_pile_merge, trigger_pile_merge};
 use crate::events::ping_drag::move_drag_object;
 use crate::events::repaint::{on_pile_added, on_pile_removed, on_repaint};
 use crate::events::roll::on_roll;
+use crate::events::save_states::apply_save_state;
 use crate::events::scale::on_scale;
 use crate::events::scroll::insert_scroll_bar;
 use crate::events::select_drag::{
@@ -98,4 +99,5 @@ pub fn add_events(app: &mut App) {
     app.add_observer(on_expected_damage);
     app.add_observer(add_to_hand);
     app.add_observer(remove_from_hand);
+    app.add_observer(apply_save_state);
 }

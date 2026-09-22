@@ -1,3 +1,4 @@
+use crate::card_cache::CardCache;
 use crate::coder::{DataCoder, DataCoderBoxUuid};
 use crate::scryfall::Quality;
 use bevy::asset::{Handle, StrongHandle};
@@ -28,7 +29,6 @@ pub struct CardId {
 pub struct SubCardId {
     #[bitcode(with = "DataCoder<Uuid>")]
     pub id: Uuid,
-    pub transformed: bool,
     #[bitcode(with = "DataCoder<Uuid>")]
     pub global_id: Uuid,
 }
@@ -576,10 +576,26 @@ impl Cost {
 }
 impl SubCard {
     #[must_use]
+    pub fn from_cache(cache: &CardCache, id: Uuid, quality: Quality) -> Self {
+        let data = cache.cards.get(&id).unwrap().clone();
+        let (face_handles, back_handles) = cache.handles.get(&(id, quality)).unwrap().clone();
+        let mut card = Self {
+            inner: SubCardInner {
+                data,
+                quality,
+                face_handles,
+                back_handles,
+            },
+            global_id: Uuid::max(),
+            attributes: CardAttributes::default(),
+        };
+        card.new_global();
+        card
+    }
+    #[must_use]
     pub fn get_simple(&self) -> SubCardId {
         SubCardId {
             id: self.data.id,
-            transformed: self.attributes.transformed,
             global_id: self.global_id,
         }
     }
