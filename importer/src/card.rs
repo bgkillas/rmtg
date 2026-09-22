@@ -577,8 +577,12 @@ impl Cost {
 impl SubCard {
     #[must_use]
     pub fn from_cache(cache: &CardCache, id: Uuid, quality: Quality) -> Self {
-        let data = cache.cards.get(&id).unwrap().clone();
-        let (face_handles, back_handles) = cache.handles.get(&(id, quality)).unwrap().clone();
+        let data = cache.cards.get(&id).cloned().unwrap_or_default();
+        let (face_handles, back_handles) = cache
+            .handles
+            .get(&(id, quality))
+            .cloned()
+            .unwrap_or_default();
         let mut card = Self {
             inner: SubCardInner {
                 data,

@@ -2,6 +2,7 @@ use crate::QUALITY;
 use crate::app::Client;
 use crate::events::clipboard::{ClipboardEvent, GetClipboard};
 use crate::events::move_up::MoveUp;
+use crate::events::save_states::ApplySaveState;
 use crate::pile::Pile;
 use crate::spatial::Spatial;
 use crate::ui::text_box::{TextSource, TextSubmission};
@@ -118,6 +119,12 @@ pub fn react_chat_commands(
                 join_all((0..amount).map(|_| SubCard::get_random(&client_owned, QUALITY))).await;
             (vec.into_iter().collect::<Option<Vec<_>>>(), pos)
         });
+    } else if let Some(rest) = event.string.strip_prefix("/rollback ") {
+        let Ok(amount) = rest.parse() else {
+            warn!("{rest:?} not number");
+            return;
+        };
+        commands.trigger(ApplySaveState::new(amount));
     } else if event.string == "/import" {
         commands.trigger(GetClipboard::text(ClipboardEvent::ImportDeck(pos)));
     } else if event.string == "/cached" {

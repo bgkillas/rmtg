@@ -111,6 +111,11 @@ pub struct NewSaveState;
 pub struct ApplySaveState {
     pub from_front: usize,
 }
+impl ApplySaveState {
+    pub fn new(from_front: usize) -> Self {
+        Self { from_front }
+    }
+}
 pub fn apply_save_state(
     apply: On<ApplySaveState>,
     states: Res<SaveStates>,
@@ -122,7 +127,9 @@ pub fn apply_save_state(
         commands.entity(entity).despawn();
     }
     let from_front = apply.from_front;
-    let state = states.states.nth_front(from_front).unwrap();
+    let Some(state) = states.states.nth_front(from_front) else {
+        return;
+    };
     let cache = CACHE.blocking_lock();
     for pile_state in &state.piles {
         let mut pile = Pile::new(
