@@ -181,13 +181,13 @@ pub fn apply_save_state(
     life_counters_query: Query<(&LifeCounter, &Peer, Entity)>,
     assets: AssetManager,
 ) {
-    for entity in to_remove {
-        commands.entity(entity).despawn();
-    }
     let from_front = apply.from_front;
     let Some(state) = states.states.nth_front(from_front) else {
         return;
     };
+    for entity in to_remove {
+        commands.entity(entity).despawn();
+    }
     let cache = CACHE.blocking_lock();
     let mut piles = Vec::with_capacity(state.piles.len());
     for pile_state in &state.piles {
