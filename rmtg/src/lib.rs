@@ -12,6 +12,7 @@ pub mod camera;
 pub mod camera_indicator;
 pub mod card_spot;
 pub mod chat_commands;
+pub mod coder;
 pub mod drag;
 pub mod events;
 pub mod focus;

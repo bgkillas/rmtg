@@ -1,4 +1,6 @@
 use crate::assets::AssetManager;
+use crate::events::life_counter::{Commander, LifeCounter, NewLifeCount};
+use crate::net::Peer;
 use crate::pile::Pile;
 use crate::shapes::Shape;
 use bevy::prelude::Transform;
@@ -12,6 +14,7 @@ use bevy_ecs::world::World;
 use bevy_p2p::bitcode::{self, Decode, Encode};
 use bevy_query_fn_macro::query_fn;
 use circular_buffer::FixedCircularBuffer;
+use enum_map::EnumMap;
 use importer::card::{CardAttributes, SubCard};
 use importer::coder::DataCoder;
 use importer::scryfall::{CACHE, Quality};
@@ -26,6 +29,8 @@ pub struct SaveStates {
 pub struct SaveState {
     pub dices: Box<[ShapeState]>,
     pub piles: Box<[PileState]>,
+    #[bitcode(with = "crate::coder::DataCoder<EnumMap<Peer, EnumMap<Commander, i32>>>")]
+    pub life_counters: EnumMap<Peer, EnumMap<Commander, i32>>,
 }
 #[derive(Encode, Decode)]
 pub struct ShapeState {
@@ -53,6 +58,7 @@ pub fn update_save_states(
     mut states: ResMut<SaveStates>,
     dice_query: Query<(&Shape, &Transform)>,
     pile_query: Query<(&Pile, &Transform)>,
+    life_counters_query: Query<(&LifeCounter, &Peer)>,
     mut last: Local<f64>,
     mut commands: Commands,
 ) {
@@ -98,9 +104,20 @@ pub fn update_save_states(
         };
         piles.push(state);
     }
+    let life_counters = EnumMap::from_fn(|peer| {
+        EnumMap::from_fn(|c| {
+            life_counters_query
+                .iter()
+                .find(|q| *q.peer == peer && c == q.life_counter.commander)
+                .unwrap()
+                .life_counter
+                .life
+        })
+    });
     let state = SaveState {
         dices: Box::from(dices),
         piles: Box::from(piles),
+        life_counters,
     };
     states.states.push_front(state);
     commands.trigger(NewSaveState);
@@ -151,6 +168,15 @@ pub fn apply_save_state(
     for dice_state in &state.dices {
         let mut ent = commands.spawn(dice_state.transform);
         dice_state.shape.insert(&asset, &mut ent);
+    }
+    for (peer, map) in &state.life_counters {
+        for (commander, &life) in map {
+            commands.trigger(NewLifeCount {
+                peer,
+                commander,
+                life,
+            });
+        }
     }
     commands.queue(move |world: &mut World| {
         let mut states = world.resource_mut::<SaveStates>();

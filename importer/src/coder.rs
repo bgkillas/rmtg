@@ -5,7 +5,6 @@ use bitcode::{Decode, Encode};
 use core::direct_const_arg;
 use enum_map::EnumMap;
 use enumset::EnumSet;
-use std::mem;
 use std::num::NonZero;
 use uuid::Uuid;
 pub trait FixedSize: Sized + Copy {
@@ -20,16 +19,16 @@ pub struct DataCoder<T: FixedSize> {
 macro_rules! coder {
     ($ty:ty) => {
         impl FixedSize for $ty {
-            const SIZE: usize = direct_const_arg!(const { size_of::<$ty>() });
+            const SIZE: usize = core::direct_const_arg!(const { size_of::<$ty>() });
         }
         impl From<&$ty> for DataCoder<$ty> {
             fn from(value: &$ty) -> Self {
-                unsafe { mem::transmute_copy(value) }
+                unsafe { std::mem::transmute_copy(value) }
             }
         }
         impl From<DataCoder<$ty>> for $ty {
             fn from(value: DataCoder<$ty>) -> Self {
-                unsafe { mem::transmute(value) }
+                unsafe { std::mem::transmute(value) }
             }
         }
     };
@@ -43,16 +42,16 @@ pub struct DataCoderBox<T: FixedSize> {
 macro_rules! coder_box {
     ($ty:ty) => {
         impl FixedSize for $ty {
-            const SIZE: usize = direct_const_arg!(const { size_of::<$ty>() });
+            const SIZE: usize = core::direct_const_arg!(const { size_of::<$ty>() });
         }
         impl From<&Box<$ty>> for DataCoderBox<$ty> {
             fn from(value: &Box<$ty>) -> Self {
-                unsafe { mem::transmute_copy(value) }
+                unsafe { std::mem::transmute_copy(value) }
             }
         }
         impl From<DataCoderBox<$ty>> for Box<$ty> {
             fn from(value: DataCoderBox<$ty>) -> Self {
-                Box::new(unsafe { mem::transmute::<DataCoderBox<$ty>, $ty>(value) })
+                Box::new(unsafe { std::mem::transmute::<DataCoderBox<$ty>, $ty>(value) })
             }
         }
     };

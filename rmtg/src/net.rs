@@ -64,7 +64,7 @@ impl From<EndpointId> for Endpoint {
         Self { peer }
     }
 }
-#[derive(Enum, EnumSetType, Component, Default, Hash, Encode, Decode)]
+#[derive(Enum, EnumSetType, Component, Default, Debug, Hash, Encode, Decode)]
 pub enum Peer {
     #[default]
     Zero,

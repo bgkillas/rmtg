@@ -28,11 +28,11 @@ use bevy_ecs::spawn::{Spawn, SpawnRelated as _, SpawnWith};
 use bevy_ecs::system::{Commands, Query, Res, ResMut};
 use bevy_query_fn_macro::query_fn;
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor};
-use enum_map::EnumMap;
+use enum_map::{Enum, EnumMap};
 use enumset::EnumSet;
 use importer::card::SubCard;
 use importer::combat_damage::CombatData;
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Enum, Clone, Copy, PartialEq)]
 pub enum Commander {
     None,
     First(Peer),
