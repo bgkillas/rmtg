@@ -5,10 +5,12 @@ use crate::warn_if;
 use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use base64::{DecodeSliceError, Engine as _};
 use bevy::prelude::Event;
+use futures::future::join_all;
 use jzon::{JsonValue, parse};
 use reqwest::Client;
 use std::fmt::{Debug, Display, Formatter};
 use std::iter;
+use std::ops::Deref;
 use std::str::FromStr;
 use uuid::Uuid;
 const URL: &str = "api2.moxfield.com";
@@ -43,12 +45,39 @@ impl Debug for DeckId {
 pub struct Boards {
     pub commanders: Option<Vec<SubCard>>,
     pub mainboard: Option<Vec<SubCard>>,
+    pub sideboard: Option<Vec<SubCard>>,
+    pub companions: Option<Vec<SubCard>>,
+    pub signature_spells: Option<Vec<SubCard>>,
+    pub attractions: Option<Vec<SubCard>>,
+    pub stickers: Option<Vec<SubCard>>,
+    pub contraptions: Option<Vec<SubCard>>,
+    pub planes: Option<Vec<SubCard>>,
+    pub schemes: Option<Vec<SubCard>>,
+}
+impl Boards {
+    pub fn iter(&self) -> impl Iterator<Item = &[SubCard]> {
+        [
+            &self.commanders,
+            &self.mainboard,
+            &self.sideboard,
+            &self.companions,
+            &self.signature_spells,
+            &self.attractions,
+            &self.stickers,
+            &self.contraptions,
+            &self.planes,
+            &self.schemes,
+        ]
+        .into_iter()
+        .filter_map(Option::as_ref)
+        .map(Deref::deref)
+    }
 }
 #[derive(Debug, Clone)]
 pub enum MaybeBoards {
     None,
     Waiting,
-    Full(Boards),
+    Full(Box<Boards>),
 }
 #[derive(Debug, Clone)]
 pub struct MoxfieldDeck {
@@ -64,7 +93,7 @@ impl MaybeBoards {
     pub fn is_waiting(&self) -> bool {
         !matches!(self, Self::Waiting)
     }
-    pub fn unwrap(self) -> Boards {
+    pub fn unwrap(self) -> Box<Boards> {
         match self {
             MaybeBoards::Full(board) => board,
             MaybeBoards::None | MaybeBoards::Waiting => {
@@ -144,8 +173,8 @@ impl MoxfieldDeck {
         mut json: JsonValue,
         quality: Quality,
     ) -> Option<()> {
-        self.boards =
-            MaybeBoards::Full(Boards::from_json(client, json.remove("boards"), quality).await);
+        let boards = Boards::from_json(client, json.remove("boards"), quality).await;
+        self.boards = MaybeBoards::Full(Box::new(boards));
         Some(())
     }
 }
@@ -182,11 +211,47 @@ impl Boards {
                 vec
             }
         }
-        let commanders = get_board(client, json.remove("commanders"), quality).await;
-        let mainboard = get_board(client, json.remove("mainboard"), quality).await;
+        let [
+            commanders,
+            mainboard,
+            sideboard,
+            companions,
+            signature_spells,
+            attractions,
+            stickers,
+            contraptions,
+            planes,
+            schemes,
+        ] = *join_all(
+            [
+                "commanders",
+                "mainboard",
+                "sideboard",
+                "companions",
+                "signatureSpells",
+                "attractions",
+                "stickers",
+                "contraptions",
+                "planes",
+                "schemes",
+            ]
+            .map(|s| json.remove(s))
+            .map(|j| get_board(client, j, quality)),
+        )
+        .await
+        .into_array()
+        .unwrap();
         Self {
             commanders,
             mainboard,
+            sideboard,
+            companions,
+            signature_spells,
+            attractions,
+            stickers,
+            contraptions,
+            planes,
+            schemes,
         }
     }
 }

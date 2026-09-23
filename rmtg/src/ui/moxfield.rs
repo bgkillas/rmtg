@@ -177,7 +177,7 @@ fn on_deck_pressed(
             });
         }
         MaybeBoards::Full(boards) => {
-            commands.trigger(boards);
+            commands.trigger(*boards);
         }
         MaybeBoards::Waiting => {}
     }
@@ -200,7 +200,7 @@ fn on_deck_get(
     if ui_decks[number].name != deck.name {
         return;
     }
-    commands.trigger(deck.boards.clone().unwrap());
+    commands.trigger(*deck.boards.clone().unwrap());
     ui_decks[number] = deck;
 }
 #[query_fn]
@@ -214,14 +214,11 @@ pub fn spawn_boards(
         .find(|p| *p.peer == Peer::Zero)
         .unwrap()
         .transform;
-    let owned = boards.clone();
-    if let Some(pile) = owned.commanders {
-        let ent = commands.spawn((transform, Pile::new(pile).bundle())).id();
+    for pile in boards.iter() {
+        let ent = commands
+            .spawn((transform, Pile::new(pile.to_vec()).bundle()))
+            .id();
         commands.trigger(MoveUp::new(ent));
         transform.translation.x += CARD_WIDTH * 1.125;
-    }
-    if let Some(pile) = owned.mainboard {
-        let ent = commands.spawn((transform, Pile::new(pile).bundle())).id();
-        commands.trigger(MoveUp::new(ent));
     }
 }
