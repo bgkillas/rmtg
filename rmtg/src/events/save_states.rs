@@ -1,7 +1,7 @@
 use crate::assets::AssetManager;
 use crate::events::life_counter::{CommanderCounter, LifeCounter, NewLifeCount};
 use crate::events::ping_drag::DragObject;
-use crate::events::select_drag::SelectDrag;
+use crate::events::select_drag::{SelectDrag, TempSelect};
 use crate::net::Peer;
 use crate::pile::Pile;
 use crate::shapes::Shape;
@@ -9,7 +9,7 @@ use bevy::prelude::Transform;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::event::Event;
 use bevy_ecs::observer::On;
-use bevy_ecs::query::{Or, With};
+use bevy_ecs::query::{Or, With, Without};
 use bevy_ecs::resource::Resource;
 use bevy_ecs::system::{Commands, Local, Query, Res, ResMut};
 use bevy_ecs::world::World;
@@ -73,7 +73,7 @@ pub fn update_save_states(
     dice_query: Query<(&Shape, &Transform, Entity)>,
     pile_query: Query<(&Pile, &Transform, Entity)>,
     life_counters_query: Query<(&LifeCounter, &Peer, Entity)>,
-    select_drags_query: Query<&SelectDrag>,
+    select_drags_query: Query<&SelectDrag, Without<TempSelect>>,
     mut last: Local<f64>,
     mut commands: Commands,
 ) {
