@@ -22,9 +22,10 @@ use importer::coder::DataCoder;
 use importer::scryfall::{CACHE, Quality};
 use importer::uuid::Uuid;
 use std::time::{SystemTime, UNIX_EPOCH};
+pub const MAX_SAVE_STATES: usize = 4096;
 #[derive(Resource, Default)]
 pub struct SaveStates {
-    pub states: FixedCircularBuffer<SaveState, 256>,
+    pub states: FixedCircularBuffer<SaveState, MAX_SAVE_STATES>,
     pub pause: bool,
 }
 #[derive(Encode, Decode)]

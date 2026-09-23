@@ -12,6 +12,7 @@ use bevy::prelude::{Commands, Res, Transform};
 use bevy_ecs::observer::On;
 use bevy_ecs::system::In;
 use bevy_p2p::runtime::Runtime;
+use chrono::{Local, Timelike as _};
 use futures::future::join_all;
 use importer::card::{SetCn, SubCard};
 use importer::uuid::Uuid;
@@ -119,6 +120,32 @@ pub fn react_chat_commands(
                 join_all((0..amount).map(|_| SubCard::get_random(&client_owned, QUALITY))).await;
             (vec.into_iter().collect::<Option<Vec<_>>>(), pos)
         });
+    } else if let Some(rest) = event.string.strip_prefix("/rollback to ") {
+        let mut split = rest.rsplit(':');
+        let Some(seconds) = split.next().and_then(|s| s.parse::<usize>().ok()) else {
+            warn!("{rest:?} not valid time");
+            return;
+        };
+        let minutes_opt = split.next().map(|s| s.parse::<usize>().ok());
+        if minutes_opt == Some(None) {
+            warn!("{rest:?} not valid time");
+            return;
+        }
+        let time = Local::now();
+        let mut delta = if seconds <= time.second() as usize {
+            time.second() as usize - seconds
+        } else {
+            (60 + time.second() as usize) - seconds
+        };
+        if let Some(minutes) = minutes_opt.flatten() {
+            delta += 60
+                * if minutes <= time.minute() as usize {
+                    time.minute() as usize - minutes
+                } else {
+                    (60 + time.minute() as usize) - minutes
+                }
+        }
+        commands.trigger(ApplySaveState::new(delta));
     } else if let Some(rest) = event.string.strip_prefix("/rollback ") {
         let Ok(amount) = rest.parse() else {
             warn!("{rest:?} not number");
