@@ -33,28 +33,28 @@ use enumset::EnumSet;
 use importer::card::SubCard;
 use importer::combat_damage::CombatData;
 #[derive(Enum, Clone, Copy, PartialEq)]
-pub enum Commander {
+pub enum CommanderCounter {
     None,
     First(Peer),
     Second(Peer),
 }
-impl Commander {
+impl CommanderCounter {
     pub fn peer(self) -> Option<Peer> {
         Some(match self {
-            Commander::None => return None,
-            Commander::First(peer) | Commander::Second(peer) => peer,
+            CommanderCounter::None => return None,
+            CommanderCounter::First(peer) | CommanderCounter::Second(peer) => peer,
         })
     }
 }
 #[derive(Component)]
 pub struct LifeCounter {
     pub life: i32,
-    pub commander: Commander,
+    pub commander: CommanderCounter,
 }
 #[derive(Event)]
 pub struct NewLifeCount {
     pub peer: Peer,
-    pub commander: Commander,
+    pub commander: CommanderCounter,
     pub life: i32,
 }
 #[derive(Event)]
@@ -152,7 +152,7 @@ pub struct CombatDamageText {
     pub delta: i32,
 }
 impl LifeCounter {
-    pub fn bundle(peer: Peer, commander: Commander, assets: &AssetManager) -> impl Bundle {
+    pub fn bundle(peer: Peer, commander: CommanderCounter, assets: &AssetManager) -> impl Bundle {
         let (rev_x, rev_z) = match peer {
             Peer::Zero => (false, false),
             Peer::One => (true, false),
@@ -160,15 +160,23 @@ impl LifeCounter {
             Peer::Three => (false, true),
         };
         let (mut x, mut z) = match commander {
-            Commander::None => (MAT_DELTA_X / 2.0, MAT_DELTA_Z / 2.0),
-            Commander::First(Peer::Zero) => (7.0 * MAT_DELTA_X / 4.0, 3.0 * MAT_DELTA_Z / 4.0),
-            Commander::First(Peer::One) => (7.0 * MAT_DELTA_X / 4.0, MAT_DELTA_Z / 4.0),
-            Commander::First(Peer::Two) => (5.0 * MAT_DELTA_X / 4.0, MAT_DELTA_Z / 4.0),
-            Commander::First(Peer::Three) => (5.0 * MAT_DELTA_X / 4.0, 3.0 * MAT_DELTA_Z / 4.0),
-            Commander::Second(Peer::Zero) => (3.0 * MAT_DELTA_Z / 4.0, 7.0 * MAT_DELTA_X / 4.0),
-            Commander::Second(Peer::One) => (MAT_DELTA_Z / 4.0, 7.0 * MAT_DELTA_X / 4.0),
-            Commander::Second(Peer::Two) => (MAT_DELTA_Z / 4.0, 5.0 * MAT_DELTA_X / 4.0),
-            Commander::Second(Peer::Three) => (3.0 * MAT_DELTA_Z / 4.0, 5.0 * MAT_DELTA_X / 4.0),
+            CommanderCounter::None => (MAT_DELTA_X / 2.0, MAT_DELTA_Z / 2.0),
+            CommanderCounter::First(Peer::Zero) => {
+                (7.0 * MAT_DELTA_X / 4.0, 3.0 * MAT_DELTA_Z / 4.0)
+            }
+            CommanderCounter::First(Peer::One) => (7.0 * MAT_DELTA_X / 4.0, MAT_DELTA_Z / 4.0),
+            CommanderCounter::First(Peer::Two) => (5.0 * MAT_DELTA_X / 4.0, MAT_DELTA_Z / 4.0),
+            CommanderCounter::First(Peer::Three) => {
+                (5.0 * MAT_DELTA_X / 4.0, 3.0 * MAT_DELTA_Z / 4.0)
+            }
+            CommanderCounter::Second(Peer::Zero) => {
+                (3.0 * MAT_DELTA_Z / 4.0, 7.0 * MAT_DELTA_X / 4.0)
+            }
+            CommanderCounter::Second(Peer::One) => (MAT_DELTA_Z / 4.0, 7.0 * MAT_DELTA_X / 4.0),
+            CommanderCounter::Second(Peer::Two) => (MAT_DELTA_Z / 4.0, 5.0 * MAT_DELTA_X / 4.0),
+            CommanderCounter::Second(Peer::Three) => {
+                (3.0 * MAT_DELTA_Z / 4.0, 5.0 * MAT_DELTA_X / 4.0)
+            }
         };
         if rev_x {
             x = -x;
@@ -176,7 +184,7 @@ impl LifeCounter {
         if rev_z {
             z = -z;
         }
-        let mult = if matches!(commander, Commander::None) {
+        let mult = if matches!(commander, CommanderCounter::None) {
             1.0
         } else {
             0.5
@@ -238,16 +246,16 @@ impl LifeCounter {
 }
 pub fn startup_life_counters(mut commands: Commands, assets: AssetManager) {
     for peer in EnumSet::<Peer>::all() {
-        commands.spawn(LifeCounter::bundle(peer, Commander::None, &assets));
+        commands.spawn(LifeCounter::bundle(peer, CommanderCounter::None, &assets));
         for commander in EnumSet::<Peer>::all() {
             commands.spawn(LifeCounter::bundle(
                 peer,
-                Commander::First(commander),
+                CommanderCounter::First(commander),
                 &assets,
             ));
             commands.spawn(LifeCounter::bundle(
                 peer,
-                Commander::Second(commander),
+                CommanderCounter::Second(commander),
                 &assets,
             ));
         }

@@ -1,4 +1,4 @@
-use crate::events::life_counter::Commander;
+use crate::events::life_counter::CommanderCounter;
 use crate::net::Peer;
 use bevy_p2p::bitcode::{self, Decode, Encode};
 use core::direct_const_arg;
@@ -29,4 +29,4 @@ macro_rules! coder {
         }
     };
 }
-coder!(EnumMap<Peer, EnumMap<Commander, i32>>);
+coder!(EnumMap<Peer, EnumMap<CommanderCounter, i32>>);

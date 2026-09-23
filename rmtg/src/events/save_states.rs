@@ -1,5 +1,7 @@
 use crate::assets::AssetManager;
-use crate::events::life_counter::{Commander, LifeCounter, NewLifeCount};
+use crate::events::life_counter::{CommanderCounter, LifeCounter, NewLifeCount};
+use crate::events::ping_drag::DragObject;
+use crate::events::select_drag::SelectDrag;
 use crate::net::Peer;
 use crate::pile::Pile;
 use crate::shapes::Shape;
@@ -29,8 +31,20 @@ pub struct SaveStates {
 pub struct SaveState {
     pub dices: Box<[ShapeState]>,
     pub piles: Box<[PileState]>,
-    #[bitcode(with = "crate::coder::DataCoder<EnumMap<Peer, EnumMap<Commander, i32>>>")]
-    pub life_counters: EnumMap<Peer, EnumMap<Commander, i32>>,
+    #[bitcode(with = "crate::coder::DataCoder<EnumMap<Peer, EnumMap<CommanderCounter, i32>>>")]
+    pub life_counters: EnumMap<Peer, EnumMap<CommanderCounter, i32>>,
+    pub select_drags: Box<[SelectDragState]>,
+}
+#[derive(Encode, Decode, Clone, Copy)]
+pub enum SelectDragEntity {
+    Dice(u32),
+    Pile(u32),
+    LifeCounter(Peer),
+}
+#[derive(Encode, Decode)]
+pub struct SelectDragState {
+    pub source: SelectDragEntity,
+    pub target: SelectDragEntity,
 }
 #[derive(Encode, Decode)]
 pub struct ShapeState {
@@ -56,9 +70,10 @@ pub const SAVE_PER_SECOND: f64 = 1.0;
 #[query_fn]
 pub fn update_save_states(
     mut states: ResMut<SaveStates>,
-    dice_query: Query<(&Shape, &Transform)>,
-    pile_query: Query<(&Pile, &Transform)>,
-    life_counters_query: Query<(&LifeCounter, &Peer)>,
+    dice_query: Query<(&Shape, &Transform, Entity)>,
+    pile_query: Query<(&Pile, &Transform, Entity)>,
+    life_counters_query: Query<(&LifeCounter, &Peer, Entity)>,
+    select_drags_query: Query<&SelectDrag>,
     mut last: Local<f64>,
     mut commands: Commands,
 ) {
@@ -104,6 +119,28 @@ pub fn update_save_states(
         };
         piles.push(state);
     }
+    let mut select_drags = Vec::with_capacity(select_drags_query.iter().len());
+    for select_drag in select_drags_query {
+        let get = |entity: Entity| -> SelectDragEntity {
+            if dice_query.contains(entity) {
+                SelectDragEntity::Dice(
+                    dice_query.iter().position(|q| q.entity == entity).unwrap() as u32
+                )
+            } else if pile_query.contains(entity) {
+                SelectDragEntity::Pile(
+                    pile_query.iter().position(|q| q.entity == entity).unwrap() as u32
+                )
+            } else if let Ok(life_counter) = life_counters_query.get(entity) {
+                SelectDragEntity::LifeCounter(*life_counter.peer)
+            } else {
+                unreachable!()
+            }
+        };
+        let source = get(select_drag.source);
+        let target = get(select_drag.target);
+        let state = SelectDragState { source, target };
+        select_drags.push(state);
+    }
     let life_counters = EnumMap::from_fn(|peer| {
         EnumMap::from_fn(|c| {
             life_counters_query
@@ -118,6 +155,7 @@ pub fn update_save_states(
         dices: Box::from(dices),
         piles: Box::from(piles),
         life_counters,
+        select_drags: Box::from(select_drags),
     };
     states.states.push_front(state);
     commands.trigger(NewSaveState);
@@ -133,12 +171,14 @@ impl ApplySaveState {
         Self { from_front }
     }
 }
+#[query_fn]
 pub fn apply_save_state(
     apply: On<ApplySaveState>,
     states: Res<SaveStates>,
     mut commands: Commands,
     to_remove: Query<Entity, Or<(With<Shape>, With<Pile>)>>,
-    asset: AssetManager,
+    life_counters_query: Query<(&LifeCounter, &Peer, Entity)>,
+    assets: AssetManager,
 ) {
     for entity in to_remove {
         commands.entity(entity).despawn();
@@ -148,6 +188,7 @@ pub fn apply_save_state(
         return;
     };
     let cache = CACHE.blocking_lock();
+    let mut piles = Vec::with_capacity(state.piles.len());
     for pile_state in &state.piles {
         let mut pile = Pile::new(
             pile_state
@@ -163,11 +204,14 @@ pub fn apply_save_state(
         if pile_state.equiped {
             pile.equip();
         }
-        commands.spawn((pile.bundle(), pile_state.transform));
+        let ent = commands.spawn((pile.bundle(), pile_state.transform));
+        piles.push(ent.id());
     }
+    let mut dices = Vec::with_capacity(state.piles.len());
     for dice_state in &state.dices {
         let mut ent = commands.spawn(dice_state.transform);
-        dice_state.shape.insert(&asset, &mut ent);
+        dice_state.shape.insert(&assets, &mut ent);
+        dices.push(ent.id());
     }
     for (peer, map) in &state.life_counters {
         for (commander, &life) in map {
@@ -177,6 +221,32 @@ pub fn apply_save_state(
                 life,
             });
         }
+    }
+    for state in &state.select_drags {
+        let get = |entity: SelectDragEntity| -> Entity {
+            match entity {
+                SelectDragEntity::Dice(index) => dices[index as usize],
+                SelectDragEntity::Pile(index) => piles[index as usize],
+                SelectDragEntity::LifeCounter(peer) => {
+                    life_counters_query
+                        .iter()
+                        .find(|q| *q.peer == peer && q.life_counter.commander.peer().is_none())
+                        .unwrap()
+                        .entity
+                }
+            }
+        };
+        let source = get(state.source);
+        let target = get(state.target);
+        commands.spawn((
+            SelectDrag {
+                source,
+                target,
+                source_identifier: Entity::PLACEHOLDER,
+                target_identifier: Entity::PLACEHOLDER,
+            },
+            DragObject::empty(&assets),
+        ));
     }
     commands.queue(move |world: &mut World| {
         let mut states = world.resource_mut::<SaveStates>();
