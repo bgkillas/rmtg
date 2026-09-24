@@ -118,22 +118,22 @@ pub fn spawn_objects(
             _ => (x_unit, -z_start, -z_delta),
         };
         commands.spawn((
-            Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
+            Transform::from_xyz(rev_x, Icosahedron::HEIGHT / 2.0, rev_z),
             Icosahedron::bundle(&asset),
         ));
         rev_z += del;
         commands.spawn((
-            Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
+            Transform::from_xyz(rev_x, Dodecahedron::HEIGHT / 2.0, rev_z),
             Dodecahedron::bundle(&asset),
         ));
         rev_z += del;
         commands.spawn((
-            Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
+            Transform::from_xyz(rev_x, Trapezohedron::HEIGHT / 2.0, rev_z),
             Trapezohedron::bundle(&asset),
         ));
         rev_z += del;
         commands.spawn((
-            Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
+            Transform::from_xyz(rev_x, Octahedron::HEIGHT / 2.0, rev_z),
             Octahedron::bundle(&asset),
         ));
         rev_z += del;
@@ -143,12 +143,12 @@ pub fn spawn_objects(
         ));
         rev_z += del;
         commands.spawn((
-            Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
+            Transform::from_xyz(rev_x, Tetrahedron::HEIGHT / 2.0, rev_z),
             Tetrahedron::bundle(&asset),
         ));
         rev_z += del;
         commands.spawn((
-            Transform::from_xyz(rev_x, Cube::HEIGHT / 2.0, rev_z),
+            Transform::from_xyz(rev_x, Coin::HEIGHT / 2.0, rev_z),
             Coin::bundle(&asset),
         ));
     }

@@ -12,7 +12,6 @@ use bevy_ecs::observer::On;
 use bevy_ecs::query::{Or, With, Without};
 use bevy_ecs::resource::Resource;
 use bevy_ecs::system::{Commands, Local, Query, Res, ResMut};
-use bevy_ecs::world::World;
 use bevy_p2p::bitcode::{self, Decode, Encode};
 use bevy_query_fn_macro::query_fn;
 use circular_buffer::FixedCircularBuffer;
@@ -22,7 +21,7 @@ use importer::coder::DataCoder;
 use importer::scryfall::{CACHE, Quality};
 use importer::uuid::Uuid;
 use std::time::{SystemTime, UNIX_EPOCH};
-pub const MAX_SAVE_STATES: usize = 4096;
+pub const MAX_SAVE_STATES: usize = 1024;
 #[derive(Resource, Default)]
 pub struct SaveStates {
     pub states: FixedCircularBuffer<SaveState, MAX_SAVE_STATES>,
@@ -249,9 +248,4 @@ pub fn apply_save_state(
             DragObject::empty(&assets),
         ));
     }
-    commands.queue(move |world: &mut World| {
-        let mut states = world.resource_mut::<SaveStates>();
-        let len = states.states.len();
-        states.states.truncate_front(len - from_front);
-    });
 }
