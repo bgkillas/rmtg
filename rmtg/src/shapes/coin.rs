@@ -4,7 +4,7 @@ use avian3d::prelude::Collider;
 use bevy::math::{Dir3, Vec3};
 use bevy::mesh::{CylinderMeshBuilder, Mesh, MeshBuilder, TorusMeshBuilder};
 use bevy::prelude::{Torus, Transform};
-use core::direct_const_arg;
+use core::gca;
 #[derive(Clone, Copy)]
 pub struct Coin {
     pub unit_length: f32,
@@ -12,10 +12,10 @@ pub struct Coin {
 const HEIGHT_MULT: f32 = 1.0 / 16.0;
 impl ShapeMesh for Coin {
     type Outline = CoinOutline;
-    const VERTICES: usize = direct_const_arg!(8);
-    const FACES: usize = direct_const_arg!(2);
-    const FACE_VERTICES: usize = direct_const_arg!(4);
-    const TRIANGLES: usize = direct_const_arg!(2);
+    const VERTICES: usize = gca!(8);
+    const FACES: usize = gca!(2);
+    const FACE_VERTICES: usize = gca!(4);
+    const TRIANGLES: usize = gca!(2);
     const SHAPE: Shape = Shape::Coin;
     fn collider(height: f32, _: &Mesh) -> Collider {
         let unit = Self::convert_height(height);
@@ -63,7 +63,7 @@ impl ShapeMesh for Coin {
 }
 impl ShapeOutline for CoinOutline {
     type Mesh = Coin;
-    const EDGES: usize = direct_const_arg!(2);
+    const EDGES: usize = gca!(2);
     fn edge_indices() -> [[usize; 2]; Self::EDGES] {
         unreachable!()
     }

@@ -1,6 +1,6 @@
 use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline};
 use bevy::mesh::{Mesh, MeshBuilder};
-use core::direct_const_arg;
+use core::gca;
 use std::f32::consts::GOLDEN_RATIO;
 #[derive(Clone, Copy)]
 pub struct Dodecahedron {
@@ -8,10 +8,10 @@ pub struct Dodecahedron {
 }
 impl ShapeMesh for Dodecahedron {
     type Outline = DodecahedronOutline;
-    const VERTICES: usize = direct_const_arg!(20);
-    const FACES: usize = direct_const_arg!(12);
-    const FACE_VERTICES: usize = direct_const_arg!(5);
-    const TRIANGLES: usize = direct_const_arg!(3);
+    const VERTICES: usize = gca!(20);
+    const FACES: usize = gca!(12);
+    const FACE_VERTICES: usize = gca!(5);
+    const TRIANGLES: usize = gca!(3);
     const SHAPE: Shape = Shape::Dodecahedron;
     fn text_size(height: f32) -> f32 {
         height / 4.0
@@ -73,7 +73,7 @@ impl ShapeMesh for Dodecahedron {
 }
 impl ShapeOutline for DodecahedronOutline {
     type Mesh = Dodecahedron;
-    const EDGES: usize = direct_const_arg!(30);
+    const EDGES: usize = gca!(30);
     fn edge_indices() -> [[usize; 2]; Self::EDGES] {
         [
             [15, 1],

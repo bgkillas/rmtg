@@ -4,7 +4,7 @@ use avian3d::parry::glamx::Vec3;
 use bevy::math::Dir3;
 use bevy::mesh::{Mesh, MeshBuilder};
 use bevy::prelude::Transform;
-use core::direct_const_arg;
+use core::gca;
 use std::f32::consts::GOLDEN_RATIO;
 #[derive(Clone, Copy)]
 pub struct Trapezohedron {
@@ -12,15 +12,15 @@ pub struct Trapezohedron {
 }
 impl ShapeMesh for Trapezohedron {
     type Outline = TrapezohedronOutline;
-    const VERTICES: usize = direct_const_arg!(12);
-    const FACES: usize = direct_const_arg!(10);
-    const FACE_VERTICES: usize = direct_const_arg!(4);
-    const TRIANGLES: usize = direct_const_arg!(2);
+    const VERTICES: usize = gca!(12);
+    const FACES: usize = gca!(10);
+    const FACE_VERTICES: usize = gca!(4);
+    const TRIANGLES: usize = gca!(2);
     const SHAPE: Shape = Shape::Trapezohedron;
     fn text_size(height: f32) -> f32 {
         height / 4.0
     }
-    fn face(old: [Vec3; direct_const_arg!(Self::FACE_VERTICES)], rev: bool) -> Transform {
+    fn face(old: [Vec3; gca!(Self::FACE_VERTICES)], rev: bool) -> Transform {
         let elems = [old[0], old[1], old[3]];
         let pos = elems.into_iter().sum::<Vec3>() / elems.len() as f32;
         let norm =
@@ -85,7 +85,7 @@ impl ShapeMesh for Trapezohedron {
 }
 impl ShapeOutline for TrapezohedronOutline {
     type Mesh = Trapezohedron;
-    const EDGES: usize = direct_const_arg!(20);
+    const EDGES: usize = gca!(20);
     fn edge_indices() -> [[usize; 2]; Self::EDGES] {
         [
             [8, 2],

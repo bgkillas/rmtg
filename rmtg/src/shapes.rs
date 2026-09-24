@@ -27,7 +27,7 @@ use bevy_ecs::spawn::{Spawn, SpawnRelated as _, SpawnWith};
 use bevy_ecs::system::EntityCommands;
 use bevy_p2p::bitcode::{self, Decode, Encode};
 use bevy_rich_text3d::{Text3d, Text3dStyling, TextAnchor};
-use core::direct_const_arg;
+use core::gca;
 use enum_map::Enum;
 pub mod coin;
 pub mod cube;
@@ -121,9 +121,9 @@ where
     #[rustc_always_gca]
     const FACES: usize;
     #[rustc_always_gca]
-    const FACE_VERTICES: usize = direct_const_arg!(3);
+    const FACE_VERTICES: usize = gca!(3);
     #[rustc_always_gca]
-    const TRIANGLES: usize = direct_const_arg!(1);
+    const TRIANGLES: usize = gca!(1);
     const IS_REVERSED: bool = false;
     const HEIGHT: f32 = CARD_WIDTH / 2.0;
     const SHAPE: Shape;
@@ -181,14 +181,14 @@ where
     #[must_use]
     fn text_size(height: f32) -> f32;
     #[must_use]
-    fn faces(self) -> [Transform; direct_const_arg!(Self::FACES)] {
+    fn faces(self) -> [Transform; gca!(Self::FACES)] {
         let v = self.oriented_vertices().map(Vec3::from);
         Self::face_indices()
             .map(|l| l.map(|i| v[usize::from(i)]))
             .map(|vec| Self::face(vec, Self::IS_REVERSED))
     }
     #[must_use]
-    fn face(elems: [Vec3; direct_const_arg!(Self::FACE_VERTICES)], rev: bool) -> Transform {
+    fn face(elems: [Vec3; gca!(Self::FACE_VERTICES)], rev: bool) -> Transform {
         let pos = elems.into_iter().sum::<Vec3>() / Self::FACE_VERTICES as f32;
         let norm =
             Dir3::try_from((elems[1] - elems[0]).cross(elems[2] - elems[0]).normalize()).unwrap();
@@ -208,16 +208,15 @@ where
     #[must_use]
     fn convert_height(height: f32) -> f32;
     #[must_use]
-    fn face_indices()
-    -> [[u16; direct_const_arg!(Self::FACE_VERTICES)]; direct_const_arg!(Self::FACES)];
+    fn face_indices() -> [[u16; gca!(Self::FACE_VERTICES)]; gca!(Self::FACES)];
     #[must_use]
-    fn vertices(self) -> [[f32; 3]; direct_const_arg!(Self::VERTICES)];
+    fn vertices(self) -> [[f32; 3]; gca!(Self::VERTICES)];
     #[must_use]
     fn convert_to_triangles(
-        face: [u16; direct_const_arg!(Self::FACE_VERTICES)],
-    ) -> [[u16; 3]; direct_const_arg!(Self::TRIANGLES)];
+        face: [u16; gca!(Self::FACE_VERTICES)],
+    ) -> [[u16; 3]; gca!(Self::TRIANGLES)];
     #[must_use]
-    fn oriented_vertices(self) -> [[f32; 3]; direct_const_arg!(Self::VERTICES)] {
+    fn oriented_vertices(self) -> [[f32; 3]; gca!(Self::VERTICES)] {
         let vertices = self.vertices();
         let dir = Quat::from_rotation_arc(
             average_normalized(Self::face_indices()[0].map(|i| vertices[usize::from(i)])),
@@ -255,18 +254,16 @@ where
     const EDGES: usize;
     const THICKNESS: f32 = CARD_THICKNESS * 7.0 / 8.0;
     #[must_use]
-    fn edge_indices() -> [[usize; 2]; direct_const_arg!(Self::EDGES)];
+    fn edge_indices() -> [[usize; 2]; gca!(Self::EDGES)];
     #[must_use]
     fn unit_length(self) -> f32;
     #[must_use]
-    fn edges(self) -> [[Vec3; 2]; direct_const_arg!(Self::EDGES)] {
+    fn edges(self) -> [[Vec3; 2]; gca!(Self::EDGES)] {
         let position = Self::Mesh::from(self).oriented_vertices().map(Vec3::from);
         let edges = Self::edge_indices();
         edges.map(|[a, b]| [position[a], position[b]])
     }
-    fn position(
-        self,
-    ) -> [Vec3; direct_const_arg!(<<Self as ShapeOutline>::Mesh as ShapeMesh>::VERTICES)] {
+    fn position(self) -> [Vec3; gca!(<<Self as ShapeOutline>::Mesh as ShapeMesh>::VERTICES)] {
         Self::Mesh::from(self).oriented_vertices().map(Vec3::from)
     }
     #[must_use]

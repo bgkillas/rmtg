@@ -3,15 +3,15 @@ use crate::shapes::{NewShape, Shape, ShapeMesh, ShapeOutline, average_normalized
 use avian3d::parry::glamx::{Quat, Vec3};
 use avian3d::prelude::Collider;
 use bevy::mesh::{Mesh, MeshBuilder};
-use core::direct_const_arg;
+use core::gca;
 #[derive(Clone, Copy)]
 pub struct Tetrahedron {
     pub unit_length: f32,
 }
 impl ShapeMesh for Tetrahedron {
     type Outline = TetrahedronOutline;
-    const VERTICES: usize = direct_const_arg!(4);
-    const FACES: usize = direct_const_arg!(4);
+    const VERTICES: usize = gca!(4);
+    const FACES: usize = gca!(4);
     const IS_REVERSED: bool = true;
     const SHAPE: Shape = Shape::Tetrahedron;
     fn collider(height: f32, _: &Mesh) -> Collider {
@@ -39,7 +39,7 @@ impl ShapeMesh for Tetrahedron {
     fn convert_to_triangles(face: [u16; Self::FACE_VERTICES]) -> [[u16; 3]; Self::TRIANGLES] {
         [face]
     }
-    fn oriented_vertices(self) -> [[f32; 3]; direct_const_arg!(Self::VERTICES)] {
+    fn oriented_vertices(self) -> [[f32; 3]; gca!(Self::VERTICES)] {
         let vertices = self.vertices();
         let dir = Quat::from_rotation_arc(
             average_normalized(Self::face_indices()[3].map(|i| vertices[usize::from(i)])),
@@ -53,7 +53,7 @@ impl ShapeMesh for Tetrahedron {
 }
 impl ShapeOutline for TetrahedronOutline {
     type Mesh = Tetrahedron;
-    const EDGES: usize = direct_const_arg!(6);
+    const EDGES: usize = gca!(6);
     fn edge_indices() -> [[usize; 2]; Self::EDGES] {
         [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]]
     }
