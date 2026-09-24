@@ -518,10 +518,10 @@ impl SubCard {
     }
     pub async fn get_json(json: JsonValue, quality: Quality) -> Result<Self, Uuid> {
         if json["object"].as_str() == Some("error") {
-            return Err(Uuid::max());
+            return Err(Uuid::nil());
         }
         let uuid =
-            Uuid::from_str(json["id"].as_str().ok_or(Uuid::max())?).map_err(|_| Uuid::max())?;
+            Uuid::from_str(json["id"].as_str().ok_or(Uuid::nil())?).map_err(|_| Uuid::nil())?;
         Self::get_cache_result_or(Identifier::Uuid(uuid), quality, false, async || {
             Self::from_scryfall(json, quality).ok()
         })
@@ -838,10 +838,10 @@ impl SubCard {
             Some(card)
         }
         if json["object"].as_str() == Some("error") {
-            return Err(Uuid::max());
+            return Err(Uuid::nil());
         }
         let id =
-            Uuid::from_str(json["id"].as_str().ok_or(Uuid::max())?).map_err(|_| Uuid::max())?;
+            Uuid::from_str(json["id"].as_str().ok_or(Uuid::nil())?).map_err(|_| Uuid::nil())?;
         inner(id, json, quality).ok_or(id)
     }
     #[define_opaque(ReadCardsCheckedFuture)]

@@ -39,6 +39,7 @@ use bevy::prelude::{Commands, Component, Cuboid, Msaa, ResMut, Transform};
 use bevy::text::Font;
 use bevy_rich_text3d::TextAtlas;
 use importer::card::{Handles, MaybeHandles, SubCard};
+use importer::scryfall::CACHE;
 use std::f32::consts::PI;
 pub fn startup(
     mut commands: Commands,
@@ -105,6 +106,7 @@ pub fn spawn_objects(
         asset.card.back_image.clone(),
         asset.card.back.clone(),
     ));
+    card.init_cache(&mut CACHE.blocking_lock());
     commands.spawn((
         Transform::from_xyz(MAT_EDGE_X + CARD_WIDTH, CARD_THICKNESS, 0.0),
         Pile::from(card).bundle(),

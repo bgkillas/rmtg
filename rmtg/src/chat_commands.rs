@@ -2,7 +2,7 @@ use crate::QUALITY;
 use crate::app::Client;
 use crate::events::clipboard::{ClipboardEvent, GetClipboard};
 use crate::events::move_up::MoveUp;
-use crate::events::save_states::ApplySaveState;
+use crate::events::save_states::{ApplySaveState, SAVE_PER_SECOND};
 use crate::pile::Pile;
 use crate::spatial::Spatial;
 use crate::ui::text_box::{TextSource, TextSubmission};
@@ -145,7 +145,9 @@ pub fn react_chat_commands(
                     (60 + time.minute() as usize) - minutes
                 }
         }
-        commands.trigger(ApplySaveState::new(delta));
+        commands.trigger(ApplySaveState::new(
+            (delta as f64 * SAVE_PER_SECOND) as usize,
+        ));
     } else if let Some(rest) = event.string.strip_prefix("/rollback ") {
         let Ok(amount) = rest.parse() else {
             warn!("{rest:?} not number");

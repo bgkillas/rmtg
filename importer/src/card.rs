@@ -576,13 +576,9 @@ impl Cost {
 }
 impl SubCard {
     #[must_use]
-    pub fn from_cache(cache: &CardCache, id: Uuid, quality: Quality) -> Self {
-        let data = cache.cards.get(&id).cloned().unwrap_or_default();
-        let (face_handles, back_handles) = cache
-            .handles
-            .get(&(id, quality))
-            .cloned()
-            .unwrap_or_default();
+    pub fn from_cache(cache: &CardCache, id: Uuid, quality: Quality) -> Option<Self> {
+        let data = cache.cards.get(&id).cloned()?;
+        let (face_handles, back_handles) = cache.handles.get(&(id, quality)).cloned()?;
         let mut card = Self {
             inner: SubCardInner {
                 data,
@@ -590,11 +586,19 @@ impl SubCard {
                 face_handles,
                 back_handles,
             },
-            global_id: Uuid::max(),
+            global_id: Uuid::nil(),
             attributes: CardAttributes::default(),
         };
         card.new_global();
-        card
+        Some(card)
+    }
+    pub fn init_cache(&self, cache: &mut CardCache) {
+        cache.set_cn.insert(self.data.set_cn.clone(), self.data.id);
+        cache.handles.insert(
+            (self.data.id, self.quality),
+            (self.face_handles.clone(), self.back_handles.clone()),
+        );
+        cache.cards.insert(self.data.id, self.data.clone());
     }
     #[must_use]
     pub fn get_simple(&self) -> SubCardId {
@@ -1120,7 +1124,7 @@ impl From<SubCardInner> for SubCard {
     fn from(inner: SubCardInner) -> Self {
         let mut card = Self {
             inner,
-            global_id: Uuid::max(),
+            global_id: Uuid::nil(),
             attributes: CardAttributes::default(),
         };
         card.new_global();
@@ -1153,7 +1157,7 @@ impl Clone for SubCard {
     fn clone(&self) -> Self {
         let mut new = Self {
             inner: self.inner.clone(),
-            global_id: Uuid::max(),
+            global_id: Uuid::nil(),
             attributes: self.attributes.clone(),
         };
         new.new_global();

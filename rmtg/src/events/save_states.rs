@@ -194,7 +194,8 @@ pub fn apply_save_state(
                 .cards
                 .iter()
                 .map(|c| {
-                    let mut card = SubCard::from_cache(&cache, c.id, c.quality);
+                    //TODO unwrap may fail
+                    let mut card = SubCard::from_cache(&cache, c.id, c.quality).unwrap();
                     card.attributes = c.attributes.clone();
                     card
                 })
