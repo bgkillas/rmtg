@@ -4,7 +4,7 @@ use crate::events::scroll::{Scroll, Scrollable};
 use crate::mat::PlayMat;
 use crate::net::Peer;
 use crate::pile::Pile;
-use crate::ui::esc_menu::button;
+use crate::ui::buttons::button;
 use crate::ui::menu::{Menu, SetMenu};
 use crate::ui::text_box::{TextSource, TextSubmission};
 use crate::{CARD_WIDTH, FONT_HEIGHT, QUALITY};

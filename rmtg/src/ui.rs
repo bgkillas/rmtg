@@ -1,4 +1,5 @@
 pub mod alt_menu;
+pub mod buttons;
 pub mod calc;
 pub mod chat;
 pub mod esc_menu;
@@ -6,5 +7,6 @@ pub mod menu;
 pub mod moxfield;
 pub mod right_click;
 pub mod side;
+pub mod sliders;
 pub mod tasks;
 pub mod text_box;

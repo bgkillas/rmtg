@@ -180,8 +180,7 @@ pub fn apply_save_state(
     life_counters_query: Query<(&LifeCounter, &Peer, Entity)>,
     assets: AssetManager,
 ) {
-    let from_front = apply.from_front;
-    let Some(state) = states.states.nth_front(from_front) else {
+    let Some(state) = states.states.nth_front(apply.from_front) else {
         return;
     };
     for entity in to_remove {

@@ -1,27 +1,25 @@
+use crate::ALPN;
 use crate::events::clipboard::{ClipboardEvent, GetClipboard};
 use crate::keybinds::Keybind;
 use crate::net::Msg;
 use crate::spatial::Spatial;
+use crate::ui::buttons::button;
 use crate::ui::menu::{Menu, SetMenu};
 use crate::ui::right_click::{RemoveRightClickMenu, RightClickMenu};
-use crate::{ALPN, BUTTON_BACKGROUND, BUTTON_HOVER, FONT_SIZE};
 use bevy::app::AppExit;
 use bevy::clipboard::Clipboard;
 use bevy::color::Color;
 use bevy::input::ButtonInput;
 use bevy::log::warn;
-use bevy::prelude::{
-    BackgroundColor, Component, FlexDirection, Out, Over, Pointer, Resource, Text, Visibility,
-};
-use bevy::text::{FontSize, TextFont};
+use bevy::prelude::{BackgroundColor, Component, FlexDirection, Resource, Visibility};
 use bevy::ui::{Node, PositionType, Val};
-use bevy::ui_widgets::{Activate, Button, observe};
+use bevy::ui_widgets::{Activate, observe};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
 use bevy_ecs::message::MessageWriter;
 use bevy_ecs::observer::On;
 use bevy_ecs::prelude::{Single, With};
-use bevy_ecs::system::{Commands, If, Query, Res, ResMut};
+use bevy_ecs::system::{Commands, If, Res, ResMut};
 use bevy_p2p::events::Binded;
 use bevy_p2p::iroh_res::{IrohBind, IrohResource, IrohUnbind};
 use bevy_query_fn_macro::query_fn;
@@ -112,39 +110,6 @@ fn on_disconnect(_: On<Activate>, mut commands: Commands) {
 }
 fn on_exit(_: On<Activate>, mut writer: MessageWriter<AppExit>) {
     writer.write(AppExit::Success);
-}
-pub fn button(str: &str) -> impl Bundle {
-    (
-        Node {
-            width: Val::Percent(100.0),
-            min_width: Val::Percent(100.0),
-            ..Node::default()
-        },
-        BackgroundColor(BUTTON_BACKGROUND),
-        Visibility::Inherited,
-        Button,
-        observe(hover),
-        observe(stop_hover),
-        children![(
-            Node { ..Node::default() },
-            Visibility::Inherited,
-            Text::new(str),
-            TextFont {
-                font_size: FontSize::Px(FONT_SIZE),
-                ..TextFont::default()
-            },
-        )],
-    )
-}
-#[query_fn]
-fn hover(event: On<Pointer<Over>>, mut query: Query<&mut BackgroundColor>) {
-    let mut bg = query.get_mut(event.entity).unwrap();
-    bg.0 = BUTTON_HOVER;
-}
-#[query_fn]
-fn stop_hover(event: On<Pointer<Out>>, mut query: Query<&mut BackgroundColor>) {
-    let mut bg = query.get_mut(event.entity).unwrap();
-    bg.0 = BUTTON_BACKGROUND;
 }
 #[query_fn]
 pub fn toggle_esc_menu(
