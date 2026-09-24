@@ -16,6 +16,7 @@ use crate::ui::calc::CalcMenu;
 use crate::ui::chat::TextMenu;
 use crate::ui::esc_menu::EscMenu;
 use crate::ui::moxfield::MoxfieldMenu;
+use crate::ui::save_state_slider::SaveStateSliderMenu;
 use crate::ui::side::SideMenu;
 use crate::ui::tasks::TasksCounter;
 use crate::{
@@ -91,6 +92,7 @@ pub fn startup(
     commands.spawn(MoxfieldMenu::bundle());
     commands.spawn(CalcMenu::bundle());
     commands.spawn(TasksCounter::bundle());
+    commands.spawn(SaveStateSliderMenu::bundle());
 }
 pub fn spawn_objects(
     mut commands: Commands,

@@ -25,8 +25,6 @@ use bevy_p2p::iroh_res::{IrohBind, IrohResource, IrohUnbind};
 use bevy_query_fn_macro::query_fn;
 #[derive(Component)]
 pub struct EscMenu;
-#[derive(Component)]
-pub struct Exit;
 impl EscMenu {
     #[must_use]
     pub fn bundle() -> impl Bundle {
@@ -57,6 +55,7 @@ impl EscMenu {
                     (button("Disconnect"), observe(on_disconnect)),
                     (button("Moxfield Deck List"), observe(on_moxfield_deck_list)),
                     (button("Import Deck"), observe(on_deck_import)),
+                    (button("Save States"), observe(on_save_states)),
                     (button("Exit"), observe(on_exit)),
                 ]
             )],
@@ -65,6 +64,9 @@ impl EscMenu {
 }
 #[derive(Resource, Default)]
 pub struct CopyOnSpawn;
+fn on_save_states(_: On<Activate>, mut commands: Commands) {
+    commands.trigger(SetMenu::new(Menu::SaveStateSlider));
+}
 fn on_copy(
     _: On<Activate>,
     mut commands: Commands,
@@ -124,7 +126,9 @@ pub fn toggle_esc_menu(
         }
         commands.trigger(SetMenu::new(match *menu {
             Menu::World => Menu::Esc,
-            Menu::Side | Menu::Counter | Menu::Moxfield | Menu::Esc => Menu::World,
+            Menu::Side | Menu::Counter | Menu::Moxfield | Menu::Esc | Menu::SaveStateSlider => {
+                Menu::World
+            }
         }));
     }
 }

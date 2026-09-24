@@ -28,6 +28,7 @@ use crate::ui::right_click::{
     add_copy_menu, ensure_has_menus, ensure_has_menus_post, on_right_click,
     remove_right_click_menus,
 };
+use crate::ui::save_state_slider::on_set_slider_ui;
 use crate::ui::side::{on_new_search, on_remove_side_menu, on_repaint_side_menu, on_side_set_menu};
 use bevy::app::App;
 pub mod clipboard;
@@ -100,4 +101,5 @@ pub fn add_events(app: &mut App) {
     app.add_observer(add_to_hand);
     app.add_observer(remove_from_hand);
     app.add_observer(apply_save_state);
+    app.add_observer(on_set_slider_ui);
 }

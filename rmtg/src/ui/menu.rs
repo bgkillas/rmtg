@@ -1,7 +1,9 @@
+use crate::events::save_states::SaveStates;
 use crate::ui::calc::CalcMenu;
 use crate::ui::chat::TextMenu;
 use crate::ui::esc_menu::EscMenu;
 use crate::ui::moxfield::MoxfieldMenu;
+use crate::ui::save_state_slider::SaveStateSliderMenu;
 use crate::ui::side::{SearchList, SideMenu, SideMenuText};
 use crate::ui::text_box::TextSource;
 use bevy::input_focus::{FocusCause, InputFocus};
@@ -23,13 +25,14 @@ pub enum Menu {
     Counter,
     Esc,
     Side,
+    SaveStateSlider,
 }
 impl Menu {
     pub fn in_view_world(self) -> bool {
         Self::view_world().contains(self)
     }
     pub fn view_world() -> EnumSet<Self> {
-        enum_set!(Menu::World | Menu::Moxfield | Menu::Counter | Menu::Side)
+        enum_set!(Menu::World | Menu::Moxfield | Menu::Counter | Menu::Side | Menu::SaveStateSlider)
     }
 }
 #[derive(Event)]
@@ -51,6 +54,7 @@ pub fn on_set_menu(
             Without<CalcMenu>,
             Without<MoxfieldMenu>,
             Without<SideMenu>,
+            Without<SaveStateSliderMenu>,
             Without<TextMenu>,
         ),
     >,
@@ -61,6 +65,7 @@ pub fn on_set_menu(
             Without<EscMenu>,
             Without<MoxfieldMenu>,
             Without<SideMenu>,
+            Without<SaveStateSliderMenu>,
             Without<TextMenu>,
         ),
     >,
@@ -71,6 +76,7 @@ pub fn on_set_menu(
             Without<CalcMenu>,
             Without<EscMenu>,
             Without<SideMenu>,
+            Without<SaveStateSliderMenu>,
             Without<TextMenu>,
         ),
     >,
@@ -82,12 +88,24 @@ pub fn on_set_menu(
             Without<MoxfieldMenu>,
             Without<EscMenu>,
             Without<TextMenu>,
+            Without<SaveStateSliderMenu>,
         ),
     >,
     mut chat: Single<
         (Entity, &mut Visibility),
         (
             With<TextMenu>,
+            Without<SideMenu>,
+            Without<CalcMenu>,
+            Without<MoxfieldMenu>,
+            Without<EscMenu>,
+            Without<SaveStateSliderMenu>,
+        ),
+    >,
+    mut save: Single<
+        (Entity, &mut Visibility),
+        (
+            With<SaveStateSliderMenu>,
             Without<SideMenu>,
             Without<CalcMenu>,
             Without<MoxfieldMenu>,
@@ -100,6 +118,7 @@ pub fn on_set_menu(
     text_input: Query<(Entity, &TextSource)>,
     mut search_list: Single<(Entity, &mut SearchList)>,
     mut search: Single<&mut EditableText, With<SideMenuText>>,
+    mut states: ResMut<SaveStates>,
     mut commands: Commands,
 ) {
     match *menu {
@@ -116,6 +135,10 @@ pub fn on_set_menu(
             *moxfield.visibility = Visibility::Hidden;
         }
         Menu::Esc => *esc.visibility = Visibility::Hidden,
+        Menu::SaveStateSlider => {
+            states.pause = false;
+            *save.visibility = Visibility::Hidden;
+        }
     }
     let ent = match event.menu {
         Menu::World => *window,
@@ -143,6 +166,10 @@ pub fn on_set_menu(
         Menu::Esc => {
             *esc.visibility = Visibility::Visible;
             esc.entity
+        }
+        Menu::SaveStateSlider => {
+            *save.visibility = Visibility::Visible;
+            save.entity
         }
     };
     active_input.set(ent, FocusCause::Pressed);

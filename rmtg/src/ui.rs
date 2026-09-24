@@ -6,6 +6,7 @@ pub mod esc_menu;
 pub mod menu;
 pub mod moxfield;
 pub mod right_click;
+pub mod save_state_slider;
 pub mod side;
 pub mod sliders;
 pub mod tasks;
