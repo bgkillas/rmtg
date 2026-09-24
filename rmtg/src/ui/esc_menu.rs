@@ -4,22 +4,23 @@ use crate::net::Msg;
 use crate::spatial::Spatial;
 use crate::ui::menu::{Menu, SetMenu};
 use crate::ui::right_click::{RemoveRightClickMenu, RightClickMenu};
-use crate::{ALPN, BUTTON_BACKGROUND, BUTTON_BORDER, BUTTON_HOVER, FONT_SIZE};
+use crate::{ALPN, BUTTON_BACKGROUND, BUTTON_HOVER, FONT_SIZE};
 use bevy::app::AppExit;
 use bevy::clipboard::Clipboard;
 use bevy::color::Color;
 use bevy::input::ButtonInput;
 use bevy::log::warn;
-use bevy::prelude::{BackgroundColor, Component, FlexDirection, Resource, Text, Visibility};
+use bevy::prelude::{
+    BackgroundColor, Component, FlexDirection, Out, Over, Pointer, Resource, Text, Visibility,
+};
 use bevy::text::{FontSize, TextFont};
-use bevy::ui::{BorderColor, Interaction, Node, PositionType, Val};
+use bevy::ui::{Node, PositionType, Val};
 use bevy::ui_widgets::{Activate, Button, observe};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::children;
 use bevy_ecs::message::MessageWriter;
 use bevy_ecs::observer::On;
 use bevy_ecs::prelude::{Single, With};
-use bevy_ecs::query::Changed;
 use bevy_ecs::system::{Commands, If, Query, Res, ResMut};
 use bevy_p2p::events::Binded;
 use bevy_p2p::iroh_res::{IrohBind, IrohResource, IrohUnbind};
@@ -119,10 +120,11 @@ pub fn button(str: &str) -> impl Bundle {
             min_width: Val::Percent(100.0),
             ..Node::default()
         },
-        BorderColor::all(BUTTON_BORDER),
         BackgroundColor(BUTTON_BACKGROUND),
         Visibility::Inherited,
         Button,
+        observe(hover),
+        observe(stop_hover),
         children![(
             Node { ..Node::default() },
             Visibility::Inherited,
@@ -135,18 +137,14 @@ pub fn button(str: &str) -> impl Bundle {
     )
 }
 #[query_fn]
-pub fn button_system(
-    interaction_query: Query<
-        (&Interaction, &mut BackgroundColor, &mut BorderColor),
-        Changed<Interaction>,
-    >,
-) {
-    for mut interaction in interaction_query {
-        *interaction.border_color = match *interaction.interaction {
-            Interaction::None | Interaction::Pressed => BorderColor::all(BUTTON_BORDER),
-            Interaction::Hovered => BorderColor::all(BUTTON_HOVER),
-        };
-    }
+fn hover(event: On<Pointer<Over>>, mut query: Query<&mut BackgroundColor>) {
+    let mut bg = query.get_mut(event.entity).unwrap();
+    bg.0 = BUTTON_HOVER;
+}
+#[query_fn]
+fn stop_hover(event: On<Pointer<Out>>, mut query: Query<&mut BackgroundColor>) {
+    let mut bg = query.get_mut(event.entity).unwrap();
+    bg.0 = BUTTON_BACKGROUND;
 }
 #[query_fn]
 pub fn toggle_esc_menu(

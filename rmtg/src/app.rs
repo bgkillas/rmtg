@@ -32,7 +32,7 @@ use crate::pile::register_cards;
 use crate::spatial::{Cursor, update_cursor};
 use crate::startup::{spawn_objects, startup};
 use crate::ui::alt_menu::{RotateUi, on_ui_rotate, update_alt_menu};
-use crate::ui::esc_menu::{button_system, toggle_esc_menu};
+use crate::ui::esc_menu::toggle_esc_menu;
 use crate::ui::menu::Menu;
 use crate::ui::moxfield::startup_moxfield;
 use crate::ui::right_click::trigger_right_click_menu;
@@ -180,13 +180,7 @@ pub fn app_run() -> AppExit {
         (
             delayed_pile_merge,
             update_cursor,
-            (
-                update_focus,
-                toggle_esc_menu,
-                activate_side_menu,
-                button_system,
-            )
-                .chain(),
+            (update_focus, toggle_esc_menu, activate_side_menu).chain(),
             update_keybinds,
         )
             .after(InputSystems),
