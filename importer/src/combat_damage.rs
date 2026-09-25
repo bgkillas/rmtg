@@ -1,8 +1,10 @@
-use crate::card::{KeyWord, SubCard};
+use crate::card::{Commander, KeyWord, SubCard};
 use std::ops::Add;
 #[derive(PartialEq, Default, Debug)]
 pub struct CombatData {
     pub damage: i32,
+    pub commander: u32,
+    pub second_commander: u32,
     pub lifegain: u32,
 }
 impl Add for CombatData {
@@ -10,13 +12,20 @@ impl Add for CombatData {
     fn add(self, rhs: Self) -> Self::Output {
         Self {
             damage: self.damage + rhs.damage,
+            commander: self.commander + rhs.commander,
+            second_commander: self.second_commander + rhs.second_commander,
             lifegain: self.lifegain + rhs.lifegain,
         }
     }
 }
 impl CombatData {
     pub fn new(damage: i32, lifegain: u32) -> Self {
-        Self { damage, lifegain }
+        Self {
+            damage,
+            commander: 0,
+            second_commander: 0,
+            lifegain,
+        }
     }
     pub fn get(attacker: &SubCard, blockers: &mut [&SubCard]) -> Option<Self> {
         fn strike(
@@ -27,9 +36,16 @@ impl CombatData {
             can_strike: impl Fn(&SubCard) -> bool,
         ) -> CombatData {
             let mut damage = 0;
+            let mut commander = 0;
+            let mut second_commander = 0;
             let mut lifegain = 0;
             if *attacker_toughness == 0 {
-                return CombatData { damage, lifegain };
+                return CombatData {
+                    damage,
+                    commander,
+                    second_commander,
+                    lifegain,
+                };
             }
             let mut power = if can_strike(attacker) {
                 attacker.get_power().unwrap()
@@ -86,8 +102,22 @@ impl CombatData {
             }
             if attacker.has(KeyWord::Trample) || blockers.is_empty() {
                 damage = damage.saturating_add_unsigned(power);
+                match attacker.commander {
+                    Commander::Not => {}
+                    Commander::First => {
+                        commander += power;
+                    }
+                    Commander::Second => {
+                        second_commander += power;
+                    }
+                }
             }
-            CombatData { damage, lifegain }
+            CombatData {
+                damage,
+                commander,
+                second_commander,
+                lifegain,
+            }
         }
         if !attacker.can_be_in_combat()
             || blockers.iter().any(|c| !c.can_be_in_combat())

@@ -17,7 +17,7 @@ use bevy_p2p::bitcode::{self, Decode, Encode};
 use bevy_query_fn_macro::query_fn;
 use circular_buffer::FixedCircularBuffer;
 use enum_map::EnumMap;
-use importer::card::{CardAttributes, SubCard};
+use importer::card::{CardAttributes, Commander, SubCard};
 use importer::coder::DataCoder;
 use importer::scryfall::{CACHE, Quality};
 use importer::uuid::Uuid;
@@ -65,6 +65,7 @@ pub struct CardState {
     #[bitcode(with = "DataCoder<Uuid>")]
     pub id: Uuid,
     pub quality: Quality,
+    pub commander: Commander,
     pub attributes: CardAttributes,
 }
 pub const SAVE_PER_SECOND: f64 = 1.0;
@@ -110,6 +111,7 @@ pub fn update_save_states(
             .map(|card| CardState {
                 id: card.data.id,
                 quality: card.quality,
+                commander: card.commander,
                 attributes: card.attributes.clone(),
             })
             .collect();
@@ -199,6 +201,7 @@ pub fn apply_save_state(
             .map(|c| {
                 let mut card = SubCard::from_cache(&cache, c.id, c.quality)?;
                 card.attributes = c.attributes.clone();
+                card.commander = c.commander;
                 Some(card)
             })
             .collect::<Option<Vec<_>>>()

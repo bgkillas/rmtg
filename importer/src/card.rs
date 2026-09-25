@@ -52,11 +52,19 @@ pub struct CardAttributes {
     pub is_token: bool,
     pub face_down: bool,
 }
+#[derive(Debug, Default, Encode, Decode, Clone, Copy)]
+pub enum Commander {
+    #[default]
+    Not,
+    First,
+    Second,
+}
 #[derive(Debug, Default, Encode, Decode)]
 pub struct SubCard {
     pub inner: SubCardInner,
     #[bitcode(with = "DataCoder<Uuid>")]
     pub global_id: Uuid,
+    pub commander: Commander,
     pub attributes: CardAttributes,
 }
 #[derive(Debug, Default, Encode, Decode, Clone)]
@@ -587,6 +595,7 @@ impl SubCard {
                 back_handles,
             },
             global_id: Uuid::nil(),
+            commander: Commander::Not,
             attributes: CardAttributes::default(),
         };
         card.new_global();
@@ -1125,6 +1134,7 @@ impl From<SubCardInner> for SubCard {
         let mut card = Self {
             inner,
             global_id: Uuid::nil(),
+            commander: Commander::Not,
             attributes: CardAttributes::default(),
         };
         card.new_global();
@@ -1158,6 +1168,7 @@ impl Clone for SubCard {
         let mut new = Self {
             inner: self.inner.clone(),
             global_id: Uuid::nil(),
+            commander: Commander::Not,
             attributes: self.attributes.clone(),
         };
         new.new_global();
