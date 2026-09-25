@@ -199,7 +199,6 @@ impl LifeCounter {
             MeshMaterial3d(assets.outlines.players[commander.peer().unwrap_or(peer)].clone()),
             Collider::cuboid(1.0, 1.0, CARD_THICKNESS / 64.0),
             RigidBody::Static,
-            SelectableObject,
             Transform::from_translation(Vec3::new(x, 0.0, z))
                 .with_scale(Vec3::splat(MAT_DELTA_X * mult))
                 .looking_to(Vec3::NEG_Y, if rev_z { Vec3::Z } else { Vec3::NEG_Z }),
@@ -246,7 +245,10 @@ impl LifeCounter {
 }
 pub fn startup_life_counters(mut commands: Commands, assets: AssetManager) {
     for peer in EnumSet::<Peer>::all() {
-        commands.spawn(LifeCounter::bundle(peer, CommanderCounter::None, &assets));
+        commands.spawn((
+            LifeCounter::bundle(peer, CommanderCounter::None, &assets),
+            SelectableObject,
+        ));
         for commander in EnumSet::<Peer>::all() {
             commands.spawn(LifeCounter::bundle(
                 peer,
