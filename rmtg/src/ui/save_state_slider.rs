@@ -51,5 +51,7 @@ pub fn slider_changed(
         return;
     }
     *last = int;
-    commands.trigger(ApplySaveState::new((states.states.len() - 1) - int));
+    if let Some(state) = states.states.nth_back(int) {
+        commands.trigger(ApplySaveState::local(state.clone()));
+    }
 }

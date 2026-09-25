@@ -5,13 +5,14 @@ use crate::events::select_drag::{SelectDrag, TempSelect};
 use crate::net::Peer;
 use crate::pile::Pile;
 use crate::shapes::Shape;
+use bevy::log::warn;
 use bevy::prelude::Transform;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::event::Event;
 use bevy_ecs::observer::On;
 use bevy_ecs::query::{Or, With, Without};
 use bevy_ecs::resource::Resource;
-use bevy_ecs::system::{Commands, Local, Query, Res, ResMut};
+use bevy_ecs::system::{Commands, Local, Query, ResMut};
 use bevy_p2p::bitcode::{self, Decode, Encode};
 use bevy_query_fn_macro::query_fn;
 use circular_buffer::FixedCircularBuffer;
@@ -27,7 +28,7 @@ pub struct SaveStates {
     pub states: FixedCircularBuffer<SaveState, MAX_SAVE_STATES>,
     pub pause: bool,
 }
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Clone)]
 pub struct SaveState {
     pub dices: Box<[ShapeState]>,
     pub piles: Box<[PileState]>,
@@ -41,25 +42,25 @@ pub enum SelectDragEntity {
     Pile(u32),
     LifeCounter(Peer),
 }
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Clone)]
 pub struct SelectDragState {
     pub source: SelectDragEntity,
     pub target: SelectDragEntity,
 }
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Clone)]
 pub struct ShapeState {
     pub shape: Shape,
     #[bitcode(with = "DataCoder<Transform>")]
     pub transform: Transform,
 }
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Clone)]
 pub struct PileState {
     pub equiped: bool,
     pub cards: Box<[CardState]>,
     #[bitcode(with = "DataCoder<Transform>")]
     pub transform: Transform,
 }
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Clone)]
 pub struct CardState {
     #[bitcode(with = "DataCoder<Uuid>")]
     pub id: Uuid,
@@ -164,56 +165,61 @@ pub fn update_save_states(
 pub struct NewSaveState;
 #[derive(Event)]
 pub struct ApplySaveState {
-    pub from_front: usize,
+    pub state: SaveState,
+    pub local: bool,
 }
 impl ApplySaveState {
-    pub fn new(from_front: usize) -> Self {
-        Self { from_front }
+    pub fn local(state: SaveState) -> Self {
+        Self { state, local: true }
+    }
+    pub fn new(state: SaveState) -> Self {
+        Self {
+            state,
+            local: false,
+        }
     }
 }
 #[query_fn]
 pub fn apply_save_state(
     apply: On<ApplySaveState>,
-    states: Res<SaveStates>,
     mut commands: Commands,
     to_remove: Query<Entity, Or<(With<Shape>, With<Pile>)>>,
     life_counters_query: Query<(&LifeCounter, &Peer, Entity)>,
     assets: AssetManager,
 ) {
-    let Some(state) = states.states.nth_front(apply.from_front) else {
-        return;
-    };
     for entity in to_remove {
         commands.entity(entity).despawn();
     }
     let cache = CACHE.blocking_lock();
-    let mut piles = Vec::with_capacity(state.piles.len());
-    for pile_state in &state.piles {
-        let mut pile = Pile::new(
-            pile_state
-                .cards
-                .iter()
-                .map(|c| {
-                    //TODO unwrap may fail
-                    let mut card = SubCard::from_cache(&cache, c.id, c.quality).unwrap();
-                    card.attributes = c.attributes.clone();
-                    card
-                })
-                .collect(),
-        );
+    let mut piles = Vec::with_capacity(apply.state.piles.len());
+    for pile_state in &apply.state.piles {
+        let Some(cards) = pile_state
+            .cards
+            .iter()
+            .map(|c| {
+                let mut card = SubCard::from_cache(&cache, c.id, c.quality)?;
+                card.attributes = c.attributes.clone();
+                Some(card)
+            })
+            .collect::<Option<Vec<_>>>()
+        else {
+            warn!("not in cache");
+            return;
+        };
+        let mut pile = Pile::new(cards);
         if pile_state.equiped {
             pile.equip();
         }
         let ent = commands.spawn((pile.bundle(), pile_state.transform));
         piles.push(ent.id());
     }
-    let mut dices = Vec::with_capacity(state.piles.len());
-    for dice_state in &state.dices {
+    let mut dices = Vec::with_capacity(apply.state.piles.len());
+    for dice_state in &apply.state.dices {
         let mut ent = commands.spawn(dice_state.transform);
         dice_state.shape.insert(&assets, &mut ent);
         dices.push(ent.id());
     }
-    for (peer, map) in &state.life_counters {
+    for (peer, map) in &apply.state.life_counters {
         for (commander, &life) in map {
             commands.trigger(NewLifeCount {
                 peer,
@@ -222,7 +228,7 @@ pub fn apply_save_state(
             });
         }
     }
-    for state in &state.select_drags {
+    for state in &apply.state.select_drags {
         let get = |entity: SelectDragEntity| -> Entity {
             match entity {
                 SelectDragEntity::Dice(index) => dices[index as usize],
