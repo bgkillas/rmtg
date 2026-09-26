@@ -59,12 +59,21 @@ pub enum Commander {
     First,
     Second,
 }
+#[derive(Debug, Default, Encode, Decode, Clone, Copy)]
+pub enum Player {
+    #[default]
+    Zero,
+    One,
+    Two,
+    Three,
+}
 #[derive(Debug, Default, Encode, Decode)]
 pub struct SubCard {
     pub inner: SubCardInner,
     #[bitcode(with = "DataCoder<Uuid>")]
     pub global_id: Uuid,
     pub commander: Commander,
+    pub owner: Player,
     pub attributes: CardAttributes,
 }
 #[derive(Debug, Default, Encode, Decode, Clone)]
@@ -596,6 +605,7 @@ impl SubCard {
             },
             global_id: Uuid::nil(),
             commander: Commander::Not,
+            owner: Player::Zero,
             attributes: CardAttributes::default(),
         };
         card.new_global();
@@ -1135,6 +1145,7 @@ impl From<SubCardInner> for SubCard {
             inner,
             global_id: Uuid::nil(),
             commander: Commander::Not,
+            owner: Player::Zero,
             attributes: CardAttributes::default(),
         };
         card.new_global();
@@ -1169,6 +1180,7 @@ impl Clone for SubCard {
             inner: self.inner.clone(),
             global_id: Uuid::nil(),
             commander: Commander::Not,
+            owner: Player::Zero,
             attributes: self.attributes.clone(),
         };
         new.new_global();
