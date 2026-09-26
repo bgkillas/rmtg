@@ -1,6 +1,6 @@
 #![expect(incomplete_features)]
 #![feature(array_try_map)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![feature(extern_item_impls)]
 #![feature(arc_is_unique)]
 #![feature(type_alias_impl_trait)]

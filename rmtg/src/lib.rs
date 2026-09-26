@@ -1,5 +1,5 @@
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![feature(inherent_associated_types)]
 #![feature(associated_type_defaults)]
 #![feature(exact_size_is_empty)]
