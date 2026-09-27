@@ -74,7 +74,6 @@ impl From<Quat> for TapState {
         }
     }
 }
-#[expect(clippy::large_enum_variant)]
 #[derive(Component, Default, Debug, Encode, Decode, Clone)]
 pub enum Pile {
     Multiple(Vec<SubCard>),

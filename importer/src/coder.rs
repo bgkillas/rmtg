@@ -5,6 +5,7 @@ use bitcode::{Decode, Encode};
 use core::gca;
 use enum_map::EnumMap;
 use enumset::EnumSet;
+use nonmax::{NonMaxI32, NonMaxU32};
 use std::num::NonZero;
 use uuid::Uuid;
 pub trait FixedSize: Sized + Copy {
@@ -62,6 +63,8 @@ coder!(EnumSet<SubType>);
 coder!(EnumSet<Color>);
 coder!(EnumSet<KeyWord>);
 coder!(EnumMap<Counter, Option<NonZero<u32>>>);
+coder!(Option<NonMaxU32>);
+coder!(Option<NonMaxI32>);
 coder!(Vec3);
 coder!(Transform);
 coder!(Uuid);

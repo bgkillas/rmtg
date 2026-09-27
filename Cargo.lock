@@ -4327,6 +4327,7 @@ dependencies = [
  "getrandom 0.4.3",
  "image",
  "jzon",
+ "nonmax",
  "percent-encoding",
  "rand",
  "ratelimit",

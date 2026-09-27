@@ -8,6 +8,7 @@ use bevy::ui::widget::ImageNode;
 use bitcode::{Decode, Encode};
 use enum_map::{Enum, EnumMap};
 use enumset::{EnumSet, EnumSetType};
+use nonmax::{NonMaxI32, NonMaxU32};
 use rand::prelude::StdRng;
 use rand::{Rng as _, make_rng};
 use std::cmp::Ordering;
@@ -41,12 +42,17 @@ pub struct Card {
 pub struct CardAttributes {
     pub transformed: bool,
     pub amount: Option<NonZero<u32>>,
-    pub power: Option<i32>,
-    pub toughness: Option<i32>,
+    #[bitcode(with = "DataCoder<Option<NonMaxI32>>")]
+    pub power: Option<NonMaxI32>,
+    #[bitcode(with = "DataCoder<Option<NonMaxI32>>")]
+    pub toughness: Option<NonMaxI32>,
     pub plus_one_counters: Option<NonZero<i32>>,
-    pub loyalty: Option<u32>,
-    pub defense: Option<u32>,
-    pub misc: Option<u32>,
+    #[bitcode(with = "DataCoder<Option<NonMaxU32>>")]
+    pub loyalty: Option<NonMaxU32>,
+    #[bitcode(with = "DataCoder<Option<NonMaxU32>>")]
+    pub defense: Option<NonMaxU32>,
+    #[bitcode(with = "DataCoder<Option<NonMaxU32>>")]
+    pub misc: Option<NonMaxU32>,
     #[bitcode(with = "DataCoder<EnumMap<Counter, Option<NonZero<u32>>>>")]
     pub counters: EnumMap<Counter, Option<NonZero<u32>>>,
     pub is_token: bool,
@@ -630,10 +636,10 @@ impl SubCard {
         let power = if let Some(power) = self.attributes.power {
             power
         } else {
-            i32::from(self.face().power?)
+            NonMaxI32::from(self.face().power?)
         };
         Some(
-            (power
+            (power.get()
                 + self
                     .attributes
                     .plus_one_counters
@@ -646,10 +652,10 @@ impl SubCard {
         let toughness = if let Some(toughness) = self.attributes.toughness {
             toughness
         } else {
-            i32::from(self.face().toughness?)
+            NonMaxI32::from(self.face().toughness?)
         };
         Some(
-            (toughness
+            (toughness.get()
                 + self
                     .attributes
                     .plus_one_counters
