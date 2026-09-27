@@ -4,17 +4,17 @@ use std::num::NonZero;
 #[test]
 pub fn test_combat_damage() {
     let mut attacker = SubCard::default();
-    attacker.attributes.power = Some(8);
-    attacker.attributes.toughness = Some(8);
+    attacker.attributes.power = Some(8u8.into());
+    attacker.attributes.toughness = Some(8u8.into());
     let mut blocker1 = SubCard::default();
-    blocker1.attributes.power = Some(1);
-    blocker1.attributes.toughness = Some(1);
+    blocker1.attributes.power = Some(1u8.into());
+    blocker1.attributes.toughness = Some(1u8.into());
     let mut blocker2 = SubCard::default();
-    blocker2.attributes.power = Some(2);
-    blocker2.attributes.toughness = Some(2);
+    blocker2.attributes.power = Some(2u8.into());
+    blocker2.attributes.toughness = Some(2u8.into());
     let mut blocker3 = SubCard::default();
-    blocker3.attributes.power = Some(3);
-    blocker3.attributes.toughness = Some(3);
+    blocker3.attributes.power = Some(3u8.into());
+    blocker3.attributes.toughness = Some(3u8.into());
     assert_eq!(
         CombatData::get(&attacker, &mut []),
         Some(CombatData::new(8, 0))
