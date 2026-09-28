@@ -218,7 +218,9 @@ pub fn update_hover(
     };
     if !hoverable.contains(hit.entity) {
         for old in olds {
-            if (!old.hovered_object.held && !keybinds.pressed(Keybind::Select))
+            if (!old.hovered_object.held
+                && !keybinds.pressed(Keybind::Select)
+                && !keybinds.pressed(Keybind::Draw))
                 || keybinds.just_pressed(Keybind::Select)
             {
                 commands.trigger(RemoveHover::new(old.entity));

@@ -1,5 +1,6 @@
 use crate::camera::{camera_rotation, camera_translation};
 use crate::drag::drag;
+use crate::draw::update_draw;
 use crate::events::add_events;
 use crate::events::clipboard::{PollClipboard, poll_clipboards};
 use crate::events::clone::{CloneObjs, update_clone};
@@ -208,6 +209,7 @@ pub fn app_run() -> AppExit {
                     life_counter_button,
                     do_delete,
                     drag,
+                    update_draw,
                     update_clone,
                     update_scale,
                     trigger_tap,

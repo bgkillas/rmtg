@@ -79,7 +79,7 @@ pub fn drag(
         }
         return;
     }
-    if keybinds.pressed(Keybind::Select) {
+    if keybinds.pressed(Keybind::Select) || keybinds.pressed(Keybind::Draw) {
         let Some(ray) = spatial.cam_ray() else {
             return;
         };

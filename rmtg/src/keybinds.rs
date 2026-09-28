@@ -94,6 +94,7 @@ pub enum Keybind {
     Flip,
     Increase,
     Decrease,
+    Draw,
 }
 #[derive(Resource, Deref, DerefMut)]
 pub struct KeybindsList(EnumMap<Keybind, Bind>);
@@ -108,6 +109,7 @@ impl Default for KeybindsList {
             Keybind::Ping =>        Bind::new(enum_set!(),              Menu::view_world(),         true,  true,  MouseButton::Middle),
             Keybind::HoldSelect =>  Bind::new(enum_set!(ctrl),          Menu::view_world(),         true,  true,  MouseButton::Left),
             Keybind::SelectDrag =>  Bind::new(enum_set!(ctrl | shift),  Menu::view_world(),         true,  true,  MouseButton::Left),
+            Keybind::Draw =>        Bind::new(enum_set!(shift),         Menu::view_world(),         true,  true,  MouseButton::Left),
             Keybind::Rotate =>      Bind::new(enum_set!(),              Menu::view_world(),         false, true,  MouseButton::Right),
             Keybind::ObjectMenu =>  Bind::new(enum_set!(),              Menu::view_world(),         false, true,  MouseButton::Right),
             Keybind::Shuffle =>     Bind::new(enum_set!(),              Menu::view_world(),         true,  true,  KeyCode::KeyR),
