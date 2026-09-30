@@ -1,11 +1,9 @@
 use crate::CARD_WIDTH;
 use crate::drag::Dragging;
-use crate::events::gravity::NewGravity;
 use crate::events::hover::{AddHover, HoveredObject, RemoveHover};
 use crate::keybinds::Keybind;
 use crate::pile::Pile;
 use crate::spatial::Spatial;
-use avian3d::prelude::{CollisionLayers, LinearDamping, SleepingDisabled};
 use bevy::input::ButtonInput;
 use bevy::prelude::Transform;
 use bevy_ecs::entity::Entity;
@@ -42,14 +40,11 @@ pub fn update_draw(
         return;
     }
     let ent = commands
-        .spawn((Pile::new(cards).bundle(), Transform::from_translation(pos)))
-        .insert((
+        .spawn((
+            Pile::new(cards).bundle(),
+            Transform::from_translation(pos),
             Dragging { pos },
-            LinearDamping(0.0),
-            CollisionLayers::NONE,
-            SleepingDisabled,
         ))
         .id();
-    commands.trigger(NewGravity::new(ent, 0.0));
     commands.trigger(AddHover::new(ent, HoveredObject { held: false }));
 }

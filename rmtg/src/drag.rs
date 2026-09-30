@@ -14,7 +14,7 @@ use bevy::prelude::{
     Commands, Component, Entity, InfinitePlane3d, Local, Query, Res, Transform, With,
 };
 use bevy::time::Time;
-use bevy_ecs::event::Event;
+use bevy_ecs::lifecycle::{Insert, Remove};
 use bevy_ecs::observer::On;
 use bevy_ecs::query::Without;
 use bevy_ecs::system::Single;
@@ -23,21 +23,25 @@ use bevy_query_fn_macro::query_fn;
 pub struct Dragging {
     pub pos: Vec3,
 }
-#[derive(Event)]
-pub struct DragEntity {
-    pub entity: Entity,
+#[query_fn]
+pub fn on_drag(event: On<Insert, Dragging>, mut commands: Commands) {
+    commands.trigger(NewGravity::new(event.entity, 0.0));
+    commands.entity(event.entity).insert((
+        LinearDamping(0.0),
+        CollisionLayers::NONE,
+        SleepingDisabled,
+    ));
 }
 #[query_fn]
-pub fn on_drag(event: On<DragEntity>) {
-    _ = event;
-}
-#[derive(Event)]
-pub struct StopDragEntity {
-    pub entity: Entity,
-}
-#[query_fn]
-pub fn stop_drag(event: On<DragEntity>) {
-    _ = event;
+pub fn stop_drag(event: On<Remove, Dragging>, mut commands: Commands) {
+    commands.trigger(NewGravity::new(event.entity, GRAVITY));
+    commands
+        .entity(event.entity)
+        .remove::<(Dragging, SleepingDisabled)>()
+        .insert((
+            LinearDamping(LIN_DAMPING),
+            CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),
+        ));
 }
 #[query_fn]
 pub fn drag(
@@ -66,14 +70,7 @@ pub fn drag(
         for ent in last_ents {
             if let Ok(mut query) = velocity.get_mut(ent) {
                 query.y = 0.0;
-                commands.trigger(NewGravity::new(ent, GRAVITY));
-                commands
-                    .entity(ent)
-                    .remove::<(Dragging, SleepingDisabled)>()
-                    .insert((
-                        CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),
-                        LinearDamping(LIN_DAMPING),
-                    ));
+                commands.entity(ent).remove::<Dragging>();
             }
         }
         return;
@@ -84,14 +81,7 @@ pub fn drag(
         };
         *last = pos;
         for ent in last_ents {
-            commands.trigger(NewGravity::new(ent, GRAVITY));
-            commands
-                .entity(ent)
-                .remove::<(Dragging, SleepingDisabled)>()
-                .insert((
-                    CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),
-                    LinearDamping(LIN_DAMPING),
-                ));
+            commands.entity(ent).remove::<Dragging>();
         }
         return;
     }
@@ -109,15 +99,9 @@ pub fn drag(
                 target.pos += delta;
                 target.pos
             } else if keybinds.just_pressed(Keybind::Select) {
-                commands.trigger(NewGravity::new(hovered.entity, 0.0));
                 let mut pos = hovered.transform.translation + delta;
                 pos.y += CARD_WIDTH;
-                commands.entity(hovered.entity).insert((
-                    Dragging { pos },
-                    LinearDamping(0.0),
-                    CollisionLayers::NONE,
-                    SleepingDisabled,
-                ));
+                commands.entity(hovered.entity).insert((Dragging { pos },));
                 pos
             } else {
                 return;
@@ -140,14 +124,7 @@ pub fn drag(
             if let Ok(mut query) = velocity.get_mut(ent) {
                 query.y = 0.0;
             }
-            commands.trigger(NewGravity::new(ent, GRAVITY));
-            commands
-                .entity(ent)
-                .remove::<(Dragging, SleepingDisabled)>()
-                .insert((
-                    LinearDamping(LIN_DAMPING),
-                    CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),
-                ));
+            commands.entity(ent).remove::<Dragging>();
         }
     }
 }
