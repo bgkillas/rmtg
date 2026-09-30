@@ -8,20 +8,36 @@ use crate::{CARD_THICKNESS, CARD_WIDTH};
 use avian3d::prelude::{
     CollisionLayers, LayerMask, LinearDamping, LinearVelocity, SleepingDisabled,
 };
-use bevy::ecs::entity::EntityHash;
 use bevy::input::ButtonInput;
 use bevy::math::{Dir3, Vec3};
 use bevy::prelude::{
     Commands, Component, Entity, InfinitePlane3d, Local, Query, Res, Transform, With,
 };
 use bevy::time::Time;
+use bevy_ecs::event::Event;
+use bevy_ecs::observer::On;
 use bevy_ecs::query::Without;
 use bevy_ecs::system::Single;
 use bevy_query_fn_macro::query_fn;
-use std::collections::HashSet;
-#[derive(Component, Clone)]
-pub struct TargetPosition {
+#[derive(Component, Clone, Debug)]
+pub struct Dragging {
     pub pos: Vec3,
+}
+#[derive(Event)]
+pub struct DragEntity {
+    pub entity: Entity,
+}
+#[query_fn]
+pub fn on_drag(event: On<DragEntity>) {
+    _ = event;
+}
+#[derive(Event)]
+pub struct StopDragEntity {
+    pub entity: Entity,
+}
+#[query_fn]
+pub fn stop_drag(event: On<DragEntity>) {
+    _ = event;
 }
 #[query_fn]
 pub fn drag(
@@ -31,7 +47,7 @@ pub fn drag(
             Entity,
             &Transform,
             &mut LinearVelocity,
-            Option<&mut TargetPosition>,
+            Option<&mut Dragging>,
         ),
         With<HoveredObject>,
     >,
@@ -40,20 +56,20 @@ pub fn drag(
     keybinds: Res<ButtonInput<Keybind>>,
     spatial: Spatial,
     mut last: Local<Vec3>,
-    mut last_ents: Local<HashSet<Entity, EntityHash>>,
+    last_ents: Query<Entity, With<Dragging>>,
     time: Res<Time>,
 ) {
     if box_select.is_some() {
         return;
     }
     if hovered_entities.is_empty() {
-        for ent in last_ents.drain() {
+        for ent in last_ents {
             if let Ok(mut query) = velocity.get_mut(ent) {
                 query.y = 0.0;
                 commands.trigger(NewGravity::new(ent, GRAVITY));
                 commands
                     .entity(ent)
-                    .remove::<(TargetPosition, SleepingDisabled)>()
+                    .remove::<(Dragging, SleepingDisabled)>()
                     .insert((
                         CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),
                         LinearDamping(LIN_DAMPING),
@@ -67,11 +83,11 @@ pub fn drag(
             return;
         };
         *last = pos;
-        for ent in last_ents.drain() {
+        for ent in last_ents {
             commands.trigger(NewGravity::new(ent, GRAVITY));
             commands
                 .entity(ent)
-                .remove::<(TargetPosition, SleepingDisabled)>()
+                .remove::<(Dragging, SleepingDisabled)>()
                 .insert((
                     CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),
                     LinearDamping(LIN_DAMPING),
@@ -89,21 +105,22 @@ pub fn drag(
         let pos = ray.origin + ray.direction * delta;
         let delta = pos - *last;
         for mut hovered in hovered_entities {
-            let target = if let Some(mut target) = hovered.target_position {
+            let target = if let Some(mut target) = hovered.dragging {
                 target.pos += delta;
                 target.pos
-            } else {
-                last_ents.insert(hovered.entity);
+            } else if keybinds.just_pressed(Keybind::Select) {
                 commands.trigger(NewGravity::new(hovered.entity, 0.0));
                 let mut pos = hovered.transform.translation + delta;
                 pos.y += CARD_WIDTH;
                 commands.entity(hovered.entity).insert((
-                    TargetPosition { pos },
+                    Dragging { pos },
                     LinearDamping(0.0),
                     CollisionLayers::NONE,
                     SleepingDisabled,
                 ));
                 pos
+            } else {
+                return;
             };
             let delta =
                 Vec3::from(wall_aabb().closest_point(target)) - hovered.transform.translation;
@@ -116,7 +133,7 @@ pub fn drag(
         }
         *last = pos;
     } else {
-        for ent in last_ents.drain() {
+        for ent in last_ents {
             if let Ok(mut query) = hovered_entities.get_mut(ent) {
                 query.linear_velocity.y = 0.0;
             }
@@ -126,7 +143,7 @@ pub fn drag(
             commands.trigger(NewGravity::new(ent, GRAVITY));
             commands
                 .entity(ent)
-                .remove::<(TargetPosition, SleepingDisabled)>()
+                .remove::<(Dragging, SleepingDisabled)>()
                 .insert((
                     LinearDamping(LIN_DAMPING),
                     CollisionLayers::new(WorldLayer::Default, LayerMask::ALL),

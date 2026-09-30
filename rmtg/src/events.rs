@@ -1,4 +1,5 @@
 use crate::chat_commands::react_chat_commands;
+use crate::drag::{on_drag, stop_drag};
 use crate::events::clipboard::get_clipboard;
 use crate::events::clone::{on_clone, on_clone_objects, on_paste_objects};
 use crate::events::delete::on_delete;
@@ -102,4 +103,6 @@ pub fn add_events(app: &mut App) {
     app.add_observer(remove_from_hand);
     app.add_observer(apply_save_state);
     app.add_observer(on_set_slider_ui);
+    app.add_observer(on_drag);
+    app.add_observer(stop_drag);
 }

@@ -1,5 +1,6 @@
 use crate::CARD_WIDTH;
-use crate::drag::TargetPosition;
+use crate::drag::Dragging;
+use crate::events::gravity::NewGravity;
 use crate::events::hover::{AddHover, HoveredObject, RemoveHover};
 use crate::keybinds::Keybind;
 use crate::pile::Pile;
@@ -43,11 +44,12 @@ pub fn update_draw(
     let ent = commands
         .spawn((Pile::new(cards).bundle(), Transform::from_translation(pos)))
         .insert((
-            TargetPosition { pos },
+            Dragging { pos },
             LinearDamping(0.0),
             CollisionLayers::NONE,
             SleepingDisabled,
         ))
         .id();
+    commands.trigger(NewGravity::new(ent, 0.0));
     commands.trigger(AddHover::new(ent, HoveredObject { held: false }));
 }

@@ -1,4 +1,5 @@
 use crate::assets::AssetManager;
+use crate::drag::Dragging;
 use crate::events::repaint::{OUTLINES_START, SELECT_DRAG_START};
 use crate::focus::Hover;
 use crate::keybinds::Keybind;
@@ -208,6 +209,7 @@ pub fn update_hover(
     olds: Query<(Entity, &HoveredObject)>,
     hoverable: Query<(), With<Hoverable>>,
     life_counters: Query<(), With<NoBoxSelect>>,
+    is_dragging: Query<(), With<Dragging>>,
     keybinds: Res<ButtonInput<Keybind>>,
     spatial: Spatial,
     mut commands: Commands,
@@ -218,10 +220,11 @@ pub fn update_hover(
     };
     if !hoverable.contains(hit.entity) {
         for old in olds {
-            if (!old.hovered_object.held
+            if ((!old.hovered_object.held
                 && !keybinds.pressed(Keybind::Select)
                 && !keybinds.pressed(Keybind::Draw))
-                || keybinds.just_pressed(Keybind::Select)
+                || keybinds.just_pressed(Keybind::Select))
+                && !is_dragging.contains(old.entity)
             {
                 commands.trigger(RemoveHover::new(old.entity));
             }
@@ -254,14 +257,17 @@ pub fn update_hover(
                 .all(|old| old.entity != hit.entity || !old.hovered_object.held)
         {
             for old in olds {
-                if old.entity != hit.entity {
+                if old.entity != hit.entity && !is_dragging.contains(old.entity) {
                     commands.trigger(RemoveHover::new(old.entity));
                 }
             }
         }
     } else {
         for old in olds {
-            if !old.hovered_object.held && old.entity != hit.entity {
+            if !old.hovered_object.held
+                && old.entity != hit.entity
+                && !is_dragging.contains(old.entity)
+            {
                 commands.trigger(RemoveHover::new(old.entity));
             }
         }

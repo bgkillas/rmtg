@@ -1,4 +1,4 @@
-use crate::drag::TargetPosition;
+use crate::drag::Dragging;
 use crate::events::repaint::Repaint;
 use crate::pile::{FlippedState, PendingCards, Pile, TapState};
 use crate::{CARD_THICKNESS, CARD_WIDTH};
@@ -48,7 +48,7 @@ pub fn delayed_pile_merge(
 #[query_fn]
 pub fn trigger_pile_merge(
     collision: On<CollisionStart>,
-    piles: Query<(Entity, &mut Pile, &Transform), (Without<PendingCards>, Without<TargetPosition>)>,
+    piles: Query<(Entity, &mut Pile, &Transform), (Without<PendingCards>, Without<Dragging>)>,
     mut writer: MessageWriter<DelayPileMerge>,
 ) {
     let Ok(pile1) = piles.get(collision.collider1) else {
