@@ -1,6 +1,7 @@
 use crate::CARD_WIDTH;
 use crate::drag::Dragging;
 use crate::events::hover::{AddHover, HoveredObject, RemoveHover};
+use crate::events::repaint::Repaint;
 use crate::keybinds::Keybind;
 use crate::pile::Pile;
 use crate::spatial::Spatial;
@@ -29,6 +30,7 @@ pub fn update_draw(
         if pile.pile.len() == 1 {
             commands.entity(pile.entity).despawn();
         } else {
+            commands.trigger(Repaint::new(pile.entity));
             commands.trigger(RemoveHover {
                 entity: pile.entity,
             });

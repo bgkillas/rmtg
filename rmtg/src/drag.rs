@@ -83,7 +83,6 @@ pub fn drag(
         for ent in last_ents {
             commands.entity(ent).remove::<Dragging>();
         }
-        return;
     }
     if keybinds.pressed(Keybind::Select) || keybinds.pressed(Keybind::Draw) {
         let Some(ray) = spatial.cam_ray() else {
@@ -96,6 +95,9 @@ pub fn drag(
         let delta = pos - *last;
         for mut hovered in hovered_entities {
             let target = if let Some(mut target) = hovered.dragging {
+                if keybinds.just_pressed(Keybind::Select) {
+                    continue;
+                }
                 target.pos += delta;
                 target.pos
             } else if keybinds.just_pressed(Keybind::Select) {
@@ -104,7 +106,7 @@ pub fn drag(
                 commands.entity(hovered.entity).insert((Dragging { pos },));
                 pos
             } else {
-                return;
+                continue;
             };
             let delta =
                 Vec3::from(wall_aabb().closest_point(target)) - hovered.transform.translation;
