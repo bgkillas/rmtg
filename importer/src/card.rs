@@ -434,11 +434,11 @@ impl From<&str> for Types {
     fn from(s: &str) -> Self {
         let mut ret = Self::default();
         for word in s.split(' ') {
-            if let Ok(super_type) = SuperType::try_from(word) {
+            if let Ok(super_type) = SuperType::from_str(word) {
                 ret.super_type.types.insert(super_type);
-            } else if let Ok(ty) = MainType::try_from(word) {
+            } else if let Ok(ty) = MainType::from_str(word) {
                 ret.main_type.types.insert(ty);
-            } else if let Ok(sub_type) = SubType::try_from(word) {
+            } else if let Ok(sub_type) = SubType::from_str(word) {
                 ret.sub_type.types.insert(sub_type);
             }
         }
@@ -449,7 +449,7 @@ impl From<&str> for SuperTypes {
     fn from(s: &str) -> Self {
         let mut ret = Self::default();
         for word in s.split(' ') {
-            if let Ok(super_type) = SuperType::try_from(word) {
+            if let Ok(super_type) = SuperType::from_str(word) {
                 ret.types.insert(super_type);
             }
         }
@@ -460,7 +460,7 @@ impl From<&str> for MainTypes {
     fn from(s: &str) -> Self {
         let mut ret = Self::default();
         for word in s.split(' ') {
-            if let Ok(main_type) = MainType::try_from(word) {
+            if let Ok(main_type) = MainType::from_str(word) {
                 ret.types.insert(main_type);
             }
         }
@@ -471,16 +471,16 @@ impl From<&str> for SubTypes {
     fn from(s: &str) -> Self {
         let mut ret = Self::default();
         for word in s.split(' ') {
-            if let Ok(sub_type) = SubType::try_from(word) {
+            if let Ok(sub_type) = SubType::from_str(word) {
                 ret.types.insert(sub_type);
             }
         }
         ret
     }
 }
-impl TryFrom<&str> for Colors {
-    type Error = ();
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+impl FromStr for Colors {
+    type Err = ();
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         let mut cost = Self::default();
         for c in value.chars() {
             match c {
@@ -971,7 +971,7 @@ impl CardInfo {
             SearchKey::Color => {
                 if let Ok(count) = value.parse::<usize>() {
                     self.colors.len() == count
-                } else if let Ok(col) = Colors::try_from(value)
+                } else if let Ok(col) = Colors::from_str(value)
                     && let Some(order) = self.colors.partial_cmp(&col)
                 {
                     order == ordering
@@ -982,7 +982,7 @@ impl CardInfo {
             SearchKey::Identity => {
                 if let Ok(count) = value.parse::<usize>() {
                     self.color_identity.len() == count
-                } else if let Ok(col) = Colors::try_from(value)
+                } else if let Ok(col) = Colors::from_str(value)
                     && let Some(order) = self.color_identity.partial_cmp(&col)
                 {
                     order == ordering
