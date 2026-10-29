@@ -187,13 +187,10 @@ impl ApplySaveState {
 pub fn apply_save_state(
     apply: On<ApplySaveState>,
     mut commands: Commands,
-    to_remove: Query<Entity, Or<(With<Shape>, With<Pile>)>>,
     life_counters_query: Query<(&LifeCounter, &Peer, Entity)>,
     assets: AssetManager,
 ) {
-    for entity in to_remove {
-        commands.entity(entity).despawn();
-    }
+    commands.despawn_all::<Or<(With<Shape>, With<Pile>)>>();
     let cache = CACHE.blocking_lock();
     let mut piles = Vec::with_capacity(apply.state.piles.len());
     for pile_state in &apply.state.piles {
