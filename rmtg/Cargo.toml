@@ -39,7 +39,7 @@ itertools = "0.15.0"
 bevy_ecs = "0.20.1"
 bevy_reflect = "0.20.1"
 bevy-settings = "0.20.1"
-bevy_framepace = "0.22.0"
+bevy_framepace = {version = "0.22.0", git="https://github.com/martinfrances107/bevy_framepace", branch = "bevy0p20"}
 futures = "0.3.34"
 circular-buffer = "2.0.1"
 chrono = "0.4.45"

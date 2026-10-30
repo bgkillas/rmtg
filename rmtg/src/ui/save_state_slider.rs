@@ -39,7 +39,7 @@ pub fn on_set_slider_ui(
     commands.entity(*save).insert(SliderValue(end));
 }
 pub fn slider_changed(
-    event: On<Insert, SliderValue>,
+    event: On<Insert<SliderValue>>,
     sliders: Query<&SliderValue>,
     mut commands: Commands,
     mut last: Local<usize>,

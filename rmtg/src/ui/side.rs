@@ -198,12 +198,12 @@ pub fn on_new_search(
         }
     });
 }
-fn on_side_pressed(event: On<Add, Pressed>, mut commands: Commands) {
+fn on_side_pressed(event: On<Add<Pressed>>, mut commands: Commands) {
     commands
         .entity(event.entity)
         .insert((SideHold, BackgroundColor(PLAYER[0])));
 }
-fn on_side_unpressed(event: On<Remove, Pressed>, mut commands: Commands) {
+fn on_side_unpressed(event: On<Remove<Pressed>>, mut commands: Commands) {
     commands
         .entity(event.entity)
         .queue_silenced(|mut c: EntityWorldMut| {
@@ -216,7 +216,7 @@ pub struct DelayedHoveredMessage {
 }
 #[query_fn]
 fn on_side_hover(
-    event: On<Insert, Hovered>,
+    event: On<Insert<Hovered>>,
     hovered: Query<&Hovered>,
     mut messages: MessageWriter<DelayedHoveredMessage>,
     side_hold: Single<Entity, With<SideHold>>,
@@ -315,7 +315,7 @@ pub fn move_cards_in(
 }
 #[query_fn]
 pub fn on_remove_side_menu(
-    on: On<Remove, Pile>,
+    on: On<Remove<Pile>>,
     mut commands: Commands,
     search_list: Single<&SearchList>,
 ) {

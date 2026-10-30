@@ -32,7 +32,7 @@ impl Repaint {
 pub const OUTLINES_START: usize = 3;
 pub const SELECT_DRAG_START: usize = 6;
 pub fn on_pile_added(
-    on: On<Add, Pile>,
+    on: On<Add<Pile>>,
     piles: Query<&Pile>,
     mut commands: Commands,
     asset: AssetManager,
@@ -59,7 +59,7 @@ pub fn on_pile_added(
     commands.trigger(Repaint::new(on.entity));
 }
 pub fn on_pile_removed(
-    on: On<Remove, Pile>,
+    on: On<Remove<Pile>>,
     piles: Query<&Pile>,
     mut global_map: ResMut<GlobalIdMap>,
 ) {

@@ -1,6 +1,6 @@
 use crate::focus::Hover;
 use bevy::input::ButtonInput;
-use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
+use bevy::input::mouse::{MouseScrollPixelsPerLine, MouseScrollUnit, MouseWheel};
 use bevy::math::Vec2;
 use bevy::prelude::{Component, KeyCode};
 use bevy::ui::{ComputedNode, Node, OverflowAxis, ScrollPosition};
@@ -131,7 +131,7 @@ pub fn send_scroll_events(
     for mouse_wheel in mouse_wheel_reader.read() {
         let mut delta = -Vec2::new(mouse_wheel.x, mouse_wheel.y);
         if mouse_wheel.unit == MouseScrollUnit::Line {
-            delta *= MouseScrollUnit::SCROLL_UNIT_CONVERSION_FACTOR;
+            delta *= *MouseScrollPixelsPerLine::default();
         }
         if keyboard.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
             mem::swap(&mut delta.x, &mut delta.y);
@@ -160,7 +160,7 @@ pub struct InsertScrollbar {
 }
 #[query_fn]
 pub fn insert_scroll_bar(
-    event: On<Add, InsertScrollbar>,
+    event: On<Add<InsertScrollbar>>,
     scroll_bar: Single<(&ChildOf, &InsertScrollbar)>,
     children: Query<&Children>,
     is_scrollable: Query<(), With<Scrollable>>,

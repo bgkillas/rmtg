@@ -7,7 +7,9 @@ use crate::ui::menu::Menu;
 use crate::{CARD_HEIGHT, CARD_THICKNESS, MAT_WIDTH, START_Y, W};
 use bevy::camera::Camera3d;
 use bevy::input::ButtonInput;
-use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit};
+use bevy::input::mouse::{
+    AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollPixelsPerLine, MouseScrollUnit,
+};
 use bevy::math::{Dir3, EulerRot, Quat, Vec2, Vec3};
 use bevy::prelude::{InfinitePlane3d, Res, Transform};
 use bevy::time::Time;
@@ -72,7 +74,7 @@ pub fn camera_translation(
             / W
             * 2.0;
         if mouse_motion.unit == MouseScrollUnit::Line {
-            translate *= MouseScrollUnit::SCROLL_UNIT_CONVERSION_FACTOR;
+            translate *= *MouseScrollPixelsPerLine::default();
         }
         if camera.transform.translation.y + translate.y <= 0.0 {
             camera.transform.translation += ray.direction * (ray_time / 2.0);

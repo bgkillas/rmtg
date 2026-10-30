@@ -13,13 +13,13 @@ use avian3d::prelude::{Collider, ColliderAabb};
 use avian3d::spatial_query::SpatialQueryFilter;
 use bevy::asset::Assets;
 use bevy::input::ButtonInput;
-use bevy::math::bounding::{Aabb2d, Aabb3d, BoundingVolume as _, IntersectsVolume as _};
 use bevy::math::{Isometry2d, Quat, Vec2, Vec3, Vec3A, Vec3Swizzles as _};
 use bevy::mesh::{Mesh, Mesh3d};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::{
     Children, Commands, Component, Entity, EntityEvent, On, Query, Transform, With,
 };
+use bevy::shape::{Aabb2d, Aabb3d, BoundingVolume as _, IntersectsVolume as _};
 use bevy_ecs::event::Event;
 use bevy_ecs::system::{Res, ResMut, Single};
 use bevy_query_fn_macro::query_fn;

@@ -1,6 +1,6 @@
 use bevy::color::{Color, Luminance as _};
 use bevy::picking::hover::Hovered;
-use bevy::prelude::{DragEnd, DragStart, Out, Over, Pointer};
+use bevy::prelude::{PointerDragEnd, PointerDragStart, PointerOut, PointerOver};
 use bevy::ui::{
     AlignItems, BackgroundColor, BorderRadius, Display, FlexDirection, JustifyContent, Node,
     PositionType, Val,
@@ -10,7 +10,7 @@ use bevy::ui_widgets::{
     slider_self_update,
 };
 use bevy_ecs::children;
-use bevy_ecs::event::EntityEvent;
+use bevy_ecs::event::EventPattern;
 use bevy_ecs::hierarchy::Children;
 use bevy_ecs::lifecycle::Insert;
 use bevy_ecs::observer::On;
@@ -23,11 +23,11 @@ const SLIDER_THUMB: Color = Color::srgb(0.35, 0.75, 0.35);
 pub fn horizontal_slider(initial: f32, start: f32, end: f32) -> impl Bundle {
     (
         observe(slider_self_update),
-        observe(update_slider_visuals::<Insert, SliderValue>),
-        observe(update_slider_visuals::<Pointer<Over>, SliderValue>),
-        observe(update_slider_visuals::<Pointer<Out>, SliderValue>),
-        observe(update_slider_visuals::<Pointer<DragStart>, SliderValue>),
-        observe(update_slider_visuals::<Pointer<DragEnd>, SliderValue>),
+        observe(update_slider_visuals::<Insert<SliderValue>>),
+        observe(update_slider_visuals::<PointerOver>),
+        observe(update_slider_visuals::<PointerOut>),
+        observe(update_slider_visuals::<PointerDragStart>),
+        observe(update_slider_visuals::<PointerDragEnd>),
         Node {
             display: Display::Flex,
             flex_direction: FlexDirection::Column,
@@ -83,14 +83,14 @@ pub fn horizontal_slider(initial: f32, start: f32, end: f32) -> impl Bundle {
     )
 }
 #[query_fn]
-fn update_slider_visuals<T: EntityEvent, E: Bundle>(
-    event: On<T, E>,
+fn update_slider_visuals<E: EventPattern>(
+    event: On<E>,
     sliders: Query<(&SliderValue, &SliderRange, &Hovered, &SliderDragState)>,
     children: Query<&Children>,
     mut thumbs: Query<(&mut Node, &mut BackgroundColor), With<SliderThumb>>,
 ) {
-    let slider = sliders.get(event.event_target()).unwrap();
-    for child in children.iter_descendants(event.event_target()) {
+    let slider = sliders.get(event.observer()).unwrap();
+    for child in children.iter_descendants(event.observer()) {
         if let Ok(mut thumb) = thumbs.get_mut(child) {
             let position = slider.slider_range.thumb_position(slider.slider_value.0) * 100.0;
             thumb.node.left = Val::Percent(position);

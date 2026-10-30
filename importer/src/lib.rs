@@ -2,7 +2,6 @@
 #![feature(array_try_map)]
 #![feature(gca_min_const_items)]
 #![feature(extern_item_impls)]
-#![feature(arc_is_unique)]
 #![feature(type_alias_impl_trait)]
 #![feature(alloc_slice_into_array)]
 #![cfg_attr(test, feature(test))]

@@ -51,7 +51,7 @@ pub struct MaybeDragSource {
 }
 #[query_fn]
 pub fn on_add_select_drag(
-    event: On<Add, SelectDrag>,
+    event: On<Add<SelectDrag>>,
     mut drags: Query<&mut SelectDrag>,
     mut commands: Commands,
 ) {
@@ -79,7 +79,7 @@ pub fn on_add_select_drag(
 }
 #[query_fn]
 pub fn on_remove_select_drag(
-    event: On<Remove, SelectDrag>,
+    event: On<Remove<SelectDrag>>,
     drags: Query<&SelectDrag>,
     mut commands: Commands,
 ) {
@@ -93,7 +93,7 @@ pub fn on_remove_select_drag(
 }
 #[query_fn]
 pub fn on_remove_select_drag_source(
-    event: On<Remove, SelectDragSource>,
+    event: On<Remove<SelectDragSource>>,
     drags: Query<&SelectDragSource>,
     mut commands: Commands,
 ) {
@@ -102,7 +102,7 @@ pub fn on_remove_select_drag_source(
 }
 #[query_fn]
 pub fn on_remove_select_drag_target(
-    event: On<Remove, SelectDragTarget>,
+    event: On<Remove<SelectDragTarget>>,
     drags: Query<&SelectDragTarget>,
     mut commands: Commands,
 ) {

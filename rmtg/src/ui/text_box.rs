@@ -25,6 +25,7 @@ impl TextSource {
                 selection_color: Color::srgb_u8(53, 132, 228),
                 unfocused_selection_color: Color::srgb_u8(176, 176, 176),
                 selected_text_color: None,
+                selection_radius: 0.0,
             },
             TextFont {
                 font_size: FontSize::Px(FONT_SIZE),

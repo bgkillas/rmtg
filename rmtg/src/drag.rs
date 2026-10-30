@@ -24,7 +24,7 @@ pub struct Dragging {
     pub pos: Vec3,
 }
 #[query_fn]
-pub fn on_drag(event: On<Insert, Dragging>, mut commands: Commands) {
+pub fn on_drag(event: On<Insert<Dragging>>, mut commands: Commands) {
     commands.trigger(NewGravity::new(event.entity, 0.0));
     commands.entity(event.entity).insert((
         LinearDamping(0.0),
@@ -33,7 +33,7 @@ pub fn on_drag(event: On<Insert, Dragging>, mut commands: Commands) {
     ));
 }
 #[query_fn]
-pub fn stop_drag(event: On<Remove, Dragging>, mut commands: Commands) {
+pub fn stop_drag(event: On<Remove<Dragging>>, mut commands: Commands) {
     commands.trigger(NewGravity::new(event.entity, GRAVITY));
     commands
         .entity(event.entity)

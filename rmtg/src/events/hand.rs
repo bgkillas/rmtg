@@ -64,7 +64,7 @@ pub fn hand_startup(mut commands: Commands) {
 }
 #[query_fn]
 pub fn add_to_hand(
-    event: On<Add, InHand>,
+    event: On<Add<InHand>>,
     cards: Query<&InHand>,
     mut hands: Query<(&mut Hand, &Peer)>,
 ) {
@@ -74,7 +74,7 @@ pub fn add_to_hand(
 }
 #[query_fn]
 pub fn remove_from_hand(
-    event: On<Remove, InHand>,
+    event: On<Remove<InHand>>,
     cards: Query<&InHand>,
     mut hands: Query<(&mut Hand, &Peer)>,
 ) {

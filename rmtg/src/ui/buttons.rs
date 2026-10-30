@@ -1,5 +1,5 @@
 use crate::{BUTTON_BACKGROUND, BUTTON_HOVER, FONT_SIZE};
-use bevy::prelude::{BackgroundColor, Node, Out, Over, Pointer, Text, Val, Visibility};
+use bevy::prelude::{BackgroundColor, Node, PointerOut, PointerOver, Text, Val, Visibility};
 use bevy::text::{FontSize, TextFont};
 use bevy::ui_widgets::{Button, observe};
 use bevy_ecs::bundle::Bundle;
@@ -31,12 +31,12 @@ pub fn button(str: &str) -> impl Bundle {
     )
 }
 #[query_fn]
-fn hover(event: On<Pointer<Over>>, mut query: Query<&mut BackgroundColor>) {
+fn hover(event: On<PointerOver>, mut query: Query<&mut BackgroundColor>) {
     let mut bg = query.get_mut(event.entity).unwrap();
     bg.0 = BUTTON_HOVER;
 }
 #[query_fn]
-fn stop_hover(event: On<Pointer<Out>>, mut query: Query<&mut BackgroundColor>) {
+fn stop_hover(event: On<PointerOut>, mut query: Query<&mut BackgroundColor>) {
     let mut bg = query.get_mut(event.entity).unwrap();
     bg.0 = BUTTON_BACKGROUND;
 }
