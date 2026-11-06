@@ -39,7 +39,7 @@ itertools = "0.15.0"
 bevy_ecs = "0.20.1"
 bevy_reflect = "0.20.1"
 bevy-settings = "0.20.1"
-bevy_framepace = {version = "0.22.0", git="https://github.com/martinfrances107/bevy_framepace", branch = "bevy0p20"}
+bevy_framepace = {version = "0.23.0", git="https://github.com/aevyrie/bevy_framepace"}
 futures = "0.3.34"
 circular-buffer = "2.0.1"
 chrono = "0.4.45"
@@ -48,7 +48,7 @@ chrono = "0.4.45"
 winapi = {version = "0.3.9",features = ["wincon"]}
 
 [target.'cfg(target_family = "wasm")'.dependencies]
-wasm-bindgen = "0.2.129"
+wasm-bindgen = "0.2.130"
 console_error_panic_hook = "0.1.7"
 getrandom = {version = "0.4.3", features = ["wasm_js"]}
 bevy = {version = "0.20.1", default-features = false, features = [
