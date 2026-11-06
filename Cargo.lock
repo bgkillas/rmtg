@@ -1547,7 +1547,7 @@ checksum = "bff34eb29ff4b8a8688bc7299f14fb6b597461ca80fec03ed7d22939ab33e48f"
 [[package]]
 name = "bevy_p2p"
 version = "0.1.0"
-source = "git+https://github.com/bgkillas/bevy_p2p#2aafd9455dfff97e69baf30044774e5595567917"
+source = "git+https://github.com/bgkillas/bevy_p2p#2d322f734a072ee3cd03dc82915fbc904a3090df"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
