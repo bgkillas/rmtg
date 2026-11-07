@@ -9,6 +9,7 @@ use rustc_hash::FxBuildHasher;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
+#[cfg(not(target_family = "wasm"))]
 use tokio::fs;
 #[cfg(target_family = "wasm")]
 use tokio_with_wasm as tokio;
@@ -66,6 +67,7 @@ impl Default for CardCache {
     fn default() -> Self {
         let mut in_storage = HashSet::with_hasher(FxBuildHasher);
         let mut set_cn = BiHashMap::with_hashers(FxBuildHasher, FxBuildHasher);
+        #[cfg(not(target_family = "wasm"))]
         if let Some(folder_name) = folder() {
             if let Ok(dir) = std::fs::read_dir(&folder_name) {
                 for set_path in dir.filter_map(Result::ok) {
@@ -184,6 +186,7 @@ impl CardCache {
 }
 impl SubCardInner {
     pub async fn write_files(&self) {
+        #[cfg(not(target_family = "wasm"))]
         if let Some(folder_name) = folder().map(|f| f.join(self.data.folder_path())) {
             let _ = fs::create_dir_all(&folder_name).await;
             let data = encode::<CardData>(&self.data);
@@ -193,10 +196,17 @@ impl SubCardInner {
 }
 impl CardData {
     pub async fn read_files(set_cn: &SetCn, uuid: Uuid) -> Option<Self> {
-        let folder_name = folder()?.join(folder_path(set_cn, uuid));
-        let card_data = fs::read(folder_name.join(DATA)).await.ok()?;
-        let data = decode::<CardData>(&card_data).ok()?;
-        Some(data)
+        #[cfg(not(target_family = "wasm"))]
+        {
+            let folder_name = folder()?.join(folder_path(set_cn, uuid));
+            let card_data = fs::read(folder_name.join(DATA)).await.ok()?;
+            let data = decode::<CardData>(&card_data).ok()?;
+            Some(data)
+        }
+        #[cfg(target_family = "wasm")]
+        {
+            None
+        }
     }
 }
 pub async fn get_images(
@@ -208,17 +218,24 @@ pub async fn get_images(
     let folder_name = folder()?.join(folder_path(set_cn, uuid));
     let mut front_image = CacheReadImage::Missing;
     let mut back_image = CacheReadImage::None;
+    #[cfg(not(target_family = "wasm"))]
     if let Ok(data) = fs::read(folder_name.join(quality.file_name(Side::Front))).await {
         front_image = CacheReadImage::Some(data.into_boxed_slice());
     }
+    #[cfg(not(target_family = "wasm"))]
     if let Ok(data) = fs::read(folder_name.join(quality.file_name(Side::Back))).await {
         back_image = CacheReadImage::Some(data.into_boxed_slice());
     } else if has_unique_face {
         back_image = CacheReadImage::Missing;
     }
+    #[cfg(target_family = "wasm")]
+    {
+        back_image = CacheReadImage::Missing;
+    }
     Some((front_image, back_image))
 }
 pub async fn write_image(bytes: &[u8], set_cn: &SetCn, uuid: Uuid, quality: Quality, side: Side) {
+    #[cfg(not(target_family = "wasm"))]
     if let Some(folder_name) = folder().map(|f| f.join(folder_path(set_cn, uuid))) {
         let _ = fs::create_dir_all(&folder_name).await;
         let _ = fs::write(folder_name.join(quality.file_name(side)), bytes).await;
